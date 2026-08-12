@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0">
+  <classes>
+    <class id="PersonalToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP" _delta="define">
+              <code>MCP</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+    <class id="UserToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP" _delta="define">
+              <code>MCP</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+    <class id="EventMCPService" _delta="define">
+            <parent>Event</parent>
+            <properties>
+                <comment><![CDATA[/**
+ * Audit trail for MCP service calls.
+ * Records each inbound MCP request with its method, tool/resource name,
+ * execution status and any error message.
+ *
+ * @copyright Copyright (C) 2026 Altioo
+ * @license   http://opensource.org/licenses/AGPL-3.0
+ */]]></comment>
+                <category>application</category>
+                <abstract>false</abstract>
+                <key_type>autoincrement</key_type>
+                <db_table>priv_event_mcp_service</db_table>
+                <db_key_field>id</db_key_field>
+                <db_final_class_field/>
+                <naming>
+                    <attributes>
+                        <attribute id="date"/>
+                        <attribute id="mcp_name"/>
+                    </attributes>
+                </naming>
+                <display_template/>
+                <icon/>
+                <reconciliation>
+                    <attributes>
+                        <attribute id="date"/>
+                    </attributes>
+                </reconciliation>
+            </properties>
+ 
+            <fields>
+                <!-- MCP method: tools/call, resources/read, prompts/get, etc. -->
+                <field id="mcp_method" xsi:type="AttributeString">
+                    <sql>mcp_method</sql>
+                    <default_value/>
+                    <is_null_allowed>false</is_null_allowed>
+                    <validation_pattern/>
+                    <max_size>64</max_size>
+                </field>
+ 
+                <!-- Tool/resource/prompt name that was invoked -->
+                <field id="mcp_name" xsi:type="AttributeString">
+                    <sql>mcp_name</sql>
+                    <default_value/>
+                    <is_null_allowed>true</is_null_allowed>
+                    <validation_pattern/>
+                    <max_size>255</max_size>
+                </field>
+ 
+                <!-- Execution status: success, error -->
+                <field id="status" xsi:type="AttributeEnum">
+                    <sql>status</sql>
+                    <default_value>success</default_value>
+                    <is_null_allowed>false</is_null_allowed>
+                    <values>
+                        <value id="success">
+                            <code>success</code>
+                            <rank>10</rank>
+                        </value>
+                        <value id="error">
+                            <code>error</code>
+                            <rank>20</rank>
+                        </value>
+                    </values>
+                </field>
+ 
+                <!-- Raw JSON request payload for audit/debugging -->
+                <field id="request_params" xsi:type="AttributeText">
+                    <sql>request_params</sql>
+                    <default_value/>
+                    <is_null_allowed>true</is_null_allowed>
+                </field>
+            </fields>
+            <methods />
+ 
+            <presentation>
+                <details>
+                    <items>
+                        <item id="col:col0">
+                            <rank>10</rank>
+                            <items>
+                                <item id="fieldset:main">
+                                    <rank>10</rank>
+                                    <items>
+                                        <item id="date">
+                                            <rank>10</rank>
+                                        </item>
+                                        <item id="userinfo">
+                                            <rank>20</rank>
+                                        </item>
+                                        <item id="mcp_method">
+                                            <rank>30</rank>
+                                        </item>
+                                        <item id="mcp_name">
+                                            <rank>40</rank>
+                                        </item>
+                                        <item id="status">
+                                            <rank>50</rank>
+                                        </item>
+                                    </items>
+                                </item>
+                            </items>
+                        </item>
+                        <item id="col:col1">
+                            <rank>20</rank>
+                            <items>
+                                <item id="fieldset:details">
+                                    <rank>10</rank>
+                                    <items>
+                                        <item id="message">
+                                            <rank>10</rank>
+                                        </item>
+                                        <item id="request_params">
+                                            <rank>20</rank>
+                                        </item>
+                                    </items>
+                                </item>
+                            </items>
+                        </item>
+                    </items>
+                </details>
+ 
+                <list>
+                    <items>
+                        <item id="date">
+                            <rank>10</rank>
+                        </item>
+                        <item id="userinfo">
+                            <rank>20</rank>
+                        </item>
+                        <item id="mcp_method">
+                            <rank>30</rank>
+                        </item>
+                        <item id="mcp_name">
+                            <rank>40</rank>
+                        </item>
+                        <item id="status">
+                            <rank>50</rank>
+                        </item>
+                    </items>
+                </list>
+            </presentation>
+        </class>
+  </classes>
+  <module_parameters>
+    <parameters id="altioo-mcp" _delta="define">
+      <mcp_allowed_profiles type="array">
+        <item>Administrator</item>
+      </mcp_allowed_profiles>
+      <log_mcp_service type="bool">true</log_mcp_service>
+      <log_mcp_method type="array">
+        <item>resources/read</item>
+        <item>tools/call</item>
+        <item>prompts/get</item>
+        <item>exceptions</item>
+      </log_mcp_method>
+      <log_mcp_level type="enum">
+        <value id="info">info</value>
+        <value id="debug">debug</value>
+        <value id="error" default="true">error</value>
+      </log_mcp_level>
+    </parameters>
+  </module_parameters>
+</itop_design>

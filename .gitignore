@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Composer
+vendor/
+composer.phar
+
+# PHPStorm / IDEs
+.idea/
+*.iml
+.vscode/
+

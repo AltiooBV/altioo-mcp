@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension format="1.0">
+  <extension_code>altioo-mcp</extension_code>
+  <version>1.0.0</version>
+  <label><![CDATA[Altioo MCP iTop Extension]]></label>
+  <description><![CDATA[Add MCP to your iTop]]></description>
+  <mandatory>false</mandatory>
+  <more_info_url></more_info_url>
+</extension>
