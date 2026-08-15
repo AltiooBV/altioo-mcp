@@ -19,6 +19,14 @@ SetupWebPage::AddModule(
 		// Setup
 		//
 		'dependencies' => array(
+			// The iTop floor, stated the only way the setup can enforce it:
+			// extension.xml has no itop_version_min, so the branch is declared
+			// through a core module that carries it. itop-structure is
+			// mandatory in every installation, and a dependency with no
+			// operator means ">=", so this reads "iTop 3.2 or later" and stops
+			// the install on 3.1 with a legible message rather than a fatal
+			// error somewhere inside a tool.
+			'itop-structure/3.2.0',
 			'authent-token/2.2.1',
 		),
 		'mandatory' => false,
@@ -43,8 +51,12 @@ SetupWebPage::AddModule(
 
 		// Documentation
 		//
-		'doc.manual_setup' => '', // hyperlink to manual setup documentation, if any
-		'doc.more_information' => '', // hyperlink to more information, if any
+		// These two are the only links iTop shows next to the module once it is
+		// installed, so an administrator who inherits the instance has
+		// somewhere to go. The same documentation ships in the archive
+		// (README.md and doc/), which is what answers the question offline.
+		'doc.manual_setup' => 'https://github.com/altioo/mcp-server-extension/blob/main/README.md#installation',
+		'doc.more_information' => 'https://github.com/altioo/mcp-server-extension/blob/main/README.md',
 
 		// Default settings
 		//
