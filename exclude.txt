@@ -3,9 +3,6 @@ doc
 .DS_Store
 .gitignore
 .gitattributes
-.git-blame-ignore-revs
-tests
-phpunit.xml.dist
 .phpunit.result.cache
 .phpunit.cache
 assets/css/.gitkeep

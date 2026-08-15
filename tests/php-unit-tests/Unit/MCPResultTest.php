@@ -11,6 +11,11 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use PHPUnit\Framework\TestCase;
 
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
+
 class MCPResultTest extends TestCase
 {
 	public function testDefaultsToSuccess(): void

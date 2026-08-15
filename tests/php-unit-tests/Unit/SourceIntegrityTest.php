@@ -8,10 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
 
 /**
  * Static checks over the module's own PHP sources.
@@ -27,7 +31,8 @@ use RecursiveIteratorIterator;
  */
 class SourceIntegrityTest extends TestCase
 {
-	private const SOURCE_DIR = __DIR__.'/../../src';
+	// tests/php-unit-tests/Unit -> module root
+	private const SOURCE_DIR = __DIR__.'/../../../src';
 
 	/** @return array<string, array{0: string}> */
 	public static function sourceFileProvider(): array
@@ -76,8 +81,9 @@ class SourceIntegrityTest extends TestCase
 	 * A bare `Foo::bar()` or `new Foo` inside `namespace A\B;` resolves to
 	 * `A\B\Foo`, never to the global `\Foo`. Without a matching `use`, the call
 	 * fatals the moment it executes.
+	 *
+	 * @dataProvider sourceFileProvider
 	 */
-	#[DataProvider('sourceFileProvider')]
 	public function testEveryClassReferenceResolves(string $sPath): void
 	{
 		$aTokens = $this->significantTokens($sPath);
@@ -170,7 +176,9 @@ class SourceIntegrityTest extends TestCase
 		);
 	}
 
-	#[DataProvider('sourceFileProvider')]
+	/**
+	 * @dataProvider sourceFileProvider
+	 */
 	public function testNoClosingTag(string $sPath): void
 	{
 		$this->assertStringNotContainsString(
@@ -180,7 +188,9 @@ class SourceIntegrityTest extends TestCase
 		);
 	}
 
-	#[DataProvider('sourceFileProvider')]
+	/**
+	 * @dataProvider sourceFileProvider
+	 */
 	public function testNoTrailingWhitespace(string $sPath): void
 	{
 		$aOffenders = [];
@@ -196,8 +206,9 @@ class SourceIntegrityTest extends TestCase
 	/**
 	 * Combodo indents PHP with tabs. Continuation lines of a block comment
 	 * legitimately start with a space before the '*'.
+	 *
+	 * @dataProvider sourceFileProvider
 	 */
-	#[DataProvider('sourceFileProvider')]
 	public function testIndentsWithTabs(string $sPath): void
 	{
 		$aOffenders = [];
@@ -214,7 +225,9 @@ class SourceIntegrityTest extends TestCase
 		$this->assertSame([], $aOffenders, self::relative($sPath).': space indentation on line(s) '.implode(', ', $aOffenders));
 	}
 
-	#[DataProvider('sourceFileProvider')]
+	/**
+	 * @dataProvider sourceFileProvider
+	 */
 	public function testIsUtf8WithoutBomAndLfEndings(string $sPath): void
 	{
 		$sContent = file_get_contents($sPath);

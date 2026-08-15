@@ -134,11 +134,17 @@ it with as the real blast radius — start read-only and widen only as needed.
 
 ```bash
 composer install
-composer test:unit
+composer test          # both suites
+composer test:unit     # no iTop, no database
 ```
 
-The unit suite needs neither iTop nor a database. The integration suite additionally needs a
-live iTop with the module installed, and skips itself otherwise:
+Tests live in `tests/php-unit-tests/` and target **PHPUnit 9**, matching the version iTop
+pins for its own suite. That layout is deliberate: iTop's `Extensions` testsuite scans
+`env-production/<module>/tests/php-unit-tests`, so the same tests run either standalone or
+under iTop's runner. They are shipped in the release archive for that reason.
+
+The integration suite needs a live iTop with the module installed, and skips itself
+otherwise:
 
 ```bash
 ITOP_ROOT=/path/to/itop/web composer test:integration

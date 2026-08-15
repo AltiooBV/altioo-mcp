@@ -10,11 +10,15 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use TestIssueLog;
+
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
 
 class LogAPILoggerTest extends TestCase
 {
@@ -61,8 +65,9 @@ class LogAPILoggerTest extends TestCase
 	/**
 	 * PSR-3 defines eight levels, LogAPI six. emergency/alert/critical/error all
 	 * collapse onto Error, and notice joins info.
+	 *
+	 * @dataProvider levelMappingProvider
 	 */
-	#[DataProvider('levelMappingProvider')]
 	public function testMapsPsr3LevelsOntoLogApiLevels(string $sPsrLevel, string $sExpected): void
 	{
 		$this->logger()->log($sPsrLevel, 'message');

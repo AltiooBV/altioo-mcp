@@ -9,10 +9,14 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
-use PHPUnit\Framework\Attributes\DataProvider;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
+
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
 
 /**
  * The EventMCPService audit class, against a live datamodel.
@@ -44,7 +48,9 @@ class EventMCPServiceTest extends ItopDataTestCaseAlias
 		$this->assertSame('priv_event_mcp_service', MetaModel::DBGetTable(self::CLASS_NAME));
 	}
 
-	#[DataProvider('ownAttributeProvider')]
+	/**
+	 * @dataProvider ownAttributeProvider
+	 */
 	public function testDeclaresItsOwnAttributes(string $sAttCode): void
 	{
 		$this->assertTrue(MetaModel::IsValidAttCode(self::CLASS_NAME, $sAttCode));
@@ -61,7 +67,9 @@ class EventMCPServiceTest extends ItopDataTestCaseAlias
 		];
 	}
 
-	#[DataProvider('inheritedAttributeProvider')]
+	/**
+	 * @dataProvider inheritedAttributeProvider
+	 */
 	public function testInheritsEventAttributes(string $sAttCode): void
 	{
 		$this->assertTrue(MetaModel::IsValidAttCode(self::CLASS_NAME, $sAttCode));

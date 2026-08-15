@@ -10,11 +10,15 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
-use PHPUnit\Framework\Attributes\DataProvider;
 use DBObjectSearch;
 use DBObjectSet;
 use Dict;
 use MetaModel;
+
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
 
 /**
  * Everything the module contributes to a compiled datamodel that is not a
@@ -89,7 +93,9 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 		$this->assertSame(1, $oSet->Count(), 'the MCP Services User profile is missing from the compiled datamodel');
 	}
 
-	#[DataProvider('tokenClassProvider')]
+	/**
+	 * @dataProvider tokenClassProvider
+	 */
 	public function testTokenScopeOffersMcp(string $sClass): void
 	{
 		if (!MetaModel::IsValidClass($sClass)) {
@@ -114,8 +120,9 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 * Dict::S() returns the key itself when a translation is missing, so the
 	 * console renders raw keys like "Class:EventMCPService". Comparing the
 	 * lookup against the key is the way to catch that.
+	 *
+	 * @dataProvider dictionaryKeyProvider
 	 */
-	#[DataProvider('dictionaryKeyProvider')]
 	public function testDictionaryEntryIsTranslated(string $sKey): void
 	{
 		$this->assertNotSame($sKey, Dict::S($sKey), "dictionary entry missing for '{$sKey}'");

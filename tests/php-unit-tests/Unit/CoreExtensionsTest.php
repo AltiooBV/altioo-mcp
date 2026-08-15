@@ -17,6 +17,11 @@ use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use PHPUnit\Framework\TestCase;
 
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
+
 /**
  * The wiring between CoreExtensions and the registry.
  *

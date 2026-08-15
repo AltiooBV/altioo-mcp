@@ -15,6 +15,11 @@ use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use PHPUnit\Framework\TestCase;
 
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
+
 class MCPRegistryTest extends TestCase
 {
 	protected function setUp(): void

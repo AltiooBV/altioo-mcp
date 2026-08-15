@@ -26,8 +26,10 @@ abstract class SkippedItopDataTestCase extends TestCase
 		parent::setUp();
 		$this->markTestSkipped(
 			'iTop test harness not available. Integration tests need Combodo\iTop\Test\UnitTest\ItopDataTestCase, '
-			.'which ships in the iTop source tree (tests/php-unit-tests/) and not in the packaged release. '
-			.'Point ITOP_ROOT at an iTop checkout that includes it, with the altioo-mcp module installed.'
+			.'which lives in the iTop *source* tree at tests/php-unit-tests/src/BaseTestCase/ and is absent from '
+			.'packaged releases. Run them from an iTop checkout with the altioo-mcp module installed, either via '
+			.'iTop\'s own runner (its "Extensions" testsuite scans env-production/*/tests/php-unit-tests) or by '
+			.'pointing ITOP_ROOT at that checkout.'
 		);
 	}
 }

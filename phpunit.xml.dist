@@ -1,26 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit 9 configuration, matching the version iTop pins in
+  tests/php-unit-tests/composer.json ("phpunit/phpunit": "^9").
+
+  Tests live under tests/php-unit-tests/ so that iTop's own "Extensions"
+  testsuite finds them: it scans env-production/<module>/tests/php-unit-tests.
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="tests/bootstrap.php"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+         bootstrap="tests/php-unit-tests/bootstrap.php"
+         cacheResultFile=".phpunit.result.cache"
          colors="true"
-         cacheDirectory=".phpunit.cache"
+         columns="120"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
          failOnWarning="true"
          failOnRisky="true"
-         beStrictAboutOutputDuringTests="true">
+         beStrictAboutOutputDuringTests="true"
+         verbose="true">
+  <php>
+    <ini name="error_reporting" value="E_ALL"/>
+    <ini name="display_errors" value="On"/>
+  </php>
   <testsuites>
     <!-- No iTop, no database: runs anywhere PHP and Composer do. -->
     <testsuite name="unit">
-      <directory>tests/Unit</directory>
+      <directory>tests/php-unit-tests/Unit</directory>
     </testsuite>
-    <!-- Needs a live iTop with the module installed; see tests/bootstrap.php.
-         Skips itself, rather than failing, when iTop is not reachable. -->
+    <!-- Needs a live iTop with the module installed; skips itself otherwise. -->
     <testsuite name="integration">
-      <directory>tests/Integration</directory>
+      <directory>tests/php-unit-tests/Integration</directory>
     </testsuite>
   </testsuites>
-  <source>
+  <coverage>
     <include>
       <directory suffix=".php">src</directory>
     </include>
-  </source>
+  </coverage>
 </phpunit>
