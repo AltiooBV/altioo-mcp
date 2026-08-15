@@ -28,6 +28,9 @@ class CoreExtensions implements iMCPServiceProvider
 		MCPRegistry::RegisterTool(new Tools\ObjectCreate());
 		MCPRegistry::RegisterTool(new Tools\ObjectUpdate());
 		MCPRegistry::RegisterTool(new Tools\ObjectDelete());
+		MCPRegistry::RegisterTool(new Tools\ObjectBulkCreate());
+		MCPRegistry::RegisterTool(new Tools\ObjectBulkUpdate());
+		MCPRegistry::RegisterTool(new Tools\ObjectBulkDelete());
 		MCPRegistry::RegisterTool(new Tools\ObjectApplyStimulus());
 		MCPRegistry::RegisterTool(new Tools\ObjectGetRelated());
 
