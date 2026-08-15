@@ -8,6 +8,18 @@ All notable changes to this extension are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-08-16
+
+First public release.
+
+The notes below are written against the pre-release development series rather than an earlier
+published version: nothing before this was released, so an installation upgrading to 1.0.0 is
+one that was following the repository. Anyone installing 1.0.0 fresh can read them as a
+description of the shape the extension settled on — in particular that no tool writes on a
+first call, and that a tool is graded read / write / delete by the annotations it declares.
+
 ### Breaking
 
 - **Tool, prompt and resource identifiers are `snake_case`.** `core_ObjectSearchByOQL` is now
