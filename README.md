@@ -37,6 +37,8 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
+| `core_ClassList` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
+| `core_ClassSchema` | Describe one class: attributes, relations, lifecycle |
 | `core_ObjectSearchByOQL` | Search objects with an OQL query |
 | `core_ObjectSearchByClass` | Search objects of a class by attribute criteria |
 | `core_ObjectGet` | Retrieve a single object by class and ID |
@@ -58,6 +60,13 @@ vendors therefore cannot claim one identifier by both calling a class `TicketAdd
 | `itop://core/current-user` | The authenticated user and their profiles |
 | `itop://core/classes` | The list of classes in the datamodel |
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle |
+
+The last two are deliberately served twice — as resources, and as the `core_ClassList` /
+`core_ClassSchema` tools over the same code. Plenty of clients never fetch resources at all,
+and support for resource *templates* is thinner still; a model that cannot reach the schema
+falls back to guessing attribute codes, and every other tool here is the poorer for it. The
+tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
+hundred classes, so `core_ClassList` takes a `category` and a `filter`.
 
 **Prompts**
 

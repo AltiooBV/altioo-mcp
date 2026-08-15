@@ -1,0 +1,178 @@
+<?php
+/**
+ * @copyright Copyright (C) 2026 Altioo
+ * @license   http://opensource.org/licenses/AGPL-3.0
+ */
+
+declare(strict_types=1);
+
+namespace Altioo\iTop\Extension\MCP\Test\Unit;
+
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
+use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+
+// iTop's own runner bootstraps with unittestautoload.php, which cannot
+// autoload this module's test Support classes; this fills that gap and is a
+// no-op when phpunit.xml.dist already loaded it.
+require_once __DIR__.'/../bootstrap.php';
+
+/**
+ * The two tools that put the datamodel where every client can reach it.
+ *
+ * The schema was already served as a resource and a resource template, which a
+ * good many clients never fetch. The tools exist so that a model on such a
+ * client can still discover attribute codes instead of inventing them - which
+ * only holds if the narrowing arguments are ones a client may actually send:
+ * a property missing from the input schema is a parameter stuck at its default
+ * forever, the same defect ObjectDelete's `simulate` once had.
+ *
+ * Reading a schema, a signature and a pure filter needs no iTop, which is what
+ * makes this a unit test rather than an integration one.
+ */
+class SchemaToolsContractTest extends TestCase
+{
+	/**
+	 * A stock datamodel runs to several hundred classes. Narrowing that a
+	 * client cannot ask for is narrowing that never happens.
+	 */
+	public function testListExposesBothNarrowingArgumentsToTheClient(): void
+	{
+		$aSchema = (new ClassList())->getInputSchema();
+
+		$this->assertArrayHasKey('category', $aSchema['properties']);
+		$this->assertSame('string', $aSchema['properties']['category']['type']);
+		$this->assertArrayHasKey('filter', $aSchema['properties']);
+		$this->assertSame('string', $aSchema['properties']['filter']['type']);
+	}
+
+	/**
+	 * Both narrowing arguments are optional, on both sides: "list everything"
+	 * has to stay one call away, and the SDK binds by name off the signature.
+	 */
+	public function testListNarrowingIsOptionalInBothTheSchemaAndTheSignature(): void
+	{
+		$aSchema = (new ClassList())->getInputSchema();
+		$this->assertSame([], $aSchema['required']);
+
+		foreach ($this->parameters(ClassList::class) as $sName => $oParameter) {
+			$this->assertTrue($oParameter->isOptional(), "ClassList::execute() parameter {$sName} has no default");
+			$this->assertSame('', $oParameter->getDefaultValue(), "ClassList::execute() parameter {$sName} defaults to something other than 'no narrowing'");
+		}
+
+		$this->assertSame(['category', 'filter'], array_keys($this->parameters(ClassList::class)));
+	}
+
+	public function testSchemaToolRequiresTheClassItDescribes(): void
+	{
+		$aSchema = (new ClassSchema())->getInputSchema();
+
+		$this->assertArrayHasKey('class', $aSchema['properties']);
+		$this->assertSame(['class'], $aSchema['required']);
+		$this->assertSame(['class'], array_keys($this->parameters(ClassSchema::class)));
+	}
+
+	/**
+	 * Neither tool writes anything; a client that gates non-read-only tools
+	 * behind a confirmation relies on the annotation to say so.
+	 */
+	public function testBothToolsAreAnnotatedReadOnly(): void
+	{
+		foreach ([new ClassList(), new ClassSchema()] as $oTool) {
+			$aAnnotations = $oTool->getAnnotations()->jsonSerialize();
+
+			$this->assertTrue($aAnnotations['readOnlyHint'], get_class($oTool).' is not annotated read-only');
+			$this->assertFalse($aAnnotations['destructiveHint'], get_class($oTool).' is annotated destructive');
+		}
+	}
+
+	/**
+	 * Listing then describing is the intended sequence; the descriptions are
+	 * the only place a model is told so.
+	 */
+	public function testTheDescriptionsPointAtEachOther(): void
+	{
+		$this->assertStringContainsString('core_ClassSchema', (new ClassList())->getDescription());
+		$this->assertStringContainsString('core_ClassList', (new ClassSchema())->getDescription());
+	}
+
+	public function testFilterMatchesNameLabelAndDescriptionAlike(): void
+	{
+		$aClasses = [
+			['class' => 'UserRequest', 'label' => 'User Request', 'description' => 'A ticket raised by a caller'],
+			['class' => 'Server', 'label' => 'Server', 'description' => 'A physical machine'],
+		];
+
+		// The class name says nothing about tickets; the description does.
+		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'ticket')));
+		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByText($aClasses, 'Serv')));
+		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'User Req')));
+	}
+
+	public function testFilterIsCaseInsensitive(): void
+	{
+		$aClasses = [['class' => 'UserRequest', 'label' => 'User Request', 'description' => '']];
+
+		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'USERREQUEST'));
+		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'userrequest'));
+	}
+
+	/**
+	 * No filter means no filtering - not an empty result.
+	 */
+	public function testAnEmptyFilterKeepsEverything(): void
+	{
+		$aClasses = [['class' => 'Server', 'label' => 'Server', 'description' => '']];
+
+		$this->assertSame($aClasses, DatamodelReader::FilterByText($aClasses, ''));
+	}
+
+	/**
+	 * The result is JSON-encoded down the line, where a gapped array turns into
+	 * an object keyed by the surviving indices instead of a list.
+	 */
+	public function testFilteringReturnsAList(): void
+	{
+		$aClasses = [
+			['class' => 'Contact', 'label' => 'Contact', 'description' => ''],
+			['class' => 'Server', 'label' => 'Server', 'description' => ''],
+		];
+
+		$aFiltered = DatamodelReader::FilterByText($aClasses, 'Server');
+
+		$this->assertSame([0], array_keys($aFiltered));
+		$this->assertStringStartsWith('[', json_encode($aFiltered));
+	}
+
+	public function testFilteringToleratesSummariesMissingAField(): void
+	{
+		$aClasses = [['class' => 'Server']];
+
+		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'Server'));
+		$this->assertCount(0, DatamodelReader::FilterByText($aClasses, 'ticket'));
+	}
+
+	/**
+	 * @return array<string, \ReflectionParameter>
+	 */
+	private function parameters(string $sTool): array
+	{
+		$aParameters = [];
+		foreach ((new ReflectionMethod($sTool, 'execute'))->getParameters() as $oParameter) {
+			$aParameters[$oParameter->getName()] = $oParameter;
+		}
+
+		return $aParameters;
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $aClasses
+	 * @return array<int, string>
+	 */
+	private function names(array $aClasses): array
+	{
+		return array_column($aClasses, 'class');
+	}
+}

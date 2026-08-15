@@ -56,6 +56,8 @@ class CoreExtensionsTest extends TestCase
 
 		$this->assertSame(
 			[
+				'core_ClassList',
+				'core_ClassSchema',
 				'core_ObjectApplyStimulus',
 				'core_ObjectCreate',
 				'core_ObjectDelete',

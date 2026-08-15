@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
-use MetaModel;
-use UserRights;
 
 class ClassList extends AbstractMCPResource
 {
@@ -20,7 +19,7 @@ class ClassList extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'List all available iTop classes. Use the core://core/class/{class} resource template to read details about a specific class.';
+		return 'List all available iTop classes. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_ClassList tool for the same list narrowed by category or name.';
 	}
 
 	protected function getResourceNamespace(): string
@@ -43,28 +42,6 @@ class ClassList extends AbstractMCPResource
 
 	public function read(): mixed
 	{
-		$aClasses = [];
-
-		foreach (MetaModel::GetClasses() as $sClass) {
-			// Skip classes the current user has no read access to
-			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-				continue;
-			}
-
-			$aClasses[] = [
-				'class'             => $sClass,
-				'label'             => MetaModel::GetName($sClass),
-				'description'       => MetaModel::GetClassDescription($sClass),
-				'isAbstract'          => MetaModel::IsAbstract($sClass),
-				'isRoot'            => MetaModel::IsRootClass($sClass),
-				'isHierarchical'    => MetaModel::IsHierarchicalClass($sClass),
-				'rootClass'         => MetaModel::GetRootClass($sClass),
-				'parentClass'       => MetaModel::GetParentClass($sClass),
-			];
-		}
-
-		usort($aClasses, static fn($a, $b) => strcmp($a['class'], $b['class']));
-
-		return json_encode($aClasses);
+		return json_encode(DatamodelReader::ListClasses());
 	}
 }
