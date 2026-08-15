@@ -44,6 +44,20 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 		$this->assertContains('MCP Services User', $aProfiles);
 	}
 
+	/**
+	 * Read by MCPController::addCorsHeader(). Must default to an empty list: a
+	 * populated default, and above all a "*", would let any site read the
+	 * authenticated responses of a logged-in user's browser session.
+	 */
+	public function testAllowedOriginsIsDeclaredAndDefaultsToEmpty(): void
+	{
+		$aOrigins = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS, null);
+
+		$this->assertIsArray($aOrigins, 'mcp_allowed_origins must be declared in module_parameters');
+		$this->assertSame([], $aOrigins);
+		$this->assertNotContains('*', $aOrigins);
+	}
+
 	public function testLoggingSettingsAreDeclared(): void
 	{
 		$this->assertIsBool(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, null));

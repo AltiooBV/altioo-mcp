@@ -93,6 +93,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 'altioo-mcp' => array(
     'secure_mcp_services' => true,
     'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
+    'mcp_allowed_origins' => array(),
     'log_mcp_service' => true,
     'log_mcp_method' => array('resources/read', 'tools/call', 'prompts/get', 'exceptions'),
     'log_mcp_level' => 'error',
@@ -103,6 +104,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 |---|---|---|
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
+| `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |

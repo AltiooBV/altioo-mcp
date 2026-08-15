@@ -243,6 +243,12 @@
   <module_parameters>
     <parameters id="altioo-mcp" _delta="define">
       <secure_mcp_services type="bool">true</secure_mcp_services>
+      <!--
+        Origins allowed to read MCP responses from a browser. Empty means no
+        Access-Control-Allow-Origin header is sent at all, which is what a
+        token-authenticated endpoint called from a backend wants. Never use "*".
+      -->
+      <mcp_allowed_origins type="array"/>
       <mcp_allowed_profiles type="array">
         <item>Administrator</item>
         <item>MCP Services User</item>

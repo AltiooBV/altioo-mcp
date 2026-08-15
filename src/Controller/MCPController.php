@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Controller;
 
+use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
@@ -12,10 +13,9 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use EventMCPService;
-use Exception;
 use ExecutionKPI;
 use LoginWebPage;
-use RestResult;
+use Throwable;
 use UserRights;
 use ContextTag;
 use utils;
@@ -51,8 +51,11 @@ final class MCPController
 			$oResult = self::emitResponse($aRequestResponse['response']);
 			$oKPI->ComputeAndReport('Operation finished');
 			$oResult = self::getMCPInfoFromRequest($aRequestResponse['request'], $oResult);
-		} catch (Exception $e) {
-			$oResult = new MCPResult($e->getCode(), 'Error: '.$e->getMessage());
+		} catch (Throwable $e) {
+			// Throwable, not Exception: this is the single public entry point, and a
+			// TypeError or a missing class here would otherwise escape uncaught -
+			// producing a bare 500 with no audit entry.
+			$oResult = self::buildErrorResult($e);
 			$oResult->mcpMethod = MCPHelper::MCP_METHOD_PARAM;
 			$oKPI->ComputeAndReport('Exception catched');
 			self::outputJsonResultException($oResult);
@@ -96,16 +99,46 @@ final class MCPController
 		return [];
 	}
 
-	private static function createAuthException(int $iRet): Exception
+	private static function createAuthException(int $iRet): MCPAuthException
 	{
 		switch ($iRet) {
 			case LoginWebPage::EXIT_CODE_WRONGCREDENTIALS:
-				return new Exception('Invalid login', MCPResult::UNAUTHORIZED);
+				return new MCPAuthException('Invalid login', MCPResult::UNAUTHORIZED);
 			case LoginWebPage::EXIT_CODE_NOTAUTHORIZED:
-				return new Exception('This user is not authorized to use the MCP services. (The profile MCP Services User is required to access the MCP services)', RestResult::UNAUTHORIZED);
+				return new MCPAuthException('This user is not authorized to use the MCP services. (The profile MCP Services User is required to access the MCP services)', MCPResult::UNAUTHORIZED);
 			default:
-				return new Exception('Unknown authentication error (retCode='.$iRet.')', MCPResult::UNAUTHORIZED);
+				return new MCPAuthException('Unknown authentication error (retCode='.$iRet.')', MCPResult::UNAUTHORIZED);
 		}
+	}
+
+	/**
+	 * Turns a throwable into a response body that says nothing the caller has no
+	 * business knowing.
+	 *
+	 * Only MCPAuthException carries a message this module wrote; everything else
+	 * is answered generically and correlated to the server log by a reference,
+	 * because iTop exception messages routinely embed SQL, table and class names.
+	 */
+	private static function buildErrorResult(Throwable $e): MCPResult
+	{
+		if ($e instanceof MCPAuthException) {
+			return new MCPResult($e->getCode(), $e->getMessage());
+		}
+
+		$sReference = bin2hex(random_bytes(8));
+		MCPHelper::LogError(sprintf(
+			'[%s] Unhandled %s: %s in %s:%d',
+			$sReference,
+			get_class($e),
+			$e->getMessage(),
+			$e->getFile(),
+			$e->getLine()
+		));
+
+		return new MCPResult(
+			MCPResult::INTERNAL_ERROR,
+			'The MCP request could not be completed. Server log reference: '.$sReference
+		);
 	}
 
 	private static function emitResponse(ResponseInterface $response): MCPResult
@@ -188,17 +221,52 @@ final class MCPController
 	{
 		$sResponse = json_encode($oResult);
 		if ($sResponse === false || is_null($sResponse)) {
+			// The dump of the unencodable structure goes to the log, not the wire:
+			// it is arbitrary internal state and may hold whatever the failed call
+			// was carrying.
+			$sReference = bin2hex(random_bytes(8));
+			MCPHelper::LogError(sprintf(
+				'[%s] json encoding failed (%s). Response structure (print_r+bin2hex): %s',
+				$sReference,
+				json_last_error_msg(),
+				bin2hex(print_r($oResult, true))
+			));
+
 			$oJsonIssue = new MCPResult();
 			$oJsonIssue->code = MCPResult::INTERNAL_ERROR;
-			$oJsonIssue->message = 'json encoding failed with message: '.json_last_error_msg().'. Full response structure for debugging purposes (print_r+bin2hex): '.bin2hex(print_r($oResult, true));
+			$oJsonIssue->message = 'The MCP response could not be encoded. Server log reference: '.$sReference;
 			$sResponse = json_encode($oJsonIssue);
 		}
 
 		$oP = new JsonPage();
-		$oP->add_header('Access-Control-Allow-Origin: *');
+		self::addCorsHeader($oP);
 		$oP->SetData(json_decode($sResponse, true));
 		$oP->SetOutputDataOnly(true);
 		$oP->Output();
+	}
+
+	/**
+	 * Echoes the request Origin only when it is explicitly allow-listed.
+	 *
+	 * A wildcard here would let any site read the authenticated responses of a
+	 * logged-in user's browser session. Default is an empty list, i.e. no CORS
+	 * header at all, which is correct for a token-authenticated endpoint called
+	 * from a backend.
+	 */
+	private static function addCorsHeader(JsonPage $oP): void
+	{
+		$sOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+		if ($sOrigin === '') {
+			return;
+		}
+
+		$aAllowed = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS, []);
+		if (!is_array($aAllowed) || !in_array($sOrigin, $aAllowed, true)) {
+			return;
+		}
+
+		$oP->add_header('Access-Control-Allow-Origin: '.$sOrigin);
+		$oP->add_header('Vary: Origin');
 	}
 
 
@@ -236,7 +304,8 @@ final class MCPController
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
 			}
 			$oLog->DBInsertNoReload();
-		} catch (Exception $e) {
+		} catch (Throwable $e) {
+			// Never let audit logging take down a request that already succeeded.
 			MCPHelper::LogError('Failed to log EventMCPService: '.$e->getMessage());
 		}
 	}

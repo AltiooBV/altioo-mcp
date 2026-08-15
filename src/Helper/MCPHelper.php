@@ -20,10 +20,23 @@ class MCPHelper
 	const LOG_LEVEL_DEBUG = 'debug';
 	const LOG_LEVEL_ERROR = 'error';
 
+	const MODULE_SETTING_ALLOWED_ORIGINS = 'mcp_allowed_origins';
+
 	const MCP_METHOD_PARAM = 'error';
 
 	public function __construct()
 	{
 		MCPLog::Enable(APPROOT.'log/error.log');
+	}
+
+	/**
+	 * Server-side error channel.
+	 *
+	 * Detail that must not reach the caller goes here: the response gets a
+	 * generic message, the log gets everything.
+	 */
+	public static function LogError(string $sMessage, array $aContext = []): void
+	{
+		MCPLog::Error($sMessage, null, $aContext);
 	}
 }
