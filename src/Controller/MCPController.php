@@ -7,6 +7,7 @@ namespace Altioo\iTop\Extension\MCP\Controller;
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
@@ -33,6 +34,7 @@ final class MCPController
 		try {
 			$oKPI->ComputeAndReport('Data model loaded');
 
+			MCPHttp::PromoteBearerToAuthToken();
 			LoginWebPage::ResetSession(true);
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
 			$oKPI->ComputeAndReport('User login');
