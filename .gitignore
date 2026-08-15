@@ -1,8 +1,15 @@
 # macOS
 .DS_Store
+._*
+.AppleDouble
+.Spotlight-V100
+.Trashes
 
 # Composer
-vendor/
+# vendor/* rather than vendor/ so that vendor/.gitkeep can be re-included below:
+# git cannot un-ignore a file whose parent directory is itself ignored.
+vendor/*
+!vendor/.gitkeep
 composer.phar
 
 # PHPStorm / IDEs
@@ -10,3 +17,7 @@ composer.phar
 *.iml
 .vscode/
 
+# PHPUnit
+.phpunit.result.cache
+.phpunit.cache/
+phpunit.xml
