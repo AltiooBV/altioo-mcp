@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -80,6 +81,6 @@ class ClassSchema extends AbstractMCPTool
 			throw new ToolCallException("Unknown class '{$class}'.");
 		}
 
-		return DatamodelReader::Describe($class);
+		return ToolOutput::Json(DatamodelReader::Describe($class));
 	}
 }

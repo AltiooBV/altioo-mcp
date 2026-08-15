@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -169,12 +170,12 @@ class ObjectDelete extends AbstractMCPTool
 			}
 		}
 
-		return [
+		return ToolOutput::Json([
 			'class'        => $class,
 			MetaModel::DBGetKey($class)          => $id,
 			'simulated'    => $simulate,
 			'deletionPlan' => self::serializeDeletionPlan($oDeletionPlan),
-		];
+		]);
 	}
 
 	/**

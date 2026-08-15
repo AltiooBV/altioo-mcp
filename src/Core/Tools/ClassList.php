@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -91,11 +92,11 @@ class ClassList extends AbstractMCPTool
 
 		$aClasses = DatamodelReader::FilterByText(DatamodelReader::ListClasses($sCategory), $sFilter);
 
-		return [
+		return ToolOutput::Json([
 			'category' => $sCategory,
 			'filter'   => $sFilter,
 			'total'    => count($aClasses),
 			'classes'  => $aClasses,
-		];
+		]);
 	}
 }

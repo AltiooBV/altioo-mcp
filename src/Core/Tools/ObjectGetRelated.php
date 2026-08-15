@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSearch;
@@ -179,7 +180,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
 		}
 
-		return self::serializeGraph($oGraph);
+		return ToolOutput::Json(self::serializeGraph($oGraph));
 	}
 
 	private static function serializeGraph(\RelationGraph $oGraph): array

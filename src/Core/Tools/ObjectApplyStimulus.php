@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -264,11 +265,11 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
-		return [
+		return ToolOutput::Json([
 			'class'    => $class,
 			MetaModel::DBGetKey($class)       => $id,
 			'stimulus' => $stimulus,
 			'state'    => $oObject->GetState(),
-		];
+		]);
 	}
 }

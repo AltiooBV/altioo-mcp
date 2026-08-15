@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -115,7 +116,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		$aResults = [];
 		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
-			return [
+			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $class,
 				'filters' => $filters,
@@ -123,13 +124,13 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults, // hides objects that the user shouldn't see
-			];
+			]);
 		}
 		$sSetClass = $oSet->GetClass();
 		if ($sSetClass !== $class) {
 			// Hides that the objects might exist, as not allowed to access it
 			if (!UserRights::IsActionAllowed($sSetClass, UR_ACTION_READ, $oSet)) {
-				return [
+				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $class,
 					'filters' => $filters,
@@ -137,11 +138,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'limit'   => $limit,
 					'offset'  => $offset,
 					'objects' => $aResults, // hides objects that the user shouldn't see
-				];
+				]);
 			}
 
 			if (!UserRights::IsActionAllowed($sSetClass, UR_ACTION_BULK_READ, $oSet)) {
-				return [
+				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $sSetClass,
 					'filters' => $filters,
@@ -149,7 +150,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'limit'   => $limit,
 					'offset'  => $offset,
 					'objects' => $aResults, // hides objects that the user shouldn't see
-				];
+				]);
 			}
 		}
 
@@ -175,7 +176,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
-			return [
+			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
 				'filters' => $filters,
@@ -183,7 +184,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults,
-			];
+			]);
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
 		}

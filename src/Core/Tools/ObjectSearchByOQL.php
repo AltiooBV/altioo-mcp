@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -101,14 +102,14 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		$aResults = [];
 		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
-			return [
+			return ToolOutput::Json([
 				'class' => $class,
 				'oql' => $oql,
 				'total'   => 0,
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults, // hides objects that the user shouldn't see
-			];
+			]);
 		}
 
 		// Execute the search and fetch results
@@ -134,14 +135,14 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
-			return [
+			return ToolOutput::Json([
 				'class' => $class,
 				'oql'       => $oql,
 				'total'     => $oSet->Count(),
 				'limit'     => $limit,
 				'offset'    => $offset,
 				'objects'   => $aResults,
-			];
+			]);
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
 		}

@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -144,10 +145,10 @@ class ObjectCreate extends AbstractMCPTool
 		try {
 			$iId = $oObject->DBInsert();
 
-			return [
+			return ToolOutput::Json([
 				'class' => $class,
 				MetaModel::DBGetKey($class) => $iId,
-			];
+			]);
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to create object: " . $e->getMessage());
 		}
