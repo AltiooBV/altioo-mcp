@@ -21,4 +21,15 @@ class FixturePrompt extends AbstractMCPPrompt
 	{
 		return 'A prompt that exists only for tests.';
 	}
+
+	/** @return array<int, array<string, mixed>> */
+	public function get(): array
+	{
+		return [
+			[
+				'role' => 'user',
+				'content' => ['type' => 'text', 'text' => 'Fixture prompt.'],
+			],
+		];
+	}
 }
