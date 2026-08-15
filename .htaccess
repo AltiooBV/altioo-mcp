@@ -1,0 +1,26 @@
+# Serves the MCP endpoint, and nothing else in this directory.
+#
+# iTop's own extensions/.htaccess denies every request under extensions/ except
+# a short list of static asset extensions, PHP not among them. That is the right
+# default - a module's src/, vendor/ and composer.json have no business being
+# reachable - but this module's whole purpose is one PHP entry point, so it
+# re-grants access to that one file and leaves the parent's deny in place for
+# everything else.
+#
+# The setup copies this file alongside the module into env-<env>/altioo-mcp/,
+# where the parent deny does not apply and the grant is simply redundant.
+
+<IfModule mod_authz_core.c>
+	<Files "index.php">
+		Require all granted
+	</Files>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+	# Apache 2.2
+	<Files "index.php">
+		Order Allow,Deny
+		Allow from all
+		Satisfy Any
+	</Files>
+</IfModule>
