@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -157,7 +158,9 @@ class ObjectUpdate extends AbstractMCPTool
 				continue;
 			}
 			try {
-				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, $value);
+				// The SDK hands us arrays for nested JSON objects; RestUtils
+				// branches on stdClass. See RestValue.
+				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
 			} catch (\Exception $e) {
 				$aIssues[$sAttCode] = "Invalid value for attribute '{$sAttCode}': " . $e->getMessage();
 			}
