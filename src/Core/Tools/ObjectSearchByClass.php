@@ -48,20 +48,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Use itop://iTop/class/{classname} to discover valid attribute codes.',
 					'additionalProperties' => true,
 				],
-				'limit'   => [
-					'type'        => 'integer',
-					'description' => 'Maximum number of objects to return.',
-					'default'     => self::DEFAULT_LIMIT,
-					'minimum'     => self::MIN_LIMIT,
-					'maximum'     => self::MAX_LIMIT,
-				],
-				'offset'  => [
-					'type'        => 'integer',
-					'description' => 'Number of objects to skip (for pagination).',
-					'default'     => self::DEFAULT_OFFSET,
-					'minimum'     => self::MIN_OFFSET,
-				],
-			],
+			] + self::pagingSchemaProperties() + self::orderingSchemaProperties(),
 			'required' => ['class'],
 		];
 	}
@@ -71,6 +58,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	 * @param array  $filters Optional key/value pairs to filter results (combined with AND)
 	 * @param int    $limit Maximum number of results to return (default: 50, max: 1000)
 	 * @param int    $offset Number of results to skip for pagination (default: 0)
+	 * @param string $order_by Attribute code to sort on; '' for the order the datamodel declares
+	 * @param string $order_direction 'asc' or 'desc'
 	 * @return array An array containing the class, filters, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
@@ -79,6 +68,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		array  $filters = [],
 		int    $limit = self::DEFAULT_LIMIT,
 		int    $offset = self::DEFAULT_OFFSET,
+		string $order_by = '',
+		string $order_direction = self::DEFAULT_SORT,
 	): mixed {
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
 			throw new ToolCallException("Invalid limit. Please specify a limit between " . self::MIN_LIMIT . " and " . self::MAX_LIMIT . ".");
@@ -108,15 +99,17 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			$oSearch->AddCondition($sAttCode, $value, '=');
 		}
 
+		$aOrderBy = self::orderBy($class, $order_by, $order_direction);
+
 		// Test the query before executing it to provide a more helpful error message in case of invalid filters
 		try {
-			new DBObjectSet($oSearch, [], [], null, $limit, $offset);
+			new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
 		} catch (\OQLException $e) {
 			throw new ToolCallException("Invalid filter condition. " . $e->getMessage());
 		}
 
 		$aResults = [];
-		$oSet = new DBObjectSet($oSearch, [], [], null, $limit, $offset);
+		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
 			return [
 				'requested_class'  => $class,
