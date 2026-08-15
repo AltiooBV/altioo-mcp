@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -48,7 +49,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_ClassSchema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-			] + self::pagingSchemaProperties() + self::orderingSchemaProperties(),
+			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties(),
 			'required' => ['class'],
 		];
 	}
@@ -60,6 +61,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	 * @param int    $offset Number of results to skip for pagination (default: 0)
 	 * @param string $order_by Attribute code to sort on; '' for the order the datamodel declares
 	 * @param string $order_direction 'asc' or 'desc'
+	 * @param string $output_fields Comma-separated attribute codes to return, or '*' for all of them
 	 * @return array An array containing the class, filters, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
@@ -70,6 +72,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		int    $offset = self::DEFAULT_OFFSET,
 		string $order_by = '',
 		string $order_direction = self::DEFAULT_SORT,
+		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
 	): mixed {
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
 			throw new ToolCallException("Invalid limit. Please specify a limit between " . self::MIN_LIMIT . " and " . self::MAX_LIMIT . ".");
@@ -100,6 +103,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		}
 
 		$aOrderBy = self::orderBy($class, $order_by, $order_direction);
+		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 
 		// Test the query before executing it to provide a more helpful error message in case of invalid filters
 		try {
@@ -168,7 +172,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					// serialize the "real object"
 					$oObject = $oObjectFinal;
 				}
-				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass);
+				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
 			return [

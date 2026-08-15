@@ -21,6 +21,9 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	const DEFAULT_LIMIT = 50;
 	const MAX_LIMIT = 1000;
 
+	/** Most objects a page may carry when it reports every attribute. */
+	const MAX_LIMIT_ALL_FIELDS = 25;
+
 	const MIN_OFFSET = 0;
 	const DEFAULT_OFFSET = 0;
 
@@ -130,9 +133,48 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		return $aOrderBy;
 	}
 
-	protected static function serializeObject(DBObject $oObject, string $sClass): array
+	/**
+	 * @param array<int, string>|null $aFields
+	 */
+	protected static function serializeObject(DBObject $oObject, string $sClass, ?array $aFields = null): array
 	{
-		return ObjectSerializer::Serialize($oObject, $sClass);
+		return ObjectSerializer::Serialize($oObject, $sClass, $aFields);
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	protected static function fieldsSchemaProperties(): array
+	{
+		return ['output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS)];
+	}
+
+	/**
+	 * The attributes one page reports, refusing the combination that cannot
+	 * fit anywhere.
+	 *
+	 * A thousand objects of two attributes is a list; a thousand objects of
+	 * every attribute is several megabytes of JSON, and the caller finds out
+	 * by having its context window filled. The limit stays high for narrow
+	 * reads and the pair is refused with something the model can act on.
+	 *
+	 * @return array<int, string>|null
+	 *
+	 * @throws ToolCallException
+	 */
+	protected static function fieldsForPage(string $sClass, string $sOutputFields, int $iLimit): ?array
+	{
+		$aFields = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+
+		if ($aFields === null && $iLimit > self::MAX_LIMIT_ALL_FIELDS) {
+			throw new ToolCallException(sprintf(
+				'Asking for every attribute of %d objects returns more than any client can read. Either name the attributes you need in output_fields, or lower limit to %d or less.',
+				$iLimit,
+				self::MAX_LIMIT_ALL_FIELDS
+			));
+		}
+
+		return $aFields;
 	}
 
 	public function getAnnotations(): ?ToolAnnotations

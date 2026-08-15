@@ -60,6 +60,7 @@ class ObjectGet extends AbstractMCPTool
 					'description' => 'The ID of the object to get.',
 					'minimum'     => 1,
 				],
+				'output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::ALL_FIELDS),
 			],
 			'required' => ['class', 'id'],
 		];
@@ -68,12 +69,14 @@ class ObjectGet extends AbstractMCPTool
 	/**
 	 * @param string $class The class of the object to retrieve, e.g. 'UserRequest'
 	 * @param int $id The ID of the object to retrieve, e.g. 123
+	 * @param string $output_fields Comma-separated attribute codes to return; '*' (the default) returns all of them
 	 * @return array An array containing the class and all readable attributes of the object
 	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
 	 */
 	public static function execute(
 		string $class,
 		int    $id,
+		string $output_fields = ObjectSerializer::ALL_FIELDS,
 	): mixed {
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID '{$id}'.");
@@ -118,7 +121,7 @@ class ObjectGet extends AbstractMCPTool
 		return [
 			'requested_class'  => $class,
 			'class' => $sFinalClass,
-			'object' => ObjectSerializer::Serialize($oObject, $sFinalClass),
+			'object' => ObjectSerializer::Serialize($oObject, $sFinalClass, ObjectSerializer::ParseFieldList($sFinalClass, $output_fields)),
 		];
 	}
 }
