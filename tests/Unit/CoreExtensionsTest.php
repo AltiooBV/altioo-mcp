@@ -49,9 +49,11 @@ class CoreExtensionsTest extends TestCase
 
 		$this->assertSame(
 			[
+				'ObjectApplyStimulus',
 				'ObjectCreate',
 				'ObjectDelete',
 				'ObjectGet',
+				'ObjectGetRelated',
 				'ObjectSearchByClass',
 				'ObjectSearchByOQL',
 				'ObjectUpdate',
