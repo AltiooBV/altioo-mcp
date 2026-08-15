@@ -159,13 +159,154 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/**
-	 * The README is the only documentation shipped with the extension; an
-	 * operator switch missing from it is undiscoverable in practice.
+	 * The README is the documentation shipped with the extension; an operator
+	 * switch missing from it is undiscoverable in practice.
 	 *
 	 * @dataProvider settingProvider
 	 */
 	public function testSettingIsDocumentedInTheReadme(string $sSetting): void
 	{
 		$this->assertStringContainsString($sSetting, file_get_contents(self::ROOT.'/README.md'));
+	}
+
+	private static function moduleSource(): string
+	{
+		return file_get_contents(self::ROOT.'/module.altioo-mcp.php');
+	}
+
+	/** @return array<string, mixed> */
+	private static function composer(): array
+	{
+		$aJson = json_decode(file_get_contents(self::ROOT.'/composer.json'), true);
+		self::assertIsArray($aJson, 'composer.json is not valid JSON');
+
+		return $aJson;
+	}
+
+	/** Lines of exclude.txt that name something, comments and blanks dropped. */
+	private static function excludedFromPackage(): array
+	{
+		$aOut = [];
+		foreach (file(self::ROOT.'/exclude.txt', FILE_IGNORE_NEW_LINES) as $sLine) {
+			$sLine = trim($sLine);
+			if ($sLine !== '' && strpos($sLine, '#') !== 0) {
+				$aOut[] = $sLine;
+			}
+		}
+
+		return $aOut;
+	}
+
+	/**
+	 * The Hub renders more_info_url as the one link on the listing, and it is
+	 * the only route a prospective user has to anything at all. Empty - or
+	 * worse, a plausible URL nobody published - ends the evaluation there.
+	 */
+	public function testExtensionXmlDeclaresADocumentationUrl(): void
+	{
+		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
+		$sUrl = (string)$oXml->more_info_url;
+
+		$this->assertNotSame('', $sUrl, 'extension.xml declares no more_info_url');
+		$this->assertSame(1, preg_match('|^https://|', $sUrl), 'more_info_url is not an https URL');
+	}
+
+	/**
+	 * The description is the whole of what someone reads before deciding to
+	 * download. "Add MCP to your iTop" was eleven words that answered none of
+	 * the questions an administrator has about an HTTP endpoint an assistant
+	 * drives, so the floor here is a length one cannot meet by accident.
+	 */
+	public function testExtensionXmlDescriptionCarriesTheListingCopy(): void
+	{
+		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
+		$sDescription = (string)$oXml->description;
+
+		$this->assertGreaterThan(200, strlen($sDescription), 'the Hub description is too short to decide anything from');
+		$this->assertStringContainsString('iTop 3.2', $sDescription, 'the description does not state which iTop it runs on');
+	}
+
+	/**
+	 * The two links iTop shows next to an installed module. They were empty
+	 * strings, which is where an administrator inheriting the instance in a
+	 * year would have looked first.
+	 */
+	public function testTheModuleDeclaresItsDocumentationLinks(): void
+	{
+		foreach (['doc.manual_setup', 'doc.more_information'] as $sKey) {
+			$this->assertSame(
+				1,
+				preg_match("/'".preg_quote($sKey, '/')."'\s*=>\s*'https:\/\/[^']+'/", self::moduleSource()),
+				"module.altioo-mcp.php leaves {$sKey} empty"
+			);
+		}
+	}
+
+	/**
+	 * extension.xml has no itop_version_min, so the branch floor is declared
+	 * through a core module that carries the version - itop-structure, which
+	 * is mandatory in every installation. Without it the setup happily
+	 * installs on 3.1 and the failure surfaces much later, as a fatal error
+	 * inside a tool.
+	 */
+	public function testTheModuleDeclaresTheItopFloor(): void
+	{
+		$this->assertSame(
+			1,
+			preg_match("/'itop-structure\/3\.[2-9]\.[0-9]+'/", self::moduleSource()),
+			'module.altioo-mcp.php does not depend on itop-structure, so nothing stops an install on iTop 3.1'
+		);
+	}
+
+	/**
+	 * The archive is what an instance still has in a year, when a link has
+	 * rotted or the network is not available. Documentation excluded from it
+	 * is documentation that instance does not have - and it also made
+	 * testSettingIsDocumentedInTheReadme assert against a file the package did
+	 * not carry.
+	 */
+	public function testTheDocumentationIsShippedInThePackage(): void
+	{
+		$aExcluded = self::excludedFromPackage();
+
+		foreach (['README.md', 'SECURITY.md', 'CHANGELOG.md', 'LICENSE', 'doc', 'tests'] as $sPath) {
+			$this->assertNotContains($sPath, $aExcluded, "exclude.txt keeps {$sPath} out of the release archive");
+		}
+	}
+
+	/**
+	 * A version that says 1.0.0 while the changelog says everything is
+	 * unreleased reads as "not released yet", whatever the version claims.
+	 */
+	public function testTheChangelogDocumentsTheCurrentVersion(): void
+	{
+		$this->assertStringContainsString(
+			'## ['.MCPHelper::VERSION.']',
+			file_get_contents(self::ROOT.'/CHANGELOG.md'),
+			'CHANGELOG.md has no entry for the version the module declares'
+		);
+	}
+
+	/**
+	 * The project URL is written in five places - the Hub link, two composer
+	 * fields, the two module documentation links and the README - and they are
+	 * edited at different times. One of them left pointing at a URL nobody
+	 * published is the failure this catches.
+	 */
+	public function testEveryProjectLinkPointsAtTheSamePlace(): void
+	{
+		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
+		$sUrl = rtrim((string)$oXml->more_info_url, '/');
+		$aComposer = self::composer();
+
+		$this->assertSame($sUrl, rtrim($aComposer['homepage'] ?? '', '/'), 'composer.json homepage disagrees with extension.xml');
+		$this->assertSame($sUrl, rtrim($aComposer['support']['source'] ?? '', '/'), 'composer.json support.source disagrees with extension.xml');
+
+		foreach (['issues', 'docs', 'security'] as $sKey) {
+			$this->assertStringStartsWith($sUrl, $aComposer['support'][$sKey] ?? '', "composer.json support.{$sKey} points elsewhere");
+		}
+
+		$this->assertStringContainsString($sUrl, self::moduleSource(), 'the module documentation links point elsewhere');
+		$this->assertStringContainsString($sUrl, file_get_contents(self::ROOT.'/README.md'), 'the README does not link the project');
 	}
 }
