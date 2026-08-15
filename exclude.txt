@@ -1,8 +1,20 @@
-README.md
-doc
+# What is kept out of the release archive.
+#
+# README.md and doc/ are deliberately NOT listed: the archive is what an
+# administrator finds on the instance in a year's time, and documentation that
+# only exists on a web page is documentation that instance does not have.
+# tests/ ships too - iTop's own Extensions testsuite scans env-production/.
+
 .DS_Store
+._*
+.git
+.github
 .gitignore
 .gitattributes
+.idea
+.vscode
+composer.phar
+phpunit.xml
 .phpunit.result.cache
 .phpunit.cache
 assets/css/.gitkeep
@@ -10,3 +22,4 @@ assets/img/.gitkeep
 assets/js/.gitkeep
 src/.gitkeep
 templates/.gitkeep
+doc/.gitkeep
