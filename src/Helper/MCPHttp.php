@@ -41,17 +41,38 @@ final class MCPHttp
 	 */
 	public static function PromoteBearerToAuthToken(): void
 	{
-		$sExisting = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
-		if (is_string($sExisting) && $sExisting !== '') {
-			return;
-		}
-
 		$sToken = self::ReadBearerToken();
 		if ($sToken === null) {
 			return;
 		}
 
+		self::ForgetBearerHeaders();
+
+		$sExisting = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
+		if (is_string($sExisting) && $sExisting !== '') {
+			return;
+		}
+
 		$_SERVER[self::AUTH_TOKEN_KEY] = $sToken;
+	}
+
+	/**
+	 * Drops the header a bearer credential arrived in, once it has been read.
+	 *
+	 * LoginBasic claims the request on the mere presence of an Authorization
+	 * header, without looking at its scheme, and then base64-decodes the bearer
+	 * into binary garbage. Whether it gets there before the token plugin is
+	 * decided by the order of allowed_login_types, so leaving the header in
+	 * place would make authentication depend on how that list is written. No
+	 * iTop login mode can consume a bearer, so nothing is lost by removing it.
+	 */
+	private static function ForgetBearerHeaders(): void
+	{
+		foreach (self::AUTHORIZATION_KEYS as $sKey) {
+			if (self::ExtractBearer($_SERVER[$sKey] ?? null) !== null) {
+				unset($_SERVER[$sKey]);
+			}
+		}
 	}
 
 	/**

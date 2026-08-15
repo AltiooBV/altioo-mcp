@@ -87,6 +87,34 @@ class MCPHttpTest extends TestCase
 		MCPHttp::PromoteBearerToAuthToken();
 
 		$this->assertSame('explicit', $_SERVER['HTTP_AUTH_TOKEN']);
+		$this->assertArrayNotHasKey('HTTP_AUTHORIZATION', $_SERVER);
+	}
+
+	/**
+	 * LoginBasic claims any request carrying an Authorization header, whatever
+	 * its scheme, and GetLoginPluginList() orders the plugins by
+	 * allowed_login_types - so with 'basic' listed before 'token' the bearer
+	 * would be base64-decoded into garbage instead of reaching the token
+	 * plugin.
+	 */
+	public function testDropsTheBearerHeaderSoLoginBasicCannotClaimIt(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer abc123';
+
+		MCPHttp::PromoteBearerToAuthToken();
+
+		$this->assertSame('abc123', $_SERVER['HTTP_AUTH_TOKEN']);
+		$this->assertArrayNotHasKey('HTTP_AUTHORIZATION', $_SERVER);
+	}
+
+	public function testDropsTheRedirectPrefixedVariantToo(): void
+	{
+		$_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = 'Bearer abc123';
+
+		MCPHttp::PromoteBearerToAuthToken();
+
+		$this->assertSame('abc123', $_SERVER['HTTP_AUTH_TOKEN']);
+		$this->assertArrayNotHasKey('REDIRECT_HTTP_AUTHORIZATION', $_SERVER);
 	}
 
 	public function testIgnoresAnEmptyBearerValue(): void
