@@ -57,7 +57,10 @@ class iTopVersion extends AbstractMCPResource
 		require_once(APPROOT.'setup/runtimeenv.class.inc.php');
 		$sCurrEnv = utils::GetCurrentEnvironment();
 		$oRuntimeEnv = new RunTimeEnvironment($sCurrEnv);
-		$aSearchDirs = array(APPROOT.$sDataModelSourceDir);
+		// Where the datamodel was compiled from, e.g. 'datamodels/2.x'; the
+		// setup writes it to the config and iTop reads it back the same way
+		// (see setup/compiler.class.inc.php).
+		$aSearchDirs = array(APPROOT.MetaModel::GetConfig()->Get('source_dir'));
 		$sExtraDir = APPROOT.'data/'.$sCurrEnv.'-modules/';
 		if (file_exists($sExtraDir)) {
 			$aSearchDirs[] = $sExtraDir;
