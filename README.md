@@ -3,6 +3,12 @@
 Turns an iTop instance into an MCP server, so assistants (Claude, and any other Model
 Context Protocol client) can search, read and update CMDB and ticketing objects.
 
+[Repository](https://github.com/altioo/mcp-server-extension) ·
+[Changelog](CHANGELOG.md) ·
+[Security](SECURITY.md) ·
+[Client setup](doc/clients.md) ·
+[Support](#support)
+
 This is the **base extension**. It is free, it works on its own, and it is designed to be
 depended upon: other extensions declare it as a dependency and register their own tools,
 resources and prompts into it. Nothing here is specific to a business domain — the core
@@ -19,12 +25,29 @@ down to individual attributes and lifecycle stimuli.
 |---|---|
 | iTop | **3.2 (current LTS)** or **3.3** |
 | PHP | **8.2 – 8.4** |
-| iTop modules | `authent-token` 2.2.1 or later (ships with iTop) |
+| Database | Whatever your iTop runs on — this module adds one table and no dialect-specific SQL |
+| iTop modules | `authent-token` 2.2.1 or later, and `itop-structure` 3.2.0 or later (both ship with iTop) |
+| Web server | Apache or IIS; the module ships the `.htaccess` / `web.config` that expose its single entry point |
 
-The PHP range is the intersection of what those iTop branches support — 3.3 requires 8.2 as a
-floor, and 8.4 is the newest PHP any of them validates. Note that iTop enforces its own ceiling
-too: **3.2.0–3.2.2 do not support PHP 8.4** (known issues), so on those you need 8.2 or 8.3.
-PHP 8.4 becomes available from iTop 3.2.3-1 onwards.
+Which PHP goes with which iTop is decided by iTop, not by this module:
+
+| iTop | PHP | This extension |
+|---|---|---|
+| 3.0, 3.1 and earlier | — | **Not supported.** The setup refuses to install (the `itop-structure/3.2.0` dependency) |
+| 3.2.0 – 3.2.2 | 8.2 – 8.3 (8.4 has known issues in iTop) | Supported |
+| 3.2.3-1 and later 3.2.x | 8.2 – 8.4 | Supported |
+| 3.3.x | 8.2 – 8.4 | Supported |
+
+The declared range `>=8.2 <8.5` is the intersection: floor 8.2 because iTop 3.3 requires it,
+ceiling below 8.5 because no iTop branch validates 8.5 yet.
+
+**What a release is tested against.** No version is published until the unit suite has passed in
+CI on PHP 8.2, 8.3 and 8.4, and the archive has been unzipped, installed through the iTop setup
+and connected to from a real MCP client on at least one iTop 3.2 instance — the gate is written
+down in [doc/release-checklist.md](doc/release-checklist.md), and the run for the current version
+is recorded in [CHANGELOG.md](CHANGELOG.md). Combinations outside that are expected to work from
+the ranges above rather than observed; if one of them is the one you run, say so and it can be
+added to the gate.
 
 ## What it exposes
 
@@ -127,6 +150,35 @@ supported. Authentication is delegated to iTop itself — see [Granting access](
 The archive ships its own `vendor/` directory — do **not** run `composer install` on a
 production instance.
 
+Nothing is reachable yet at this point: the endpoint answers `401` until someone holds one of
+the allowed profiles *and* presents a credential. See [Granting access](#granting-access).
+
+### What the install changes
+
+Everything this module adds, so that the change can be reviewed before it is made and found
+again afterwards:
+
+| | |
+|---|---|
+| **One table** | `EventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
+| **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
+| **Enum values** | Seven `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken` (`_delta="if_exists"`, so no core class is redefined) |
+| **One URL** | `extensions/altioo-mcp/index.php`. The module's `.htaccess` / `web.config` re-grant web access to that one file and leave iTop's deny over the rest of `extensions/` alone |
+| **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
+| **Nothing else** | No core class is modified, no core menu, no cron task, no scheduled job, no outbound connection |
+
+**Removing it.** Untick the extension in the setup (or delete
+`<itop>/extensions/altioo-mcp/`) and run the setup again. iTop leaves the `EventMCPService`
+table in place — as it does for any removed module — so the audit history survives the removal
+and can be dropped by hand once you no longer need it. Tokens keep their `MCP*` scope values as
+stored strings; those scopes simply stop meaning anything, and no token gains access to
+anything else as a result. The `MCP Services User` profile disappears with the datamodel;
+users who held it keep their other profiles untouched.
+
+**Upgrading.** Unzip the new version over the old directory and re-run the setup. Read
+[CHANGELOG.md](CHANGELOG.md) first: a major version means an identifier or a default that
+clients and tool packs depend on has changed.
+
 ## Granting access
 
 Access is gated by a profile, by a credential, and by iTop's own permissions. Every gate that
@@ -227,6 +279,15 @@ reads natively. Prefer it if `Authorization` never reaches PHP in your deploymen
 FastCGI, Apache drops that header unless `CGIPassAuth On` (or an equivalent
 `SetEnvIf Authorization` rewrite) is in effect.
 
+iTop ships an `extensions/.htaccess` (and an `extensions/web.config` for IIS) that denies
+every request under `extensions/` except a short list of static file types, PHP not among
+them — which is the right default for a directory full of module sources, and would otherwise
+answer this endpoint `403`. The module carries its own `.htaccess` and `web.config` granting
+access to `index.php` and to nothing else beside it, so the URL above works on a stock Apache
+or IIS install. If your web server ignores per-directory configuration (`AllowOverride None`,
+or nginx, which has no `.htaccess` at all), the rule does not apply to you in either
+direction: nothing denies the endpoint and nothing has to grant it.
+
 MCP clients that offer only a "Connect" button, with no field for a credential, expect the
 server to advertise OAuth discovery (RFC 9728). This extension implements no OAuth, by design
 — put an OAuth-terminating proxy in front of it. What it does do is advertise the proxy: an
@@ -260,7 +321,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 |---|---|---|
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
-| `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
+| `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects` and `relations`, and a pack declares its own. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
@@ -276,6 +337,13 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 Calls are recorded as **MCP Service Call** (`EventMCPService`) objects, visible in the
 console. Each entry holds the MCP method, the tool or resource invoked, the outcome, and the
 calling user.
+
+It also holds three numbers that turn the log into something you can act on. **Duration**
+and **response size** are what separate a slow instance from a client filling its context
+window: a tool answering in 40 ms with 800 KB and one answering in 12 s with 2 KB are
+different problems, and the row now says which you have. **Log reference** carries the
+identifier that an internal error also gives the caller, so the audit row and the entry in
+`log/error.log` can be matched without reading either message.
 
 > `log_mcp_level => 'debug'` stores the **raw JSON request parameters**, which may contain
 > data your users would not expect to find in an audit log. Use it for troubleshooting, not
@@ -536,9 +604,39 @@ workflows, your own datamodel extensions, integrations with the rest of your est
 top of it. Build your own with the extension points above, or have
 [Altioo](https://github.com/altioo) build and maintain one for you.
 
+## Data flow and privacy
+
+"MCP" tends to read as "my ticket data now goes to an AI vendor". It is worth being exact
+about what this module does and does not do, because that is the question a DPO will ask.
+
+**iTop opens no outbound connection.** This extension makes no HTTP call to any model provider,
+to Altioo, or to anywhere else. It sends no telemetry, no usage statistics and no error
+reports. Traffic is inbound only: an MCP client connects to your endpoint, authenticates as an
+iTop user, and receives exactly what that user is allowed to read.
+
+**The client is the data controller's real question.** Whatever the assistant reads, its own
+provider then processes under that provider's terms — that is a property of the client you
+point at the endpoint, not of this module. The two levers on your side are the profiles you
+pair with `MCP Services User` (what may be read at all) and the token scopes (what that one
+credential may do).
+
+**Personal data.** iTop objects routinely contain personal data — callers, agents, contact
+details, free text in logs. Nothing here filters that beyond iTop's own per-attribute read
+rights and the masking of attributes whose type implements `iAttributeNoGroupBy`. If your
+lawful basis for processing does not cover sending a ticket's contents to a third-party model,
+that decision belongs at the profile you grant, before the first connection.
+
+**What the module stores.** One `EventMCPService` row per audited call: timestamp, user,
+method, element invoked, outcome, duration, response size. Request *parameters* are stored only
+at `log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your
+own retention on that table as you do for iTop's other event classes.
+
 ## Security
 
-The endpoint is a public HTTP entry point. Beyond the gates above, follow
+Full threat model, hardening notes and how to report a vulnerability:
+**[SECURITY.md](SECURITY.md)**.
+
+In short: the endpoint is a public HTTP entry point. Beyond the gates above, follow
 [iTop's security guidance](https://www.itophub.io/wiki/page?id=latest:install:security) —
 in particular serve iTop over HTTPS with HSTS, and set `session.cookie_secure`,
 `session.cookie_httponly` and `zend.exception_ignore_args` in PHP.
@@ -548,6 +646,67 @@ on instructions that may come from outside your organisation, so treat the profi
 it with as the real blast radius — start read-only and widen only as needed. The same applies
 to the tool packs you install on top: a tool can only do what the calling user could, which is
 exactly why the pairing of profile and tool set is the thing to review.
+
+## Support
+
+The extension is free and maintained in the open. What that means concretely:
+
+| | |
+|---|---|
+| **Bugs and questions** | Open an issue on the repository (link at the top of this page). Include the iTop version, the extension version, the PHP version, and the request that reproduces it |
+| **Security** | Not via a public issue — see [SECURITY.md](SECURITY.md) |
+| **Response** | Best effort. There is no service commitment attached to the free extension, and this page will not pretend otherwise |
+| **Paid support, custom tool packs, integration work** | Available from Altioo — see [Custom work](#custom-work) |
+
+> **To be filled in before publication:** the support and security channels above, and any
+> response commitment attached to a paid arrangement. The rest of this page stands as written.
+
+## Versioning and compatibility
+
+The extension follows [semver](https://semver.org/), and the surface it applies to is what a
+tool pack touches: the four abstracts, `MCPRegistry`, `MCPExtensionCollector`,
+`iMCPServiceProvider` and the helpers under `Helper/`. A breaking change there is a major bump;
+a new optional hook with a default implementation is a minor one. The running version is
+`MCPHelper::VERSION` — the same string the server sends clients in `serverInfo`, and the same
+string in `extension.xml` and the module declaration.
+
+**Tool and resource identifiers count as public surface too.** A client configuration that
+allow-lists tools by name, and any `mcp_disabled_tools` entry, breaks if a name changes — so a
+name change is a major bump, and it is in the changelog.
+
+**On `mcp/sdk`.** The MCP SDK this module vendors is pinned `^0.7.1`: a pre-1.0 package, whose
+API can change between minor versions. The module pins the minor it was tested against, ships
+it inside the archive, and treats an SDK upgrade as a release of its own with the test suite as
+the gate. Nothing on an installed instance moves until you install a new version of this
+extension. A tool pack must **not** bundle its own copy — two copies of the SDK in one PHP
+process collide.
+
+**iTop branches.** A release targets the iTop branches listed under
+[Requirements](#requirements). When Combodo retires a branch, support for it is dropped in the
+next minor rather than silently.
+
+## Limitations
+
+Known and deliberate, so that none of them is a discovery made after installing:
+
+- **Streamable HTTP only.** No SSE streaming, no resumability. Each request is authenticated on
+  its own and no server-side session is carried between them.
+- **No OAuth.** By design — terminate it in a proxy in front of iTop. A client that offers only
+  a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
+  proxy's discovery document.
+- **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
+  nor can a session cookie, since the endpoint resets the session per request.
+- **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
+  [Extending](#extending) and [Custom work](#custom-work).
+- **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`
+  appears to be missing tools for every scoped token. That is the safe direction of failure,
+  but it is a failure people meet.
+- **A tool result is read into a context window.** Reads narrow by default and long values are
+  clipped; a deliberately wide `output_fields => *` over thousands of objects is still your
+  cost to pay.
+- **The audit trail grows.** One `EventMCPService` row per audited call, with no built-in purge
+  — set retention as you do for iTop's other event classes.
+- **No console UI.** Configuration is the module parameters in `config-itop.php`.
 
 ## Development
 
@@ -568,4 +727,35 @@ out of the package.
 
 ## License
 
-[AGPL-3.0-or-later](LICENSE), matching iTop itself.
+[AGPL-3.0-or-later](LICENSE), matching iTop itself. The same identifier is in `composer.json`
+and in every source file header.
+
+**Why AGPL and not something permissive.** An iTop extension is not a separate program that
+talks to iTop: it is loaded into the same PHP process, subclasses core classes, calls
+`MetaModel` and `UserRights`, and its datamodel is compiled together with core's. The
+distributed combination is a derivative work of iTop, which is AGPL — so the combination is
+AGPL whatever an extension's own files claim. Choosing AGPL here states that plainly instead of
+promising something the obligation would not deliver.
+
+### What this means for a tool pack you write
+
+This is the question a legal review asks, so here is the answer in the open. It is a plain
+reading of the licence, not legal advice; your counsel decides for your organisation.
+
+- **Writing your own tool pack against these extension points makes it a derivative work.** It
+  subclasses `AbstractMCPTool` and is loaded into the same process, exactly as this module is
+  with respect to iTop core. The AGPL applies to it on the same reasoning.
+- **The obligation is triggered by distribution, and by §13, by letting people interact with it
+  over a network.** Running your own pack on your own iTop, for your own staff, is use, not
+  distribution. AGPL §13 covers *remote network interaction* — the people who interact with
+  the instance are the ones who may ask for source.
+- **In practice**, for an internal pack on an internal iTop: your users are your own
+  organisation, and they are entitled to the source of what they interact with — which they
+  already have. Nothing obliges you to publish it to the world.
+- **If you offer iTop with your pack as a service to third parties**, those users may request
+  the corresponding source of the combined work, this module included, under §13.
+- **If you distribute your pack** (to a customer, on the Hub), it goes out under AGPL with
+  source.
+
+If your situation needs something other than AGPL for the pack itself, that is a licensing
+conversation rather than a technical one — see [Custom work](#custom-work).
