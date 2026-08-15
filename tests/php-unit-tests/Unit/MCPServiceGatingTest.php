@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnavailableTool;
@@ -36,13 +37,19 @@ class MCPServiceGatingTest extends TestCase
 	 * @param array<int, string> $aDisabled
 	 * @param array<int, string> $aToolsets Empty means every toolset is served.
 	 */
-	private function isHidden(object $oElement, array $aDisabled, array $aToolsets = []): bool
+	private function isHidden(object $oElement, array $aDisabled, array $aToolsets = [], ?AccessPolicy $oPolicy = null): bool
 	{
 		// No setAccessible(): it has been a no-op since PHP 8.1 and is
 		// deprecated in 8.5, which this suite treats as a failure.
 		$oMethod = new ReflectionMethod(MCPService::class, 'isHidden');
 
-		return $oMethod->invoke(null, $oElement->getQualifiedName(), $oElement, $aDisabled, $aToolsets);
+		return $oMethod->invoke(
+			null,
+			$oElement->getQualifiedName(),
+			$oElement,
+			$aDisabled,
+			$oPolicy ?? AccessPolicy::Of([], $aToolsets)
+		);
 	}
 
 	public function testAnElementIsServedWhenNothingDisablesIt(): void
@@ -89,6 +96,23 @@ class MCPServiceGatingTest extends TestCase
 	public function testAToolsetThatIsNotServedHidesTheElement(): void
 	{
 		$this->assertTrue($this->isHidden(new FixtureTool(), [], ['datamodel', 'something-else']));
+	}
+
+	/**
+	 * A tool that claims nothing about itself is graded delete, so a narrowed
+	 * credential does not get it by default. FixtureTool declares no
+	 * annotations, which is the case this is about.
+	 */
+	public function testAnUnannotatedToolIsWithheldFromAReadOnlyCaller(): void
+	{
+		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []);
+
+		$this->assertTrue($this->isHidden(new FixtureTool(), [], [], $oPolicy));
+	}
+
+	public function testAnUnannotatedToolIsServedWhenNothingIsNarrowed(): void
+	{
+		$this->assertFalse($this->isHidden(new FixtureTool(), [], [], AccessPolicy::Unrestricted()));
 	}
 
 	/**

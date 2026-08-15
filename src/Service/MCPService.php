@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service;
 
+use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server;
@@ -45,24 +47,23 @@ final class MCPService
 			->setSession(new StatelessSessionStore());
 
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
-		$aToolsets = MCPHelper::GetEnabledToolsets();
+		$oPolicy = self::accessPolicy();
 
-		$builder = self::registerResources($builder, $aDisabled, $aToolsets);
-		$builder = self::registerResourceTemplates($builder, $aDisabled, $aToolsets);
-		$builder = self::registerTools($builder, $aDisabled, $aToolsets);
-		$builder = self::registerPrompts($builder, $aDisabled, $aToolsets);
+		$builder = self::registerResources($builder, $aDisabled, $oPolicy);
+		$builder = self::registerResourceTemplates($builder, $aDisabled, $oPolicy);
+		$builder = self::registerTools($builder, $aDisabled, $oPolicy);
+		$builder = self::registerPrompts($builder, $aDisabled, $oPolicy);
 
 		return $builder->build();
 	}
 
 	/**
 	 * @param array<int, string> $aDisabled
-	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerResources(Builder $builder, array $aDisabled, array $aToolsets): Builder
+	private static function registerResources(Builder $builder, array $aDisabled, AccessPolicy $oPolicy): Builder
 	{
 		foreach (MCPRegistry::GetResources() as $sUri => $resource) {
-			if (self::isHidden($sUri, $resource, $aDisabled, $aToolsets)) {
+			if (self::isHidden($sUri, $resource, $aDisabled, $oPolicy)) {
 				continue;
 			}
 
@@ -85,12 +86,11 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
-	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerResourceTemplates(Builder $builder, array $aDisabled, array $aToolsets): Builder
+	private static function registerResourceTemplates(Builder $builder, array $aDisabled, AccessPolicy $oPolicy): Builder
 	{
 		foreach (MCPRegistry::GetResourceTemplates() as $sUriTemplate => $resourceTemplate) {
-			if (self::isHidden($sUriTemplate, $resourceTemplate, $aDisabled, $aToolsets)) {
+			if (self::isHidden($sUriTemplate, $resourceTemplate, $aDisabled, $oPolicy)) {
 				continue;
 			}
 
@@ -111,12 +111,11 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
-	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerTools(Builder $builder, array $aDisabled, array $aToolsets): Builder
+	private static function registerTools(Builder $builder, array $aDisabled, AccessPolicy $oPolicy): Builder
 	{
 		foreach (MCPRegistry::GetTools() as $sName => $tool) {
-			if (self::isHidden($sName, $tool, $aDisabled, $aToolsets)) {
+			if (self::isHidden($sName, $tool, $aDisabled, $oPolicy)) {
 				continue;
 			}
 
@@ -138,12 +137,11 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
-	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerPrompts(Builder $builder, array $aDisabled, array $aToolsets): Builder
+	private static function registerPrompts(Builder $builder, array $aDisabled, AccessPolicy $oPolicy): Builder
 	{
 		foreach (MCPRegistry::GetPrompts() as $sName => $prompt) {
-			if (self::isHidden($sName, $prompt, $aDisabled, $aToolsets)) {
+			if (self::isHidden($sName, $prompt, $aDisabled, $oPolicy)) {
 				continue;
 			}
 
@@ -176,16 +174,22 @@ final class MCPService
 	 *
 	 * @param string             $sIdentifier Qualified tool/prompt name, or resource URI, as awarded by the registry.
 	 * @param array<int, string> $aDisabled
-	 * @param array<int, string> $aToolsets   Toolsets served, or empty for all of them.
 	 */
-	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, array $aToolsets): bool
+	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy): bool
 	{
 		if (!$oElement->isAvailable()) {
 			return true;
 		}
 
-		if (!empty($aToolsets) && !in_array($oElement->getToolset(), $aToolsets, true)) {
+		if (!$oPolicy->allowsToolset($oElement->getToolset())) {
 			return true;
+		}
+
+		if ($oElement instanceof AbstractMCPTool) {
+			[$bReadOnly, $bDestructive] = self::annotatedHints($oElement);
+			if (!$oPolicy->allowsTool($bReadOnly, $bDestructive)) {
+				return true;
+			}
 		}
 
 		if (in_array($sIdentifier, $aDisabled, true) || in_array(get_class($oElement), $aDisabled, true)) {
@@ -193,6 +197,60 @@ final class MCPService
 		}
 
 		return self::lacksRequiredProfiles($oElement->requiredProfiles());
+	}
+
+	/**
+	 * What this caller is served: the instance configuration, narrowed by the
+	 * scopes of the token it authenticated with.
+	 *
+	 * A token that presented itself but whose scopes cannot be read is graded
+	 * read-only. The alternative - assuming the widest policy when the
+	 * narrowing information is missing - turns a failure to read into a
+	 * privilege escalation.
+	 */
+	private static function accessPolicy(): AccessPolicy
+	{
+		$oConfigured = AccessPolicy::Of(MCPHelper::GetCapabilities(), MCPHelper::GetEnabledToolsets());
+
+		if (!TokenScopes::RequestCarriesAToken()) {
+			// Basic authentication or a reverse proxy: no token, no scopes,
+			// and nothing to narrow with.
+			return $oConfigured;
+		}
+
+		$aScopes = TokenScopes::OfCurrentRequest();
+		if ($aScopes === null) {
+			return $oConfigured->narrowedBy(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
+		}
+
+		return $oConfigured->narrowedBy(AccessPolicy::FromScopes($aScopes));
+	}
+
+	/**
+	 * What a tool claims about itself, as [readOnlyHint, destructiveHint].
+	 *
+	 * Null for either means the tool makes no claim - which is the state of
+	 * every tool whose author never annotated it, and is why AccessPolicy
+	 * grades that case as the harshest one rather than the mildest.
+	 *
+	 * @return array{0: bool|null, 1: bool|null}
+	 */
+	private static function annotatedHints(AbstractMCPTool $oTool): array
+	{
+		$oAnnotations = $oTool->getAnnotations();
+		if ($oAnnotations === null) {
+			return [null, null];
+		}
+
+		$aSerialized = $oAnnotations->jsonSerialize();
+		if (!is_array($aSerialized)) {
+			return [null, null];
+		}
+
+		return [
+			array_key_exists('readOnlyHint', $aSerialized) ? (bool)$aSerialized['readOnlyHint'] : null,
+			array_key_exists('destructiveHint', $aSerialized) ? (bool)$aSerialized['destructiveHint'] : null,
+		];
 	}
 
 	/**

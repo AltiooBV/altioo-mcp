@@ -9,6 +9,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -28,7 +29,15 @@ final class MCPController
 	{
 		new MCPHelper();
 
-		$oCtx = new ContextTag(MCPContext::TAG_MCP);
+		// One tag per MCP scope this instance declares. iTop honours a token
+		// scope only when a tag of the same name is on the stack, so a scope
+		// nobody pushes is a token that cannot log in - including the ones a
+		// pack adds to the token classes in its own datamodel. The objects
+		// have to outlive the login: ContextTag pops on destruct.
+		$aCtx = [];
+		foreach (TokenScopes::DeclaredContextTags() as $sTag) {
+			$aCtx[] = new ContextTag($sTag);
+		}
 		$oKPI = new ExecutionKPI();
 
 		try {

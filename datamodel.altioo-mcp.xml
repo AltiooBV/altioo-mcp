@@ -8,6 +8,24 @@
             <value id="MCP" _delta="define">
               <code>MCP</code>
             </value>
+            <value id="MCP-read" _delta="define">
+              <code>MCP-read</code>
+            </value>
+            <value id="MCP-write" _delta="define">
+              <code>MCP-write</code>
+            </value>
+            <value id="MCP-delete" _delta="define">
+              <code>MCP-delete</code>
+            </value>
+            <value id="MCP-toolset-datamodel" _delta="define">
+              <code>MCP-toolset-datamodel</code>
+            </value>
+            <value id="MCP-toolset-objects" _delta="define">
+              <code>MCP-toolset-objects</code>
+            </value>
+            <value id="MCP-toolset-relations" _delta="define">
+              <code>MCP-toolset-relations</code>
+            </value>
           </values>
         </field>
       </fields>
@@ -18,6 +36,24 @@
           <values>
             <value id="MCP" _delta="define">
               <code>MCP</code>
+            </value>
+            <value id="MCP-read" _delta="define">
+              <code>MCP-read</code>
+            </value>
+            <value id="MCP-write" _delta="define">
+              <code>MCP-write</code>
+            </value>
+            <value id="MCP-delete" _delta="define">
+              <code>MCP-delete</code>
+            </value>
+            <value id="MCP-toolset-datamodel" _delta="define">
+              <code>MCP-toolset-datamodel</code>
+            </value>
+            <value id="MCP-toolset-objects" _delta="define">
+              <code>MCP-toolset-objects</code>
+            </value>
+            <value id="MCP-toolset-relations" _delta="define">
+              <code>MCP-toolset-relations</code>
             </value>
           </values>
         </field>
@@ -191,9 +227,33 @@
         <entry id="fieldset:EventMCPService:main"><![CDATA[General information]]></entry>
         <entry id="fieldset:EventMCPService:details"><![CDATA[Details]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
-        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP: read]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read+"><![CDATA[Allow the MCP tools that only read]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write"><![CDATA[MCP: write]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write+"><![CDATA[Allow the MCP tools that create and modify, and those that read. Not the ones that delete]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete"><![CDATA[MCP: delete]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete+"><![CDATA[Allow the MCP tools that delete]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel"><![CDATA[MCP: datamodel toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel+"><![CDATA[Restrict this token to the tools that describe classes and attributes]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects"><![CDATA[MCP: objects toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restrict this token to the tools that read and write objects]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP: relations toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
-        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP: read]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read+"><![CDATA[Allow the MCP tools that only read]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write"><![CDATA[MCP: write]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write+"><![CDATA[Allow the MCP tools that create and modify, and those that read. Not the ones that delete]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete"><![CDATA[MCP: delete]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete+"><![CDATA[Allow the MCP tools that delete]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel"><![CDATA[MCP: datamodel toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel+"><![CDATA[Restrict this token to the tools that describe classes and attributes]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects"><![CDATA[MCP: objects toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restrict this token to the tools that read and write objects]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP: relations toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
       </entries>
     </dictionary>
     <dictionary id="FR FR">
@@ -217,9 +277,33 @@
         <entry id="fieldset:EventMCPService:main"><![CDATA[Informations générales]]></entry>
         <entry id="fieldset:EventMCPService:details"><![CDATA[Détails]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
-        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP : lecture]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read+"><![CDATA[Autoriser les outils MCP qui ne font que lire]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write"><![CDATA[MCP : écriture]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write+"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete"><![CDATA[MCP : suppression]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete+"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel"><![CDATA[MCP : outils modèle de données]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel+"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects"><![CDATA[MCP : outils objets]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP : outils relations]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
-        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP : lecture]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read+"><![CDATA[Autoriser les outils MCP qui ne font que lire]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write"><![CDATA[MCP : écriture]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write+"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete"><![CDATA[MCP : suppression]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete+"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel"><![CDATA[MCP : outils modèle de données]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel+"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects"><![CDATA[MCP : outils objets]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP : outils relations]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
       </entries>
     </dictionary>
   </dictionaries>
@@ -276,6 +360,21 @@
         an update adds to a pack is then off until someone says otherwise.
       -->
       <mcp_enabled_toolsets type="array"/>
+      <!--
+        What this instance allows, for everyone: any of "read", "write" and
+        "delete". A tool falls into one of the three by what its annotations
+        declare, so a pack is graded by describing its tools rather than by
+        being listed here. Empty means all three.
+        The per-token equivalent is the MCP-read / MCP-write / MCP-delete
+        token scopes, which narrow one credential rather than the instance.
+      -->
+      <mcp_capabilities type="array"/>
+      <!--
+        Shorthand for mcp_capabilities = array('read'). Turning the whole
+        endpoint read-only is the thing an operator wants to do in one line
+        and without looking anything up.
+      -->
+      <mcp_read_only type="bool">false</mcp_read_only>
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
       <!--
         URL of the RFC 9728 protected-resource metadata document, served by

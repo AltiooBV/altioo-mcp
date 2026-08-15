@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -142,6 +143,49 @@ class CoreExtensionsTest extends TestCase
 			$this->assertNotEmpty($oResource->getTitle(), "resource {$sUri} has no title");
 			$this->assertNotEmpty($oResource->getDescription(), "resource {$sUri} has no description");
 		}
+	}
+
+	/**
+	 * Every core tool says what it is, and is graded accordingly.
+	 *
+	 * The grade decides what a narrowed token sees, and an unannotated tool is
+	 * graded delete - so a missing annotation here is a tool that vanishes for
+	 * every scoped credential. Pinning the whole table also states the
+	 * property the grades exist for: MCP-write serves the create, the update
+	 * and the stimulus, and not the delete.
+	 */
+	public function testEveryCoreToolIsGradedAsIntended(): void
+	{
+		CoreExtensions::RegisterServiceProvider();
+
+		$aExpected = [
+			'core_class_list'             => AccessPolicy::CAPABILITY_READ,
+			'core_class_schema'           => AccessPolicy::CAPABILITY_READ,
+			'core_object_search_by_oql'   => AccessPolicy::CAPABILITY_READ,
+			'core_object_search_by_class' => AccessPolicy::CAPABILITY_READ,
+			'core_object_get'             => AccessPolicy::CAPABILITY_READ,
+			'core_object_get_related'     => AccessPolicy::CAPABILITY_READ,
+			'core_object_create'          => AccessPolicy::CAPABILITY_WRITE,
+			'core_object_update'          => AccessPolicy::CAPABILITY_WRITE,
+			'core_object_apply_stimulus'  => AccessPolicy::CAPABILITY_WRITE,
+			'core_object_delete'          => AccessPolicy::CAPABILITY_DELETE,
+		];
+
+		$aActual = [];
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$oAnnotations = $oTool->getAnnotations();
+			$this->assertNotNull($oAnnotations, "tool {$sName} declares no annotations, so it is graded delete");
+
+			$aHints = $oAnnotations->jsonSerialize();
+			$aActual[$sName] = AccessPolicy::CapabilityOf(
+				array_key_exists('readOnlyHint', $aHints) ? (bool)$aHints['readOnlyHint'] : null,
+				array_key_exists('destructiveHint', $aHints) ? (bool)$aHints['destructiveHint'] : null
+			);
+		}
+
+		ksort($aExpected);
+		ksort($aActual);
+		$this->assertSame($aExpected, $aActual);
 	}
 
 	/**

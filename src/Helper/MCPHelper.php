@@ -6,6 +6,7 @@
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use utils;
 
 class MCPHelper
@@ -70,6 +71,15 @@ class MCPHelper
 	const MODULE_SETTING_ENABLED_TOOLSETS = 'mcp_enabled_toolsets';
 
 	/**
+	 * What this instance allows, for everyone: any of read, write and delete.
+	 * Empty means all three.
+	 */
+	const MODULE_SETTING_CAPABILITIES = 'mcp_capabilities';
+
+	/** Shorthand for mcp_capabilities = array('read'). */
+	const MODULE_SETTING_READ_ONLY = 'mcp_read_only';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -97,6 +107,44 @@ class MCPHelper
 	public static function LogError(string $sMessage, array $aContext = []): void
 	{
 		MCPLog::Error($sMessage, null, $aContext);
+	}
+
+	/**
+	 * What this instance allows, for everyone.
+	 *
+	 * mcp_read_only is shorthand: turning the whole endpoint read-only is what
+	 * an operator wants to do in one line and without looking anything up, and
+	 * spelling it as a list of grades is not that. It narrows rather than
+	 * overrides, so setting both cannot come out wider than either.
+	 *
+	 * @return array<int, string> Granted grades, or an empty list for all of them.
+	 */
+	public static function GetCapabilities(): array
+	{
+		$aCapabilities = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_CAPABILITIES, []);
+		if (!is_array($aCapabilities)) {
+			$sType = gettype($aCapabilities);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_CAPABILITIES."' should be an array instead of $sType");
+			$aCapabilities = [];
+		}
+
+		$aCapabilities = array_values(array_filter($aCapabilities, 'is_string'));
+
+		if (self::IsReadOnly()) {
+			$aCapabilities = empty($aCapabilities)
+				? [AccessPolicy::CAPABILITY_READ]
+				: array_values(array_intersect($aCapabilities, [AccessPolicy::CAPABILITY_READ]));
+		}
+
+		return $aCapabilities;
+	}
+
+	/**
+	 * Whether this instance serves reads only.
+	 */
+	public static function IsReadOnly(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_READ_ONLY, false) === true;
 	}
 
 	/**
