@@ -44,7 +44,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `ObjectCreate` | Create an object |
 | `ObjectUpdate` | Update an object's attributes |
 | `ObjectApplyStimulus` | Apply a lifecycle stimulus (state transition) |
-| `ObjectDelete` | Delete an object, reporting its deletion plan |
+| `ObjectDelete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
 
 **Resources**
 
@@ -101,7 +101,10 @@ replayed against the MCP endpoint, and vice versa.
 
 **3. iTop's own permissions.** Every operation goes through `UserRights` — class rights,
 object-level rights, per-attribute read and write rights, and stimulus rights. Sensitive
-attributes are masked in output.
+attributes (those whose type implements `iAttributeNoGroupBy`) are masked in output.
+
+On top of those three, `mcp_disabled_tools` lets you turn individual tools, prompts and
+resources off outright, whichever extension registered them.
 
 ## Endpoint
 
@@ -132,6 +135,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'secure_mcp_services' => true,
     'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
     'mcp_allowed_origins' => array(),
+    'mcp_disabled_tools' => array(),
     'log_mcp_service' => true,
     'log_mcp_method' => array('resources/read', 'tools/call', 'prompts/get', 'exceptions'),
     'log_mcp_level' => 'error',
@@ -143,6 +147,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
+| `mcp_disabled_tools` | *(empty)* | Kill switch. List tool names, prompt names, resource URIs or resource template URIs — e.g. `array('ObjectDelete', 'itop://core/current-user')`. Anything listed is neither advertised nor callable, whichever extension registered it |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
@@ -178,13 +183,22 @@ in one PHP process will collide. The types you may reference from it (`Mcp\Schem
 `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`, `Mcp\Exception\ResourceReadException`)
 are part of the contract described here, pinned to the SDK version this module vendors.
 
+**Versioning.** The extension follows semver, and the surface it applies to is what you touch
+from a pack: the four abstracts, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`
+and the helpers under `Helper/`. A breaking change there is a major bump; a new optional hook
+with a default implementation is a minor one. The running version is `MCPHelper::VERSION` —
+the same string the server sends to clients in `serverInfo`.
+
 ### 2. Write a tool
 
 Extend `AbstractMCPTool`. `getName()` defaults to the class short name, and that is what the
 client sees — pick something unlikely to collide with another extension's tool.
 
-`execute()` **must be static**, and its parameter names must match the properties of the
-input schema you declare: the server binds arguments by name.
+The parameter names of `execute()` **must match the properties of the input schema** you
+declare: the server binds arguments by name, so a property with no matching parameter is
+dropped and a mandatory parameter absent from `required` makes every call fail. Registration
+checks this for you (see [What registration checks](#what-registration-checks)). The core
+tools declare `execute()` static; an instance method works equally well.
 
 ```php
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
@@ -228,14 +242,35 @@ class TicketAddLogEntry extends AbstractMCPTool
 }
 ```
 
-Two optional hooks on every tool:
+Two optional hooks, available on **all four kinds** — tools, resources, resource templates
+and prompts — and applied to all four when the server is built:
 
-- `isAvailable()` — return `false` to hide the tool entirely, e.g. when a module it depends on
-  is not installed on this instance.
-- `requiredProfiles()` — return a list of profiles the caller must hold for the tool to be
-  advertised and callable. An empty list (the default) means the tool is offered to everyone
-  who got through the endpoint gates. This is a *visibility* filter on top of `UserRights`,
-  not a replacement for it.
+- `isAvailable()` — return `false` to hide the element entirely, e.g. when a module it depends
+  on is not installed on this instance.
+- `requiredProfiles()` — return a list of profiles the caller must hold for the element to be
+  advertised and served. An empty list (the default) means it is offered to everyone who got
+  through the endpoint gates. This is a *visibility* filter on top of `UserRights`, not a
+  replacement for it.
+
+`requiredProfiles()` is an **AND**: the caller must hold *every* profile listed. That is the
+opposite of the endpoint gate `mcp_allowed_profiles`, which is an OR, and the difference is in
+the words — *allowed* means any of these lets you in, *required* means all of these are needed.
+For any-of semantics on a single element, override `isAvailable()` and test the profiles
+yourself.
+
+Writing values back to iTop, from a tool of your own:
+
+```php
+use Altioo\iTop\Extension\MCP\Helper\RestValue;
+
+$realValue = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
+```
+
+The MCP SDK decodes inbound JSON with `json_decode($input, true)`, so a nested JSON object
+reaches you as a PHP array — while `RestUtils` branches on `stdClass` to tell search criteria
+from an id, and a caselog append from a plain string. Without that call the wrong branch is
+taken silently. Scalars pass through untouched and JSON lists stay arrays, which is what link
+sets and tag sets need.
 
 ### 3. Write a resource or a prompt
 
@@ -272,19 +307,47 @@ class AcmeMCPExtensions implements iMCPServiceProvider
 }
 ```
 
-Providers are collected at the start of every MCP request. For yours to be found, its class
-has to be loaded — the simplest way is to list the file in the `datamodel` array of your
-module declaration, next to your own autoloader:
+Providers are collected once at the start of every MCP request. The documented way to declare
+yours is to call `MCPExtensionCollector::RegisterServiceProvider(AcmeMCPExtensions::class)`
+from a file listed in the `datamodel` array of your module declaration — exactly what this
+module's own `register.php` does:
 
 ```php
 'datamodel' => array(
     'vendor/autoload.php',
-    'src/AcmeMCPExtensions.php',
+    'register.php', // calls MCPExtensionCollector::RegisterServiceProvider(...)
 ),
 ```
 
-Alternatively, call `MCPExtensionCollector::RegisterServiceProvider(AcmeMCPExtensions::class)`
-from code that already runs at startup.
+Providers are also discovered automatically through iTop's `InterfaceDiscovery` (3.0+, cached),
+so a class implementing `iMCPServiceProvider` is usually found without being declared. That
+mechanism ignores anything under `/vendor/`, `/lib/`, `/test/`, `/tests/` and `/node_modules/`,
+so put your provider in your module's `src/`. Declaring it explicitly always works and does not
+depend on where the file lives; a provider that is both declared and discovered still runs
+exactly once.
+
+A provider that throws is logged and skipped — one broken pack does not take the endpoint down
+for the others.
+
+### What registration checks
+
+`MCPRegistry` validates each object as it is registered, and throws `MCPRegistrationException`
+naming your class and the defect. This is the boot-time half of the contract the abstracts
+cannot express: an abstract method forces a method to *exist*, not to agree with the schema
+declared next to it. Every one of these otherwise stays invisible until a client calls the
+element, and then surfaces as an empty listing or an unrelated error from inside the SDK.
+
+| Kind | Checked |
+|---|---|
+| all | `getName()` matches `[a-zA-Z0-9_-]{1,128}`; `requiredProfiles()` returns a list of non-empty strings; the handler (`execute()` / `read()` / `get()`) exists and is public |
+| tools | non-empty `getDescription()`; input schema is a JSON Schema of type `object`; every `required` entry is declared under `properties`; every property maps to a parameter of `execute()`; every parameter of `execute()` without a default is listed under `required` |
+| resources | the URI carries no `{variable}` |
+| resource templates | the URI template carries at least one `{variable}`, and each one matches a parameter of `read()` |
+
+**Name collisions are last-wins**, deliberately: it is how a pack replaces a core tool with its
+own. Both classes are written to the log when it happens, so an override that was not intended
+is visible rather than silent. Load order decides the winner, so do not rely on it to override
+something — rely on it only to know that you did.
 
 ### What the framework guarantees you
 
@@ -294,6 +357,8 @@ from code that already runs at startup.
   messages reach the client; anything else is answered generically and correlated to
   `log/error.log` by a reference, so internal detail (SQL, class names) does not leak.
 - Your call is audited as an `EventMCPService` under the same rules as the core tools.
+- Your element is registered only if it honours the contract above, and only if the operator
+  has not disabled it through `mcp_disabled_tools`.
 
 What it does **not** do for you: enforce your business rules. Check `UserRights` for anything
 you read or write, and mask what should not be shown.

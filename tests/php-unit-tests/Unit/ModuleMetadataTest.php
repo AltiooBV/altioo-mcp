@@ -157,4 +157,15 @@ class ModuleMetadataTest extends TestCase
 		$this->assertSame('array', (string)$oDisabled->attributes()->type);
 		$this->assertCount(0, $oDisabled->children());
 	}
+
+	/**
+	 * The README is the only documentation shipped with the extension; an
+	 * operator switch missing from it is undiscoverable in practice.
+	 *
+	 * @dataProvider settingProvider
+	 */
+	public function testSettingIsDocumentedInTheReadme(string $sSetting): void
+	{
+		$this->assertStringContainsString($sSetting, file_get_contents(self::ROOT.'/README.md'));
+	}
 }
