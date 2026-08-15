@@ -57,6 +57,13 @@ class MCPHelper
 	const DEFAULT_PAGINATION_LIMIT = 200;
 
 	/**
+	 * URL of the RFC 9728 protected-resource metadata document, when an
+	 * OAuth-terminating proxy in front of iTop serves one. Advertised in the
+	 * WWW-Authenticate challenge of a 401; empty means no such parameter.
+	 */
+	const MODULE_SETTING_RESOURCE_METADATA = 'mcp_protected_resource_metadata';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -84,6 +91,16 @@ class MCPHelper
 	public static function LogError(string $sMessage, array $aContext = []): void
 	{
 		MCPLog::Error($sMessage, null, $aContext);
+	}
+
+	/**
+	 * The protected-resource metadata URL to advertise, or null.
+	 */
+	public static function GetProtectedResourceMetadataUrl(): ?string
+	{
+		$sUrl = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, '');
+
+		return is_string($sUrl) && $sUrl !== '' ? $sUrl : null;
 	}
 
 	/**

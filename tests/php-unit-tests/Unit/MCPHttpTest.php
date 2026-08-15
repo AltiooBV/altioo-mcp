@@ -140,4 +140,58 @@ class MCPHttpTest extends TestCase
 
 		$this->assertSame('spaced-out', MCPHttp::ReadBearerToken());
 	}
+
+	/**
+	 * A 401 that carries no challenge tells a client it failed, not what it
+	 * failed at - and RFC 9110 requires one on the status.
+	 */
+	public function testTheChallengeNamesTheSchemeAndTheRealm(): void
+	{
+		$sChallenge = MCPHttp::BearerChallenge(null);
+
+		$this->assertStringStartsWith('Bearer ', $sChallenge);
+		$this->assertStringContainsString('realm=', $sChallenge);
+		$this->assertStringNotContainsString('resource_metadata', $sChallenge);
+	}
+
+	/**
+	 * RFC 9728: this is what a client with nothing but a Connect button
+	 * follows to find the authorization server.
+	 */
+	public function testAConfiguredMetadataDocumentIsAdvertised(): void
+	{
+		$sChallenge = MCPHttp::BearerChallenge('https://sso.example.com/.well-known/oauth-protected-resource');
+
+		$this->assertStringContainsString(
+			'resource_metadata="https://sso.example.com/.well-known/oauth-protected-resource"',
+			$sChallenge
+		);
+	}
+
+	/**
+	 * The URL comes from config-itop.php, so this is not about an attacker -
+	 * it is about a typo producing no parameter rather than a split header.
+	 *
+	 * @dataProvider unusableMetadataUrlProvider
+	 */
+	public function testAnUnusableUrlIsLeftOutRatherThanEmitted(string $sUrl): void
+	{
+		$sChallenge = MCPHttp::BearerChallenge($sUrl);
+
+		$this->assertSame(MCPHttp::BearerChallenge(null), $sChallenge);
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function unusableMetadataUrlProvider(): array
+	{
+		return [
+			'empty'            => [''],
+			'blank'            => ['   '],
+			'no scheme'        => ['sso.example.com/meta'],
+			'not http'         => ['file:///etc/passwd'],
+			'carriage return'  => ["https://sso.example.com/meta\r\nX-Injected: 1"],
+			'newline'          => ["https://sso.example.com/meta\nX-Injected: 1"],
+			'closing quote'    => ['https://sso.example.com/"meta'],
+		];
+	}
 }

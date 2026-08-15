@@ -268,6 +268,15 @@
         installation is one page.
       -->
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
+      <!--
+        URL of the RFC 9728 protected-resource metadata document, served by
+        the OAuth-terminating proxy in front of iTop when there is one. It is
+        advertised in the WWW-Authenticate header of a 401, which is how a
+        client that only offers a "Connect" button finds the authorization
+        server. This module implements no OAuth itself. Empty means the
+        challenge carries no such pointer.
+      -->
+      <mcp_protected_resource_metadata type="string"></mcp_protected_resource_metadata>
       <log_mcp_service type="bool">true</log_mcp_service>
       <log_mcp_method type="array">
         <item>resources/read</item>

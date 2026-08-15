@@ -240,14 +240,23 @@ final class MCPController
 			$sResponse = json_encode($oJsonIssue);
 		}
 
+		$bUnauthorized = $oResult->code === MCPResult::UNAUTHORIZED;
+
 		// A throw can also happen after emitResponse() has already flushed a
 		// successful body, and a status set at that point is only noise.
 		if (!headers_sent()) {
-			http_response_code($oResult->code === MCPResult::UNAUTHORIZED ? 401 : 500);
+			http_response_code($bUnauthorized ? 401 : 500);
 		}
 
 		$oP = new JsonPage();
 		self::addCorsHeader($oP);
+		if ($bUnauthorized) {
+			// A 401 with no challenge says "no" without saying what would have
+			// worked. RFC 9110 requires one on this status; RFC 9728 is what a
+			// client with a Connect button follows to find the authorization
+			// server, when the operator has put one in front of iTop.
+			$oP->add_header('WWW-Authenticate: '.MCPHttp::BearerChallenge(MCPHelper::GetProtectedResourceMetadataUrl()));
+		}
 		$oP->SetData(json_decode($sResponse, true));
 		$oP->SetOutputDataOnly(true);
 		$oP->Output();
