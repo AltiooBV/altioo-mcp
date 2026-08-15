@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use DBObject;
 use Mcp\Schema\ToolAnnotations;
-use MetaModel;
-use UserRights;
-use iAttributeNoGroupBy;
 
 /**
  * Search iTop objects by class name with optional field filters.
@@ -35,25 +34,9 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		return 'core';
 	}
 
-	protected static function serializeObject(\DBObject $oObject, string $sClass): array
+	protected static function serializeObject(DBObject $oObject, string $sClass): array
 	{
-		$aData = [
-			MetaModel::DBGetKey($sClass) => $oObject->GetKey(),
-			MetaModel::DBGetClassField($sClass) => $sClass,
-		];
-
-		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
-			if (!UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ)) {
-				continue;
-			}
-
-			$aData[$sAttCode] = $oObject->Get($sAttCode);
-			if ($oAttDef instanceof iAttributeNoGroupBy && $aData[$sAttCode] !== null) { // iAttributeNoGroupBy is equivalent to sensitive attribute
-				$aData[$sAttCode] = '***';
-			}
-		}
-
-		return $aData;
+		return ObjectSerializer::Serialize($oObject, $sClass);
 	}
 
 	public function getAnnotations(): ?ToolAnnotations

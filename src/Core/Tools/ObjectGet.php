@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use DBObjectSearch;
 use DBObjectSet;
-use iAttributeNoGroupBy;
 
 
 /**
@@ -115,24 +115,10 @@ class ObjectGet extends AbstractMCPTool
 			$oObject = MetaModel::GetObject($sFinalClass, $id, false);
 		}
 
-		$sKey = MetaModel::DBGetKey($sFinalClass);
-		$aData = [$sKey => $oObject->GetKey()];
-
-		foreach (MetaModel::ListAttributeDefs($sFinalClass) as $sAttCode => $oAttDef) {
-			if (!UserRights::IsActionAllowedOnAttribute($sFinalClass, $sAttCode, UR_ACTION_READ)) {
-				continue;
-			}
-			$aData[$sAttCode] = $oObject->Get($sAttCode);
-
-			if ($oAttDef instanceof iAttributeNoGroupBy && $aData[$sAttCode] !== null) { // iAttributeNoGroupBy is equivalent to sensitive attribute
-				$aData[$sAttCode] = '***';
-			}
-		}
-
 		return [
 			'requested_class'  => $class,
 			'class' => $sFinalClass,
-			'object' => $aData,
+			'object' => ObjectSerializer::Serialize($oObject, $sFinalClass),
 		];
 	}
 }
