@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 use AttributeBlob;
 use AttributeCaseLog;
 use AttributeDefinition;
+use AttributeExternalField;
 use AttributeLinkedSet;
 use DBObject;
 use Mcp\Exception\ToolCallException;
@@ -46,8 +47,15 @@ use iAttributeNoGroupBy;
  */
 final class ObjectSerializer
 {
-	/** What a sensitive attribute reads as, whatever its type. */
-	private const MASK = '***';
+	/**
+	 * What a sensitive attribute reads as, whatever its type.
+	 *
+	 * The same five stars core/restservices.class.inc.php writes, so that a
+	 * masked value coming out of MCP is indistinguishable from one coming out
+	 * of REST - a difference in the mask is a way to tell the two apart, and
+	 * nothing gains by it.
+	 */
+	private const MASK = '*****';
 
 	/** What a caller asks for to get every readable attribute. */
 	public const ALL_FIELDS = '*';
@@ -146,6 +154,13 @@ final class ObjectSerializer
 
 		$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
 
+		if ($oAttDef instanceof AttributeLinkedSet) {
+			// Before anything else looks at it, and regardless of $bClip:
+			// output_fields decides how much of an object is reported, never
+			// what may be read at all.
+			$value = self::maskSensitiveLinks($value, $oAttDef);
+		}
+
 		if (!$bClip) {
 			return $value;
 		}
@@ -186,6 +201,61 @@ final class ObjectSerializer
 		$value['entries'] = array_values(array_slice($value['entries'], -self::MAX_CASELOG_ENTRIES));
 		$value['entries_omitted'] = $iTotal - self::MAX_CASELOG_ENTRIES;
 		$value['entries_total'] = $iTotal;
+
+		return $value;
+	}
+
+	/**
+	 * Masks the sensitive attributes of every row of a link set.
+	 *
+	 * A sensitive attribute is masked on the object that carries it, and was
+	 * not masked on a link pointing at it. So an attribute the datamodel marks
+	 * sensitive on a link class - and the ones reached through it - came back
+	 * in clear to anyone who read the object on the other side of the link.
+	 * iTop's REST API masks these (SanitizeTrait in
+	 * core/restservices.class.inc.php) and this had no equivalent.
+	 *
+	 * Each row is attcode => value on the linked class, so the same
+	 * IsSensitive() that decides a top-level attribute decides these - which is
+	 * also what covers the n-n case, where the sensitive attribute belongs to
+	 * the far class and is reached through an external field. iTop spells that
+	 * case out as a separate branch; here it falls out of resolving external
+	 * fields in one place.
+	 *
+	 * @param mixed $value As AttributeLinkedSet::GetForJSON() returns it: a list of attcode => value rows.
+	 *
+	 * @return mixed
+	 */
+	private static function maskSensitiveLinks($value, AttributeLinkedSet $oAttDef)
+	{
+		if (!is_array($value)) {
+			return $value;
+		}
+
+		$sLinkedClass = $oAttDef->GetLinkedClass();
+
+		foreach ($value as $iRow => $aRow) {
+			if (!is_array($aRow)) {
+				continue;
+			}
+
+			// An extended output names the subclass in finalclass, and a
+			// subclass can carry attributes the declared link class does not.
+			$sRowClass = isset($aRow['finalclass']) && is_string($aRow['finalclass'])
+				&& MetaModel::IsValidClass($aRow['finalclass'])
+					? $aRow['finalclass']
+					: $sLinkedClass;
+
+			foreach (array_keys($aRow) as $sLnkAttCode) {
+				if (!MetaModel::IsValidAttCode($sRowClass, $sLnkAttCode)) {
+					continue;
+				}
+
+				if (self::IsSensitive(MetaModel::GetAttributeDef($sRowClass, $sLnkAttCode))) {
+					$value[$iRow][$sLnkAttCode] = self::MASK;
+				}
+			}
+		}
 
 		return $value;
 	}
@@ -340,9 +410,33 @@ final class ObjectSerializer
 	 * sensitive - it is the interface iTop's own code tests for. The one
 	 * definition, so that what the schema calls sensitive and what the object
 	 * tools mask cannot come to mean different things.
+	 *
+	 * An external field is sensitive when the attribute it points at is. It
+	 * carries the remote value, so reading it is reading that attribute, and
+	 * the interface sits on the remote definition rather than on the field
+	 * itself - which is why testing the interface alone let the value through
+	 * unmasked. iTop's REST API resolves this the same way; the difference here
+	 * is that resolving it in IsSensitive() rather than at the call site means
+	 * every caller gets it, including the schema tool that reports which
+	 * attributes are sensitive.
 	 */
 	public static function IsSensitive(AttributeDefinition $oAttDef): bool
 	{
-		return $oAttDef instanceof iAttributeNoGroupBy;
+		if ($oAttDef instanceof iAttributeNoGroupBy) {
+			return true;
+		}
+
+		if (!$oAttDef instanceof AttributeExternalField) {
+			return false;
+		}
+
+		try {
+			return MetaModel::GetAttributeDef($oAttDef->GetTargetClass(), $oAttDef->GetExtAttCode())
+				instanceof iAttributeNoGroupBy;
+		} catch (Throwable $e) {
+			// A field whose target cannot be resolved is a broken datamodel,
+			// not a licence to report it: masked is the safe reading.
+			return true;
+		}
 	}
 }
