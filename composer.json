@@ -2,8 +2,7 @@
   "name": "altioo/mcp-server-extension",
   "type": "itop-extension",
   "description": "Altioo MCP iTop Extension",
-  "license": "proprietary",
-  "version": "1.0.0",
+  "license": "AGPL-3.0-or-later",
   "require": {
     "php": ">=8.2",
     "composer-runtime-api": "^2.0",
