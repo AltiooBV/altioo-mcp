@@ -32,6 +32,40 @@ if (!class_exists('LogAPI', false)) {
 		public const LEVEL_DEBUG = 'Debug';
 		public const LEVEL_TRACE = 'Trace';
 
+		public static function Enable($sTargetFile)
+		{
+		}
+
+		public static function Error($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_ERROR, $sMessage, $sChannel, $aContext);
+		}
+
+		public static function Warning($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_WARNING, $sMessage, $sChannel, $aContext);
+		}
+
+		public static function Info($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_INFO, $sMessage, $sChannel, $aContext);
+		}
+
+		public static function Ok($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_OK, $sMessage, $sChannel, $aContext);
+		}
+
+		public static function Debug($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_DEBUG, $sMessage, $sChannel, $aContext);
+		}
+
+		public static function Trace($sMessage, $sChannel = null, $aContext = array())
+		{
+			static::Log(static::LEVEL_TRACE, $sMessage, $sChannel, $aContext);
+		}
+
 		public static function Log($sLevel, $sMessage, $sChannel = null, $aContext = array())
 		{
 		}

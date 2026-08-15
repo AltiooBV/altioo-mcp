@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Test\Support\BrokenServiceProvider;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureServiceProvider;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -85,16 +86,26 @@ class MCPExtensionCollectorTest extends TestCase
 		MCPExtensionCollector::RegisterServiceProvider(FixtureServiceProvider::class);
 		MCPExtensionCollector::CollectAll();
 
-		$this->assertGreaterThanOrEqual(1, FixtureServiceProvider::$iCallCount);
+		$this->assertSame(1, FixtureServiceProvider::$iCallCount);
 		$this->assertArrayHasKey('FixtureTool', MCPRegistry::GetTools());
 	}
 
 	/**
-	 * CollectAll() walks get_declared_classes() *and* its own list, so a
-	 * provider that is both declared and explicitly registered is invoked
-	 * twice. That is wasteful but harmless only because the registry is keyed:
-	 * this pins the "no duplicates reach the registry" half of that bargain.
+	 * Explicit registrations and discovered classes are merged before anything
+	 * runs, so a provider that is both - which CoreExtensions is, since
+	 * register.php declares it and discovery finds it - is still invoked once.
+	 * Registration happens to be idempotent, but a provider may legitimately do
+	 * setup work here, and running that twice a request is a trap.
 	 */
+	public function testAProviderRunsOncePerCollection(): void
+	{
+		MCPExtensionCollector::RegisterServiceProvider(FixtureServiceProvider::class);
+		MCPExtensionCollector::RegisterServiceProvider(FixtureServiceProvider::class);
+		MCPExtensionCollector::CollectAll();
+
+		$this->assertSame(1, FixtureServiceProvider::$iCallCount);
+	}
+
 	public function testCollectAllLeavesNoDuplicatesInTheRegistry(): void
 	{
 		MCPExtensionCollector::RegisterServiceProvider(FixtureServiceProvider::class);
@@ -108,5 +119,21 @@ class MCPExtensionCollectorTest extends TestCase
 				static fn (string $sName): bool => $sName === 'FixtureTool'
 			)
 		);
+	}
+
+	/**
+	 * A tool pack that throws while registering - a contract violation, a
+	 * missing class of its own - must cost the endpoint that pack, not every
+	 * pack.
+	 */
+	public function testAFailingProviderIsSkippedAndTheOthersStillRun(): void
+	{
+		MCPExtensionCollector::RegisterServiceProvider(BrokenServiceProvider::class);
+		MCPExtensionCollector::RegisterServiceProvider(FixtureServiceProvider::class);
+
+		MCPExtensionCollector::CollectAll();
+
+		$this->assertSame(1, FixtureServiceProvider::$iCallCount);
+		$this->assertArrayHasKey('FixtureTool', MCPRegistry::GetTools());
 	}
 }
