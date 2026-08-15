@@ -24,9 +24,9 @@
       </fields>
     </class>
     <class id="EventMCPService" _delta="define">
-            <parent>Event</parent>
-            <properties>
-                <comment><![CDATA[/**
+      <parent>Event</parent>
+      <properties>
+        <comment><![CDATA[/**
  * Audit trail for MCP service calls.
  * Records each inbound MCP request with its method, tool/resource name,
  * execution status and any error message.
@@ -34,145 +34,218 @@
  * @copyright Copyright (C) 2026 Altioo
  * @license   http://opensource.org/licenses/AGPL-3.0
  */]]></comment>
-                <category>application</category>
-                <abstract>false</abstract>
-                <key_type>autoincrement</key_type>
-                <db_table>priv_event_mcp_service</db_table>
-                <db_key_field>id</db_key_field>
-                <db_final_class_field/>
-                <naming>
-                    <attributes>
-                        <attribute id="date"/>
-                        <attribute id="mcp_name"/>
-                    </attributes>
-                </naming>
-                <display_template/>
-                <icon/>
-                <reconciliation>
-                    <attributes>
-                        <attribute id="date"/>
-                    </attributes>
-                </reconciliation>
-            </properties>
- 
-            <fields>
-                <!-- MCP method: tools/call, resources/read, prompts/get, etc. -->
-                <field id="mcp_method" xsi:type="AttributeString">
-                    <sql>mcp_method</sql>
-                    <default_value/>
-                    <is_null_allowed>false</is_null_allowed>
-                    <validation_pattern/>
-                    <max_size>64</max_size>
-                </field>
- 
-                <!-- Tool/resource/prompt name that was invoked -->
-                <field id="mcp_name" xsi:type="AttributeString">
-                    <sql>mcp_name</sql>
-                    <default_value/>
-                    <is_null_allowed>true</is_null_allowed>
-                    <validation_pattern/>
-                    <max_size>255</max_size>
-                </field>
- 
-                <!-- Execution status: success, error -->
-                <field id="status" xsi:type="AttributeEnum">
-                    <sql>status</sql>
-                    <default_value>success</default_value>
-                    <is_null_allowed>false</is_null_allowed>
-                    <values>
-                        <value id="success">
-                            <code>success</code>
-                            <rank>10</rank>
-                        </value>
-                        <value id="error">
-                            <code>error</code>
-                            <rank>20</rank>
-                        </value>
-                    </values>
-                </field>
- 
-                <!-- Raw JSON request payload for audit/debugging -->
-                <field id="request_params" xsi:type="AttributeText">
-                    <sql>request_params</sql>
-                    <default_value/>
-                    <is_null_allowed>true</is_null_allowed>
-                </field>
-            </fields>
-            <methods />
- 
-            <presentation>
-                <details>
-                    <items>
-                        <item id="col:col0">
-                            <rank>10</rank>
-                            <items>
-                                <item id="fieldset:main">
-                                    <rank>10</rank>
-                                    <items>
-                                        <item id="date">
-                                            <rank>10</rank>
-                                        </item>
-                                        <item id="userinfo">
-                                            <rank>20</rank>
-                                        </item>
-                                        <item id="mcp_method">
-                                            <rank>30</rank>
-                                        </item>
-                                        <item id="mcp_name">
-                                            <rank>40</rank>
-                                        </item>
-                                        <item id="status">
-                                            <rank>50</rank>
-                                        </item>
-                                    </items>
-                                </item>
-                            </items>
-                        </item>
-                        <item id="col:col1">
-                            <rank>20</rank>
-                            <items>
-                                <item id="fieldset:details">
-                                    <rank>10</rank>
-                                    <items>
-                                        <item id="message">
-                                            <rank>10</rank>
-                                        </item>
-                                        <item id="request_params">
-                                            <rank>20</rank>
-                                        </item>
-                                    </items>
-                                </item>
-                            </items>
-                        </item>
-                    </items>
-                </details>
- 
-                <list>
-                    <items>
-                        <item id="date">
-                            <rank>10</rank>
-                        </item>
-                        <item id="userinfo">
-                            <rank>20</rank>
-                        </item>
-                        <item id="mcp_method">
-                            <rank>30</rank>
-                        </item>
-                        <item id="mcp_name">
-                            <rank>40</rank>
-                        </item>
-                        <item id="status">
-                            <rank>50</rank>
-                        </item>
-                    </items>
-                </list>
-            </presentation>
-        </class>
+        <category>application</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>priv_event_mcp_service</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="date"/>
+            <attribute id="mcp_name"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <reconciliation>
+          <attributes>
+            <attribute id="date"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+
+      <fields>
+        <!-- MCP method: tools/call, resources/read, prompts/get, etc. -->
+        <field id="mcp_method" xsi:type="AttributeString">
+          <sql>mcp_method</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>64</max_size>
+        </field>
+
+        <!-- Tool/resource/prompt name that was invoked -->
+        <field id="mcp_name" xsi:type="AttributeString">
+          <sql>mcp_name</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>255</max_size>
+        </field>
+
+        <!-- Execution status: success, error -->
+        <field id="status" xsi:type="AttributeEnum">
+          <sql>status</sql>
+          <default_value>success</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="success">
+              <code>success</code>
+              <rank>10</rank>
+            </value>
+            <value id="error">
+              <code>error</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+
+        <!-- Raw JSON request payload for audit/debugging -->
+        <field id="request_params" xsi:type="AttributeText">
+          <sql>request_params</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+      </fields>
+      <methods/>
+
+      <presentation>
+        <details>
+          <items>
+            <item id="col:col0">
+              <rank>10</rank>
+              <items>
+                <item id="fieldset:EventMCPService:main">
+                  <rank>10</rank>
+                  <items>
+                    <item id="date">
+                      <rank>10</rank>
+                    </item>
+                    <item id="userinfo">
+                      <rank>20</rank>
+                    </item>
+                    <item id="mcp_method">
+                      <rank>30</rank>
+                    </item>
+                    <item id="mcp_name">
+                      <rank>40</rank>
+                    </item>
+                    <item id="status">
+                      <rank>50</rank>
+                    </item>
+                  </items>
+                </item>
+              </items>
+            </item>
+            <item id="col:col1">
+              <rank>20</rank>
+              <items>
+                <item id="fieldset:EventMCPService:details">
+                  <rank>10</rank>
+                  <items>
+                    <item id="message">
+                      <rank>10</rank>
+                    </item>
+                    <item id="request_params">
+                      <rank>20</rank>
+                    </item>
+                  </items>
+                </item>
+              </items>
+            </item>
+          </items>
+        </details>
+
+        <list>
+          <items>
+            <item id="date">
+              <rank>10</rank>
+            </item>
+            <item id="userinfo">
+              <rank>20</rank>
+            </item>
+            <item id="mcp_method">
+              <rank>30</rank>
+            </item>
+            <item id="mcp_name">
+              <rank>40</rank>
+            </item>
+            <item id="status">
+              <rank>50</rank>
+            </item>
+          </items>
+        </list>
+      </presentation>
+    </class>
   </classes>
+  <dictionaries>
+    <dictionary id="EN US">
+      <english_description>English</english_description>
+      <localized_description>English</localized_description>
+      <entries>
+        <entry id="Class:EventMCPService"><![CDATA[MCP Service Call]]></entry>
+        <entry id="Class:EventMCPService+"><![CDATA[Audit trail of an inbound MCP request]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_method"><![CDATA[MCP method]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_method+"><![CDATA[JSON-RPC method carried by the request, e.g. tools/call]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_name"><![CDATA[Tool / resource]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_name+"><![CDATA[Name of the tool or prompt, or URI of the resource, that was invoked]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status"><![CDATA[Status]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status+"><![CDATA[Outcome of the call]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:success"><![CDATA[Success]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[The request completed without error]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Error]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[The request failed]]></entry>
+        <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Request parameters]]></entry>
+        <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
+        <entry id="fieldset:EventMCPService:main"><![CDATA[General information]]></entry>
+        <entry id="fieldset:EventMCPService:details"><![CDATA[Details]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint]]></entry>
+      </entries>
+    </dictionary>
+    <dictionary id="FR FR">
+      <english_description>French</english_description>
+      <localized_description>Français</localized_description>
+      <entries>
+        <entry id="Class:EventMCPService"><![CDATA[Appel de service MCP]]></entry>
+        <entry id="Class:EventMCPService+"><![CDATA[Journal d'audit d'une requête MCP entrante]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_method"><![CDATA[Méthode MCP]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_method+"><![CDATA[Méthode JSON-RPC portée par la requête, par exemple tools/call]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_name"><![CDATA[Outil / ressource]]></entry>
+        <entry id="Class:EventMCPService/Attribute:mcp_name+"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status"><![CDATA[Statut]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status+"><![CDATA[Résultat de l'appel]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:success"><![CDATA[Succès]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[La requête s'est terminée sans erreur]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Erreur]]></entry>
+        <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Paramètres de la requête]]></entry>
+        <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
+        <entry id="fieldset:EventMCPService:main"><![CDATA[Informations générales]]></entry>
+        <entry id="fieldset:EventMCPService:details"><![CDATA[Détails]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP]]></entry>
+      </entries>
+    </dictionary>
+  </dictionaries>
+  <user_rights>
+    <profiles>
+      <!--
+        Gate-only profile, modelled on core's "REST Services User" (id 1024 in
+        core/datamodel.core.xml): it grants no class rights of its own, it only
+        marks the users allowed through the MCP endpoint. Actual data access
+        still comes from the user's other profiles.
+        The id must stay unique across every module installed on the target
+        iTop - Combodo currently occupies 2..12, 117 and 1024.
+      -->
+      <profile id="2100" _delta="define">
+        <name>MCP Services User</name>
+        <description>Only users having this profile are allowed to use the MCP services (unless 'secure_mcp_services' is set to false in the module configuration).</description>
+        <groups/>
+      </profile>
+    </profiles>
+  </user_rights>
   <module_parameters>
     <parameters id="altioo-mcp" _delta="define">
+      <secure_mcp_services type="bool">true</secure_mcp_services>
       <mcp_allowed_profiles type="array">
         <item>Administrator</item>
+        <item>MCP Services User</item>
       </mcp_allowed_profiles>
       <log_mcp_service type="bool">true</log_mcp_service>
       <log_mcp_method type="array">
