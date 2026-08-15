@@ -43,9 +43,9 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_search_by_class` | Search objects of a class by attribute criteria |
 | `core_object_get` | Retrieve a single object by class and ID |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `core_object_create` | Create an object |
-| `core_object_update` | Update an object's attributes |
-| `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition) |
+| `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
+| `core_object_update` | Update an object's attributes. Dry run by default |
+| `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition). Dry run by default |
 | `core_object_delete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
 | `core_object_bulk_create` | Create up to 100 objects of one class. Dry run by default |
 | `core_object_bulk_update` | Set the same attributes on up to 100 objects. Dry run by default |
@@ -65,6 +65,14 @@ cut to a ceiling that the value itself declares, unless you name that attribute 
 `output_fields`, which is the way to read one in full. Paging is stable: every page is
 ordered by `order_by` and then by `id`, so nothing is returned twice or skipped between
 pages.
+
+**Nothing writes on a first call.** Every writing tool takes `simulate`, defaulting to
+`true`: it runs iTop's own `CheckToWrite()` — mandatory attributes, `DoCheckToWrite()` on the
+class and on every extension hooked into it — and reports which attributes the call would
+change, without writing. Call again with `simulate=false` to go through with it. That is worth
+more than a formality check: for an update, the moment between the check and the write is the
+only one where the pending values are still pending, so the report can tell you that setting
+`status` to `closed` also cleared three other attributes, *before* it does.
 
 **The bulk tools** check `UR_ACTION_BULK_MODIFY` / `UR_ACTION_BULK_DELETE` first — a profile
 can be allowed to edit one object and not a thousand — and then check every object and every
