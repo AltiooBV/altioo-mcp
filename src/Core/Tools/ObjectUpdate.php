@@ -10,6 +10,8 @@ use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use RestUtils;
+use DBObjectSearch;
+use DBObjectSet;
 
 /**
  * Update attributes on an existing iTop object.
@@ -161,7 +163,7 @@ class ObjectUpdate extends AbstractMCPTool
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to update due to fields : ".implode(', ', $aIssues));
+			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Most validations passed, apply the changes
@@ -170,13 +172,13 @@ class ObjectUpdate extends AbstractMCPTool
 			{
 				$oObject->Set($sAttCode, $realValue);
 			}
-			catch (Exception $e)
+			catch (\Exception $e)
 			{
 				$aIssues[$sAttCode] = "Failed to set  attribute '{$sAttCode}': " . $e->getMessage();
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to update due to setting fields : " .implode(', ', $aIssues));
+			throw new ToolCallException("Failed to update due to setting fields : " .implode(', ', $aIssues));
 		}
 
 		try {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
 abstract class AbstractMCPPrompt
-	{
+{
 	public function getName(): ?string //a short identifier for this prompt - defaults to the class name
 	{
 		$ref = new \ReflectionClass($this);

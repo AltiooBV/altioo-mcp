@@ -203,7 +203,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to apply stimulus due to fields : " + json_encode($aIssues));
+			throw new ToolCallException("Failed to apply stimulus due to fields : ".json_encode($aIssues));
 		}
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
@@ -211,13 +211,13 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			{
 				$oObject->Set($sAttCode, $realValue);
 			}
-			catch (Exception $e)
+			catch (\Exception $e)
 			{
 				$aIssues[$sAttCode] = "Failed to set  attribute '{$sAttCode}': " . $e->getMessage();
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to apply stimulus due to setting fields : " .implode(', ', $aIssues));
+			throw new ToolCallException("Failed to apply stimulus due to setting fields : " .implode(', ', $aIssues));
 		}
 
 		// Check for missing mandatory attributes before applying the stimulus, to provide a more helpful error message in this common case

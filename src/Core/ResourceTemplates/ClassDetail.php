@@ -62,7 +62,7 @@ class ClassDetail extends AbstractMCPResourceTemplate
 		}
 
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ResourceReadException("Unknown class '{$sClass}'."); // hide that the class exists
 		}
 
 		return json_encode([

@@ -9,6 +9,8 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use DBObjectSearch;
+use DBObjectSet;
 
 
 /**

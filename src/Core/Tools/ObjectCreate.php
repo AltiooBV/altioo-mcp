@@ -9,6 +9,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use RestUtils;
 
 /**
  * Create a new iTop object.
@@ -114,7 +115,7 @@ class ObjectCreate extends AbstractMCPTool
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to create due to fields : " . implode(', ', $aIssues));
+			throw new ToolCallException("Failed to create due to fields : " . implode(', ', $aIssues));
 		}
 
 		// Most validations passed, apply the changes
@@ -123,13 +124,13 @@ class ObjectCreate extends AbstractMCPTool
 			{
 				$oObject->Set($sAttCode, $realValue);
 			}
-			catch (Exception $e)
+			catch (\Exception $e)
 			{
 				$aIssues[$sAttCode] = "Failed to set attribute '{$sAttCode}': " . $e->getMessage();
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to create due to setting fields : " . implode(', ', $aIssues));
+			throw new ToolCallException("Failed to create due to setting fields : " . implode(', ', $aIssues));
 		}
 
 		try {

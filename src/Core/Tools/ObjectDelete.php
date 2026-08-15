@@ -9,6 +9,9 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use DBObjectSearch;
+use DBObjectSet;
+use DeletionPlan;
 
 /**
  * Delete an existing iTop object.
@@ -133,7 +136,7 @@ class ObjectDelete extends AbstractMCPTool
 		$oDeletionPlan = new DeletionPlan();
 		$aIssues = $oObject->CheckToDelete($oDeletionPlan);
 		if (!empty($aIssues)) {
-			throw new ToolCallExeception("Failed to delete due to issues : " .implode(', ', $aIssues));
+			throw new ToolCallException("Failed to delete due to issues : " .implode(', ', $aIssues));
 		}
 
 		if (!$simulate)
