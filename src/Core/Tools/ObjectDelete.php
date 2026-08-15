@@ -30,7 +30,8 @@ class ObjectDelete extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules.';
+		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
+			.'Runs as a dry run by default: call it with simulate=true to obtain the deletion plan, show that plan to the user, and only then call it again with simulate=false to delete for real.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -56,6 +57,12 @@ class ObjectDelete extends AbstractMCPTool
 				'id'  => [
 					'type'        => 'integer',
 					'description' => 'The ID of the object to delete.',
+					'minimum'     => 1,
+				],
+				'simulate' => [
+					'type'        => 'boolean',
+					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Set it to false to actually delete, once the plan has been confirmed by the user.',
+					'default'     => true,
 				],
 			],
 			'required' => ['class', 'id'],
@@ -67,13 +74,14 @@ class ObjectDelete extends AbstractMCPTool
 	 *
 	 * @param string $class The class of the object to delete
 	 * @param int $id The ID of the object to delete
+	 * @param bool $simulate When true (default), only the deletion plan is computed and returned
 	 * @return array The result of the deletion operation
-	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
+	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
 	 */
 	public static function execute(
 		string $class,
 		int    $id,
-		bool    $simulate = true,
+		bool   $simulate = true,
 	): mixed {
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -133,10 +141,17 @@ class ObjectDelete extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot delete object.");
 		}
 
+		// CheckToDelete() returns a *boolean* (!FoundStopper()) and fills the
+		// plan by reference; the reasons live on the plan itself.
 		$oDeletionPlan = new DeletionPlan();
-		$aIssues = $oObject->CheckToDelete($oDeletionPlan);
-		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to delete due to issues : " .implode(', ', $aIssues));
+		if (!$oObject->CheckToDelete($oDeletionPlan)) {
+			$aIssues = $oDeletionPlan->GetIssues();
+			throw new ToolCallException(
+				"Object {$class}::{$id} cannot be deleted."
+				.(empty($aIssues)
+					? ' Some related objects must be deleted or updated explicitly first.'
+					: ' Reasons: '.implode(', ', $aIssues))
+			);
 		}
 
 		if (!$simulate)
@@ -155,85 +170,6 @@ class ObjectDelete extends AbstractMCPTool
 			'simulated'    => $simulate,
 			'deletionPlan' => self::serializeDeletionPlan($oDeletionPlan),
 		];
-	}
-
-	private static function checkDeletionPlan(\DeletionPlan $oPlan): array
-	{
-		$aIssues = [];
-
-		if ($oDeletionPlan->FoundStopper())
-		{
-			if ($oDeletionPlan->FoundSecurityIssue())
-			{
-				$aIssues[] = "The deletion cannot be performed because of access rights issues on some related objects. See the list of planned changes for more information about the affected objects and the required permissions.";
-				if ($oDeletionPlan->FoundManualOperation())
-				{
-					$aIssues[] = "The deletion cannot be performed because it requires that other objects be deleted or updated, and those operations must be requested explicitely. See the list of planned changes for more information about the affected objects.";
-				}
-			}
-			elseif ($oDeletionPlan->FoundManualOperation())
-			{
-				$aIssues[] = "The deletion cannot be performed because it requires that other objects be deleted or updated, and those operations must be requested explicitely. See the list of planned changes for more information about the affected objects.";
-			}
-			else {
-				$aIssues[] = "The deletion cannot be performed because of issues on some related objects. See the list of planned changes for more information about the affected objects and the issues to be resolved.";
-			}
-		}
-
-		// Check access rights on all objects that would be deleted or updated
-		foreach ($oDeletionPlan->ListDeletes() as $sTargetClass => $aDeletes)
-		{
-			if (!UserRights::IsActionAllowed($sTargetClass, UR_ACTION_READ)) {
-				$aIssues[] = "Access denied: cannot read related objects."; // hide the class not allowed
-				continue;
-			}
-			if (!UserRights::IsActionAllowed($sTargetClass, UR_ACTION_DELETE)) {
-				$aIssues[] = "Access denied: cannot delete related objects of class '{$sClass}'.";
-				continue;
-			}
-
-			foreach ($aDeletes as $iId => $aData)
-			{
-				$oToDelete = $aData['to_delete'];
-				$bAutoDel = (($aData['mode'] === DEL_SILENT) || ($aData['mode'] === DEL_AUTO));
-				if (array_key_exists('issue', $aData))
-				{
-					if ($bAutoDel)
-					{
-						if (isset($aData['requested_explicitely'])) // i.e. in the initial list of objects to delete
-						{
-							$aIssues[] = "The object {$sTargetClass}::{$iId} cannot be deleted due to the following issue: {$aData['issue']}";
-						} else {
-							$aIssues[] = "The object {$sTargetClass}::{$iId} should be deleted automatically but an issue has been detected: {$aData['issue']}";
-						}
-					} else {
-						$aIssues[] = "The object {$sTargetClass}::{$iId} cannot be deleted due to the following issue: {$aData['issue']}";
-					}
-				}
-			}
-		}
-		foreach ($oDeletionPlan->ListUpdates() as $sTargetClass => $aToUpdate)
-		{
-			if (!UserRights::IsActionAllowed($sTargetClass, UR_ACTION_READ)) {
-				$aIssues[] = "Access denied: cannot read related objects."; // hide the class not allowed
-				continue;
-			}
-			if (!UserRights::IsActionAllowed($sTargetClass, UR_ACTION_MODIFY)) {
-				$aIssues[] = "Access denied: cannot update related objects of class '{$sClass}'.";
-				continue;
-			}
-
-			foreach ($aToUpdate as $iId => $aData)
-			{
-				$oToUpdate = $aData['to_reset'];
-				if (array_key_exists('issue', $aData))
-				{
-					$aIssues[] = "The object {$sTargetClass}::{$iId} should be updated automatically but an issue has been detected: {$aData['issue']}";
-				}
-			}
-		}
-
-		return $aIssues;
 	}
 
 	/**
