@@ -57,7 +57,7 @@ class ObjectDelete extends AbstractMCPTool
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Use the itop://core/classes resource to list available classes.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_ClassList to find the class name.',
 				],
 				'id'  => [
 					'type'        => 'integer',

@@ -55,7 +55,7 @@ class ObjectUpdate extends AbstractMCPTool
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Use the itop://core/classes resource to list available classes.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_ClassList to find the class name.',
 				],
 				'id'  => [
 					'type'        => 'integer',
@@ -63,7 +63,7 @@ class ObjectUpdate extends AbstractMCPTool
 				],
 				'fields' => [
 					'type'                 => 'object',
-					'description'          => 'Key/value pairs to update. Keys are attribute codes. Use itop://core/class/{class} to discover valid attribute codes.',
+					'description'          => 'Key/value pairs to update. Keys are attribute codes. Call core_ClassSchema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
 			],

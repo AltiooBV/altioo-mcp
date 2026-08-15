@@ -41,7 +41,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Use the itop://core/class/{classname} resource to discover available stimuli and states for a class before calling this tool.';
+		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_ClassSchema first: it reports the states, the stimuli, and which attributes each transition needs.';
 	}
 
 	public function getInputSchema(): ?array
@@ -59,7 +59,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				],
 				'stimulus' => [
 					'type'        => 'string',
-					'description' => 'Stimulus code to apply (e.g. ev_assign, ev_resolve, ev_close). Use itop://iTop/class/{classname} to list valid stimuli for the current state.',
+					'description' => 'Stimulus code to apply (e.g. ev_assign, ev_resolve, ev_close). Call core_ClassSchema for the stimuli valid in the current state.',
 				],
 				'fields'   => [
 					'type'                 => 'object',

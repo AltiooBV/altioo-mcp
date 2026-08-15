@@ -79,7 +79,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				],
 				'relation'  => [
 					'type'        => 'string',
-					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Use itop://iTop/class/{classname} to discover relations available for a class.',
+					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Call core_ClassSchema for the relations a class takes part in.',
 				],
 				'direction' => [
 					'type'        => 'string',

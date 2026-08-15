@@ -26,7 +26,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 	public function getDescription(): ?string
 	{
-		return 'Search iTop objects using an OQL query. Returns a list of matching objects with their attributes. Use the itop://core/classes resource to discover available classes and their attributes before building a query.';
+		return 'Search iTop objects using an OQL query. Returns a list of matching objects with their attributes. Call core_ClassList for the class names and core_ClassSchema for the attribute codes before building a query.';
 	}
 
 
