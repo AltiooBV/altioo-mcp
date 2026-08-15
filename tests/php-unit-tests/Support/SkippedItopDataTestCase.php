@@ -9,8 +9,8 @@
  * missing parent class, tests/bootstrap.php aliases it to this, which skips
  * every test with an explanation.
  *
- * @copyright Copyright (C) 2026 Altioo
- * @license   http://opensource.org/licenses/AGPL-3.0
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);

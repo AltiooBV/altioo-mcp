@@ -13,8 +13,8 @@
  *     file is therefore pulled in by each test that needs the Support classes,
  *     since nothing else would autoload them there.
  *
- * @copyright Copyright (C) 2026 Altioo
- * @license   http://opensource.org/licenses/AGPL-3.0
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
