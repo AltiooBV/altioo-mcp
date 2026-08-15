@@ -11,6 +11,7 @@ use MetaModel;
 use UserRights;
 use DBObjectSearch;
 use DBObjectSet;
+use iAttributeNoGroupBy;
 
 
 /**

@@ -8,6 +8,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use iAttributeNoGroupBy;
 
 /**
  * Search iTop objects by class name with optional field filters.

@@ -122,8 +122,12 @@ class SourceIntegrityTest extends TestCase
 				}
 			}
 
-			// Positions where a bare T_STRING denotes a class name.
-			if ($iId === T_STRING && preg_match('/^[A-Z]/', $sText)) {
+			// Positions where a bare T_STRING denotes a class name. Combodo
+			// names interfaces iSomething, so an initial lowercase "i"
+			// followed by an uppercase letter counts too: iAttributeNoGroupBy
+			// shipped unimported in two tools precisely because a
+			// /^[A-Z]/ test walks straight past it.
+			if ($iId === T_STRING && preg_match('/^([A-Z]|i[A-Z])/', $sText)) {
 				$mPrev = $aTokens[$i - 1] ?? null;
 				$mNext = $aTokens[$i + 1] ?? null;
 				$bClassPosition = false;
