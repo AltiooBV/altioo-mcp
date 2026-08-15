@@ -49,7 +49,7 @@ class MCPServiceGatingTest extends TestCase
 
 	public function testDisablingByIdentifier(): void
 	{
-		$this->assertTrue($this->isHidden(new FixtureTool(), ['test_FixtureTool']));
+		$this->assertTrue($this->isHidden(new FixtureTool(), ['test_fixture_tool']));
 	}
 
 	public function testDisablingByClass(): void
@@ -59,7 +59,7 @@ class MCPServiceGatingTest extends TestCase
 
 	public function testAnUnrelatedEntryDisablesNothing(): void
 	{
-		$this->assertFalse($this->isHidden(new FixtureTool(), ['core_ObjectDelete', 'Acme\Tools\Whatever']));
+		$this->assertFalse($this->isHidden(new FixtureTool(), ['core_object_delete', 'Acme\Tools\Whatever']));
 	}
 
 	public function testAnElementCanTakeItselfOut(): void

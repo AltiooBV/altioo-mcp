@@ -50,22 +50,22 @@ class CoreExtensionsTest extends TestCase
 
 	public function testRegistersTheExpectedTools(): void
 	{
-		// Names carry the namespace: what a client calls is core_ObjectGet, not
+		// Names carry the namespace: what a client calls is core_object_get, not
 		// ObjectGet, so a pack cannot collide with a core tool by accident.
 		CoreExtensions::RegisterServiceProvider();
 
 		$this->assertSame(
 			[
-				'core_ClassList',
-				'core_ClassSchema',
-				'core_ObjectApplyStimulus',
-				'core_ObjectCreate',
-				'core_ObjectDelete',
-				'core_ObjectGet',
-				'core_ObjectGetRelated',
-				'core_ObjectSearchByClass',
-				'core_ObjectSearchByOQL',
-				'core_ObjectUpdate',
+				'core_class_list',
+				'core_class_schema',
+				'core_object_apply_stimulus',
+				'core_object_create',
+				'core_object_delete',
+				'core_object_get',
+				'core_object_get_related',
+				'core_object_search_by_class',
+				'core_object_search_by_oql',
+				'core_object_update',
 			],
 			$this->sortedKeys(MCPRegistry::GetTools())
 		);
@@ -96,7 +96,7 @@ class CoreExtensionsTest extends TestCase
 	{
 		CoreExtensions::RegisterServiceProvider();
 
-		$this->assertSame(['core_MyOpenTickets'], $this->sortedKeys(MCPRegistry::GetPrompts()));
+		$this->assertSame(['core_my_open_tickets'], $this->sortedKeys(MCPRegistry::GetPrompts()));
 	}
 
 	public function testEverythingRegisteredHasTheRightBaseType(): void

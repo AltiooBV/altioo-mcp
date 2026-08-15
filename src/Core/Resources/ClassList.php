@@ -19,7 +19,7 @@ class ClassList extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'List all available iTop classes. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_ClassList tool for the same list narrowed by category or name.';
+		return 'List all available iTop classes. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_class_list tool for the same list narrowed by category or name.';
 	}
 
 	protected function getResourceNamespace(): string

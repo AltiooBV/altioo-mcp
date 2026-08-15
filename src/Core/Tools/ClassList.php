@@ -34,7 +34,7 @@ class ClassList extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'List the iTop classes the current user can read, with their label, description and place in the class hierarchy. A full datamodel holds several hundred classes, so narrow it: category "bizmodel" keeps the business objects (tickets, CIs, contacts) and drops the technical ones, and filter keeps only classes whose name, label or description contains the given text. Call core_ClassSchema next for the attributes of one class.';
+		return 'List the iTop classes the current user can read, with their label, description and place in the class hierarchy. A full datamodel holds several hundred classes, so narrow it: category "bizmodel" keeps the business objects (tickets, CIs, contacts) and drops the technical ones, and filter keeps only classes whose name, label or description contains the given text. Call core_class_schema next for the attributes of one class.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations

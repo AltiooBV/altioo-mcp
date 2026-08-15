@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\Identifier;
+
 use \Mcp\Schema\ToolAnnotations;
 
 abstract class AbstractMCPTool
@@ -17,10 +19,15 @@ abstract class AbstractMCPTool
 	 */
 	abstract public function getNamespace(): string;
 
-	public function getName(): ?string //a short identifier for this tool within its namespace - defaults to the class name
+	public function getName(): ?string
 	{
-		$ref = new \ReflectionClass($this);
-		return $ref->getShortName();
+		return Identifier::SnakeCase($this->shortClassName());
+	}
+
+	/** The class name without its namespace, e.g. ObjectSearchByOQL. */
+	final protected function shortClassName(): string
+	{
+		return (new \ReflectionClass($this))->getShortName();
 	}
 
 	/**
@@ -57,9 +64,16 @@ abstract class AbstractMCPTool
 		return null; // By default, not open to the world
 	}
 
-	public function getTitle(): ?string //human-readable title for display in UI
+	/**
+	 * Human-readable title for display in a UI.
+	 *
+	 * The class name, not the identifier: getName() is snake_case because
+	 * that is what a model expects to call, which is not what a person wants
+	 * to read in a list. Override it with a real title.
+	 */
+	public function getTitle(): ?string
 	{
-		return $this->getName();
+		return $this->shortClassName();
 	}
 
 	public function getIcons(): ?array //list of icon URLs representing the tool

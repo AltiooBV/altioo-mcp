@@ -152,7 +152,7 @@ class OverridingTool extends AbstractMCPTool
 
 	public function overrides(): ?string
 	{
-		return 'test_FixtureTool';
+		return 'test_fixture_tool';
 	}
 
 	public function getDescription(): ?string
@@ -276,7 +276,7 @@ class ClashingTool extends AbstractMCPTool
 
 	public function getName(): ?string
 	{
-		return 'FixtureTool';
+		return 'fixture_tool';
 	}
 
 	public function getDescription(): ?string
@@ -327,6 +327,6 @@ class SelfOverridingTool extends FixtureTool
 {
 	public function overrides(): ?string
 	{
-		return 'test_SelfOverridingTool';
+		return 'test_self_overriding_tool';
 	}
 }

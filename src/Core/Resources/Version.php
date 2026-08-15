@@ -11,7 +11,7 @@ use utils;
 use MetaModel;
 use RunTimeEnvironment;
 
-class iTopVersion extends AbstractMCPResource
+class Version extends AbstractMCPResource
 {
 
 	public function getTitle(): ?string

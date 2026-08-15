@@ -12,7 +12,7 @@ class CoreExtensions implements iMCPServiceProvider
 	public static function RegisterServiceProvider(): void
 	{
 		//Resources
-		MCPRegistry::RegisterResource(new Resources\iTopVersion());
+		MCPRegistry::RegisterResource(new Resources\Version());
 		MCPRegistry::RegisterResource(new Resources\CurrentUser());
 		MCPRegistry::RegisterResource(new Resources\ClassList());
 

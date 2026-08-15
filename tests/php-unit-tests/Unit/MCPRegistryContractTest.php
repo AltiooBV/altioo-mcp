@@ -166,10 +166,10 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterTool(new FixtureTool());
 		MCPRegistry::RegisterTool(new ClashingTool());
 
-		$this->assertArrayNotHasKey('test_FixtureTool', MCPRegistry::GetTools());
+		$this->assertArrayNotHasKey('test_fixture_tool', MCPRegistry::GetTools());
 		$this->assertSame(
 			[FixtureTool::class, ClashingTool::class],
-			MCPRegistry::GetClashes()['tool: test_FixtureTool'] ?? null
+			MCPRegistry::GetClashes()['tool: test_fixture_tool'] ?? null
 		);
 	}
 
@@ -183,7 +183,7 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterPrompt(new FixturePrompt());
 
 		$this->assertSame([], MCPRegistry::GetTools());
-		$this->assertArrayHasKey('test_FixturePrompt', MCPRegistry::GetPrompts());
+		$this->assertArrayHasKey('test_fixture_prompt', MCPRegistry::GetPrompts());
 	}
 
 	/**
@@ -196,8 +196,8 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterTool(new ClashingTool());
 		MCPRegistry::RegisterTool(new AlsoClashingTool());
 
-		$this->assertArrayNotHasKey('test_FixtureTool', MCPRegistry::GetTools());
-		$this->assertContains(AlsoClashingTool::class, MCPRegistry::GetClashes()['tool: test_FixtureTool']);
+		$this->assertArrayNotHasKey('test_fixture_tool', MCPRegistry::GetTools());
+		$this->assertContains(AlsoClashingTool::class, MCPRegistry::GetClashes()['tool: test_fixture_tool']);
 	}
 
 	/**
@@ -208,11 +208,11 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterTool(new FixtureTool());
 		MCPRegistry::RegisterTool(new OverridingTool());
 
-		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_fixture_tool']);
 		$this->assertSame([], MCPRegistry::GetClashes());
 		$this->assertSame(
 			[FixtureTool::class, OverridingTool::class],
-			MCPRegistry::GetOverrides()['tool: test_FixtureTool'] ?? null
+			MCPRegistry::GetOverrides()['tool: test_fixture_tool'] ?? null
 		);
 	}
 
@@ -225,7 +225,7 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterTool(new OverridingTool());
 		MCPRegistry::RegisterTool(new FixtureTool());
 
-		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_fixture_tool']);
 		$this->assertSame([], MCPRegistry::GetClashes());
 	}
 
@@ -238,7 +238,7 @@ class MCPRegistryContractTest extends TestCase
 		MCPRegistry::RegisterTool(new FixtureTool());
 		MCPRegistry::RegisterTool(new FixtureTool());
 
-		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
+		$this->assertArrayHasKey('test_fixture_tool', MCPRegistry::GetTools());
 		$this->assertSame([], MCPRegistry::GetOverrides());
 		$this->assertSame([], MCPRegistry::GetClashes());
 	}

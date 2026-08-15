@@ -37,16 +37,16 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
-| `core_ClassList` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
-| `core_ClassSchema` | Describe one class: attributes, relations, lifecycle |
-| `core_ObjectSearchByOQL` | Search objects with an OQL query |
-| `core_ObjectSearchByClass` | Search objects of a class by attribute criteria |
-| `core_ObjectGet` | Retrieve a single object by class and ID |
-| `core_ObjectGetRelated` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `core_ObjectCreate` | Create an object |
-| `core_ObjectUpdate` | Update an object's attributes |
-| `core_ObjectApplyStimulus` | Apply a lifecycle stimulus (state transition) |
-| `core_ObjectDelete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
+| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
+| `core_class_schema` | Describe one class: attributes, relations, lifecycle |
+| `core_object_search_by_oql` | Search objects with an OQL query |
+| `core_object_search_by_class` | Search objects of a class by attribute criteria |
+| `core_object_get` | Retrieve a single object by class and ID |
+| `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
+| `core_object_create` | Create an object |
+| `core_object_update` | Update an object's attributes |
+| `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition) |
+| `core_object_delete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
 are — `core` belongs to this module, an extension uses its own. Two packs from two
@@ -61,18 +61,18 @@ vendors therefore cannot claim one identifier by both calling a class `TicketAdd
 | `itop://core/classes` | The list of classes in the datamodel |
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle |
 
-The last two are deliberately served twice — as resources, and as the `core_ClassList` /
-`core_ClassSchema` tools over the same code. Plenty of clients never fetch resources at all,
+The last two are deliberately served twice — as resources, and as the `core_class_list` /
+`core_class_schema` tools over the same code. Plenty of clients never fetch resources at all,
 and support for resource *templates* is thinner still; a model that cannot reach the schema
 falls back to guessing attribute codes, and every other tool here is the poorer for it. The
 tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
-hundred classes, so `core_ClassList` takes a `category` and a `filter`.
+hundred classes, so `core_class_list` takes a `category` and a `filter`.
 
 **Prompts**
 
 | Prompt | Purpose |
 |---|---|
-| `core_MyOpenTickets` | Summarise the current user's open tickets |
+| `core_my_open_tickets` | Summarise the current user's open tickets |
 
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
@@ -185,7 +185,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
-| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_ObjectDelete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
+| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
@@ -231,9 +231,11 @@ the same string the server sends to clients in `serverInfo`.
 
 Extend `AbstractMCPTool`. `getNamespace()` is yours to pick — a vendor or module name,
 `[a-zA-Z0-9-]`, and not `core`, which belongs to this module. `getName()` defaults to the
-class short name. What the client sees and calls is the two joined by `_`, so
-`acme` + `TicketAddLogEntry` is advertised as `acme_TicketAddLogEntry`. That composition is
-`final`: an extension cannot put itself back into the shared space by accident.
+class short name in `snake_case`, the shape every MCP server in the ecosystem uses and the
+one a model has seen thousands of examples of. What the client sees and calls is the two
+joined by `_`, so `acme` + `TicketAddLogEntry` is advertised as
+`acme_ticket_add_log_entry`. That composition is `final`: an extension cannot put itself
+back into the shared space by accident.
 
 The parameter names of `execute()` **must match the properties of the input schema** you
 declare: the server binds arguments by name, so a property with no matching parameter is
@@ -402,7 +404,7 @@ classes, the registry does not pick a winner:
   `register.php` and found by discovery looks like.
 - **One of them declares `overrides()`** — it takes the identifier, whichever order the two
   registered in, and the replacement is written to the log. This is how you deliberately
-  replace a core tool: return `'core_ObjectDelete'` from `overrides()` and keep the name the
+  replace a core tool: return `'core_object_delete'` from `overrides()` and keep the name the
   clients already use. It is the only way to claim an identifier that is not yours.
 - **Neither declares anything** — an accident, and it is treated as one. The identifier is
   **withdrawn**: it is served to nobody, and every class that claimed it is logged. The

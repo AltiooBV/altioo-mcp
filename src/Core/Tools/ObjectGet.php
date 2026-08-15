@@ -54,7 +54,7 @@ class ObjectGet extends AbstractMCPTool
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_ClassList to find the class name.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'id'  => [
 					'type'        => 'integer',

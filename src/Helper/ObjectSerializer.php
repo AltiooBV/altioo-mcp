@@ -308,7 +308,7 @@ final class ObjectSerializer
 
 		if (!empty($aUnknown)) {
 			throw new ToolCallException(sprintf(
-				"Unknown attribute%s %s on class '%s'. Call core_ClassSchema for the attribute codes of the class.",
+				"Unknown attribute%s %s on class '%s'. Call core_class_schema for the attribute codes of the class.",
 				count($aUnknown) > 1 ? 's' : '',
 				"'".implode("', '", $aUnknown)."'",
 				$sClass
@@ -328,7 +328,7 @@ final class ObjectSerializer
 	{
 		return [
 			'type'        => 'string',
-			'description' => 'Comma-separated attribute codes to return, e.g. "title, status, agent_id". "'.self::ALL_FIELDS.'" returns every readable attribute, which is large - ask for what you need. Call core_ClassSchema for the codes. The id is always returned.',
+			'description' => 'Comma-separated attribute codes to return, e.g. "title, status, agent_id". "'.self::ALL_FIELDS.'" returns every readable attribute, which is large - ask for what you need. Call core_class_schema for the codes. The id is always returned.',
 			'default'     => $sDefault,
 		];
 	}

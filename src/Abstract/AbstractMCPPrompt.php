@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\Identifier;
+
 abstract class AbstractMCPPrompt
 {
 	/**
@@ -13,10 +15,15 @@ abstract class AbstractMCPPrompt
 	 */
 	abstract public function getNamespace(): string;
 
-	public function getName(): ?string //a short identifier for this prompt within its namespace - defaults to the class name
+	public function getName(): ?string
 	{
-		$ref = new \ReflectionClass($this);
-		return $ref->getShortName();
+		return Identifier::SnakeCase($this->shortClassName());
+	}
+
+	/** The class name without its namespace, e.g. ObjectSearchByOQL. */
+	final protected function shortClassName(): string
+	{
+		return (new \ReflectionClass($this))->getShortName();
 	}
 
 	/** What the client sees and calls: namespace and name joined by '_'. */

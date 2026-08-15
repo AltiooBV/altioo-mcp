@@ -20,7 +20,7 @@ class ClassDetail extends AbstractMCPResourceTemplate
 
 	public function getDescription(): ?string
 	{
-		return 'Get details of a specific iTop class: attributes, relations and lifecycle. URI: itop://core/class/{class}. The core_ClassSchema tool returns the same thing for clients that do not read resource templates.';
+		return 'Get details of a specific iTop class: attributes, relations and lifecycle. URI: itop://core/class/{class}. The core_class_schema tool returns the same thing for clients that do not read resource templates.';
 	}
 
 	protected function getResourceNamespace(): string

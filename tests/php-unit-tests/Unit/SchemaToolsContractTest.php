@@ -94,8 +94,8 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheDescriptionsPointAtEachOther(): void
 	{
-		$this->assertStringContainsString('core_ClassSchema', (new ClassList())->getDescription());
-		$this->assertStringContainsString('core_ClassList', (new ClassSchema())->getDescription());
+		$this->assertStringContainsString('core_class_schema', (new ClassList())->getDescription());
+		$this->assertStringContainsString('core_class_list', (new ClassSchema())->getDescription());
 	}
 
 	public function testFilterMatchesNameLabelAndDescriptionAlike(): void

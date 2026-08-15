@@ -40,11 +40,11 @@ datamodel, which is customised per deployment.
 
 Discovering the datamodel
 - Class and attribute codes vary between instances. Do not guess them: call
-core_ClassList to find a class, then core_ClassSchema to read its attributes, its
+core_class_list to find a class, then core_class_schema to read its attributes, its
 allowed values and its lifecycle.
-- Read core_ClassSchema before any create, update or stimulus. It reports which
+- Read core_class_schema before any create, update or stimulus. It reports which
 attributes are mandatory, which are read-only, and which stimuli a state accepts.
-- An external key holds the id of another object. core_ClassSchema names the target
+- An external key holds the id of another object. core_class_schema names the target
 class; search that class to find the id.
 
 Reading
@@ -52,11 +52,11 @@ Reading
 you name what you need in output_fields, and long texts, case logs and link sets are
 cut unless you name them.
 - OQL has no ORDER BY clause. Sort with the order_by and order_direction arguments.
-- Dates and date-times use iTop's own format, not RFC 3339. core_ClassSchema reports
+- Dates and date-times use iTop's own format, not RFC 3339. core_class_schema reports
 the exact pattern per attribute.
 
 Writing
-- core_ObjectDelete is a dry run by default. Call it with simulate=true, show the
+- core_object_delete is a dry run by default. Call it with simulate=true, show the
 deletion plan to the user, and only then call it again with simulate=false.
 - Every call runs as the authenticated iTop user, under that user's permissions, and
 is recorded in the audit trail under their name. "Access denied" is a real answer

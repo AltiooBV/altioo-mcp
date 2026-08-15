@@ -47,8 +47,8 @@ class MCPRegistryTest extends TestCase
 		$oTool = new FixtureTool();
 		MCPRegistry::RegisterTool($oTool);
 
-		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
-		$this->assertSame($oTool, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertArrayHasKey('test_fixture_tool', MCPRegistry::GetTools());
+		$this->assertSame($oTool, MCPRegistry::GetTools()['test_fixture_tool']);
 	}
 
 	/**
@@ -62,7 +62,7 @@ class MCPRegistryTest extends TestCase
 		MCPRegistry::RegisterTool($oSecond);
 
 		$this->assertCount(1, MCPRegistry::GetTools());
-		$this->assertSame($oSecond, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertSame($oSecond, MCPRegistry::GetTools()['test_fixture_tool']);
 	}
 
 	public function testResourcesAreKeyedByUri(): void
@@ -85,7 +85,7 @@ class MCPRegistryTest extends TestCase
 	{
 		MCPRegistry::RegisterPrompt(new FixturePrompt());
 
-		$this->assertArrayHasKey('test_FixturePrompt', MCPRegistry::GetPrompts());
+		$this->assertArrayHasKey('test_fixture_prompt', MCPRegistry::GetPrompts());
 	}
 
 	public function testCollectionsAreIndependent(): void

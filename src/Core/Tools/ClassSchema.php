@@ -35,7 +35,7 @@ class ClassSchema extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Describe one iTop class: its attributes (code, label, type, whether required, read-only or sensitive, and allowed values), the relations it takes part in, and its lifecycle states and stimuli. Attributes also carry a JSON Schema "format" and "pattern" where one applies; date and date-time values must match the pattern exactly, as iTop rejects the RFC 3339 form. Read this before creating or updating an object of the class, or before applying a stimulus. Use core_ClassList to find the class name first. An external key reports its target class rather than its candidate objects: search that class with core_ObjectSearchByClass and pass the id you find.';
+		return 'Describe one iTop class: its attributes (code, label, type, whether required, read-only or sensitive, and allowed values), the relations it takes part in, and its lifecycle states and stimuli. Attributes also carry a JSON Schema "format" and "pattern" where one applies; date and date-time values must match the pattern exactly, as iTop rejects the RFC 3339 form. Read this before creating or updating an object of the class, or before applying a stimulus. Use core_class_list to find the class name first. An external key reports its target class rather than its candidate objects: search that class with core_object_search_by_class and pass the id you find.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -56,7 +56,7 @@ class ClassSchema extends AbstractMCPTool
 			'properties' => [
 				'class' => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Use the core_ClassList tool to list available classes.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Use the core_class_list tool to list available classes.',
 				],
 			],
 			'required' => ['class'],

@@ -22,7 +22,7 @@ use UserRights;
  * guessing attribute codes, so the schema has to be reachable from the surface
  * every client does support.
  *
- * Two surfaces, one implementation: what core_ClassSchema reports and what
+ * Two surfaces, one implementation: what core_class_schema reports and what
  * itop://core/class/{class} reports cannot drift apart, and the access checks
  * are written once rather than per surface.
  */

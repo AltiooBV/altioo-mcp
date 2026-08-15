@@ -80,7 +80,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				],
 				'relation'  => [
 					'type'        => 'string',
-					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Call core_ClassSchema for the relations a class takes part in.',
+					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Call core_class_schema for the relations a class takes part in.',
 				],
 				'direction' => [
 					'type'        => 'string',

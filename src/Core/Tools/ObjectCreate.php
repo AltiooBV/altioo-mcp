@@ -34,7 +34,7 @@ class ObjectCreate extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Create a new iTop object of the given class. Call core_ClassSchema first: it reports the attribute codes, their types and which ones are mandatory.';
+		return 'Create a new iTop object of the given class. Call core_class_schema first: it reports the attribute codes, their types and which ones are mandatory.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -56,11 +56,11 @@ class ObjectCreate extends AbstractMCPTool
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_ClassList to find the class name.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'fields' => [
 					'type'                 => 'object',
-					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_ClassSchema for the attribute codes of the class, their types and which ones are mandatory.',
+					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
 			],

@@ -16,7 +16,7 @@ use UserRights;
 /**
  * Search iTop objects by class name with optional field filters.
  *
- * Simpler alternative to core_ObjectSearchByOQL when you do not need full OQL.
+ * Simpler alternative to core_object_search_by_oql when you do not need full OQL.
  * Filters are combined with AND.
  *
  * Example:
@@ -33,7 +33,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 	public function getDescription(): ?string
 	{
-		return 'Search iTop objects by class name with optional attribute filters (combined with AND). Simpler alternative to core_ObjectSearchByOQL when you do not need full OQL. Call core_ClassSchema for the attribute codes you can filter on.';
+		return 'Search iTop objects by class name with optional attribute filters (combined with AND). Simpler alternative to core_object_search_by_oql when you do not need full OQL. Call core_class_schema for the attribute codes you can filter on.';
 	}
 
 	public function getInputSchema(): ?array
@@ -43,11 +43,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_ClassList to find the class name.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'filters' => [
 					'type'                 => 'object',
-					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_ClassSchema for the attribute codes of the class, their types and which ones are mandatory.',
+					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
 			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties(),

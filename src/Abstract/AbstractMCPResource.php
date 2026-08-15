@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\Identifier;
+
 use Mcp\Schema\Annotations;
 
 abstract class AbstractMCPResource
 {
 	protected const URI_SCHEME = 'itop';
 
-	public function getName(): ?string //  a short identifier for this resource - defaults to the class name
+	public function getName(): ?string
 	{
-		$ref = new \ReflectionClass($this);
-		return $ref->getShortName();
+		return Identifier::SnakeCase($this->shortClassName());
+	}
+
+	/** The class name without its namespace, e.g. ObjectSearchByOQL. */
+	final protected function shortClassName(): string
+	{
+		return (new \ReflectionClass($this))->getShortName();
 	}
 
 	abstract public function getTitle(): ?string; //human-readable title for display in UI
