@@ -241,6 +241,78 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	}
 
 	/**
+	 * The result shape every bulk tool reports.
+	 *
+	 * Fixed all the way down, which a single-object read never is: a bulk call
+	 * answers with counts and one small outcome per object, never with the
+	 * objects themselves, so the schema holds whatever the class is. The
+	 * per-object entry is what a caller most needs described, because a bulk
+	 * call can half succeed and the only way to know which half is to read
+	 * these.
+	 *
+	 * @param array<string, array<string, mixed>> $aOutcomeProperties Fields this tool adds to an outcome.
+	 *
+	 * @return array<string, mixed>
+	 */
+	protected static function reportSchema(array $aOutcomeProperties = []): array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'class'     => [
+					'type'        => 'string',
+					'description' => 'The class every object in the call belongs to.',
+				],
+				'simulated' => [
+					'type'        => 'boolean',
+					'description' => 'true when the call validated everything and wrote nothing.',
+				],
+				'total'     => [
+					'type'        => 'integer',
+					'description' => 'Objects the call was asked to act on.',
+				],
+				'succeeded' => [
+					'type'        => 'integer',
+					'description' => 'Of those, the ones that succeeded, or would have.',
+				],
+				'failed'    => [
+					'type'        => 'integer',
+					'description' => 'Of those, the ones that did not. Read their messages: a bulk call reports each object separately because it can partly succeed.',
+				],
+				'objects'   => [
+					'type'        => 'array',
+					'description' => 'One entry per object, in the order they were given.',
+					'items'       => [
+						'type'                 => 'object',
+						'additionalProperties' => true,
+						'properties'           => [
+							'id'      => [
+								'type'        => 'integer',
+								'description' => 'Identifier of the object. Absent from a creation that was only simulated.',
+							],
+							'row'     => [
+								'type'        => 'integer',
+								'description' => 'Zero-based position in the objects argument, for a creation, where there is no id to name it by.',
+							],
+							'status'  => [
+								'type'        => 'string',
+								'enum'        => ['ok', 'error'],
+								'description' => 'Outcome for this object alone.',
+							],
+							'message' => [
+								'type'        => 'string',
+								'description' => 'Why it failed, or what would have happened on a dry run.',
+							],
+						] + $aOutcomeProperties,
+						'required'             => ['status'],
+					],
+				],
+			],
+			'required'   => ['class', 'simulated', 'total', 'succeeded', 'failed', 'objects'],
+		];
+	}
+
+	/**
 	 * The shape every bulk tool answers with.
 	 *
 	 * Per object, always, including the ones that worked: a caller that

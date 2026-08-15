@@ -56,6 +56,87 @@ final class WritePlan
 	}
 
 	/**
+	 * The result shape every single-object write reports.
+	 *
+	 * Declared as an output schema, which the reading tools deliberately do not
+	 * declare: what a read returns depends on the class and on output_fields,
+	 * so no fixed schema could describe it, and structuredContent would double
+	 * the payload of the largest responses this server sends. A write answers
+	 * with a handful of scalars whose shape never varies, so both objections
+	 * fall away - see {@see ToolOutput::Structured()}.
+	 *
+	 * @param array<string, array<string, mixed>> $aProperties Properties this particular tool adds.
+	 * @param array<int, string>                  $aRequired   Property names it always reports.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function OutcomeSchema(array $aProperties = [], array $aRequired = []): array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'class'     => [
+					'type'        => 'string',
+					'description' => 'Final class of the object the call acted on.',
+				],
+				'id'        => [
+					'type'        => 'integer',
+					'description' => 'Identifier of the object. Absent from a create dry run, which has not created anything yet.',
+				],
+				'simulated' => [
+					'type'        => 'boolean',
+					'description' => 'true when the call validated everything and wrote nothing.',
+				],
+				'changes'   => [
+					'type'                 => 'object',
+					'additionalProperties' => true,
+					'description'          => 'Attribute code => the value this write set, or would set. Every attribute for a creation, only the modified ones for an update.',
+				],
+			] + $aProperties,
+			'required'   => array_values(array_unique(array_merge(['class', 'simulated'], $aRequired))),
+			// The identifier is reported a second time under the class's own
+			// key attribute - 'id' for every stock class but a link class,
+			// where it is 'link_id' - so the shape is open by construction.
+			'additionalProperties' => true,
+		];
+	}
+
+	/**
+	 * What a deletion would take with it, as a schema.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function DeletionPlanSchema(): array
+	{
+		$aObjectRef = [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'properties'           => [
+				'class' => ['type' => 'string'],
+				'id'    => ['type' => 'integer'],
+			],
+		];
+
+		return [
+			'type'        => 'object',
+			'description' => 'What iTop\'s cascading rules would do besides deleting the object itself.',
+			'properties'  => [
+				'deleted' => [
+					'type'        => 'array',
+					'items'       => $aObjectRef,
+					'description' => 'Related objects deleted along with it.',
+				],
+				'updated' => [
+					'type'        => 'array',
+					'items'       => $aObjectRef,
+					'description' => 'Related objects left in place but modified, e.g. an external key reset.',
+				],
+			],
+			'required'    => ['deleted', 'updated'],
+		];
+	}
+
+	/**
 	 * Runs iTop's own pre-write check, and refuses with what it found.
 	 *
 	 * CheckToWrite() returns [ok, issues, securityIssue] and fills the issues

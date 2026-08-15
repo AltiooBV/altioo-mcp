@@ -58,6 +58,16 @@ class ObjectCreate extends AbstractMCPTool
 	}
 
 
+	public function getOutputSchema(): ?array
+	{
+		return WritePlan::OutcomeSchema([
+			'valid' => [
+				'type'        => 'boolean',
+				'description' => 'Present on a dry run only: the object passed every check and would be created.',
+			],
+		]);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -161,7 +171,7 @@ class ObjectCreate extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Json([
+			return ToolOutput::Structured([
 				'class'     => $class,
 				'simulated' => true,
 				'valid'     => true,
@@ -172,9 +182,10 @@ class ObjectCreate extends AbstractMCPTool
 		try {
 			$iId = $oObject->DBInsert();
 
-			return ToolOutput::Json([
+			return ToolOutput::Structured([
 				'class' => $class,
 				MetaModel::DBGetKey($class) => $iId,
+				'id'        => $iId,
 				'simulated' => false,
 				'changes'   => $aChanges,
 			]);

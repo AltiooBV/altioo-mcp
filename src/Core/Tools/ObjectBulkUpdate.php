@@ -46,6 +46,17 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		);
 	}
 
+	public function getOutputSchema(): ?array
+	{
+		return self::reportSchema([
+			'changes' => [
+				'type'                 => 'object',
+				'additionalProperties' => true,
+				'description'          => 'Attribute code => the value this write set, or would set.',
+			],
+		]);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -129,6 +140,6 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			}
 		}
 
-		return ToolOutput::Json(self::report($class, $simulate, $aOutcomes));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes));
 	}
 }

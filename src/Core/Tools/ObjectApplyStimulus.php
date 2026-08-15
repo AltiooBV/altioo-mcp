@@ -54,6 +54,28 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			.'Runs as a dry run by default: call it with simulate=true to check that the transition is allowed from the current state and that nothing mandatory is missing, show that to the user, then call again with simulate=false to apply it.';
 	}
 
+	public function getOutputSchema(): ?array
+	{
+		return WritePlan::OutcomeSchema([
+			'stimulus'      => [
+				'type'        => 'string',
+				'description' => 'The stimulus that was applied.',
+			],
+			'state'         => [
+				'type'        => 'string',
+				'description' => 'The state the object is in: the one it reached, or on a dry run the one it is still in.',
+			],
+			'would_move_to' => [
+				'type'        => 'string',
+				'description' => 'Present on a dry run only: the state the transition would reach.',
+			],
+			'valid'         => [
+				'type'        => 'boolean',
+				'description' => 'Present on a dry run only: the transition passed every check and would be applied.',
+			],
+		], ['id', 'stimulus', 'state']);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -272,9 +294,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Json([
+			return ToolOutput::Structured([
 				'class'         => $class,
 				MetaModel::DBGetKey($class) => $id,
+				'id'            => $id,
 				'stimulus'      => $stimulus,
 				'simulated'     => true,
 				'valid'         => true,
@@ -296,9 +319,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
-		return ToolOutput::Json([
+		return ToolOutput::Structured([
 			'class'     => $class,
 			MetaModel::DBGetKey($class)        => $id,
+			'id'        => $id,
 			'stimulus'  => $stimulus,
 			'simulated' => false,
 			'state'     => $oObject->GetState(),

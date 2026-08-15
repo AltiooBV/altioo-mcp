@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
@@ -48,6 +49,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 		);
 	}
 
+	public function getOutputSchema(): ?array
+	{
+		return self::reportSchema(['deletionPlan' => WritePlan::DeletionPlanSchema()]);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -85,7 +91,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 			$aOutcomes[] = self::deleteOne($mObject, $class, $iId, $simulate);
 		}
 
-		return ToolOutput::Json(self::report($class, $simulate, $aOutcomes));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes));
 	}
 
 	/**

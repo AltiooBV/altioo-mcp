@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -55,6 +56,14 @@ class ObjectDelete extends AbstractMCPTool
 			true,   // destructiveHint — permanent + cascade
 			false,  // idempotentHint — 2nd call typically errors
 			false,  // openWorldHint
+		);
+	}
+
+	public function getOutputSchema(): ?array
+	{
+		return WritePlan::OutcomeSchema(
+			['deletionPlan' => WritePlan::DeletionPlanSchema()],
+			['id', 'deletionPlan']
 		);
 	}
 
@@ -177,9 +186,10 @@ class ObjectDelete extends AbstractMCPTool
 			}
 		}
 
-		return ToolOutput::Json([
+		return ToolOutput::Structured([
 			'class'        => $class,
 			MetaModel::DBGetKey($class)          => $id,
+			'id'           => $id,
 			'simulated'    => $simulate,
 			'deletionPlan' => self::serializeDeletionPlan($oDeletionPlan),
 		]);

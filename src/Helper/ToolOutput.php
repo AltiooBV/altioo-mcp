@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 use JsonException;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
+use Mcp\Schema\Result\CallToolResult;
 
 /**
  * What a tool hands back, in one representation rather than two.
@@ -59,5 +60,32 @@ final class ToolOutput
 		}
 
 		return new TextContent($sJson);
+	}
+
+	/**
+	 * The return of a tool that declares an output schema.
+	 *
+	 * A declared outputSchema obliges the server to send structuredContent, and
+	 * the SDK only builds that half from an array return - which is exactly the
+	 * path {@see Json()} exists to avoid, because it also pretty-prints a second
+	 * copy into the text content. This builds both halves directly: the
+	 * structured one for a client that validates, the compact text one for the
+	 * many that only read content.
+	 *
+	 * That does send the payload twice, which is why it is not the default. Use
+	 * it where the result is a handful of scalars whose shape never varies - a
+	 * write outcome, a dry-run plan - and where a second copy costs a few
+	 * hundred bytes. A read that returns objects should keep to {@see Json()}
+	 * and declare no output schema: the shape of an object depends on the class
+	 * and on output_fields, so a schema could not describe it anyway, and the
+	 * duplication would be measured in tokens per call.
+	 *
+	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
+	 *
+	 * @throws ToolCallException When the result cannot be encoded at all.
+	 */
+	public static function Structured(array $aData): CallToolResult
+	{
+		return new CallToolResult([self::Json($aData)], false, $aData);
 	}
 }

@@ -58,6 +58,16 @@ class ObjectUpdate extends AbstractMCPTool
 	);
 }
 
+	public function getOutputSchema(): ?array
+	{
+		return WritePlan::OutcomeSchema([
+			'valid' => [
+				'type'        => 'boolean',
+				'description' => 'Present on a dry run only: the object passed every check and would take the change.',
+			],
+		], ['id']);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -212,9 +222,10 @@ class ObjectUpdate extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Json([
+			return ToolOutput::Structured([
 				'class'     => $class,
 				MetaModel::DBGetKey($class) => $id,
+				'id'        => $id,
 				'simulated' => true,
 				'valid'     => true,
 				'changes'   => $aChanges,
@@ -224,9 +235,10 @@ class ObjectUpdate extends AbstractMCPTool
 		try {
 			$oObject->DBUpdate();
 
-			return ToolOutput::Json([
+			return ToolOutput::Structured([
 				'class' => $class,
 				MetaModel::DBGetKey($class)    => $id,
+				'id'        => $id,
 				'simulated' => false,
 				'changes'   => $aChanges,
 			]);

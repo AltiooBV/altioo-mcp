@@ -47,6 +47,17 @@ class ObjectBulkCreate extends AbstractBulkTool
 		);
 	}
 
+	public function getOutputSchema(): ?array
+	{
+		return self::reportSchema([
+			'changes' => [
+				'type'                 => 'object',
+				'additionalProperties' => true,
+				'description'          => 'Attribute code => the value this write set, or would set.',
+			],
+		]);
+	}
+
 	public function getInputSchema(): ?array
 	{
 		return [
@@ -111,7 +122,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 
 		$iOk = count(array_filter($aOutcomes, static fn (array $a): bool => $a['status'] === 'ok'));
 
-		return ToolOutput::Json([
+		return ToolOutput::Structured([
 			'class'     => $class,
 			'simulated' => $simulate,
 			'total'     => count($aOutcomes),
@@ -167,7 +178,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 
 			$iId = $oObject->DBInsert();
 
-			return ['row' => $iRow, 'status' => 'ok', MetaModel::DBGetKey($sClass) => $iId];
+			return ['row' => $iRow, 'status' => 'ok', MetaModel::DBGetKey($sClass) => $iId, 'id' => $iId];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
 			$aOutcome['message'] = $e->getMessage();
