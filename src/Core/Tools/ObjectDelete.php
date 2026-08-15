@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
-use DBObjectSearch;
 use DBObjectSet;
 use DeletionPlan;
 
@@ -130,8 +130,7 @@ class ObjectDelete extends AbstractMCPTool
 
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
-		$sKey = MetaModel::DBGetKey($class);
-		$oSearch = DBObjectSearch::FromOQL("SELECT {$class} WHERE {$sKey} = {$id}");
+		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0) {
@@ -144,8 +143,7 @@ class ObjectDelete extends AbstractMCPTool
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$sKeyFinal = MetaModel::DBGetKey($sFinalClass);
-			$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
+			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
 			$oSetFinal = new DBObjectSet($oSearchFinal);
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {

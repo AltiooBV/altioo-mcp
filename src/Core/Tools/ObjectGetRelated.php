@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
-use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
 use UserRights;
@@ -153,8 +153,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
-		$sKey = MetaModel::DBGetKey($class);
-		$oSearch = DBObjectSearch::FromOQL("SELECT {$class} WHERE {$sKey} = {$id}");
+		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0) {
@@ -167,8 +166,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$sKeyFinal = MetaModel::DBGetKey($sFinalClass);
-			$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
+			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
 			$oSetFinal = new DBObjectSet($oSearchFinal);
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
@@ -292,8 +290,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			//Then for each class, we made a request to control access rights
 			// visible objects are removed from $aArrayTest
 			foreach ($aArrayTest as $sClass => $aKeys) {
-				$sOQL = "SELECT ".$sClass.' WHERE id IN ('.implode(',', $aKeys).')';
-				$oSearch = DBObjectSearch::FromOQL($sOQL);
+				$oSearch = ObjectQuery::ByIds($sClass, $aKeys);
 				$aListId = $oSearch->SelectAttributeToArray('id');
 				foreach($aListId as $aItem ) {
 					unset($aArrayTest[$sClass][$aItem['id']]);

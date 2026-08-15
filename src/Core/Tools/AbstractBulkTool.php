@@ -9,9 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use DBObject;
-use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -174,7 +174,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	protected static function objectFor(string $sClass, int $iId, int $iAction, string $sVerb)
 	{
 		$sKey = MetaModel::DBGetKey($sClass);
-		$oSet = new DBObjectSet(DBObjectSearch::FromOQL("SELECT {$sClass} WHERE {$sKey} = {$iId}"));
+		$oSet = new DBObjectSet(ObjectQuery::ById($sClass, $iId));
 
 		// The set applies read rights itself, so an empty one is "not found or
 		// not yours", which are answered alike on purpose.
