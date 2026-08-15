@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -150,25 +151,28 @@ class ObjectBulkCreate extends AbstractBulkTool
 				$oObject->Set($sAttCode, $value);
 			}
 
-			// CheckToWrite() returns [ok, issues]. It is what catches a missing
-			// mandatory attribute before the row is inserted, and so the whole
-			// reason a dry run here is worth running.
-			[$bOk, $aWriteIssues] = $oObject->CheckToWrite();
-			if (!$bOk) {
-				$aOutcome['message'] = empty($aWriteIssues)
-					? 'This object cannot be created as described.'
-					: implode(' ', $aWriteIssues);
-
-				return $aOutcome;
-			}
+			// The check that catches a missing mandatory attribute before the
+			// row is inserted, and so the whole reason a dry run here is worth
+			// running.
+			WritePlan::Check($oObject, "Row {$iRow}");
 
 			if ($bSimulate) {
-				return ['row' => $iRow, 'status' => 'ok', 'message' => 'Would be created.'];
+				return [
+					'row'     => $iRow,
+					'status'  => 'ok',
+					'message' => 'Would be created.',
+					'changes' => WritePlan::Changes($oObject, $sClass),
+				];
 			}
 
 			$iId = $oObject->DBInsert();
 
 			return ['row' => $iRow, 'status' => 'ok', MetaModel::DBGetKey($sClass) => $iId];
+		} catch (ToolCallException $e) {
+			// One row that cannot be created does not cancel the others.
+			$aOutcome['message'] = $e->getMessage();
+
+			return $aOutcome;
 		} catch (\Exception $e) {
 			$aOutcome['message'] = $e->getMessage();
 

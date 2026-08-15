@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -104,11 +105,25 @@ class ObjectBulkUpdate extends AbstractBulkTool
 					$mObject->Set($sAttCode, $value);
 				}
 
+				// Per object, and before the write: the same values can be
+				// valid on one object and not on the next - a state that
+				// forbids the transition, a DoCheckToWrite() that reads other
+				// attributes - and without this the answer arrives as an
+				// exception from the ORM half way through the batch.
+				WritePlan::Check($mObject, "{$class}::{$iId}");
+
+				$aOutcome = self::outcome($iId, true, $simulate ? 'Would be updated.' : '');
+				$aOutcome['changes'] = WritePlan::Changes($mObject, $class);
+
 				if (!$simulate) {
 					$mObject->DBUpdate();
 				}
 
-				$aOutcomes[] = self::outcome($iId, true, $simulate ? 'Would be updated.' : '');
+				$aOutcomes[] = $aOutcome;
+			} catch (ToolCallException $e) {
+				// One object that cannot take the change does not cancel the
+				// other thirty-nine; it is reported as its own failure.
+				$aOutcomes[] = self::outcome($iId, false, $e->getMessage());
 			} catch (\Exception $e) {
 				$aOutcomes[] = self::outcome($iId, false, $e->getMessage());
 			}
