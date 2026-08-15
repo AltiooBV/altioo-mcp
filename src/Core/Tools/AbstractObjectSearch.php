@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use DBObject;
+use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -165,6 +167,48 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			'has_more'    => $bHasMore,
 			'next_offset' => $bHasMore ? $iNext : null,
 		];
+	}
+
+	/**
+	 * The class to report a fetched row as, or null when it must not be
+	 * reported at all.
+	 *
+	 * Fetch() already returns each row as its final class: DBObjectSet reads
+	 * the finalclass column and MetaModel::GetObjectByRow() instantiates the
+	 * leaf, which is why iTop's own global search identifies a leaf with
+	 * get_class(). Asking the database for a class name it has already sent,
+	 * and then re-reading the object under that name, was two queries per row
+	 * spent on an answer already in hand.
+	 *
+	 * The rights checks are not redundant and stay. A search for a parent
+	 * class returns its subclasses, and being allowed to read Ticket says
+	 * nothing about being allowed to read Incident - neither at class level
+	 * nor, for a profile whose rights depend on the object, at object level.
+	 *
+	 * @return string|null The final class, or null to skip the row.
+	 */
+	protected static function finalClassIfReadable(DBObject $oObject, string $sSetClass): ?string
+	{
+		$sFinalClass = get_class($oObject);
+
+		if ($sFinalClass === $sSetClass) {
+			// Covered by the check already made on the whole set.
+			return $sFinalClass;
+		}
+
+		if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
+			return null;
+		}
+
+		// Object-level rights answer "depends" for the set and yes or no for
+		// one object, so the row is asked about on its own.
+		$oOneRow = new DBObjectSet(ObjectQuery::ById($sFinalClass, (int)$oObject->GetKey()));
+
+		if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, $oOneRow)) {
+			return null; // hide that the object exists
+		}
+
+		return $sFinalClass;
 	}
 
 	/**

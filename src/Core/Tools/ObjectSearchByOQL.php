@@ -92,13 +92,6 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		$aOrderBy = self::orderBy($class, $order_by, $order_direction);
 		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 
-		// Test the query before executing it to provide a more helpful error message in case of invalid filters
-		try {
-			new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
-		} catch (\OQLException $e) {
-			throw new ToolCallException("Invalid filter condition. " . $e->getMessage());
-		}
-
 		$aResults = [];
 		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
@@ -116,22 +109,11 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		try {
 			$aResults = [];
 			while ($oObject = $oSet->Fetch()) {
-				$sObjectFinalClass = MetaModel::GetFinalClassName($class, $oObject->GetKey());
-				if ($sObjectFinalClass !== $class) {
-					// skip if not allowed
-					if (!UserRights::IsActionAllowed($sObjectFinalClass, UR_ACTION_READ)) {
-						continue;
-					}
-					$oObjectFinal = MetaModel::GetObject($sObjectFinalClass, $oObject->GetKey());
-					$sKeyFinal = MetaModel::DBGetKey($sObjectFinalClass);
-					$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sObjectFinalClass} WHERE {$sKeyFinal} = {$oObjectFinal->GetKey()}");
-					$oSetFinal = new DBObjectSet($oSearchFinal);
-					if (!UserRights::IsActionAllowed($sObjectFinalClass,  UR_ACTION_READ, $oSetFinal)) {
-						continue; // hide that the object exists
-					}
-					// serialize the "real object"
-					$oObject = $oObjectFinal;
+				$sObjectFinalClass = self::finalClassIfReadable($oObject, $class);
+				if ($sObjectFinalClass === null) {
+					continue;
 				}
+
 				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
@@ -145,6 +127,11 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				'offset'    => $offset,
 				'objects'   => $aResults,
 			] + self::pagingFooter($iTotal, $limit, $offset));
+		} catch (\OQLException $e) {
+			// Building a DBObjectSet runs no query - it assigns and returns -
+			// so a malformed filter can only surface here, where the set is
+			// first read. Probing for it beforehand caught nothing.
+			throw new ToolCallException("Invalid filter condition. " . $e->getMessage());
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
 		}
