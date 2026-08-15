@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
@@ -40,18 +41,23 @@ final class MCPService
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
 
-		$builder = self::registerResources($builder);
-		$builder = self::registerResourceTemplates($builder);
-		$builder = self::registerTools($builder);
-		$builder = self::registerPrompts($builder);
+		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+
+		$builder = self::registerResources($builder, $aDisabled);
+		$builder = self::registerResourceTemplates($builder, $aDisabled);
+		$builder = self::registerTools($builder, $aDisabled);
+		$builder = self::registerPrompts($builder, $aDisabled);
 
 		return $builder->build();
 	}
 
-	private static function registerResources(Builder $builder): Builder
+	/**
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function registerResources(Builder $builder, array $aDisabled): Builder
 	{
 		foreach (MCPRegistry::GetResources() as $resource) {
-			if (!$resource->isAvailable()) {
+			if (self::isHidden($resource->getUri(), $resource->isAvailable(), $resource->requiredProfiles(), $aDisabled)) {
 				continue;
 			}
 
@@ -72,10 +78,13 @@ final class MCPService
 		return $builder;
 	}
 
-	private static function registerResourceTemplates(Builder $builder): Builder
+	/**
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function registerResourceTemplates(Builder $builder, array $aDisabled): Builder
 	{
 		foreach (MCPRegistry::GetResourceTemplates() as $resourceTemplate) {
-			if (!$resourceTemplate->isAvailable()) {
+			if (self::isHidden($resourceTemplate->getUriTemplate(), $resourceTemplate->isAvailable(), $resourceTemplate->requiredProfiles(), $aDisabled)) {
 				continue;
 			}
 
@@ -94,10 +103,13 @@ final class MCPService
 		return $builder;
 	}
 
-	private static function registerTools(Builder $builder): Builder
+	/**
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function registerTools(Builder $builder, array $aDisabled): Builder
 	{
 		foreach (MCPRegistry::GetTools() as $tool) {
-			if (!$tool->isAvailable() || self::isBlocked($tool->requiredProfiles())) {
+			if (self::isHidden($tool->getName(), $tool->isAvailable(), $tool->requiredProfiles(), $aDisabled)) {
 				continue;
 			}
 
@@ -117,10 +129,13 @@ final class MCPService
 		return $builder;
 	}
 
-	private static function registerPrompts(Builder $builder): Builder
+	/**
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function registerPrompts(Builder $builder, array $aDisabled): Builder
 	{
 		foreach (MCPRegistry::GetPrompts() as $prompt) {
-			if (!$prompt->isAvailable()) {
+			if (self::isHidden($prompt->getName(), $prompt->isAvailable(), $prompt->requiredProfiles(), $aDisabled)) {
 				continue;
 			}
 
@@ -137,13 +152,47 @@ final class MCPService
 		return $builder;
 	}
 
-	private static function isBlocked(array $profiles): bool
+	/**
+	 * Whether an element is kept out of the server being built.
+	 *
+	 * Everything registered goes through the same three filters, whatever its
+	 * kind: what the element says about itself (isAvailable), what the caller
+	 * holds (requiredProfiles), and what the operator turned off
+	 * (mcp_disabled_tools). Not being registered means it is neither listed nor
+	 * callable - the SDK can only route to what the builder was given.
+	 *
+	 * @param string             $sIdentifier Tool/prompt name, or resource URI.
+	 * @param array<int, string> $aRequiredProfiles
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function isHidden(string $sIdentifier, bool $bAvailable, array $aRequiredProfiles, array $aDisabled): bool
 	{
-		if (!empty($profiles)) {
-			foreach ($profiles as $profile) {
-				if (!UserRights::HasProfile($profile)) {
-					return true;
-				}
+		if (!$bAvailable) {
+			return true;
+		}
+
+		if (in_array($sIdentifier, $aDisabled, true)) {
+			return true;
+		}
+
+		return self::lacksRequiredProfiles($aRequiredProfiles);
+	}
+
+	/**
+	 * requiredProfiles() is an AND: the caller must hold every profile listed.
+	 *
+	 * That is the opposite of the endpoint gate mcp_allowed_profiles, which is
+	 * an OR - and deliberately so: "allowed" means any of these lets you in,
+	 * "required" means all of these are needed. For any-of semantics on an
+	 * element, override isAvailable().
+	 *
+	 * @param array<int, string> $aProfiles
+	 */
+	private static function lacksRequiredProfiles(array $aProfiles): bool
+	{
+		foreach ($aProfiles as $sProfile) {
+			if (!UserRights::HasProfile($sProfile)) {
+				return true;
 			}
 		}
 

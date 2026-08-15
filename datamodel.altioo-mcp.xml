@@ -253,6 +253,13 @@
         <item>Administrator</item>
         <item>MCP Services User</item>
       </mcp_allowed_profiles>
+      <!--
+        Kill switch, evaluated whatever the extension that registered the
+        element: list tool names, prompt names, resource URIs or resource
+        template URIs. What is listed here is neither advertised nor callable.
+        Empty means nothing is turned off.
+      -->
+      <mcp_disabled_tools type="array"/>
       <log_mcp_service type="bool">true</log_mcp_service>
       <log_mcp_method type="array">
         <item>resources/read</item>

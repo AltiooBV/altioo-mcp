@@ -48,7 +48,16 @@ abstract class AbstractMCPTool
 		return true;
 	}
 
-	public function requiredProfiles(): array //list of profiles required to use the tool
+	/**
+	 * Profiles the caller must hold for this element to be advertised and
+	 * served. All of them, not any of them: an empty list (the default) offers
+	 * it to everyone who cleared the endpoint gates.
+	 *
+	 * A visibility filter on top of UserRights, never a replacement for it.
+	 *
+	 * @return array<int, string>
+	 */
+	public function requiredProfiles(): array
 	{
 		return [];
 	}
