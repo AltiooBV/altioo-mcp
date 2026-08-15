@@ -47,10 +47,30 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_update` | Update an object's attributes |
 | `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition) |
 | `core_object_delete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
+| `core_object_bulk_create` | Create up to 100 objects of one class. Dry run by default |
+| `core_object_bulk_update` | Set the same attributes on up to 100 objects. Dry run by default |
+| `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
 are — `core` belongs to this module, an extension uses its own. Two packs from two
 vendors therefore cannot claim one identifier by both calling a class `TicketAddLogEntry`.
+Within the namespace, the name is the class name in `snake_case`, which is how every
+other MCP server in the ecosystem names its tools.
+
+**Reading without filling a context window.** A tool result is read into one, so the
+reading tools narrow by default. `output_fields` takes a comma-separated list of attribute
+codes, or `*`; searches default to `id, friendlyname` — the same default iTop's REST API
+applies — and `core_object_get` defaults to `*`. Long texts, case logs and link sets are
+cut to a ceiling that the value itself declares, unless you name that attribute in
+`output_fields`, which is the way to read one in full. Paging is stable: every page is
+ordered by `order_by` and then by `id`, so nothing is returned twice or skipped between
+pages.
+
+**The bulk tools** check `UR_ACTION_BULK_MODIFY` / `UR_ACTION_BULK_DELETE` first — a profile
+can be allowed to edit one object and not a thousand — and then check every object and every
+attribute individually, because object-level rights are what separate "may modify a User"
+from "may modify their own User". A call can partly succeed, and the response reports each
+object separately.
 
 **Resources**
 
@@ -73,6 +93,11 @@ hundred classes, so `core_class_list` takes a `category` and a `filter`.
 | Prompt | Purpose |
 |---|---|
 | `core_my_open_tickets` | Summarise the current user's open tickets |
+
+**Server instructions.** At `initialize` the server also sends a short block of guidance —
+that attribute codes vary per instance and must be looked up, that OQL has no `ORDER BY`,
+that dates are not RFC 3339, that a refusal is a real refusal. A pack can append a paragraph
+with `MCPRegistry::AddInstructions()`.
 
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
@@ -113,9 +138,10 @@ Change the allowed list with the `mcp_allowed_profiles` module parameter (below)
 here, subject to your `allowed_login_types`:
 
 - **A Personal or User token** (recommended). Create one under My Account → Personal Tokens,
-  tick the **MCP** scope, and give it to the client. This extension adds that scope to iTop's
+  tick an **MCP** scope, and give it to the client. This extension adds those scopes to iTop's
   token classes, so a token minted for REST/JSON or for Export cannot be replayed against the
-  MCP endpoint, and vice versa.
+  MCP endpoint, and vice versa — and so that one credential can be weaker than its owner
+  (see [Grading a token](#grading-a-token)).
 - **Basic authentication**, exactly as for iTop's REST/JSON API. Scopes are a property of token
   objects, so none applies here — the profile gate and iTop's permissions are what protect the
   endpoint.
@@ -135,13 +161,46 @@ attributes (those whose type implements `iAttributeNoGroupBy`) are masked in out
 On top of those three, `mcp_disabled_tools` lets you turn individual tools, prompts and
 resources off outright, by name or by class, whichever extension registered them.
 
+### Grading a token
+
+Everything above answers "who is calling". iTop hangs permissions off the user, so the usual
+way to give an assistant less than its owner has is a second user account with its own
+profiles, kept in step by hand. The scopes on a token are the shorter route: one person, two
+credentials of different strength.
+
+| Scope | Effect |
+|---|---|
+| `MCP` | Everything the user can do |
+| `MCP-read` | Only tools that declare `readOnlyHint` |
+| `MCP-write` | Read, create and modify — **not** delete |
+| `MCP-delete` | Tools that declare `destructiveHint` |
+| `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects` |
+
+They combine, and the grades are a union: `MCP-write` is read *and* write, because granting
+write without read describes nothing anyone means by it. `MCP-read` together with
+`MCP-toolset-objects` is read access to the object tools and nothing else. A token scoped
+this way can only ever be *narrower* than the instance configuration and narrower than the
+user's own profiles — it never widens either.
+
+A tool is graded by the annotations it already declares: `readOnlyHint` is read,
+`destructiveHint` is delete, anything else is write. **A tool that declares no annotations at
+all is graded `delete`**, so it is withheld from every scoped token. That is deliberate — the
+alternative is a pack update quietly handing a read-only credential something that writes —
+but it means a pack that skips `getAnnotations()` will appear to be missing tools. See
+[Extending](#extending).
+
+The same grading applies instance-wide through `mcp_capabilities`, and `mcp_read_only` is
+shorthand for `array('read')`.
+
 ## Endpoint
 
 ```
 https://<your-itop>/extensions/altioo-mcp/index.php
 ```
 
-Point your MCP client at that URL and authenticate with the token above:
+Point your MCP client at that URL and authenticate with the token above. Copy-paste
+configuration for Claude Code, Claude Desktop, VS Code and Cursor, and what to check when it
+does not connect, are in [doc/clients.md](doc/clients.md).
 
 ```json
 {
@@ -161,8 +220,12 @@ FastCGI, Apache drops that header unless `CGIPassAuth On` (or an equivalent
 `SetEnvIf Authorization` rewrite) is in effect.
 
 MCP clients that offer only a "Connect" button, with no field for a credential, expect the
-server to advertise OAuth discovery (RFC 9728). This extension does not, by design — put an
-OAuth-terminating proxy in front of it if you need to serve such a client.
+server to advertise OAuth discovery (RFC 9728). This extension implements no OAuth, by design
+— put an OAuth-terminating proxy in front of it. What it does do is advertise the proxy: an
+unauthenticated call is answered `401` with a `WWW-Authenticate: Bearer` challenge, carrying
+`resource_metadata="…"` when you set `mcp_protected_resource_metadata` to the URL of the
+document your proxy serves. That is the pointer such a client follows, and the proxy cannot
+add it to a `401` it never sees.
 
 ## Configuration
 
@@ -174,6 +237,11 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
     'mcp_allowed_origins' => array(),
     'mcp_disabled_tools' => array(),
+    'mcp_enabled_toolsets' => array(),
+    'mcp_capabilities' => array(),
+    'mcp_read_only' => false,
+    'mcp_pagination_limit' => 200,
+    'mcp_protected_resource_metadata' => '',
     'log_mcp_service' => true,
     'log_mcp_method' => array('resources/read', 'tools/call', 'prompts/get', 'exceptions'),
     'log_mcp_level' => 'error',
@@ -186,6 +254,11 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
+| `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects` and `relations`, and a pack declares its own. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
+| `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
+| `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
+| `mcp_pagination_limit` | `200` | Elements per `tools/list` page. The SDK defaults to 50 and pages the rest behind a cursor, which a client that ignores `nextCursor` never asks for — the 51st tool then exists, is callable, and is advertised to nobody |
+| `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
@@ -245,6 +318,7 @@ tools declare `execute()` static; an instance method works equally well.
 
 ```php
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -286,9 +360,27 @@ class TicketAddLogEntry extends AbstractMCPTool
     {
         // Always go through UserRights / MetaModel — never raw SQL.
         // Throw ToolCallException for anything the caller should be told.
+
+        return ToolOutput::Json(['id' => $id, 'added' => true]);
     }
 }
 ```
+
+**Annotate your tools.** `getAnnotations()` is optional to PHP and not optional in practice:
+`readOnlyHint` and `destructiveHint` are what grade a tool as read, write or delete, and a
+tool that declares nothing is graded `delete` — withheld from every token scoped with
+`MCP-read` or `MCP-write`, and from any instance running with `mcp_capabilities`. The
+symptom is a tool that works for an administrator and is invisible to everyone else.
+
+**Return `ToolOutput::Json()` rather than an array.** Both work, but an array is JSON-encoded
+into the text content *and* copied into `structuredContent`, pretty-printed — the whole result
+twice, in a response a model pays for by the token. Returning a `TextContent` takes both
+branches away. If you do want structured content, declare `getOutputSchema()` so that the
+duplicate is at least validated against something.
+
+**Declare a `getToolset()`** if your pack has more than one kind of tool in it. It defaults to
+your namespace, which lets an operator turn the pack on or off as a whole; naming groups lets
+them turn on the half they use, and gives them `MCP-toolset-<name>` token scopes for free.
 
 Two optional hooks, available on **all four kinds** — tools, resources, resource templates
 and prompts — and applied to all four when the server is built:
@@ -389,7 +481,7 @@ element, and then surfaces as an empty listing or an unrelated error from inside
 
 | Kind | Checked |
 |---|---|
-| all | `getNamespace()` matches `[a-zA-Z0-9-]{1,64}` and is not the reserved `core` unless you *are* core; the composed identifier matches `[a-zA-Z0-9_-]{1,128}`; `overrides()` returns null or another element's identifier, never its own; `requiredProfiles()` returns a list of non-empty strings; the handler (`execute()` / `read()` / `get()`) exists and is public |
+| all | `getToolset()` matches `[a-zA-Z0-9-]{1,64}`; `getNamespace()` matches `[a-zA-Z0-9-]{1,64}` and is not the reserved `core` unless you *are* core; the composed identifier matches `[a-zA-Z0-9_-]{1,128}`; `overrides()` returns null or another element's identifier, never its own; `requiredProfiles()` returns a list of non-empty strings; the handler (`execute()` / `read()` / `get()`) exists and is public |
 | tools | non-empty `getDescription()`; input schema is a JSON Schema of type `object`; every `required` entry is declared under `properties`; every property maps to a parameter of `execute()`; every parameter of `execute()` without a default is listed under `required` |
 | resources | the URI carries no `{variable}` |
 | resource templates | the URI template carries at least one `{variable}`, and each one matches a parameter of `read()` |
