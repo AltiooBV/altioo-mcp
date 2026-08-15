@@ -155,6 +155,61 @@ class SchemaToolsContractTest extends TestCase
 	}
 
 	/**
+	 * The two formats iTop's own internal formats resolve to. 'Y-m-d' is
+	 * RFC 3339 full-date, so AttributeDate can be described by `format` alone;
+	 * 'Y-m-d H:i:s' is not RFC 3339 date-time, so the pattern is the only
+	 * honest description of it.
+	 */
+	public function testPatternsForTheFormatsITopActuallyUses(): void
+	{
+		$this->assertSame('^\d{4}-\d{2}-\d{2}$', DatamodelReader::PatternFromDateFormat('Y-m-d'));
+		$this->assertSame(
+			'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$',
+			DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s')
+		);
+	}
+
+	public function testThePatternAcceptsITopsValuesAndRejectsRfc3339(): void
+	{
+		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+
+		$this->assertSame(1, preg_match('/'.$sPattern.'/', '2026-08-15 18:41:00'));
+		// The very string a model told "date-time" would send, and the one
+		// AttributeDateTime::MakeRealValue() throws on.
+		$this->assertSame(0, preg_match('/'.$sPattern.'/', '2026-08-15T18:41:00Z'));
+		$this->assertSame(0, preg_match('/'.$sPattern.'/', 'yesterday'));
+	}
+
+	/**
+	 * JSON Schema patterns are read as ECMA-262, where "\-" and "\:" are
+	 * invalid identity escapes - which is exactly what preg_quote() would emit
+	 * for iTop's separators.
+	 */
+	public function testSeparatorsAreLeftUnescaped(): void
+	{
+		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+
+		$this->assertStringNotContainsString('\-', $sPattern);
+		$this->assertStringNotContainsString('\:', $sPattern);
+	}
+
+	public function testRegexSyntaxCharactersInAFormatAreEscaped(): void
+	{
+		$this->assertSame('^\d{4}\.\d{2}$', DatamodelReader::PatternFromDateFormat('Y.m'));
+	}
+
+	/**
+	 * A pattern that rejects valid values is worse than no pattern, so an
+	 * untranslatable format yields none.
+	 */
+	public function testAnUntranslatableFormatYieldsNoPattern(): void
+	{
+		$this->assertNull(DatamodelReader::PatternFromDateFormat('D, d M Y'), 'D and M are not numeric tokens');
+		$this->assertNull(DatamodelReader::PatternFromDateFormat('\\Y-m-d'), 'a backslash escape is not translated');
+		$this->assertNull(DatamodelReader::PatternFromDateFormat(''));
+	}
+
+	/**
 	 * @return array<string, \ReflectionParameter>
 	 */
 	private function parameters(string $sTool): array
