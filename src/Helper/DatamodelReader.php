@@ -11,7 +11,6 @@ use AttributeEmailAddress;
 use AttributeURL;
 use MetaModel;
 use UserRights;
-use iAttributeNoGroupBy;
 
 /**
  * The datamodel, read the way the calling user is allowed to see it.
@@ -30,18 +29,18 @@ use iAttributeNoGroupBy;
 final class DatamodelReader
 {
 	/**
-	 * PHP date() tokens this module can turn into a regular expression.
-	 *
-	 * Deliberately only the numeric ones: a format built from anything else is
-	 * reported without a pattern rather than with a wrong one.
-	 */
-	/**
 	 * Most values reported for one attribute. A datamodel enumeration never
 	 * comes close; anything that does is a list the model should be searching,
 	 * not reading.
 	 */
 	public const MAX_ALLOWED_VALUES = 100;
 
+	/**
+	 * PHP date() tokens this module can turn into a regular expression.
+	 *
+	 * Deliberately only the numeric ones: a format built from anything else is
+	 * reported without a pattern rather than with a wrong one.
+	 */
 	private const DATE_FORMAT_TOKENS = [
 		'Y' => '\d{4}',
 		'y' => '\d{2}',
@@ -204,7 +203,7 @@ final class DatamodelReader
 				'nullable'      => $oAttDef->IsNullAllowed(),
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
-				'isSensible'    => $oAttDef instanceof iAttributeNoGroupBy, // iAttributeNoGroupBy is equivalent to sensitive attribute
+				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef),
 			] + self::allowedValues($oAttDef);
 		}
 

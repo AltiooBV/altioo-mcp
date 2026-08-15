@@ -133,10 +133,9 @@ final class ObjectSerializer
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
 
-		if ($oAttDef instanceof iAttributeNoGroupBy) {
-			// iAttributeNoGroupBy is how the datamodel marks an attribute as
-			// sensitive. Masked before any conversion, so no code path can
-			// read the real value into the response.
+		if (self::IsSensitive($oAttDef)) {
+			// Masked before any conversion, so no code path can read the real
+			// value into the response.
 			return self::MASK;
 		}
 
@@ -335,10 +334,12 @@ final class ObjectSerializer
 	}
 
 	/**
-	 * Whether an attribute definition is one this serializer masks outright.
+	 * Whether an attribute holds something that must not be reported.
 	 *
-	 * Exposed so that the schema tools can describe an attribute the same way
-	 * the object tools return it.
+	 * iAttributeNoGroupBy is how the datamodel marks an attribute as
+	 * sensitive - it is the interface iTop's own code tests for. The one
+	 * definition, so that what the schema calls sensitive and what the object
+	 * tools mask cannot come to mean different things.
 	 */
 	public static function IsSensitive(AttributeDefinition $oAttDef): bool
 	{
