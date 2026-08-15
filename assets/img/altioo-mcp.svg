@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Listing icon. Three CMDB objects and the endpoint that reads them: one
+	square, flat colours, no gradients and no external references, so it
+	survives being exported to a 128px PNG for the Hub.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Altioo MCP for iTop">
+	<rect width="512" height="512" rx="96" fill="#1b2a3a"/>
+
+	<!-- relations, drawn under the nodes -->
+	<g stroke="#5b7f9e" stroke-width="14" stroke-linecap="round" fill="none">
+		<path d="M256 168 L152 320"/>
+		<path d="M256 168 L360 320"/>
+		<path d="M152 320 L360 320"/>
+	</g>
+
+	<!-- the objects -->
+	<g fill="#e8eef4">
+		<circle cx="256" cy="168" r="44"/>
+		<circle cx="152" cy="320" r="44"/>
+		<circle cx="360" cy="320" r="44"/>
+	</g>
+
+	<!-- the endpoint: one way in, highlighted -->
+	<circle cx="256" cy="168" r="20" fill="#f2a33c"/>
+</svg>
