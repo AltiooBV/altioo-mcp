@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -42,7 +43,8 @@ class ObjectUpdate extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched.';
+		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
+			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the change and report exactly which attributes would change, show that to the user, then call again with simulate=false to apply it.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -74,6 +76,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'description'          => 'Key/value pairs to update. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
+				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),
 			],
 			'required' => ['class', 'id', 'fields'],
 		];
@@ -83,13 +86,15 @@ class ObjectUpdate extends AbstractMCPTool
 	 * @param string $class The class of the object to update, e.g. 'UserRequest'
 	 * @param int $id The ID of the object to update, e.g. 123
 	 * @param array $fields An array of attribute => value pairs to update
-	 * @return array An array containing the class and ID of the updated object
+	 * @param bool $simulate When true (default), the change is validated and described but not written
+	 * @return array The class and ID of the object, and the attributes the call changes or would change
 	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
 	 */
 	public static function execute(
 		string $class,
 		int    $id,
 		array  $fields,
+		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 	): mixed {
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -197,12 +202,33 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Failed to update due to setting fields : " .implode(', ', $aIssues));
 		}
 
+		// iTop's own pre-write check, run before anything is written rather
+		// than discovered by DBUpdate() throwing from inside the ORM.
+		WritePlan::Check($oObject, "{$class}::{$id}");
+
+		// After the check and before the write: this is the only point where
+		// the pending values are still pending, and it is what tells the user
+		// that "set status to closed" also cleared three other attributes.
+		$aChanges = WritePlan::Changes($oObject, $class);
+
+		if ($simulate) {
+			return ToolOutput::Json([
+				'class'     => $class,
+				MetaModel::DBGetKey($class) => $id,
+				'simulated' => true,
+				'valid'     => true,
+				'changes'   => $aChanges,
+			]);
+		}
+
 		try {
 			$oObject->DBUpdate();
 
 			return ToolOutput::Json([
 				'class' => $class,
 				MetaModel::DBGetKey($class)    => $id,
+				'simulated' => false,
+				'changes'   => $aChanges,
 			]);
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to update object: " . $e->getMessage());

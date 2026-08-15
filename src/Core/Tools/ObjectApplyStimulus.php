@@ -6,6 +6,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -49,7 +50,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs.';
+		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs. '
+			.'Runs as a dry run by default: call it with simulate=true to check that the transition is allowed from the current state and that nothing mandatory is missing, show that to the user, then call again with simulate=false to apply it.';
 	}
 
 	public function getInputSchema(): ?array
@@ -74,6 +76,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'description'          => 'Optional attribute values to set before applying the stimulus (e.g. agent_id, team_id for ev_assign).',
 					'additionalProperties' => true,
 				],
+				'simulate' => WritePlan::SimulateSchemaProperty('apply the stimulus'),
 			],
 			'required' => ['class', 'id', 'stimulus'],
 		];
@@ -97,7 +100,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 	 * @param int $id The ID of the object to transition, e.g. 42
 	 * @param string $stimulus The stimulus code to apply, e.g. 'ev_assign'
 	 * @param array $fields Optional attribute values to set before applying the stimulus, e.g. ['agent_id' => 3]
-	 * @return array The new state of the object after applying the stimulus
+	 * @param bool $simulate When true (default), the transition is validated but not applied
+	 * @return array The state the object is in, or the state it would move to
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
 	 */
 	public static function execute(
@@ -105,6 +109,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		int $id,
 		string $stimulus,
 		array  $fields = [],
+		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 	): mixed {
 		// Validate input parameters
 		if ($id < 1) {
@@ -260,6 +265,25 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			);
 		}
 
+		// iTop's own pre-write check, on top of the target-state check above:
+		// that one knows what the transition requires, this one knows what the
+		// class and its extensions require of any write.
+		WritePlan::Check($oObject, "{$class}::{$id}");
+		$aChanges = WritePlan::Changes($oObject, $class);
+
+		if ($simulate) {
+			return ToolOutput::Json([
+				'class'         => $class,
+				MetaModel::DBGetKey($class) => $id,
+				'stimulus'      => $stimulus,
+				'simulated'     => true,
+				'valid'         => true,
+				'state'         => $sCurrentState,
+				'would_move_to' => $sTargetState,
+				'changes'       => $aChanges,
+			]);
+		}
+
 		// All validations passed, apply the stimulus
 		$bApplied = false;
 		try {
@@ -273,10 +297,12 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 
 		return ToolOutput::Json([
-			'class'    => $class,
-			MetaModel::DBGetKey($class)       => $id,
-			'stimulus' => $stimulus,
-			'state'    => $oObject->GetState(),
+			'class'     => $class,
+			MetaModel::DBGetKey($class)        => $id,
+			'stimulus'  => $stimulus,
+			'simulated' => false,
+			'state'     => $oObject->GetState(),
+			'changes'   => $aChanges,
 		]);
 	}
 }
