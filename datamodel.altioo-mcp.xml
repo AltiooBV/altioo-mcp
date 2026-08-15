@@ -260,6 +260,14 @@
         Empty means nothing is turned off.
       -->
       <mcp_disabled_tools type="array"/>
+      <!--
+        Elements per tools/list, resources/list or prompts/list page. The MCP
+        SDK defaults to 50 and pages the rest behind a cursor, which a client
+        that ignores nextCursor never asks for: the 51st tool then exists and
+        is callable, but is advertised to nobody. High enough that a normal
+        installation is one page.
+      -->
+      <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
       <log_mcp_service type="bool">true</log_mcp_service>
       <log_mcp_method type="array">
         <item>resources/read</item>

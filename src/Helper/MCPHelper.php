@@ -40,6 +40,23 @@ class MCPHelper
 	const MODULE_SETTING_ALLOWED_ORIGINS = 'mcp_allowed_origins';
 
 	/**
+	 * How many elements one tools/list, resources/list or prompts/list page
+	 * carries.
+	 *
+	 * The SDK defaults to 50 and pages the rest behind a cursor. That is
+	 * correct protocol and a trap in practice: a client that does not follow
+	 * nextCursor - and several do not - simply never sees the 51st tool, with
+	 * no error anywhere. The base extension alone is nowhere near that, but an
+	 * instance with three tool packs installed is, and the operator would have
+	 * no way to tell what happened.
+	 *
+	 * Set high enough that a normal installation is one page, and left
+	 * configurable for the ones that are not.
+	 */
+	const MODULE_SETTING_PAGINATION_LIMIT = 'mcp_pagination_limit';
+	const DEFAULT_PAGINATION_LIMIT = 200;
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -67,6 +84,21 @@ class MCPHelper
 	public static function LogError(string $sMessage, array $aContext = []): void
 	{
 		MCPLog::Error($sMessage, null, $aContext);
+	}
+
+	/**
+	 * Elements per listing page, as configured.
+	 */
+	public static function GetPaginationLimit(): int
+	{
+		$iLimit = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PAGINATION_LIMIT, self::DEFAULT_PAGINATION_LIMIT);
+		if (!is_int($iLimit) || $iLimit < 1) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PAGINATION_LIMIT."' should be a positive integer");
+
+			return self::DEFAULT_PAGINATION_LIMIT;
+		}
+
+		return $iLimit;
 	}
 
 	/**

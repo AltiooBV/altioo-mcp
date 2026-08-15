@@ -40,6 +40,7 @@ final class MCPService
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
 			->setInstructions(ServerInstructions::Text())
+			->setPaginationLimit(MCPHelper::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
 
