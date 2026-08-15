@@ -194,4 +194,149 @@ class MCPHttpTest extends TestCase
 			'closing quote'    => ['https://sso.example.com/"meta'],
 		];
 	}
+
+	// ------------------------------------------------------------------
+	// Which hosts this endpoint answers to
+	//
+	// The same rule the SDK's DnsRebindingProtectionMiddleware applies, held
+	// here because the controller decides it a second time - before
+	// ResetSession(), which is the part that matters. The two reading the same
+	// list is what stops them disagreeing; these tests are what stop this copy
+	// drifting from the one in the SDK.
+	// ------------------------------------------------------------------
+
+	private const SERVED = ['itop.example.com', 'localhost', '[::1]'];
+
+	public function testAHostOnTheListIsServed(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost(null, 'itop.example.com', self::SERVED));
+	}
+
+	public function testAHostThatIsNotOnTheListIsRefused(): void
+	{
+		$this->assertFalse(MCPHttp::IsAllowedHost(null, 'evil.example.com', self::SERVED));
+	}
+
+	/** A Host header carries the port; the list is written without one. */
+	public function testThePortIsIgnored(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost(null, 'itop.example.com:8443', self::SERVED));
+	}
+
+	public function testTheComparisonIsCaseInsensitive(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost(null, 'iTop.Example.COM', self::SERVED));
+	}
+
+	/** parse_url() returns IPv6 bracketed, so that is the form a list uses. */
+	public function testAnIPv6LiteralKeepsItsBrackets(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost(null, '[::1]:8080', self::SERVED));
+		$this->assertFalse(MCPHttp::IsAllowedHost(null, '[::2]:8080', self::SERVED));
+	}
+
+	/**
+	 * Origin decides when it is there, and Host is not consulted at all - which
+	 * is what the middleware does, and the case a rebinding attack produces: a
+	 * Host the server recognises, sent from a page that is not on it.
+	 */
+	public function testOriginDecidesWhenItIsPresent(): void
+	{
+		$this->assertFalse(
+			MCPHttp::IsAllowedHost('https://evil.example.com', 'itop.example.com', self::SERVED)
+		);
+		$this->assertTrue(
+			MCPHttp::IsAllowedHost('https://itop.example.com', 'itop.example.com', self::SERVED)
+		);
+	}
+
+	/** An Origin that is not a URL at all names no host, so it matches nothing. */
+	public function testAnUnparseableOriginIsRefused(): void
+	{
+		$this->assertFalse(MCPHttp::IsAllowedHost('null', 'itop.example.com', self::SERVED));
+	}
+
+	/**
+	 * The escape hatch for a deployment whose hostname the module cannot know.
+	 * It has to be the whole answer, or configuring it would be a way to
+	 * accidentally allow everything while believing a list was in force.
+	 */
+	public function testTheWildcardEntryAcceptsAnything(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost('https://anywhere.example', 'whatever', [MCPHttp::ANY_HOST]));
+	}
+
+	/** HTTP/1.0 sends no Host; no MCP client speaks it, and the SDK lets it by. */
+	public function testNoOriginAndNoHostIsLeftAlone(): void
+	{
+		$this->assertTrue(MCPHttp::IsAllowedHost(null, null, self::SERVED));
+	}
+
+	/**
+	 * An empty list is not "allow everything" - MCPHelper never produces one,
+	 * and if it ever did the safe reading is that nothing is served.
+	 */
+	public function testAnEmptyListServesNoHost(): void
+	{
+		$this->assertFalse(MCPHttp::IsAllowedHost(null, 'itop.example.com', []));
+	}
+
+	// ------------------------------------------------------------------
+	// What a POST may be sent as
+	// ------------------------------------------------------------------
+
+	/**
+	 * These three are exactly what a browser can send cross-origin without a
+	 * preflight. Refusing them is what makes the endpoint unreachable as a CORS
+	 * simple request, and therefore what closes the CSRF class.
+	 *
+	 * @dataProvider simpleRequestContentTypeProvider
+	 */
+	public function testTheContentTypesThatNeedNoPreflightAreRefused(string $sContentType): void
+	{
+		$this->assertFalse(MCPHttp::IsJsonMediaType($sContentType));
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function simpleRequestContentTypeProvider(): array
+	{
+		return [
+			'text/plain'  => ['text/plain'],
+			'form'        => ['application/x-www-form-urlencoded'],
+			'multipart'   => ['multipart/form-data; boundary=----x'],
+			'nothing'     => [''],
+		];
+	}
+
+	public function testAMissingContentTypeIsRefused(): void
+	{
+		$this->assertFalse(MCPHttp::IsJsonMediaType(null));
+	}
+
+	public function testJsonIsAccepted(): void
+	{
+		$this->assertTrue(MCPHttp::IsJsonMediaType('application/json'));
+	}
+
+	/**
+	 * Clients differ on the parameters and the casing, and none of that changes
+	 * whether the request could have been sent without a preflight.
+	 *
+	 * @dataProvider acceptableJsonContentTypeProvider
+	 */
+	public function testTheSpellingOfTheJsonTypeDoesNotMatter(string $sContentType): void
+	{
+		$this->assertTrue(MCPHttp::IsJsonMediaType($sContentType));
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function acceptableJsonContentTypeProvider(): array
+	{
+		return [
+			'charset'   => ['application/json; charset=utf-8'],
+			'uppercase' => ['Application/JSON'],
+			'padded'    => ['  application/json  '],
+			'suffixed'  => ['application/vnd.acme+json'],
+		];
+	}
 }

@@ -15,6 +15,8 @@ class MCPResult implements \JsonSerializable
 	const OK = 0;
 	/** Result: missing/wrong credentials or the user does not have enough rights */
 	const UNAUTHORIZED = 1;
+	/** Result: refused on the shape of the request, before any credential was read */
+	const REQUEST_REJECTED = 2;
 	/** Result: the operation could not be performed */
 	const INTERNAL_ERROR = 100;
 
@@ -55,6 +57,16 @@ class MCPResult implements \JsonSerializable
 
 	/** @var int|null Size of the response body, in bytes. */
 	public ?int $responseBytes = null;
+
+	/**
+	 * @var int|null The HTTP status to answer with, when the result code does
+	 *      not decide it on its own.
+	 *
+	 * Only a refusal sets it: everything else is a 401 or a 500, which
+	 * MCPController derives from the code. Kept out of jsonSerialize() like
+	 * the other fields here - it is how the response is sent, not part of it.
+	 */
+	public ?int $httpStatus = null;
 
 	public function __construct(int $code = self::OK, string $message = '')
 	{

@@ -41,6 +41,18 @@ class MCPHelper
 	const MODULE_SETTING_ALLOWED_ORIGINS = 'mcp_allowed_origins';
 
 	/**
+	 * Hostnames this endpoint answers to, checked against Origin - or against
+	 * Host when there is no Origin - before anything else happens.
+	 *
+	 * Left empty it is derived rather than defaulted, because the alternative
+	 * defaults are both wrong: the SDK's own list is localhost only, which
+	 * refuses every production request, and accepting anything gives up the
+	 * check. An installed iTop already knows the name it is served under, so
+	 * that is what the derivation reads.
+	 */
+	const MODULE_SETTING_ALLOWED_HOSTS = 'mcp_allowed_hosts';
+
+	/**
 	 * How many elements one tools/list, resources/list or prompts/list page
 	 * carries.
 	 *
@@ -169,6 +181,88 @@ class MCPHelper
 		}
 
 		return array_values(array_filter($aToolsets, 'is_string'));
+	}
+
+	/**
+	 * Browser origins allowed to read this endpoint's responses.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function GetAllowedOrigins(): array
+	{
+		$aOrigins = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOWED_ORIGINS, []);
+		if (!is_array($aOrigins)) {
+			$sType = gettype($aOrigins);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_ORIGINS."' should be an array instead of $sType");
+
+			return [];
+		}
+
+		return array_values(array_filter($aOrigins, 'is_string'));
+	}
+
+	/**
+	 * Hostnames this endpoint answers to.
+	 *
+	 * What the operator wrote, if they wrote anything: an explicit list is a
+	 * decision, and second-guessing it by adding to it would make the setting
+	 * unable to express "only this name".
+	 *
+	 * @return array<int, string> Hostnames without port, or [MCPHttp::ANY_HOST] for no check.
+	 */
+	public static function GetAllowedHosts(): array
+	{
+		$aHosts = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOWED_HOSTS, []);
+		if (!is_array($aHosts)) {
+			$sType = gettype($aHosts);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_HOSTS."' should be an array instead of $sType");
+			$aHosts = [];
+		}
+
+		$aHosts = array_values(array_filter($aHosts, 'is_string'));
+
+		return empty($aHosts) ? self::DerivedAllowedHosts() : $aHosts;
+	}
+
+	/**
+	 * The hostnames an instance that configured none is served under.
+	 *
+	 * Three sources, and each is there because leaving it out breaks a
+	 * deployment that works today: app_root_url is the name the setup recorded
+	 * and the one production traffic arrives on; the localhost variants keep a
+	 * developer, the docker image and an on-box health check working; and an
+	 * origin already allow-listed for CORS is by definition one this endpoint
+	 * is meant to answer, so refusing its host here would contradict the other
+	 * setting.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function DerivedAllowedHosts(): array
+	{
+		$sAppRootUrl = utils::GetConfig()->Get('app_root_url');
+		$sAppRootUrl = is_string($sAppRootUrl) ? trim($sAppRootUrl) : '';
+
+		if ($sAppRootUrl !== '' && str_contains($sAppRootUrl, SERVER_NAME_PLACEHOLDER)) {
+			// app_root_url written with iTop's placeholder says the instance
+			// answers to whatever name it is reached at. There is no hostname
+			// to check against, and inventing one would refuse valid traffic.
+			return [MCPHttp::ANY_HOST];
+		}
+
+		$aHosts = ['localhost', '127.0.0.1', '[::1]'];
+
+		foreach (array_merge([$sAppRootUrl], self::GetAllowedOrigins()) as $sUrl) {
+			if ($sUrl === '') {
+				continue;
+			}
+
+			$sHost = parse_url($sUrl, PHP_URL_HOST);
+			if (is_string($sHost) && $sHost !== '') {
+				$aHosts[] = $sHost;
+			}
+		}
+
+		return array_values(array_unique($aHosts));
 	}
 
 	/**

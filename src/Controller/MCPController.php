@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Controller;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
+use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
@@ -52,6 +53,14 @@ final class MCPController
 
 		try {
 			$oKPI->ComputeAndReport('Data model loaded');
+
+			// Both of these run before ResetSession(), which is the point of
+			// them. The reset is unauthenticated and unconditional, so a page
+			// on any website could otherwise make a logged-in user's browser
+			// call this URL and end their console session - no credential
+			// needed, and nothing in the audit trail that looks like an attack.
+			self::rejectUnlessHostIsServed();
+			self::rejectUnlessBodyIsJson();
 
 			MCPHttp::PromoteBearerToAuthToken();
 			LoginWebPage::ResetSession(true);
@@ -122,6 +131,75 @@ final class MCPController
 		}
 	}
 
+	/**
+	 * Refuses a request that arrived under a hostname this instance does not
+	 * serve.
+	 *
+	 * The SDK applies the same rule, but it applies it inside
+	 * StreamableHttpTransport - which this endpoint only reaches after
+	 * resetting the session and authenticating. Deciding it here as well is
+	 * what makes the check worth anything: the two read the same allow-list, so
+	 * they cannot disagree, and this one runs before anything has a side
+	 * effect.
+	 *
+	 * @throws MCPRequestRejectedException
+	 */
+	private static function rejectUnlessHostIsServed(): void
+	{
+		$sOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
+		$sHost   = $_SERVER['HTTP_HOST'] ?? null;
+
+		if (MCPHttp::IsAllowedHost($sOrigin, $sHost, MCPHelper::GetAllowedHosts())) {
+			return;
+		}
+
+		// The name that was refused goes to the log, not to the caller: an
+		// operator whose endpoint answers 403 needs to see it, and a caller
+		// probing for the configured hostnames does not.
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: neither its Origin (%s) nor its Host (%s) is in '%s'. "
+			.'Set that module parameter to the hostname this instance is served under.',
+			is_string($sOrigin) && $sOrigin !== '' ? $sOrigin : '-',
+			is_string($sHost) && $sHost !== '' ? $sHost : '-',
+			MCPHelper::MODULE_SETTING_ALLOWED_HOSTS
+		));
+
+		throw new MCPRequestRejectedException(
+			'This host is not served by the MCP endpoint.',
+			MCPRequestRejectedException::HTTP_FORBIDDEN
+		);
+	}
+
+	/**
+	 * Refuses a POST that does not announce a JSON body.
+	 *
+	 * A cross-origin fetch() is preflighted unless its Content-Type is one of
+	 * three the browser considers safe, none of which is application/json.
+	 * Requiring JSON therefore means every cross-origin call is preceded by an
+	 * OPTIONS this endpoint answers with nothing unless the origin is
+	 * allow-listed - so the browser never sends the call at all. Without it the
+	 * endpoint is reachable as a simple request, which is the whole CSRF class.
+	 *
+	 * GET and DELETE carry no body and are left alone.
+	 *
+	 * @throws MCPRequestRejectedException
+	 */
+	private static function rejectUnlessBodyIsJson(): void
+	{
+		if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+			return;
+		}
+
+		if (MCPHttp::IsJsonMediaType($_SERVER['CONTENT_TYPE'] ?? null)) {
+			return;
+		}
+
+		throw new MCPRequestRejectedException(
+			'A POST to the MCP endpoint must carry Content-Type: '.MCPHttp::JSON_MEDIA_TYPE.'.',
+			MCPRequestRejectedException::HTTP_UNSUPPORTED_MEDIA_TYPE
+		);
+	}
+
 	private static function isMCPAccessRestricted(): bool
 	{
 		return utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'secure_mcp_services', true) === true;
@@ -181,6 +259,13 @@ final class MCPController
 	{
 		if ($e instanceof MCPAuthException) {
 			return new MCPResult($e->getCode(), $e->getMessage());
+		}
+
+		if ($e instanceof MCPRequestRejectedException) {
+			$oResult = new MCPResult(MCPResult::REQUEST_REJECTED, $e->getMessage());
+			$oResult->httpStatus = $e->httpStatus();
+
+			return $oResult;
 		}
 
 		$sReference = bin2hex(random_bytes(8));
@@ -309,7 +394,7 @@ final class MCPController
 		// A throw can also happen after emitResponse() has already flushed a
 		// successful body, and a status set at that point is only noise.
 		if (!headers_sent()) {
-			http_response_code($bUnauthorized ? 401 : 500);
+			http_response_code($oResult->httpStatus ?? ($bUnauthorized ? 401 : 500));
 		}
 
 		$oP = new JsonPage();
@@ -348,8 +433,7 @@ final class MCPController
 			return [];
 		}
 
-		$aAllowed = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS, []);
-		if (!is_array($aAllowed) || !in_array($sOrigin, $aAllowed, true)) {
+		if (!in_array($sOrigin, MCPHelper::GetAllowedOrigins(), true)) {
 			return [];
 		}
 

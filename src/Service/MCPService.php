@@ -13,9 +13,13 @@ use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server;
 use Mcp\Server\Builder;
+use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
+use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
+use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use UserRights;
 
@@ -35,10 +39,43 @@ final class MCPService
 
 		$server = self::createServer($oPolicy);
 
-		$transport = new StreamableHttpTransport($request, $factory);
+		$transport = new StreamableHttpTransport($request, $factory, middleware: self::middleware($factory));
 		$response = $server->run($transport);
 
 		return ['request' => $request, 'response' => $response];
+	}
+
+	/**
+	 * The SDK's own stack, with the one piece that cannot be left at its
+	 * default replaced.
+	 *
+	 * DnsRebindingProtectionMiddleware allows localhost and nothing else unless
+	 * told otherwise, which answers 403 to every request a production instance
+	 * ever receives. The fix is to hand it the hostnames this instance is
+	 * served under - not to pass an empty middleware list, which would drop
+	 * CORS handling and protocol-version validation along with it, and which
+	 * the SDK logs a warning about for exactly that reason.
+	 *
+	 * When the hostname cannot be known - see MCPHelper::GetAllowedHosts() -
+	 * the middleware is left out rather than given a list that matches nothing.
+	 * The SDK documents that as the supported answer for a deployment fronted
+	 * by a proxy that validates Host itself.
+	 *
+	 * @return array<int, \Psr\Http\Server\MiddlewareInterface>
+	 */
+	private static function middleware(Psr17Factory $factory): array
+	{
+		$aAllowedHosts = MCPHelper::GetAllowedHosts();
+
+		$aMiddleware = [new CorsMiddleware(MCPHelper::GetAllowedOrigins())];
+
+		if (!in_array(MCPHttp::ANY_HOST, $aAllowedHosts, true)) {
+			$aMiddleware[] = new DnsRebindingProtectionMiddleware($aAllowedHosts, $factory, $factory);
+		}
+
+		$aMiddleware[] = new ProtocolVersionMiddleware();
+
+		return $aMiddleware;
 	}
 
 	private static function createServer(AccessPolicy $oPolicy): Server

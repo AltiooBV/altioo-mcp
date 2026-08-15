@@ -34,6 +34,27 @@ final class MCPHttp
 	private const REALM = 'iTop MCP';
 
 	/**
+	 * The one media type a JSON-RPC POST may carry.
+	 *
+	 * Not a formality: the three types a browser can send from a form or from
+	 * fetch() without a preflight - text/plain, application/x-www-form-urlencoded
+	 * and multipart/form-data - are exactly the ones this excludes. Requiring
+	 * application/json makes every cross-origin call preflighted, and a
+	 * preflight this endpoint does not answer is a call the browser never makes.
+	 */
+	public const JSON_MEDIA_TYPE = 'application/json';
+
+	/**
+	 * The entry in an allowed-hosts list that turns the Host check off.
+	 *
+	 * For a deployment whose hostname this module cannot know - app_root_url
+	 * written with iTop's %SERVER_NAME% placeholder, or a reverse proxy that
+	 * validates Host itself - the honest answer is to say so explicitly rather
+	 * than to allow-list a hostname nobody has.
+	 */
+	public const ANY_HOST = '*';
+
+	/**
 	 * The credential this request presented, captured before login.
 	 *
 	 * Held here rather than read back out of $_SERVER, so the superglobal can
@@ -160,6 +181,81 @@ final class MCPHttp
 		$sExisting = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
 
 		return is_string($sExisting) && $sExisting !== '' ? $sExisting : null;
+	}
+
+	/**
+	 * Whether the request reached this instance under a hostname it serves.
+	 *
+	 * The same rule the SDK's DnsRebindingProtectionMiddleware applies, decided
+	 * here as well because it has to run *before* LoginWebPage::ResetSession():
+	 * the reset is unauthenticated and happens on every request, so a page on
+	 * any website could otherwise make a logged-in user's browser call this
+	 * endpoint and end their iTop session. Checking the origin first turns that
+	 * into a refusal that touches nothing.
+	 *
+	 * Origin decides when it is present, Host when it is not - matching the
+	 * middleware exactly, so the two cannot reach opposite conclusions about
+	 * the same request.
+	 *
+	 * @param array<int, string> $aAllowedHosts Hostnames without port, or [ANY_HOST] to accept any.
+	 */
+	public static function IsAllowedHost(?string $sOrigin, ?string $sHost, array $aAllowedHosts): bool
+	{
+		if (in_array(self::ANY_HOST, $aAllowedHosts, true)) {
+			return true;
+		}
+
+		$aAllowedHosts = array_map('strtolower', $aAllowedHosts);
+
+		if (is_string($sOrigin) && $sOrigin !== '') {
+			$sOriginHost = parse_url($sOrigin, PHP_URL_HOST);
+
+			return is_string($sOriginHost)
+				&& $sOriginHost !== ''
+				&& in_array(strtolower($sOriginHost), $aAllowedHosts, true);
+		}
+
+		if (!is_string($sHost) || $sHost === '') {
+			// No Host at all is HTTP/1.0, which no MCP client speaks; the
+			// middleware lets it through, and so does this.
+			return true;
+		}
+
+		return in_array(strtolower(self::HostnameOf($sHost)), $aAllowedHosts, true);
+	}
+
+	/**
+	 * A Host header without its port. IPv6 literals keep their brackets, which
+	 * is the form parse_url() returns and therefore the form a list is written in.
+	 */
+	public static function HostnameOf(string $sHost): string
+	{
+		if (str_starts_with($sHost, '[')) {
+			$iClosing = strpos($sHost, ']');
+
+			return $iClosing === false ? $sHost : substr($sHost, 0, $iClosing + 1);
+		}
+
+		return explode(':', $sHost, 2)[0];
+	}
+
+	/**
+	 * Whether a POST body announces itself as JSON.
+	 *
+	 * Parameters are ignored, so "application/json; charset=utf-8" passes: the
+	 * point is not the exact spelling but that the caller could not have sent
+	 * this without a preflight.
+	 */
+	public static function IsJsonMediaType(?string $sContentType): bool
+	{
+		if (!is_string($sContentType)) {
+			return false;
+		}
+
+		$sMediaType = strtolower(trim(explode(';', $sContentType, 2)[0]));
+
+		// application/vnd.foo+json is still JSON, and some clients send it.
+		return $sMediaType === self::JSON_MEDIA_TYPE || str_ends_with($sMediaType, '+json');
 	}
 
 	/**
