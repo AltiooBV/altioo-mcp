@@ -35,6 +35,13 @@ final class DatamodelReader
 	 * Deliberately only the numeric ones: a format built from anything else is
 	 * reported without a pattern rather than with a wrong one.
 	 */
+	/**
+	 * Most values reported for one attribute. A datamodel enumeration never
+	 * comes close; anything that does is a list the model should be searching,
+	 * not reading.
+	 */
+	public const MAX_ALLOWED_VALUES = 100;
+
 	private const DATE_FORMAT_TOKENS = [
 		'Y' => '\d{4}',
 		'y' => '\d{2}',
@@ -198,11 +205,50 @@ final class DatamodelReader
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => $oAttDef instanceof iAttributeNoGroupBy, // iAttributeNoGroupBy is equivalent to sensitive attribute
-				'values'        => $oAttDef->GetAllowedValues(),
-			];
+			] + self::allowedValues($oAttDef);
 		}
 
 		return $aAttributes;
+	}
+
+	/**
+	 * What a client may put in an attribute, when that is a list worth sending.
+	 *
+	 * An enumeration is a handful of codes declared in the datamodel, and a
+	 * model that cannot see them invents them - so those are reported in full.
+	 *
+	 * An external key is not. GetAllowedValues() on one runs a query over the
+	 * whole target table and returns every row: on ticket.caller_id that is the
+	 * entire Person table, in a payload the caller pays for on every schema
+	 * read, describing objects the object-level rights of the calling user were
+	 * never consulted about. The target class is reported instead, which is
+	 * what a model needs to go and search it.
+	 *
+	 * Anything else that declares values is capped, because nothing in the
+	 * datamodel promises a short list.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function allowedValues(AttributeDefinition $oAttDef): array
+	{
+		if ($oAttDef->IsExternalKey()) {
+			return [
+				'values'      => null,
+				'targetClass' => $oAttDef->GetTargetClass(),
+				'valuesHint'  => 'Search the target class for the object you want, then pass its id.',
+			];
+		}
+
+		$aValues = $oAttDef->GetAllowedValues();
+		if (!is_array($aValues) || count($aValues) <= self::MAX_ALLOWED_VALUES) {
+			return ['values' => $aValues];
+		}
+
+		return [
+			'values'          => array_slice($aValues, 0, self::MAX_ALLOWED_VALUES, true),
+			'valuesTruncated' => true,
+			'valuesTotal'     => count($aValues),
+		];
 	}
 
 	/**
