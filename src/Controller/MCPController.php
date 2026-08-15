@@ -240,6 +240,12 @@ final class MCPController
 			$sResponse = json_encode($oJsonIssue);
 		}
 
+		// A throw can also happen after emitResponse() has already flushed a
+		// successful body, and a status set at that point is only noise.
+		if (!headers_sent()) {
+			http_response_code($oResult->code === MCPResult::UNAUTHORIZED ? 401 : 500);
+		}
+
 		$oP = new JsonPage();
 		self::addCorsHeader($oP);
 		$oP->SetData(json_decode($sResponse, true));
