@@ -4,9 +4,9 @@
   "description": "Altioo MCP iTop Extension",
   "license": "AGPL-3.0-or-later",
   "require": {
-    "php": ">=8.2",
+    "php": ">=8.2 <8.5",
     "composer-runtime-api": "^2.0",
-    "mcp/sdk": "^0.5.0"
+    "mcp/sdk": "^0.7.1"
   },
   "require-dev": {
     "phpunit/phpunit": "^10.5 || ^11.5"

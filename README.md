@@ -11,9 +11,14 @@ authenticated user could through the console.
 
 | | |
 |---|---|
-| iTop | 3.2 (current LTS) or later |
-| PHP | 8.2 or later |
+| iTop | **3.2 (current LTS)** or **3.3** |
+| PHP | **8.2 – 8.4** |
 | iTop modules | `authent-token` 2.2.1 or later (ships with iTop) |
+
+The PHP range is the intersection of what those iTop branches support — 3.3 requires 8.2 as a
+floor, and 8.4 is the newest PHP any of them validates. Note that iTop enforces its own ceiling
+too: **3.2.0–3.2.2 do not support PHP 8.4** (known issues), so on those you need 8.2 or 8.3.
+PHP 8.4 becomes available from iTop 3.2.3-1 onwards.
 
 ## What it exposes
 
