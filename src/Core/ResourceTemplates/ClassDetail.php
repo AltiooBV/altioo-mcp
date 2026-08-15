@@ -23,6 +23,12 @@ class ClassDetail extends AbstractMCPResourceTemplate
 		return 'Get details of a specific iTop class: attributes, relations and lifecycle. URI: itop://core/class/{class}. The core_class_schema tool returns the same thing for clients that do not read resource templates.';
 	}
 
+	/** The datamodel itself: what classes exist and what they look like. */
+	public function getToolset(): string
+	{
+		return 'datamodel';
+	}
+
 	protected function getResourceNamespace(): string
 	{
 		return 'core';

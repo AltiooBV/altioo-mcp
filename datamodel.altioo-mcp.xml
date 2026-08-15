@@ -267,6 +267,15 @@
         is callable, but is advertised to nobody. High enough that a normal
         installation is one page.
       -->
+      <!--
+        Toolsets this instance serves. A toolset is the functional group an
+        element declares - the base extension ships "datamodel", "objects" and
+        "relations", and a pack declares its own. Empty means every toolset,
+        which is what an instance that has not been asked to narrow wants.
+        Listing them is the positive counterpart to mcp_disabled_tools: a tool
+        an update adds to a pack is then off until someone says otherwise.
+      -->
+      <mcp_enabled_toolsets type="array"/>
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
       <!--
         URL of the RFC 9728 protected-resource metadata document, served by

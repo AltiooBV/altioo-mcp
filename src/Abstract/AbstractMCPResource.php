@@ -75,6 +75,23 @@ abstract class AbstractMCPResource
 		return null;
 	}
 
+	/**
+	 * The functional group this element belongs to, e.g. 'datamodel' or
+	 * 'tickets'. Defaults to the namespace, which is the vendor.
+	 *
+	 * The two answer different questions. A namespace says who owns an
+	 * identifier, and exists so that two vendors cannot claim one name. A
+	 * toolset says what a thing is for, and exists so that an operator can
+	 * turn on the half of a pack an instance actually uses - through
+	 * mcp_enabled_toolsets, or through a token scope. A pack that does not
+	 * care gets one toolset named after itself, which is the right answer for
+	 * a pack with four tools in it.
+	 */
+	public function getToolset(): string
+	{
+		return $this->getNamespace();
+	}
+
 	public function isAvailable(): bool
 	{
 		return true;

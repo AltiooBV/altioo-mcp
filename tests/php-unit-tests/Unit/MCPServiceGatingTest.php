@@ -32,14 +32,17 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class MCPServiceGatingTest extends TestCase
 {
-	/** @param array<int, string> $aDisabled */
-	private function isHidden(object $oElement, array $aDisabled): bool
+	/**
+	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets Empty means every toolset is served.
+	 */
+	private function isHidden(object $oElement, array $aDisabled, array $aToolsets = []): bool
 	{
 		// No setAccessible(): it has been a no-op since PHP 8.1 and is
 		// deprecated in 8.5, which this suite treats as a failure.
 		$oMethod = new ReflectionMethod(MCPService::class, 'isHidden');
 
-		return $oMethod->invoke(null, $oElement->getQualifiedName(), $oElement, $aDisabled);
+		return $oMethod->invoke(null, $oElement->getQualifiedName(), $oElement, $aDisabled, $aToolsets);
 	}
 
 	public function testAnElementIsServedWhenNothingDisablesIt(): void
@@ -65,5 +68,37 @@ class MCPServiceGatingTest extends TestCase
 	public function testAnElementCanTakeItselfOut(): void
 	{
 		$this->assertTrue($this->isHidden(new UnavailableTool(), []));
+	}
+
+	/**
+	 * Empty is the default and has to mean "everything", not "nothing": an
+	 * instance that has never heard of toolsets must serve its whole surface.
+	 */
+	public function testNoToolsetListServesEverything(): void
+	{
+		$this->assertFalse($this->isHidden(new FixtureTool(), [], []));
+	}
+
+	public function testAToolsetThatIsServedLetsTheElementThrough(): void
+	{
+		$oTool = new FixtureTool();
+
+		$this->assertFalse($this->isHidden($oTool, [], [$oTool->getToolset()]));
+	}
+
+	public function testAToolsetThatIsNotServedHidesTheElement(): void
+	{
+		$this->assertTrue($this->isHidden(new FixtureTool(), [], ['datamodel', 'something-else']));
+	}
+
+	/**
+	 * A pack that says nothing about toolsets gets one named after its
+	 * namespace, so an operator can still turn the pack on or off as a whole.
+	 */
+	public function testTheDefaultToolsetIsTheNamespace(): void
+	{
+		$oTool = new FixtureTool();
+
+		$this->assertSame($oTool->getNamespace(), $oTool->getToolset());
 	}
 }

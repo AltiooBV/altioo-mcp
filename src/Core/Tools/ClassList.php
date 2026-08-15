@@ -27,6 +27,13 @@ class ClassList extends AbstractMCPTool
 		return 'core';
 	}
 
+	/** The datamodel itself: what classes exist and what they look like. */
+	public function getToolset(): string
+	{
+		return 'datamodel';
+	}
+
+
 	public function getTitle(): ?string
 	{
 		return 'List Classes';

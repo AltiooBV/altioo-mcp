@@ -43,6 +43,13 @@ class ObjectGetRelated extends AbstractMCPTool
 		return 'core';
 	}
 
+	/** Walking the relation graph, which is a different question from reading an object and a much heavier one. */
+	public function getToolset(): string
+	{
+		return 'relations';
+	}
+
+
 	public function getTitle(): ?string
 	{
 		return 'Get Related Objects';

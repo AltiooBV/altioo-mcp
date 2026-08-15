@@ -64,6 +64,12 @@ class MCPHelper
 	const MODULE_SETTING_RESOURCE_METADATA = 'mcp_protected_resource_metadata';
 
 	/**
+	 * Toolsets served by this instance. Empty means every toolset, which is
+	 * the right default for an instance that has not been asked to narrow.
+	 */
+	const MODULE_SETTING_ENABLED_TOOLSETS = 'mcp_enabled_toolsets';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -91,6 +97,30 @@ class MCPHelper
 	public static function LogError(string $sMessage, array $aContext = []): void
 	{
 		MCPLog::Error($sMessage, null, $aContext);
+	}
+
+	/**
+	 * Toolsets the operator turned on, or an empty list meaning all of them.
+	 *
+	 * The positive counterpart to mcp_disabled_tools: that one names what must
+	 * go, this one names what may stay. Naming what may stay is what an
+	 * operator wants when a pack they did not write adds tools they have not
+	 * read, since a tool added by an update is off until someone says
+	 * otherwise.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function GetEnabledToolsets(): array
+	{
+		$aToolsets = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ENABLED_TOOLSETS, []);
+		if (!is_array($aToolsets)) {
+			$sType = gettype($aToolsets);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_ENABLED_TOOLSETS."' should be an array instead of $sType");
+
+			return [];
+		}
+
+		return array_values(array_filter($aToolsets, 'is_string'));
 	}
 
 	/**

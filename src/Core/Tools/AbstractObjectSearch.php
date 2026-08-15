@@ -40,6 +40,13 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		return 'core';
 	}
 
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+
 	/**
 	 * The two properties every paged tool declares, so that both spell them
 	 * the same way.

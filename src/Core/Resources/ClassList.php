@@ -22,6 +22,12 @@ class ClassList extends AbstractMCPResource
 		return 'List all available iTop classes. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_class_list tool for the same list narrowed by category or name.';
 	}
 
+	/** The datamodel itself: what classes exist and what they look like. */
+	public function getToolset(): string
+	{
+		return 'datamodel';
+	}
+
 	protected function getResourceNamespace(): string
 	{
 		return 'core';

@@ -26,6 +26,13 @@ class ObjectGet extends AbstractMCPTool
 		return 'core';
 	}
 
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+
 	public function getTitle(): ?string
 	{
 		return 'Get Object';

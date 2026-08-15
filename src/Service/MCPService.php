@@ -45,22 +45,24 @@ final class MCPService
 			->setSession(new StatelessSessionStore());
 
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+		$aToolsets = MCPHelper::GetEnabledToolsets();
 
-		$builder = self::registerResources($builder, $aDisabled);
-		$builder = self::registerResourceTemplates($builder, $aDisabled);
-		$builder = self::registerTools($builder, $aDisabled);
-		$builder = self::registerPrompts($builder, $aDisabled);
+		$builder = self::registerResources($builder, $aDisabled, $aToolsets);
+		$builder = self::registerResourceTemplates($builder, $aDisabled, $aToolsets);
+		$builder = self::registerTools($builder, $aDisabled, $aToolsets);
+		$builder = self::registerPrompts($builder, $aDisabled, $aToolsets);
 
 		return $builder->build();
 	}
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerResources(Builder $builder, array $aDisabled): Builder
+	private static function registerResources(Builder $builder, array $aDisabled, array $aToolsets): Builder
 	{
 		foreach (MCPRegistry::GetResources() as $sUri => $resource) {
-			if (self::isHidden($sUri, $resource, $aDisabled)) {
+			if (self::isHidden($sUri, $resource, $aDisabled, $aToolsets)) {
 				continue;
 			}
 
@@ -83,11 +85,12 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerResourceTemplates(Builder $builder, array $aDisabled): Builder
+	private static function registerResourceTemplates(Builder $builder, array $aDisabled, array $aToolsets): Builder
 	{
 		foreach (MCPRegistry::GetResourceTemplates() as $sUriTemplate => $resourceTemplate) {
-			if (self::isHidden($sUriTemplate, $resourceTemplate, $aDisabled)) {
+			if (self::isHidden($sUriTemplate, $resourceTemplate, $aDisabled, $aToolsets)) {
 				continue;
 			}
 
@@ -108,11 +111,12 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerTools(Builder $builder, array $aDisabled): Builder
+	private static function registerTools(Builder $builder, array $aDisabled, array $aToolsets): Builder
 	{
 		foreach (MCPRegistry::GetTools() as $sName => $tool) {
-			if (self::isHidden($sName, $tool, $aDisabled)) {
+			if (self::isHidden($sName, $tool, $aDisabled, $aToolsets)) {
 				continue;
 			}
 
@@ -134,11 +138,12 @@ final class MCPService
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets
 	 */
-	private static function registerPrompts(Builder $builder, array $aDisabled): Builder
+	private static function registerPrompts(Builder $builder, array $aDisabled, array $aToolsets): Builder
 	{
 		foreach (MCPRegistry::GetPrompts() as $sName => $prompt) {
-			if (self::isHidden($sName, $prompt, $aDisabled)) {
+			if (self::isHidden($sName, $prompt, $aDisabled, $aToolsets)) {
 				continue;
 			}
 
@@ -158,9 +163,10 @@ final class MCPService
 	/**
 	 * Whether an element is kept out of the server being built.
 	 *
-	 * Everything registered goes through the same three filters, whatever its
-	 * kind: what the element says about itself (isAvailable), what the caller
-	 * holds (requiredProfiles), and what the operator turned off
+	 * Everything registered goes through the same filters, whatever its kind:
+	 * what the element says about itself (isAvailable), what the caller holds
+	 * (requiredProfiles), which toolsets this instance serves
+	 * (mcp_enabled_toolsets) and what the operator turned off
 	 * (mcp_disabled_tools). Not being registered means it is neither listed nor
 	 * callable - the SDK can only route to what the builder was given.
 	 *
@@ -170,10 +176,15 @@ final class MCPService
 	 *
 	 * @param string             $sIdentifier Qualified tool/prompt name, or resource URI, as awarded by the registry.
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aToolsets   Toolsets served, or empty for all of them.
 	 */
-	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled): bool
+	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, array $aToolsets): bool
 	{
 		if (!$oElement->isAvailable()) {
+			return true;
+		}
+
+		if (!empty($aToolsets) && !in_array($oElement->getToolset(), $aToolsets, true)) {
 			return true;
 		}
 

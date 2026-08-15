@@ -41,6 +41,12 @@ final class MCPRegistry
 	/** No '_', so the separator in a qualified name stays unambiguous. */
 	private const NAMESPACE_PATTERN = '/^[a-zA-Z0-9-]{1,64}$/';
 
+	/**
+	 * Same shape as a namespace: a toolset name is written by an operator into
+	 * config, and read out of a token scope, so it has to survive both.
+	 */
+	private const TOOLSET_PATTERN = '/^[a-zA-Z0-9-]{1,64}$/';
+
 	/** Reserved for this module, like the core resource URI namespace. */
 	private const RESERVED_NAMESPACE = 'core';
 
@@ -325,6 +331,15 @@ final class MCPRegistry
 				'%s: the "%s" namespace belongs to the base extension. Use your own vendor or module name; to deliberately replace a core element, declare it through overrides().',
 				$sClass,
 				self::RESERVED_NAMESPACE
+			));
+		}
+
+		$sToolset = $oElement->getToolset();
+		if (!preg_match(self::TOOLSET_PATTERN, $sToolset)) {
+			throw new MCPRegistrationException(sprintf(
+				'%s: "%s" is not a usable toolset. Expected 1 to 64 characters matching [a-zA-Z0-9-]; an operator writes it into mcp_enabled_toolsets and into token scopes.',
+				$sClass,
+				$sToolset
 			));
 		}
 
