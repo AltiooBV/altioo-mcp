@@ -516,6 +516,16 @@ final class MCPController
 
 	 /**
 	  * Truncate a string to fit in a TEXT column (max 65535 bytes).
+	  *
+	  * Bytes throughout. Deciding in bytes and then cutting in characters is
+	  * the bug this avoids: request_params is JSON holding whatever the caller
+	  * sent, so one accented or CJK character is two or three bytes, and a cut
+	  * to 65532 *characters* can still be three times the column. MySQL then
+	  * truncates it itself, or refuses the insert under a strict SQL mode -
+	  * and the audit row is either wrong or missing.
+	  *
+	  * mb_strcut cuts to a byte count without splitting a codepoint, which is
+	  * the one thing a plain substr() would get wrong.
 	  */
 	private static function truncate(?string $sValue, int $iMaxBytes): ?string
 	{
@@ -527,6 +537,8 @@ final class MCPController
 			return $sValue;
 		}
 
-		return mb_substr($sValue, 0, $iMaxBytes - 3).'...';
+		$sEllipsis = '...';
+
+		return mb_strcut($sValue, 0, $iMaxBytes - strlen($sEllipsis)).$sEllipsis;
 	}
 }
