@@ -62,6 +62,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle |
+| `core_object_find_by_name` | Find objects by free text across every readable class, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria |
 | `core_object_get` | Retrieve a single object by class and ID |

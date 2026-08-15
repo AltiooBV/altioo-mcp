@@ -8,7 +8,39 @@ All notable changes to this extension are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **`core_object_find_by_name`**, the console's global search as a tool. Every other reading
+  tool needs the class before it can do anything, and a question rarely arrives with one. It
+  is iTop's own search — the same needle splitting and quoted phrase, the same
+  `full_text_needle_min` floor, `MetaModel::GetClasses('searchable')` or `EnumChildClasses()`
+  when a class is named, `AddCondition_FullText()` over every searchable scalar attribute, and
+  the same leaf rule that stops one object being reported once per class in its ancestry. The
+  rights are `core_object_get`'s, applied per object. `full_text_chunk_duration` bounds the
+  scan and `truncated` says when it stopped early.
+- `has_more` and `next_offset` on both searches. A page can come back shorter than `limit`
+  because object-level rights removed rows from it, and a caller that reads a short page as
+  the end of the set stops early and silently.
+
+### Fixed
+
+- **`core_my_open_tickets` asks in the terms the instance actually uses.** It named
+  `UserRequest` and two status codes, so it was wrong without a ticketing module, wrong for a
+  profile that cannot read tickets, and wrong wherever a delta had renamed the attributes. It
+  now queries `Ticket` on `operational_status`, checks every attribute for existence and read
+  rights before naming it, and withdraws itself through `isAvailable()` when too little
+  survives. It also still called `ObjectSearchByOQL`, which has not been the name since the
+  identifiers became `snake_case`.
+- Two queries per row of every search result, both for something already in hand: `Fetch()`
+  returns each row as its final class, so `GetFinalClassName()` asked for a name that had just
+  arrived and `GetObject()` re-read an object already loaded. Both rights checks stay. The
+  probe `DBObjectSet` goes too — its constructor runs no query, so it never caught the error
+  it was written for.
+
+### Packaging
+
+- The module ships its own `.htaccess` and `web.config`. iTop's `extensions/` rules deny PHP,
+  so the documented endpoint answered `403` on a stock Apache or IIS install.
 
 ## [1.0.0] - 2026-08-16
 
