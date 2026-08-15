@@ -1,5 +1,9 @@
 README.md
 doc
+.DS_Store
+tests
+phpunit.xml.dist
+.phpunit.result.cache
 assets/css/.gitkeep
 assets/img/.gitkeep
 assets/js/.gitkeep

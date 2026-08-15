@@ -1,0 +1,137 @@
+<?php
+/**
+ * @copyright Copyright (C) 2026 Altioo
+ * @license   http://opensource.org/licenses/AGPL-3.0
+ */
+
+declare(strict_types=1);
+
+namespace Altioo\iTop\Extension\MCP\Test\Integration;
+
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use PHPUnit\Framework\Attributes\DataProvider;
+use DBObjectSearch;
+use DBObjectSet;
+use Dict;
+use MetaModel;
+
+/**
+ * Everything the module contributes to a compiled datamodel that is not a
+ * class: module parameters, the gate profile, token scopes, and dictionary
+ * entries.
+ */
+class ModuleConfigurationTest extends ItopDataTestCaseAlias
+{
+	/**
+	 * Read by MCPController::isMCPAccessRestricted(). It was reachable in code
+	 * long before it was declared, which left admins with no way to discover it.
+	 */
+	public function testSecureMcpServicesIsDeclaredAndDefaultsToOn(): void
+	{
+		$this->assertTrue(
+			MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, 'secure_mcp_services', null),
+			'secure_mcp_services must be declared in module_parameters and default to true'
+		);
+	}
+
+	public function testAllowedProfilesIsAnArrayContainingTheGateProfile(): void
+	{
+		$aProfiles = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', null);
+
+		$this->assertIsArray($aProfiles);
+		$this->assertContains('Administrator', $aProfiles);
+		$this->assertContains('MCP Services User', $aProfiles);
+	}
+
+	public function testLoggingSettingsAreDeclared(): void
+	{
+		$this->assertIsBool(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, null));
+		$this->assertIsArray(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_METHOD, null));
+	}
+
+	/**
+	 * MCPController::logIfConfigured() only writes an audit row when the method
+	 * appears in this list, so the methods it extracts must be in it.
+	 */
+	public function testLoggedMethodsCoverTheMethodsTheControllerExtracts(): void
+	{
+		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_METHOD, []);
+
+		foreach (['tools/call', 'resources/read', 'prompts/get'] as $sMethod) {
+			$this->assertContains($sMethod, $aLogged);
+		}
+	}
+
+	/**
+	 * The message raised on EXIT_CODE_NOTAUTHORIZED names this profile; it has
+	 * to exist for that message to mean anything.
+	 */
+	public function testMcpServicesUserProfileExists(): void
+	{
+		$oSearch = DBObjectSearch::FromOQL('SELECT URP_Profiles WHERE name = :name');
+		$oSet = new DBObjectSet($oSearch, [], ['name' => 'MCP Services User']);
+
+		$this->assertSame(1, $oSet->Count(), 'the MCP Services User profile is missing from the compiled datamodel');
+	}
+
+	#[DataProvider('tokenClassProvider')]
+	public function testTokenScopeOffersMcp(string $sClass): void
+	{
+		if (!MetaModel::IsValidClass($sClass)) {
+			$this->markTestSkipped("{$sClass} is not present; the authent-token module is not installed.");
+		}
+
+		$aValues = array_keys(MetaModel::GetAttributeDef($sClass, 'scope')->GetAllowedValues());
+
+		$this->assertContains('MCP', $aValues);
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function tokenClassProvider(): array
+	{
+		return [
+			'PersonalToken' => ['PersonalToken'],
+			'UserToken' => ['UserToken'],
+		];
+	}
+
+	/**
+	 * Dict::S() returns the key itself when a translation is missing, so the
+	 * console renders raw keys like "Class:EventMCPService". Comparing the
+	 * lookup against the key is the way to catch that.
+	 */
+	#[DataProvider('dictionaryKeyProvider')]
+	public function testDictionaryEntryIsTranslated(string $sKey): void
+	{
+		$this->assertNotSame($sKey, Dict::S($sKey), "dictionary entry missing for '{$sKey}'");
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function dictionaryKeyProvider(): array
+	{
+		$aKeys = [
+			'Class:EventMCPService',
+			'Class:EventMCPService/Attribute:mcp_method',
+			'Class:EventMCPService/Attribute:mcp_name',
+			'Class:EventMCPService/Attribute:status',
+			'Class:EventMCPService/Attribute:status/Value:success',
+			'Class:EventMCPService/Attribute:status/Value:error',
+			'Class:EventMCPService/Attribute:request_params',
+			'fieldset:EventMCPService:main',
+			'fieldset:EventMCPService:details',
+			'Class:PersonalToken/Attribute:scope/Value:MCP',
+			'Class:UserToken/Attribute:scope/Value:MCP',
+		];
+
+		return array_combine($aKeys, array_map(static fn (string $s): array => [$s], $aKeys));
+	}
+
+	/**
+	 * The class label drives the console list header and the object title.
+	 */
+	public function testClassLabelIsNotTheRawClassName(): void
+	{
+		$this->assertSame('MCP Service Call', MetaModel::GetName('EventMCPService'));
+	}
+}

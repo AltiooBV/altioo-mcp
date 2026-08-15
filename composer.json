@@ -9,10 +9,26 @@
     "composer-runtime-api": "^2.0",
     "mcp/sdk": "^0.5.0"
   },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5 || ^11.5"
+  },
   "autoload": {
     "psr-4": {
       "Altioo\\iTop\\Extension\\MCP\\": "src"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Altioo\\iTop\\Extension\\MCP\\Test\\": "tests"
+    },
+    "exclude-from-classmap": [
+      "/tests/Support/log_doubles.php"
+    ]
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:unit": "phpunit --testsuite unit",
+    "test:integration": "phpunit --testsuite integration"
   },
   "config": {
     "sort-packages": true,
