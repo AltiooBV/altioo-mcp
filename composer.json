@@ -5,7 +5,7 @@
   "license": "proprietary",
   "version": "1.0.0",
   "require": {
-    "php": ">=8.3 <8.4",
+    "php": ">=8.2",
     "composer-runtime-api": "^2.0",
     "mcp/sdk": "^0.5.0"
   },
@@ -20,12 +20,12 @@
     "classmap-authoritative": true,
     "preferred-install": "dist",
     "platform": {
-      "php": "8.3.0"
+      "php": "8.2.0"
     },
     "allow-plugins": {
       "php-http/discovery": true
     },
-        "autoloader-suffix": "AltiooMcpExtension"
+    "autoloader-suffix": "AltiooMcpExtension"
   },
   "minimum-stability": "stable",
   "prefer-stable": true
