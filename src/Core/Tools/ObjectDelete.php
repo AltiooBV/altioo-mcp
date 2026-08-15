@@ -114,7 +114,7 @@ class ObjectDelete extends AbstractMCPTool
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$sKeyFinal = MetaModel::DBGetKey($class);
+			$sKeyFinal = MetaModel::DBGetKey($sFinalClass);
 			$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
 			$oSetFinal = new DBObjectSet($oSearchFinal);
 			// Based on GetRelated - object search manages read access

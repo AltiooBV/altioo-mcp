@@ -100,10 +100,10 @@ class ObjectGet extends AbstractMCPTool
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$sKeyFinal = MetaModel::DBGetKey($class);
+			$sKeyFinal = MetaModel::DBGetKey($sFinalClass);
 			$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
 			$oSetFinal = new DBObjectSet($oSearchFinal);
-			if (!UserRights::IsActionAllowed($sFinalClass,  UR_ACTION_READ, $oSet)) {
+			if (!UserRights::IsActionAllowed($sFinalClass,  UR_ACTION_READ, $oSetFinal)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			//Get it again with the correct class
