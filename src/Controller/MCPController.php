@@ -56,7 +56,7 @@ final class MCPController
 			// TypeError or a missing class here would otherwise escape uncaught -
 			// producing a bare 500 with no audit entry.
 			$oResult = self::buildErrorResult($e);
-			$oResult->mcpMethod = MCPHelper::MCP_METHOD_PARAM;
+			$oResult->mcpMethod = MCPHelper::MCP_METHOD_EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
 			self::outputJsonResultException($oResult);
 		}

@@ -37,7 +37,7 @@ final class MCPService
 	private static function createServer(): Server
 	{
 		$builder = Server::builder()
-			->setServerInfo('Altioo iTop MCP Base', '1.0.0', 'Altioo iTop MCP extension framework')
+			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
 

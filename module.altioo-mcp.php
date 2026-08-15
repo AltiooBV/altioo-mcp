@@ -3,6 +3,10 @@
 // iTop module definition file
 //
 
+// The version below, the one in extension.xml and MCPHelper::VERSION are the
+// same string. This file is read by the setup before the module's autoloader
+// exists, so it cannot reference the constant; ModuleMetadataTest fails if the
+// three ever drift apart. MCPHelper::VERSION documents the semver policy.
 SetupWebPage::AddModule(
 	__FILE__, // Path to the current file, all other file names are relative to the directory containing this file
 	'altioo-mcp/1.0.0',

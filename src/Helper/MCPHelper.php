@@ -12,8 +12,23 @@ class MCPHelper
 {
 	const MODULE_NAME = 'altioo-mcp';
 
+	/**
+	 * Single source of truth for the module version.
+	 *
+	 * extension.xml and module.altioo-mcp.php are read by the iTop setup before
+	 * this module's autoloader exists, so they carry the same string literally;
+	 * ModuleMetadataTest pins the three together.
+	 *
+	 * Semver applies to what a downstream tool pack can touch: the abstracts
+	 * (AbstractMCPTool / Resource / ResourceTemplate / Prompt), MCPRegistry,
+	 * MCPExtensionCollector, iMCPServiceProvider and the helpers under
+	 * Helper/. A breaking change to any of those is a major bump; a new
+	 * optional hook with a default implementation is a minor one.
+	 */
+	const VERSION = '1.0.0';
+
 	const MODULE_SETTING_LOG = 'log_mcp_service';
-	const DEFAULT_LOG_SETTING = false;
+	const DEFAULT_LOG_SETTING = true;
 	const MODULE_SETTING_LOG_METHOD = 'log_mcp_method';
 
 	const MODULE_SETTING_LOG_LEVEL = 'log_mcp_level';
@@ -31,7 +46,12 @@ class MCPHelper
 	 */
 	const MODULE_SETTING_DISABLED = 'mcp_disabled_tools';
 
-	const MCP_METHOD_PARAM = 'error';
+	/**
+	 * Pseudo-method stamped on the audit row when the request died before its
+	 * JSON-RPC method could be read. Must match an entry of log_mcp_method,
+	 * otherwise exceptions are silently dropped from the audit trail.
+	 */
+	const MCP_METHOD_EXCEPTION = 'exceptions';
 
 	public function __construct()
 	{

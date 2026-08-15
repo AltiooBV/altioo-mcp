@@ -82,6 +82,44 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * A request that dies before its JSON-RPC method could be read is audited
+	 * under this pseudo-method. It goes through the very same allow-list, so a
+	 * constant that is not in the list means exceptions are never audited -
+	 * the case where an audit trail is worth the most.
+	 */
+	public function testTheExceptionPseudoMethodIsAudited(): void
+	{
+		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_METHOD, []);
+
+		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, $aLogged);
+	}
+
+	/**
+	 * Read by MCPService when building the server. Must default to empty: a
+	 * kill switch that hides something out of the box would look like a bug.
+	 */
+	public function testDisabledToolsIsDeclaredAndDefaultsToEmpty(): void
+	{
+		$aDisabled = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_DISABLED, null);
+
+		$this->assertIsArray($aDisabled, 'mcp_disabled_tools must be declared in module_parameters');
+		$this->assertSame([], $aDisabled);
+	}
+
+	/**
+	 * The fallback baked into the code must not contradict the value the setup
+	 * compiles, or the module behaves differently depending on whether the
+	 * parameter survived a config edit.
+	 */
+	public function testTheLoggingDefaultAgreesWithTheCompiledDatamodel(): void
+	{
+		$this->assertSame(
+			MCPHelper::DEFAULT_LOG_SETTING,
+			MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, null)
+		);
+	}
+
+	/**
 	 * The message raised on EXIT_CODE_NOTAUTHORIZED names this profile; it has
 	 * to exist for that message to mean anything.
 	 */
