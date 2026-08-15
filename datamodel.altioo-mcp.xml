@@ -127,6 +127,31 @@
           </values>
         </field>
 
+        <!-- Wall-clock duration of the whole request, in milliseconds -->
+        <field id="duration_ms" xsi:type="AttributeInteger">
+          <sql>duration_ms</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+        </field>
+
+        <!-- Size of the response body, in bytes -->
+        <field id="response_bytes" xsi:type="AttributeInteger">
+          <sql>response_bytes</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+        </field>
+
+        <!-- Correlates this row with the matching entry in log/error.log -->
+        <field id="error_ref" xsi:type="AttributeString">
+          <sql>error_ref</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>32</max_size>
+        </field>
+
         <!-- Raw JSON request payload for audit/debugging -->
         <field id="request_params" xsi:type="AttributeText">
           <sql>request_params</sql>
@@ -160,6 +185,12 @@
                     <item id="status">
                       <rank>50</rank>
                     </item>
+                    <item id="duration_ms">
+                      <rank>60</rank>
+                    </item>
+                    <item id="response_bytes">
+                      <rank>70</rank>
+                    </item>
                   </items>
                 </item>
               </items>
@@ -172,6 +203,9 @@
                   <items>
                     <item id="message">
                       <rank>10</rank>
+                    </item>
+                    <item id="error_ref">
+                      <rank>15</rank>
                     </item>
                     <item id="request_params">
                       <rank>20</rank>
@@ -222,6 +256,12 @@
         <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[The request completed without error]]></entry>
         <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Error]]></entry>
         <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[The request failed]]></entry>
+        <entry id="Class:EventMCPService/Attribute:duration_ms"><![CDATA[Duration (ms)]]></entry>
+        <entry id="Class:EventMCPService/Attribute:duration_ms+"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
+        <entry id="Class:EventMCPService/Attribute:response_bytes"><![CDATA[Response size (bytes)]]></entry>
+        <entry id="Class:EventMCPService/Attribute:response_bytes+"><![CDATA[Size of the response body sent back to the client]]></entry>
+        <entry id="Class:EventMCPService/Attribute:error_ref"><![CDATA[Log reference]]></entry>
+        <entry id="Class:EventMCPService/Attribute:error_ref+"><![CDATA[Reference of the matching entry in log/error.log, for an error answered generically]]></entry>
         <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Request parameters]]></entry>
         <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
         <entry id="fieldset:EventMCPService:main"><![CDATA[General information]]></entry>
@@ -272,6 +312,12 @@
         <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[La requête s'est terminée sans erreur]]></entry>
         <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Erreur]]></entry>
         <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:EventMCPService/Attribute:duration_ms"><![CDATA[Durée (ms)]]></entry>
+        <entry id="Class:EventMCPService/Attribute:duration_ms+"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
+        <entry id="Class:EventMCPService/Attribute:response_bytes"><![CDATA[Taille de la réponse (octets)]]></entry>
+        <entry id="Class:EventMCPService/Attribute:response_bytes+"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
+        <entry id="Class:EventMCPService/Attribute:error_ref"><![CDATA[Référence de log]]></entry>
+        <entry id="Class:EventMCPService/Attribute:error_ref+"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
         <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Paramètres de la requête]]></entry>
         <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
         <entry id="fieldset:EventMCPService:main"><![CDATA[Informations générales]]></entry>

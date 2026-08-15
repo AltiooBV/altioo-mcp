@@ -29,6 +29,15 @@ final class MCPController
 	{
 		new MCPHelper();
 
+		// Before anything that needs a user: a preflight carries no credential
+		// by definition, so answering it after DoLogin() would answer 401 and
+		// the browser would never send the real request.
+		if (self::isPreflight()) {
+			self::emitPreflight();
+
+			return;
+		}
+
 		// One tag per MCP scope this instance declares. iTop honours a token
 		// scope only when a tag of the same name is on the stack, so a scope
 		// nobody pushes is a token that cannot log in - including the ones a
@@ -39,6 +48,7 @@ final class MCPController
 			$aCtx[] = new ContextTag($sTag);
 		}
 		$oKPI = new ExecutionKPI();
+		$fStarted = microtime(true);
 
 		try {
 			$oKPI->ComputeAndReport('Data model loaded');
@@ -72,7 +82,36 @@ final class MCPController
 			self::outputJsonResultException($oResult);
 		}
 
+		$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000);
+
 		self::logIfConfigured($oResult);
+	}
+
+	/**
+	 * A CORS preflight, which is the one request that reaches this endpoint
+	 * without a credential and must still be answered.
+	 */
+	private static function isPreflight(): bool
+	{
+		return ($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS'
+			&& ($_SERVER['HTTP_ORIGIN'] ?? '') !== '';
+	}
+
+	/**
+	 * Answers a preflight, and tells the browser nothing when the origin is not
+	 * one the operator allow-listed.
+	 *
+	 * A 204 either way: refusing the preflight itself would say which origins
+	 * are configured, and the browser blocks the real request just as firmly
+	 * when the headers are simply absent.
+	 */
+	private static function emitPreflight(): void
+	{
+		http_response_code(204);
+
+		foreach (self::corsHeaders() as $sName => $sValue) {
+			header($sName.': '.$sValue, true);
+		}
 	}
 
 	private static function isMCPAccessRestricted(): bool
@@ -146,10 +185,13 @@ final class MCPController
 			$e->getLine()
 		));
 
-		return new MCPResult(
+		$oResult = new MCPResult(
 			MCPResult::INTERNAL_ERROR,
 			'The MCP request could not be completed. Server log reference: '.$sReference
 		);
+		$oResult->errorReference = $sReference;
+
+		return $oResult;
 	}
 
 	private static function emitResponse(ResponseInterface $response): MCPResult
@@ -158,6 +200,10 @@ final class MCPController
 			foreach ($values as $value) {
 				header(sprintf('%s: %s', $name, $value), false);
 			}
+		}
+
+		foreach (self::corsHeaders() as $sName => $sValue) {
+			header($sName.': '.$sValue, true);
 		}
 
 		http_response_code($response->getStatusCode());
@@ -171,6 +217,7 @@ final class MCPController
 
 		// Inspect before emitting — no double decode
 		$oResult = self::buildResultFromBody($response, $sBody);
+		$oResult->responseBytes = strlen($sBody);
 
 		echo $sBody;
 
@@ -278,21 +325,50 @@ final class MCPController
 	 * logged-in user's browser session. Default is an empty list, i.e. no CORS
 	 * header at all, which is correct for a token-authenticated endpoint called
 	 * from a backend.
+	 *
+	 * The same set answers the preflight, the successful response and the error
+	 * response. Sending them on failures only - which is what happens when the
+	 * success path forwards the SDK's headers and nothing else - lets a browser
+	 * client read every error and no result.
+	 *
+	 * @return array<string, string> Header name => value, empty when the origin is not allowed.
 	 */
-	private static function addCorsHeader(JsonPage $oP): void
+	private static function corsHeaders(): array
 	{
 		$sOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 		if ($sOrigin === '') {
-			return;
+			return [];
 		}
 
 		$aAllowed = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS, []);
 		if (!is_array($aAllowed) || !in_array($sOrigin, $aAllowed, true)) {
-			return;
+			return [];
 		}
 
-		$oP->add_header('Access-Control-Allow-Origin: '.$sOrigin);
-		$oP->add_header('Vary: Origin');
+		return [
+			'Access-Control-Allow-Origin' => $sOrigin,
+			// Anything but Origin-independent: a cache that missed this would
+			// serve one origin's response to another.
+			'Vary'                        => 'Origin',
+			// Streamable HTTP is POST for calls, GET for a stream and DELETE to
+			// end a session; the SDK answers all three.
+			'Access-Control-Allow-Methods'  => 'POST, GET, DELETE, OPTIONS',
+			// Authorization and Auth-Token carry the credential, Mcp-Session-Id
+			// and MCP-Protocol-Version are set by the client on every call, and
+			// a browser sends none of them without being told they are allowed.
+			'Access-Control-Allow-Headers'  => 'Content-Type, Accept, Authorization, Auth-Token, Mcp-Session-Id, MCP-Protocol-Version, Last-Event-ID',
+			// Headers are invisible to fetch() unless exposed, and a client that
+			// cannot read Mcp-Session-Id cannot make a second call.
+			'Access-Control-Expose-Headers' => 'Mcp-Session-Id, WWW-Authenticate',
+			'Access-Control-Max-Age'        => '600',
+		];
+	}
+
+	private static function addCorsHeader(JsonPage $oP): void
+	{
+		foreach (self::corsHeaders() as $sName => $sValue) {
+			$oP->add_header($sName.': '.$sValue);
+		}
 	}
 
 
@@ -325,6 +401,16 @@ final class MCPController
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
+			// What the row could not answer before: how long the call took, how
+			// much it sent back - the two numbers that tell a slow instance from
+			// a client filling its context - and which log entry explains it.
+			if ($oResult->durationMs !== null) {
+				$oLog->Set('duration_ms', $oResult->durationMs);
+			}
+			if ($oResult->responseBytes !== null) {
+				$oLog->Set('response_bytes', $oResult->responseBytes);
+			}
+			$oLog->Set('error_ref', $oResult->errorReference ?? '');
 			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
 			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));

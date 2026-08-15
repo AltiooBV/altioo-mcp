@@ -75,6 +75,35 @@ class MCPResultTest extends TestCase
 		$this->assertSame('ObjectGet', $aDecoded['mcpName']);
 	}
 
+	/**
+	 * The audit trail records how long a call took and which log entry
+	 * explains it. Neither is the caller's business, and both would have
+	 * ridden along the moment they were added, had the wire shape stayed
+	 * whatever the public properties happened to be.
+	 */
+	public function testAuditOnlyFieldsStayOutOfTheResponse(): void
+	{
+		$oResult = new MCPResult(MCPResult::INTERNAL_ERROR, 'boom');
+		$oResult->errorReference = 'a1b2c3d4';
+		$oResult->durationMs = 1234;
+		$oResult->responseBytes = 99;
+
+		$aDecoded = json_decode(json_encode($oResult), true);
+
+		$this->assertArrayNotHasKey('errorReference', $aDecoded);
+		$this->assertArrayNotHasKey('durationMs', $aDecoded);
+		$this->assertArrayNotHasKey('responseBytes', $aDecoded);
+	}
+
+	public function testAuditOnlyFieldsStartNull(): void
+	{
+		$oResult = new MCPResult();
+
+		$this->assertNull($oResult->errorReference);
+		$this->assertNull($oResult->durationMs);
+		$this->assertNull($oResult->responseBytes);
+	}
+
 	public function testConstantsAreDistinct(): void
 	{
 		$aCodes = [MCPResult::OK, MCPResult::UNAUTHORIZED, MCPResult::INTERNAL_ERROR];
