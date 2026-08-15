@@ -1,0 +1,98 @@
+name: CI
+
+# The claim on the Hub listing is "tested on PHP 8.2, 8.3 and 8.4". This is
+# what makes that claim checkable by someone who is deciding whether to trust
+# the extension with their CMDB.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Unit suite on PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The range declared in composer.json: floor 8.2 because iTop 3.3
+        # requires it, ceiling 8.4 because no iTop branch validates 8.5.
+        php: ['8.2', '8.3', '8.4']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Resolved against config.platform.php (8.2), which is the oldest PHP the
+      # extension claims - not against whichever PHP this job happens to run.
+      - name: Check platform requirements
+        run: composer check-platform-reqs
+
+      - name: Unit suite
+        run: composer test:unit
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Advisories against the locked versions. mcp/sdk is pre-1.0 and vendored
+      # into the archive, so this is the check that a shipped dependency has not
+      # gone bad since the last release.
+      - name: composer audit
+        run: composer audit --locked
+
+  package:
+    name: Release archive builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      # What store users unzip into extensions/: production dependencies only,
+      # nothing from require-dev, and vendor/ present because they will never
+      # run composer themselves.
+      - name: Build production vendor tree
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      - name: The archive carries its documentation and its tests
+        run: |
+          set -e
+          for f in README.md SECURITY.md CHANGELOG.md LICENSE doc/clients.md \
+                   vendor/autoload.php tests/php-unit-tests/bootstrap.php; do
+            test -e "$f" || { echo "missing from the package: $f"; exit 1; }
+          done
+          ! grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests)' exclude.txt
+          test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
