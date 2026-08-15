@@ -9,25 +9,25 @@ use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
 
 class CoreExtensions implements iMCPServiceProvider
 {
-    public static function RegisterServiceProvider(): void
-    {
-        //Resources
-        MCPRegistry::RegisterResource(new Resources\iTopVersion());
-        MCPRegistry::RegisterResource(new Resources\CurrentUser());
-        MCPRegistry::RegisterResource(new Resources\ClassList()); 
-        
-        //ResourceTemplates
-        MCPRegistry::RegisterResourceTemplate(new ResourceTemplates\ClassDetail());  
-        
-        //Tools
-        MCPRegistry::RegisterTool(new Tools\ObjectSearchByOQL());    
-        MCPRegistry::RegisterTool(new Tools\ObjectSearchByClass());  
-        MCPRegistry::RegisterTool(new Tools\ObjectGet());     
-        MCPRegistry::RegisterTool(new Tools\ObjectCreate());    
-        MCPRegistry::RegisterTool(new Tools\ObjectUpdate());   
-        MCPRegistry::RegisterTool(new Tools\ObjectDelete());   
+	public static function RegisterServiceProvider(): void
+	{
+		//Resources
+		MCPRegistry::RegisterResource(new Resources\iTopVersion());
+		MCPRegistry::RegisterResource(new Resources\CurrentUser());
+		MCPRegistry::RegisterResource(new Resources\ClassList());
 
-        //Prompts
-        MCPRegistry::RegisterPrompt(new Prompts\MyOpenTickets());
-    }
+		//ResourceTemplates
+		MCPRegistry::RegisterResourceTemplate(new ResourceTemplates\ClassDetail());
+
+		//Tools
+		MCPRegistry::RegisterTool(new Tools\ObjectSearchByOQL());
+		MCPRegistry::RegisterTool(new Tools\ObjectSearchByClass());
+		MCPRegistry::RegisterTool(new Tools\ObjectGet());
+		MCPRegistry::RegisterTool(new Tools\ObjectCreate());
+		MCPRegistry::RegisterTool(new Tools\ObjectUpdate());
+		MCPRegistry::RegisterTool(new Tools\ObjectDelete());
+
+		//Prompts
+		MCPRegistry::RegisterPrompt(new Prompts\MyOpenTickets());
+	}
 }

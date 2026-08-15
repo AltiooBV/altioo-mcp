@@ -13,44 +13,44 @@ use utils;
 class CurrentUser extends AbstractMCPResource
 {
 
-    public function getTitle(): ?string
-    {
-        return 'Current User';
-    }
+	public function getTitle(): ?string
+	{
+		return 'Current User';
+	}
 
-    public function getDescription(): ?string
-    {
-        return 'Read the current user information.';
-    }
+	public function getDescription(): ?string
+	{
+		return 'Read the current user information.';
+	}
 
-    protected function getResourceNamespace(): string
-    {
-        return 'core';
-    }
+	protected function getResourceNamespace(): string
+	{
+		return 'core';
+	}
 
-    protected function getResourcePath(): string
-    {
-        return 'current-user';
-    }
+	protected function getResourcePath(): string
+	{
+		return 'current-user';
+	}
 
-    public function getAnnotations(): ?Annotations
-    {
-        return new Annotations(
-            [Role::User, Role::Assistant],
-            1,
-        ); 
-    }
+	public function getAnnotations(): ?Annotations
+	{
+		return new Annotations(
+			[Role::User, Role::Assistant],
+			1,
+		);
+	}
 
-    public function read(): mixed
-    {
-	    $oUser = UserRights::GetUserObject();
+	public function read(): mixed
+	{
+		$oUser = UserRights::GetUserObject();
 
-        return json_encode([
-            'current_contact_friendlyname' => UserRights::GetContactFriendlyname(),
-            'current_contact_id' => UserRights::GetContactId(),
-            'current_id' => UserRights::GetUserId(),
-            'current_user_language' => UserRights::GetUserLanguage(),
-            'archive_mode' => utils::IsArchiveMode() ? 'archive' : 'active',
-        ]);
-    }
+		return json_encode([
+			'current_contact_friendlyname' => UserRights::GetContactFriendlyname(),
+			'current_contact_id' => UserRights::GetContactId(),
+			'current_id' => UserRights::GetUserId(),
+			'current_user_language' => UserRights::GetUserLanguage(),
+			'archive_mode' => utils::IsArchiveMode() ? 'archive' : 'active',
+		]);
+	}
 }

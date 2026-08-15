@@ -30,232 +30,232 @@ use UserRights;
  */
 class ObjectGetRelated extends AbstractMCPTool
 {
-    const DEFAULT_DEPTH = 5;
-    const MIN_DEPTH = 1;
-    const MAX_DEPTH = 99;
+	const DEFAULT_DEPTH = 5;
+	const MIN_DEPTH = 1;
+	const MAX_DEPTH = 99;
 
-    const DIRECTION_DOWN = 'down';
-    const DIRECTION_UP = 'up';
+	const DIRECTION_DOWN = 'down';
+	const DIRECTION_UP = 'up';
 
-    public function getTitle(): ?string
-    {
-        return 'Get Related Objects';
-    }
+	public function getTitle(): ?string
+	{
+		return 'Get Related Objects';
+	}
 
-    public function getDescription(): ?string
-    {
-        return 'Find objects related to a given iTop object through a named relation (e.g. impacts, depends on). Useful for impact analysis and dependency mapping on CIs.';
-    }
+	public function getDescription(): ?string
+	{
+		return 'Find objects related to a given iTop object through a named relation (e.g. impacts, depends on). Useful for impact analysis and dependency mapping on CIs.';
+	}
 
-    public function getAnnotations(): ?ToolAnnotations
-    {
-        return new ToolAnnotations(
-            $this->getTitle() ?? 'Get related iTop objects',
-            true,  // readOnlyHint
-            false,  // destructiveHint — additive create
-            true,  // idempotentHint — each call can create another row
-            false,  // openWorldHint
-        );
-    }
+	public function getAnnotations(): ?ToolAnnotations
+	{
+		return new ToolAnnotations(
+			$this->getTitle() ?? 'Get related iTop objects',
+			true,  // readOnlyHint
+			false,  // destructiveHint — additive create
+			true,  // idempotentHint — each call can create another row
+			false,  // openWorldHint
+		);
+	}
 
-    public function getInputSchema(): ?array
-    {
-        return [
-            'type'       => 'object',
-            'properties' => [
-                'class'     => [
-                    'type'        => 'string',
-                    'description' => 'iTop class of the source object (e.g. Server, UserRequest).',
-                ],
-                'id'        => [
-                    'type'        => 'integer',
-                    'description' => 'ID of the source object.',
-                    'minimum'     => 1,
-                ],
-                'relation'  => [
-                    'type'        => 'string',
-                    'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Use itop://iTop/class/{classname} to discover relations available for a class.',
-                ],
-                'direction' => [
-                    'type'        => 'string',
-                    'description' => '"down" follows the relation forward (e.g. what does this CI impact). "up" follows it backward (e.g. what does this CI depend on). Defaults to "down".',
-                    'enum'        => [self::DIRECTION_DOWN, self::DIRECTION_UP],
-                    'default'     => self::DIRECTION_DOWN,
-                ],
-                'depth'     => [
-                    'type'        => 'integer',
-                    'description' => 'Maximum recursion depth. Defaults to 5.',
-                    'minimum'     => self::MIN_DEPTH,
-                    'maximum'     => self::MAX_DEPTH,
-                    'default'     => self::DEFAULT_DEPTH,
-                ],
-                'redundancy' => [
-                    'type'        => 'boolean',
-                    'description' => 'Whether to take redundancy into account during impact analysis. Defaults to true.',
-                    'default'     => true,
-                ],
-            ],
-            'required' => ['class', 'id', 'relation'],
-        ];
-    }
+	public function getInputSchema(): ?array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'class'     => [
+					'type'        => 'string',
+					'description' => 'iTop class of the source object (e.g. Server, UserRequest).',
+				],
+				'id'        => [
+					'type'        => 'integer',
+					'description' => 'ID of the source object.',
+					'minimum'     => 1,
+				],
+				'relation'  => [
+					'type'        => 'string',
+					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Use itop://iTop/class/{classname} to discover relations available for a class.',
+				],
+				'direction' => [
+					'type'        => 'string',
+					'description' => '"down" follows the relation forward (e.g. what does this CI impact). "up" follows it backward (e.g. what does this CI depend on). Defaults to "down".',
+					'enum'        => [self::DIRECTION_DOWN, self::DIRECTION_UP],
+					'default'     => self::DIRECTION_DOWN,
+				],
+				'depth'     => [
+					'type'        => 'integer',
+					'description' => 'Maximum recursion depth. Defaults to 5.',
+					'minimum'     => self::MIN_DEPTH,
+					'maximum'     => self::MAX_DEPTH,
+					'default'     => self::DEFAULT_DEPTH,
+				],
+				'redundancy' => [
+					'type'        => 'boolean',
+					'description' => 'Whether to take redundancy into account during impact analysis. Defaults to true.',
+					'default'     => true,
+				],
+			],
+			'required' => ['class', 'id', 'relation'],
+		];
+	}
 
-    public static function execute(
-        string $class,
-        int    $id,
-        string $relation,
-        string $direction = self::DIRECTION_DOWN,
-        int    $depth = self::DEFAULT_DEPTH,
-        bool   $redundancy = true,
-    ): mixed {
-        if($id < 1) {
-            throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
-        }
+	public static function execute(
+		string $class,
+		int    $id,
+		string $relation,
+		string $direction = self::DIRECTION_DOWN,
+		int    $depth = self::DEFAULT_DEPTH,
+		bool   $redundancy = true,
+	): mixed {
+		if($id < 1) {
+			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
+		}
 
-        if (!in_array($direction, [self::DIRECTION_DOWN, self::DIRECTION_UP], true)) {
-            throw new ToolCallException("Invalid direction '{$direction}'. Use 'down' or 'up'.");
-        }
+		if (!in_array($direction, [self::DIRECTION_DOWN, self::DIRECTION_UP], true)) {
+			throw new ToolCallException("Invalid direction '{$direction}'. Use 'down' or 'up'.");
+		}
 
-        if (!MetaModel::IsValidClass($class)) {
-            throw new ToolCallException("Unknown class '{$class}'.");
-        }
+		if (!MetaModel::IsValidClass($class)) {
+			throw new ToolCallException("Unknown class '{$class}'.");
+		}
 
-        if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-            throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
-        }
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
+			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+		}
 
-        if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
-            throw new ToolCallException("Invalid depth. Please specify a depth between " . self::MIN_DEPTH . " and " . self::MAX_DEPTH . ".");
-        }
+		if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
+			throw new ToolCallException("Invalid depth. Please specify a depth between " . self::MIN_DEPTH . " and " . self::MAX_DEPTH . ".");
+		}
 		$iMaxRecursionDepth = MetaModel::GetConfig()->Get('relations_max_depth');
-        if ($depth > $iMaxRecursionDepth) {
-            throw new ToolCallException("Requested depth of {$depth} exceeds the maximum allowed depth of {$iMaxRecursionDepth}. Please specify a lower depth.");
-        }
+		if ($depth > $iMaxRecursionDepth) {
+			throw new ToolCallException("Requested depth of {$depth} exceeds the maximum allowed depth of {$iMaxRecursionDepth}. Please specify a lower depth.");
+		}
 
-        // Validate relation
-        $aValidRelations = MetaModel::EnumRelationsEx();
-        if (!in_array($relation, $aValidRelations, true)) {
-            throw new ToolCallException(
-                "Invalid relation '{$relation}'. Available: ".implode(', ', $aValidRelations).'.'
-            );
-        }
+		// Validate relation
+		$aValidRelations = MetaModel::EnumRelationsEx();
+		if (!in_array($relation, $aValidRelations, true)) {
+			throw new ToolCallException(
+				"Invalid relation '{$relation}'. Available: ".implode(', ', $aValidRelations).'.'
+			);
+		}
 
-        // Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
-        $sKey = MetaModel::DBGetKey($class);
-        $oSearch = DBObjectSearch::FromOQL("SELECT {$class} WHERE {$sKey} = {$id}");
-        $oSet = new DBObjectSet($oSearch);
-        // Based on GetRelated - object search manages read access
-        if ($oSet->Count() === 0) { 
-            throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-        }
-        
-        // Check the final class of the object
-        $sFinalClass = MetaModel::GetFinalClassName($class, $id);
-        if ($sFinalClass != $class) {
-            if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-                throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-            }
-            $sKeyFinal = MetaModel::DBGetKey($class);
-            $oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
-            $oSetFinal = new DBObjectSet($oSearchFinal);
-            // Based on GetRelated - object search manages read access
-            if ($oSetFinal->Count() === 0) { 
-                throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-            }
-            //Update the Set witht the correct class
-            $oSet = $oSetFinal;
-        }
-        $oObject = $oSet->Fetch();
+		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
+		$sKey = MetaModel::DBGetKey($class);
+		$oSearch = DBObjectSearch::FromOQL("SELECT {$class} WHERE {$sKey} = {$id}");
+		$oSet = new DBObjectSet($oSearch);
+		// Based on GetRelated - object search manages read access
+		if ($oSet->Count() === 0) {
+			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+		}
+
+		// Check the final class of the object
+		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+		if ($sFinalClass !== $class) {
+			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
+				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			}
+			$sKeyFinal = MetaModel::DBGetKey($class);
+			$oSearchFinal = DBObjectSearch::FromOQL("SELECT {$sFinalClass} WHERE {$sKeyFinal} = {$id}");
+			$oSetFinal = new DBObjectSet($oSearchFinal);
+			// Based on GetRelated - object search manages read access
+			if ($oSetFinal->Count() === 0) {
+				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			}
+			//Update the Set witht the correct class
+			$oSet = $oSetFinal;
+		}
+		$oObject = $oSet->Fetch();
 
 
-        // Build a single-object set as the source for the relation graph
-        if ($direction === self::DIRECTION_DOWN) {
-            $oGraph = $oSet->GetRelatedObjectsDown($relation, $depth, $redundancy);
-        } else {
-            $oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
-        }
+		// Build a single-object set as the source for the relation graph
+		if ($direction === self::DIRECTION_DOWN) {
+			$oGraph = $oSet->GetRelatedObjectsDown($relation, $depth, $redundancy);
+		} else {
+			$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
+		}
 
-        return self::serializeGraph($oGraph);
-    }
+		return self::serializeGraph($oGraph);
+	}
 
-    private static function serializeGraph(\RelationGraph $oGraph): array
-    {
-        $aObjects   = [];
-        $aRelations = [];
-        $aStats     = [];
+	private static function serializeGraph(\RelationGraph $oGraph): array
+	{
+		$aObjects   = [];
+		$aRelations = [];
+		$aStats     = [];
 
-        // If user rights not applied on graph, force it
+		// If user rights not applied on graph, force it
 		if (!MetaModel::GetConfig()->Get('relations.complete_analysis')) {
 			$oGraph = self::ApplyUserRightsOnGraph($oGraph);
 		}
 
-        /** @var \RelationObjectNode $oNode */
-        foreach ($oGraph->GetNodes() as $sNodeId => $oNode) {
-            if (!$oNode instanceof \RelationObjectNode) {
-                continue;
-            }
+		/** @var \RelationObjectNode $oNode */
+		foreach ($oGraph->GetNodes() as $sNodeId => $oNode) {
+			if (!$oNode instanceof \RelationObjectNode) {
+				continue;
+			}
 
-            $oObject = $oNode->GetObject();
-            if ($oObject === null) {
-                continue;
-            }
+			$oObject = $oNode->GetObject();
+			if ($oObject === null) {
+				continue;
+			}
 
-            // Skip source node and unreached nodes
-            if (!$oNode->GetProperty('is_reached', false)) {
-                continue;
-            }
+			// Skip source node and unreached nodes
+			if (!$oNode->GetProperty('is_reached', false)) {
+				continue;
+			}
 
-            $sClass = get_class($oObject);
+			$sClass = get_class($oObject);
 
-            $sKey = $sClass.'::'.$oObject->GetKey();
-            $aObjects[$sKey] = [
-                'class'        => $sClass,
-                MetaModel::DBGetKey($sClass)           => $oObject->GetKey(),
-                'friendlyname' => $oObject->GetName(),
-            ];
+			$sKey = $sClass.'::'.$oObject->GetKey();
+			$aObjects[$sKey] = [
+				'class'        => $sClass,
+				MetaModel::DBGetKey($sClass)           => $oObject->GetKey(),
+				'friendlyname' => $oObject->GetName(),
+			];
 
-            // Stats per class
-            $aStats[$sClass] = ($aStats[$sClass] ?? 0) + 1;
-        }
+			// Stats per class
+			$aStats[$sClass] = ($aStats[$sClass] ?? 0) + 1;
+		}
 
-        /** @var \RelationEdge $oEdge */
-        foreach ($oGraph->GetEdges() as $oEdge) {
-            $oSource = $oEdge->GetSourceNode();
-            $oSink   = $oEdge->GetSinkNode();
+		/** @var \RelationEdge $oEdge */
+		foreach ($oGraph->GetEdges() as $oEdge) {
+			$oSource = $oEdge->GetSourceNode();
+			$oSink   = $oEdge->GetSinkNode();
 
-            if (!$oSource instanceof \RelationObjectNode || !$oSink instanceof \RelationObjectNode) {
-                continue;
-            }
+			if (!$oSource instanceof \RelationObjectNode || !$oSink instanceof \RelationObjectNode) {
+				continue;
+			}
 
-            if (!$oSource->GetProperty('is_reached', false) || !$oSink->GetProperty('is_reached', false)) {
-                continue;
-            }
+			if (!$oSource->GetProperty('is_reached', false) || !$oSink->GetProperty('is_reached', false)) {
+				continue;
+			}
 
-            $oSourceObj = $oSource->GetObject();
-            $oSinkObj   = $oSink->GetObject();
+			$oSourceObj = $oSource->GetObject();
+			$oSinkObj   = $oSink->GetObject();
 
-            if ($oSourceObj === null || $oSinkObj === null) {
-                continue;
-            }
+			if ($oSourceObj === null || $oSinkObj === null) {
+				continue;
+			}
 
-            $aRelations[] = [
-                'from' => get_class($oSourceObj).'::'.$oSourceObj->GetKey(),
-                'to'   => get_class($oSinkObj).'::'.$oSinkObj->GetKey(),
-            ];
-        }
+			$aRelations[] = [
+				'from' => get_class($oSourceObj).'::'.$oSourceObj->GetKey(),
+				'to'   => get_class($oSinkObj).'::'.$oSinkObj->GetKey(),
+			];
+		}
 
-        $aSummaryParts = [];
-        foreach ($aStats as $sClass => $iCount) {
-            $aSummaryParts[] = "{$sClass}={$iCount}";
-        }
+		$aSummaryParts = [];
+		foreach ($aStats as $sClass => $iCount) {
+			$aSummaryParts[] = "{$sClass}={$iCount}";
+		}
 
-        return [
-            'objects'   => $aObjects,
-            'relations' => $aRelations,
-            'summary'   => implode(', ', $aSummaryParts),
-        ];
-    }
+		return [
+			'objects'   => $aObjects,
+			'relations' => $aRelations,
+			'summary'   => implode(', ', $aSummaryParts),
+		];
+	}
 
-    /**
+	/**
 	 * @return void
 	 * @throws \CoreException
 	 * @throws \CoreUnexpectedValue
@@ -295,6 +295,6 @@ class ObjectGetRelated extends AbstractMCPTool
 			}
 		}
 
-        return $oGraph;
+		return $oGraph;
 	}
 }
