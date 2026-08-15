@@ -60,6 +60,13 @@ final class MCPRegistry
 	private static array $aPrompts = [];
 
 	/**
+	 * Session-level guidance appended to the server instructions.
+	 *
+	 * @var array<int, string>
+	 */
+	private static array $aInstructions = [];
+
+	/**
 	 * Collisions reported so far, as "kind: identifier" => [replaced, by].
 	 *
 	 * @var array<string, array{0: string, 1: string}>
@@ -179,6 +186,33 @@ final class MCPRegistry
 	}
 
 	/**
+	 * Adds a paragraph to what the server tells a client at initialize.
+	 *
+	 * For what a model has to know before it calls anything - a convention
+	 * your datamodel follows, a tool it should reach for first. Not for
+	 * describing a tool: that belongs in the tool's own description, which is
+	 * read when the tool is being considered rather than in every session.
+	 *
+	 * Kept short, for the same reason: this text costs every session, whether
+	 * or not any of your tools is ever called.
+	 */
+	public static function AddInstructions(string $sInstructions): void
+	{
+		$sInstructions = trim($sInstructions);
+		if ($sInstructions === '' || in_array($sInstructions, self::$aInstructions, true)) {
+			return;
+		}
+
+		self::$aInstructions[] = $sInstructions;
+	}
+
+	/** @return array<int, string> */
+	public static function GetInstructions(): array
+	{
+		return self::$aInstructions;
+	}
+
+	/**
 	 * Declared overrides that took effect, keyed by "kind: identifier".
 	 *
 	 * Replacing another element is supported, so this is not an error - but it
@@ -214,6 +248,7 @@ final class MCPRegistry
 		self::$aPrompts = [];
 		self::$aOverrides = [];
 		self::$aClashes = [];
+		self::$aInstructions = [];
 	}
 
 	/**
