@@ -34,6 +34,14 @@ final class MCPHttp
 	private const REALM = 'iTop MCP';
 
 	/**
+	 * The credential this request presented, captured before login.
+	 *
+	 * Held here rather than read back out of $_SERVER, so the superglobal can
+	 * be cleared as soon as iTop has finished with it - see ForgetAuthToken().
+	 */
+	private static ?string $sAuthToken = null;
+
+	/**
 	 * The WWW-Authenticate challenge that goes with a 401.
 	 *
 	 * A 401 with no challenge tells a client that it failed, not what it
@@ -99,6 +107,11 @@ final class MCPHttp
 	 */
 	public static function PromoteBearerToAuthToken(): void
 	{
+		// Captured whichever header it arrived in, and captured unconditionally
+		// so that one request cannot inherit the credential of the previous one
+		// in a process that serves more than one.
+		self::$sAuthToken = self::ExistingAuthToken();
+
 		$sToken = self::ReadBearerToken();
 		if ($sToken === null) {
 			return;
@@ -106,12 +119,47 @@ final class MCPHttp
 
 		self::ForgetBearerHeaders();
 
-		$sExisting = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
-		if (is_string($sExisting) && $sExisting !== '') {
+		if (self::$sAuthToken !== null) {
 			return;
 		}
 
+		self::$sAuthToken = $sToken;
 		$_SERVER[self::AUTH_TOKEN_KEY] = $sToken;
+	}
+
+	/**
+	 * The credential this request presented, or null when it presented none.
+	 *
+	 * Everything downstream of login reads it here rather than from $_SERVER,
+	 * which is what lets ForgetAuthToken() run before the PSR-7 request is
+	 * built - and therefore what keeps the raw token out of that request's
+	 * server parameters, where it would otherwise sit for the whole call.
+	 */
+	public static function CurrentAuthToken(): ?string
+	{
+		return self::$sAuthToken;
+	}
+
+	/**
+	 * Drops the credential, once nothing else needs it.
+	 *
+	 * Called after iTop has authenticated the caller and the token's scopes
+	 * have been read - the two things that need it - and before the request is
+	 * handed to the SDK. A token that no longer exists anywhere cannot be
+	 * copied into a request object, a stack trace or a var_dump.
+	 */
+	public static function ForgetAuthToken(): void
+	{
+		self::$sAuthToken = null;
+		unset($_SERVER[self::AUTH_TOKEN_KEY]);
+	}
+
+	/** The Auth-Token header as it arrived, or null when there is none. */
+	private static function ExistingAuthToken(): ?string
+	{
+		$sExisting = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
+
+		return is_string($sExisting) && $sExisting !== '' ? $sExisting : null;
 	}
 
 	/**

@@ -66,8 +66,16 @@ final class MCPController
 				throw self::createAuthException($iRet);
 			}
 
+			// The scopes are the last thing that needs the raw credential, so
+			// they are read here and the credential dropped immediately after.
+			// What follows builds a PSR-7 request out of $_SERVER, and a token
+			// still sitting there would be copied into its server parameters
+			// and live for the rest of the call.
+			$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
+			MCPHttp::ForgetAuthToken();
+
 			$oKPI->ComputeAndReport('Parameters validated');
-			$aRequestResponse = MCPService::run();
+			$aRequestResponse = MCPService::run($oPolicy);
 			// Emit response and extract info for logging
 			$oResult = self::emitResponse($aRequestResponse['response']);
 			$oKPI->ComputeAndReport('Operation finished');

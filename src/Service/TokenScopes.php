@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Combodo\iTop\AuthentToken\Hook\TokenLoginExtension;
 use MetaModel;
 use Throwable;
@@ -24,9 +25,6 @@ use Throwable;
  */
 final class TokenScopes
 {
-	/** Where authent-token reads its credential from. */
-	private const AUTH_TOKEN_KEY = 'HTTP_AUTH_TOKEN';
-
 	/** The classes that carry a scope field. */
 	private const TOKEN_CLASSES = ['PersonalToken', 'UserToken'];
 
@@ -69,9 +67,7 @@ final class TokenScopes
 	/** Whether this request authenticated with a token at all. */
 	public static function RequestCarriesAToken(): bool
 	{
-		$sToken = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
-
-		return is_string($sToken) && $sToken !== '';
+		return MCPHttp::CurrentAuthToken() !== null;
 	}
 
 	/**
@@ -87,8 +83,8 @@ final class TokenScopes
 	 */
 	public static function OfCurrentRequest(): ?array
 	{
-		$sToken = $_SERVER[self::AUTH_TOKEN_KEY] ?? '';
-		if (!is_string($sToken) || $sToken === '') {
+		$sToken = MCPHttp::CurrentAuthToken();
+		if ($sToken === null) {
 			return null;
 		}
 
@@ -106,7 +102,12 @@ final class TokenScopes
 
 			return array_values(array_filter($aScopes, 'is_string'));
 		} catch (Throwable $e) {
-			MCPHelper::LogError('The scopes of the presented token could not be read: '.$e->getMessage());
+			// The class, never the message. GetToken() is handed the raw
+			// credential, and an exception raised while decrypting or looking
+			// it up is free to quote what it was given - which would put the
+			// token itself in log/error.log, in clear, for as long as that file
+			// is kept.
+			MCPHelper::LogError('The scopes of the presented token could not be read ('.get_class($e).').');
 
 			return null;
 		}

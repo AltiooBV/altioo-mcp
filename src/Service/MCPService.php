@@ -22,14 +22,18 @@ use UserRights;
 final class MCPService
 {
 
-	public static function run(): array
+	/**
+	 * @param AccessPolicy $oPolicy What this caller is served, decided by the
+	 *                              controller before the credential was dropped.
+	 */
+	public static function run(AccessPolicy $oPolicy): array
 	{
 		MCPExtensionCollector::CollectAll();
 
 		$factory = new Psr17Factory();
 		$request = $factory->createServerRequestFromGlobals();
 
-		$server = self::createServer();
+		$server = self::createServer($oPolicy);
 
 		$transport = new StreamableHttpTransport($request, $factory);
 		$response = $server->run($transport);
@@ -37,7 +41,7 @@ final class MCPService
 		return ['request' => $request, 'response' => $response];
 	}
 
-	private static function createServer(): Server
+	private static function createServer(AccessPolicy $oPolicy): Server
 	{
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
@@ -47,7 +51,6 @@ final class MCPService
 			->setSession(new StatelessSessionStore());
 
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
-		$oPolicy = self::accessPolicy();
 
 		$builder = self::registerResources($builder, $aDisabled, $oPolicy);
 		$builder = self::registerResourceTemplates($builder, $aDisabled, $oPolicy);
@@ -207,8 +210,12 @@ final class MCPService
 	 * read-only. The alternative - assuming the widest policy when the
 	 * narrowing information is missing - turns a failure to read into a
 	 * privilege escalation.
+	 *
+	 * Decided by the controller rather than here, and decided early: it is the
+	 * last thing that needs the raw credential, so computing it up front is
+	 * what lets the credential be dropped before the request object exists.
 	 */
-	private static function accessPolicy(): AccessPolicy
+	public static function AccessPolicyOfCurrentRequest(): AccessPolicy
 	{
 		$oConfigured = AccessPolicy::Of(MCPHelper::GetCapabilities(), MCPHelper::GetEnabledToolsets());
 
