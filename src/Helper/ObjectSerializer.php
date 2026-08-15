@@ -9,7 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use AttributeBlob;
+use AttributeCaseLog;
 use AttributeDefinition;
+use AttributeLinkedSet;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -31,10 +33,16 @@ use iAttributeNoGroupBy;
  * the conversion iTop wrote for exactly this, and is what
  * ObjectResult::MakeResultValue() calls on the REST side.
  *
- * The second is that a response feeds a context window. Two attribute kinds
- * are unbounded by nature and are handled here rather than left to GetForJSON:
- * a blob, whose JSON form embeds the whole file base64-encoded, is reported as
- * its metadata alone.
+ * The second is that a response feeds a context window. Four attribute kinds
+ * have no natural size and are handled here rather than left to GetForJSON: a
+ * blob, whose JSON form embeds the whole file base64-encoded, is reported as
+ * its metadata alone; a case log, a link set and a long text are cut to a
+ * ceiling that the value itself declares.
+ *
+ * None of those ceilings applies when the caller named the attributes it wants
+ * through output_fields. Asking for one attribute by name is the decision to
+ * read it in full; the ceilings are there so that a broad read cannot spend a
+ * context window nobody asked it to spend.
  */
 final class ObjectSerializer
 {
@@ -43,6 +51,16 @@ final class ObjectSerializer
 
 	/** What a caller asks for to get every readable attribute. */
 	public const ALL_FIELDS = '*';
+
+	/**
+	 * Ceilings on the three attribute kinds that have no natural size.
+	 *
+	 * None of them is a limit on what the caller may read: each one says how it
+	 * was cut, and naming the attribute in output_fields returns it whole.
+	 */
+	public const MAX_TEXT_CHARS = 4000;
+	public const MAX_CASELOG_ENTRIES = 10;
+	public const MAX_LINKS = 50;
 
 	/**
 	 * What a list of objects reports when the caller says nothing, the same
@@ -80,7 +98,10 @@ final class ObjectSerializer
 			}
 
 			try {
-				$aData[$sAttCode] = self::Value($oObject, $sClass, $sAttCode);
+				// Naming the attributes is itself the decision to read them in
+				// full: the ceilings exist to keep a broad read from spending
+				// a context window that nobody asked it to spend.
+				$aData[$sAttCode] = self::Value($oObject, $sClass, $sAttCode, $aFields === null);
 			} catch (Throwable $e) {
 				// One attribute that cannot be rendered - a dangling external
 				// field, a document whose file is gone - must not cost the
@@ -100,9 +121,11 @@ final class ObjectSerializer
 	/**
 	 * One attribute, in its JSON form.
 	 *
+	 * @param bool $bClip Whether the unbounded kinds are cut to their ceilings.
+	 *
 	 * @return mixed A scalar, or a structure of scalars; never an ORM object.
 	 */
-	public static function Value(DBObject $oObject, string $sClass, string $sAttCode): mixed
+	public static function Value(DBObject $oObject, string $sClass, string $sAttCode, bool $bClip = true): mixed
 	{
 		if ($sAttCode === 'id') {
 			return $oObject->GetKey();
@@ -122,7 +145,101 @@ final class ObjectSerializer
 			return self::document($oObject->Get($sAttCode));
 		}
 
-		return $oAttDef->GetForJSON($oObject->Get($sAttCode));
+		$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
+
+		if (!$bClip) {
+			return $value;
+		}
+
+		if ($oAttDef instanceof AttributeCaseLog) {
+			return self::clip(self::recentEntries($value));
+		}
+
+		if ($oAttDef instanceof AttributeLinkedSet) {
+			return self::clip(self::firstLinks($value));
+		}
+
+		return self::clip($value);
+	}
+
+	/**
+	 * The tail of a case log, which is the part anyone asks about.
+	 *
+	 * A five-year-old incident carries hundreds of entries and reaches the
+	 * caller in full. GetForJSON() returns them oldest first, so the recent
+	 * ones - the state of the conversation now - are at the end.
+	 *
+	 * @param mixed $value As AttributeCaseLog::GetForJSON() returns it.
+	 *
+	 * @return mixed
+	 */
+	private static function recentEntries($value)
+	{
+		if (!is_array($value) || !isset($value['entries']) || !is_array($value['entries'])) {
+			return $value;
+		}
+
+		$iTotal = count($value['entries']);
+		if ($iTotal <= self::MAX_CASELOG_ENTRIES) {
+			return $value;
+		}
+
+		$value['entries'] = array_values(array_slice($value['entries'], -self::MAX_CASELOG_ENTRIES));
+		$value['entries_omitted'] = $iTotal - self::MAX_CASELOG_ENTRIES;
+		$value['entries_total'] = $iTotal;
+
+		return $value;
+	}
+
+	/**
+	 * The head of a link set, with a count of what was left out.
+	 *
+	 * A rack with four hundred devices, expanded attribute by attribute, is
+	 * larger than everything else in the response put together.
+	 *
+	 * @param mixed $value As AttributeLinkedSet::GetForJSON() returns it.
+	 *
+	 * @return mixed
+	 */
+	private static function firstLinks($value)
+	{
+		if (!is_array($value) || count($value) <= self::MAX_LINKS) {
+			return $value;
+		}
+
+		return [
+			'links'         => array_values(array_slice($value, 0, self::MAX_LINKS)),
+			'links_omitted' => count($value) - self::MAX_LINKS,
+			'links_total'   => count($value),
+		];
+	}
+
+	/**
+	 * Cuts long strings, wherever they sit in a value.
+	 *
+	 * One description can hold an entire email thread, quoted signatures and
+	 * all. The cut says so in the value itself rather than in a flag beside
+	 * it, so a model reading the text knows it is reading part of it - and is
+	 * told, in the text, how to read the rest.
+	 *
+	 * @param mixed $value
+	 *
+	 * @return mixed
+	 */
+	private static function clip($value)
+	{
+		if (is_array($value)) {
+			return array_map(static fn ($mItem) => self::clip($mItem), $value);
+		}
+
+		if (!is_string($value) || mb_strlen($value) <= self::MAX_TEXT_CHARS) {
+			return $value;
+		}
+
+		$iOmitted = mb_strlen($value) - self::MAX_TEXT_CHARS;
+
+		return mb_substr($value, 0, self::MAX_TEXT_CHARS)
+			.sprintf(' […truncated, %d more characters. Name this attribute in output_fields to read it in full]', $iOmitted);
 	}
 
 	/**
