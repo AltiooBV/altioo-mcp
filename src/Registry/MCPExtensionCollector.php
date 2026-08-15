@@ -71,7 +71,16 @@ final class MCPExtensionCollector
 		}
 
 		foreach (MCPRegistry::GetOverrides() as $sIdentifier => $aClasses) {
-			self::Log(sprintf('MCP %s: %s replaced %s', $sIdentifier, $aClasses[1], $aClasses[0]));
+			self::Log(sprintf('MCP %s: %s replaced %s, as it declares', $sIdentifier, $aClasses[1], $aClasses[0]));
+		}
+
+		foreach (MCPRegistry::GetClashes() as $sIdentifier => $aClasses) {
+			self::Log(sprintf(
+				'MCP %s is claimed by %s and is served to nobody. None of them declares an override, so this is a name clash between unrelated extensions, not a replacement. '
+				.'Disable all but one through the mcp_disabled_tools module setting, which accepts a class name.',
+				$sIdentifier,
+				implode(' and ', $aClasses)
+			));
 		}
 	}
 

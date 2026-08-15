@@ -10,7 +10,10 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Test\Support\AlsoClashingTool;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
+use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamespacedTool;
+use Altioo\iTop\Extension\MCP\Test\Support\ClashingTool;
 use Altioo\iTop\Extension\MCP\Test\Support\BadProfilesTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
@@ -21,6 +24,8 @@ use Altioo\iTop\Extension\MCP\Test\Support\HandlerlessTool;
 use Altioo\iTop\Extension\MCP\Test\Support\InconsistentSchemaTool;
 use Altioo\iTop\Extension\MCP\Test\Support\OverridingTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PrivateHandlerTool;
+use Altioo\iTop\Extension\MCP\Test\Support\SelfOverridingTool;
+use Altioo\iTop\Extension\MCP\Test\Support\SquattingTool;
 use Altioo\iTop\Extension\MCP\Test\Support\TemplatedResource;
 use Altioo\iTop\Extension\MCP\Test\Support\UnboundArgumentTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnboundResourceTemplate;
@@ -151,40 +156,130 @@ class MCPRegistryContractTest extends TestCase
 	}
 
 	/**
-	 * Last-wins is the documented way for a pack to replace a core tool. It
-	 * stays legal, and it gets recorded so the operator can see it happened.
+	 * The case the namespacing exists for: two vendors, no knowledge of each
+	 * other, one identifier. Awarding it to whoever loaded last would have the
+	 * client call the tool it was shown and run the other vendor's code, so it
+	 * is awarded to neither.
 	 */
-	public function testOverridingAToolIsAllowedAndRecorded(): void
+	public function testAnAccidentalClashWithdrawsTheIdentifier(): void
 	{
 		MCPRegistry::RegisterTool(new FixtureTool());
-		MCPRegistry::RegisterTool(new OverridingTool());
+		MCPRegistry::RegisterTool(new ClashingTool());
 
-		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['FixtureTool']);
+		$this->assertArrayNotHasKey('test_FixtureTool', MCPRegistry::GetTools());
 		$this->assertSame(
-			[FixtureTool::class, OverridingTool::class],
-			MCPRegistry::GetOverrides()['tool: FixtureTool'] ?? null
+			[FixtureTool::class, ClashingTool::class],
+			MCPRegistry::GetClashes()['tool: test_FixtureTool'] ?? null
 		);
 	}
 
 	/**
-	 * Registering the same class twice is what CollectAll() does to a provider
-	 * that is both discovered and explicitly declared: not an override.
+	 * Withdrawal is per identifier: the rest of both packs is untouched.
 	 */
-	public function testReRegisteringTheSameClassIsNotAnOverride(): void
+	public function testAClashDoesNotAffectTheRestOfTheRegistry(): void
 	{
 		MCPRegistry::RegisterTool(new FixtureTool());
-		MCPRegistry::RegisterTool(new FixtureTool());
+		MCPRegistry::RegisterTool(new ClashingTool());
+		MCPRegistry::RegisterPrompt(new FixturePrompt());
 
-		$this->assertSame([], MCPRegistry::GetOverrides());
+		$this->assertSame([], MCPRegistry::GetTools());
+		$this->assertArrayHasKey('test_FixturePrompt', MCPRegistry::GetPrompts());
 	}
 
-	public function testClearForgetsOverrides(): void
+	/**
+	 * A late arrival cannot resurrect a withdrawn identifier by registering
+	 * after the two that lost it.
+	 */
+	public function testAThirdClaimantDoesNotWinAWithdrawnIdentifier(): void
+	{
+		MCPRegistry::RegisterTool(new FixtureTool());
+		MCPRegistry::RegisterTool(new ClashingTool());
+		MCPRegistry::RegisterTool(new AlsoClashingTool());
+
+		$this->assertArrayNotHasKey('test_FixtureTool', MCPRegistry::GetTools());
+		$this->assertContains(AlsoClashingTool::class, MCPRegistry::GetClashes()['tool: test_FixtureTool']);
+	}
+
+	/**
+	 * Declaring the override is what separates a replacement from a clash.
+	 */
+	public function testADeclaredOverrideTakesTheIdentifier(): void
 	{
 		MCPRegistry::RegisterTool(new FixtureTool());
 		MCPRegistry::RegisterTool(new OverridingTool());
 
+		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertSame([], MCPRegistry::GetClashes());
+		$this->assertSame(
+			[FixtureTool::class, OverridingTool::class],
+			MCPRegistry::GetOverrides()['tool: test_FixtureTool'] ?? null
+		);
+	}
+
+	/**
+	 * And it holds whichever module the setup loaded first - otherwise the
+	 * outcome would still be decided by load order, just less visibly.
+	 */
+	public function testADeclaredOverrideWinsRegisteredEitherWayRound(): void
+	{
+		MCPRegistry::RegisterTool(new OverridingTool());
+		MCPRegistry::RegisterTool(new FixtureTool());
+
+		$this->assertInstanceOf(OverridingTool::class, MCPRegistry::GetTools()['test_FixtureTool']);
+		$this->assertSame([], MCPRegistry::GetClashes());
+	}
+
+	/**
+	 * Registering the same class twice is what CollectAll() does to a provider
+	 * that is both discovered and explicitly declared: not a clash.
+	 */
+	public function testReRegisteringTheSameClassIsNeitherOverrideNorClash(): void
+	{
+		MCPRegistry::RegisterTool(new FixtureTool());
+		MCPRegistry::RegisterTool(new FixtureTool());
+
+		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
+		$this->assertSame([], MCPRegistry::GetOverrides());
+		$this->assertSame([], MCPRegistry::GetClashes());
+	}
+
+	/**
+	 * 'core' is this module's, exactly as the core resource URI namespace is.
+	 */
+	public function testRejectsAnExtensionClaimingTheReservedNamespace(): void
+	{
+		$this->expectException(MCPRegistrationException::class);
+		$this->expectExceptionMessageMatches('/belongs to the base extension/');
+
+		MCPRegistry::RegisterTool(new SquattingTool());
+	}
+
+	public function testRejectsANamespaceThatIsNotUsableInAnIdentifier(): void
+	{
+		$this->expectException(MCPRegistrationException::class);
+		$this->expectExceptionMessageMatches('/not a usable namespace/');
+
+		MCPRegistry::RegisterTool(new BadlyNamespacedTool());
+	}
+
+	public function testRejectsAnElementThatOverridesItself(): void
+	{
+		$this->expectException(MCPRegistrationException::class);
+		$this->expectExceptionMessageMatches('/names this element itself/');
+
+		MCPRegistry::RegisterTool(new SelfOverridingTool());
+	}
+
+	public function testClearForgetsOverridesAndClashes(): void
+	{
+		MCPRegistry::RegisterTool(new FixtureTool());
+		MCPRegistry::RegisterTool(new OverridingTool());
+		MCPRegistry::RegisterPrompt(new FixturePrompt());
+		MCPRegistry::RegisterTool(new ClashingTool());
+
 		MCPRegistry::Clear();
 
 		$this->assertSame([], MCPRegistry::GetOverrides());
+		$this->assertSame([], MCPRegistry::GetClashes());
 	}
 }

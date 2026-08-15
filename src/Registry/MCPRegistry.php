@@ -23,11 +23,29 @@ use ReflectionNamedType;
  * read() - is read reflectively at build time by MCPService and by the SDK.
  * Checking it here means a downstream pack fails at boot, naming the class and
  * the defect, instead of shipping a tool the client can list but never call.
+ *
+ * It is also where identifiers are handed out. Every element is addressed by
+ * its namespace and its name, so two extensions from two vendors that have
+ * never heard of each other cannot claim the same one by both calling a class
+ * TicketAddLogEntry. When they nevertheless do - same namespace, same name,
+ * different classes, neither declaring an override - the identifier is
+ * withdrawn rather than awarded to whichever provider happened to load last:
+ * a client that asks for it gets nothing, instead of silently getting the
+ * other vendor's implementation behind the description it was shown.
  */
 final class MCPRegistry
 {
 	/** MCP name syntax, as enforced by the SDK's schema objects. */
 	private const NAME_PATTERN = '/^[a-zA-Z0-9_-]{1,128}$/';
+
+	/** No '_', so the separator in a qualified name stays unambiguous. */
+	private const NAMESPACE_PATTERN = '/^[a-zA-Z0-9-]{1,64}$/';
+
+	/** Reserved for this module, like the core resource URI namespace. */
+	private const RESERVED_NAMESPACE = 'core';
+
+	/** Classes allowed to use the reserved namespace. */
+	private const RESERVED_NAMESPACE_OWNER = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
 
 	/** @var array<string, AbstractMCPTool> */
 	private static array $aTools = [];
@@ -49,17 +67,24 @@ final class MCPRegistry
 	private static array $aOverrides = [];
 
 	/**
+	 * Identifiers withdrawn because two unrelated classes claimed them, as
+	 * "kind: identifier" => list of the classes that did.
+	 *
+	 * @var array<string, array<int, string>>
+	 */
+	private static array $aClashes = [];
+
+	/**
 	 * @throws MCPRegistrationException When the tool does not honour the contract.
 	 */
 	public static function RegisterTool(AbstractMCPTool $oTool): void
 	{
-		$sName = self::validateName($oTool, $oTool->getName(), 'tool');
+		$sIdentifier = self::validateIdentity($oTool, $oTool->getQualifiedName(), 'tool');
 		self::validateProfiles($oTool, $oTool->requiredProfiles());
 		$oExecute = self::validateHandler($oTool, 'execute');
-		self::validateToolDeclaration($oTool, $sName, $oExecute);
+		self::validateToolDeclaration($oTool, $sIdentifier, $oExecute);
 
-		self::noteOverride('tool', $sName, self::$aTools[$sName] ?? null, $oTool);
-		self::$aTools[$sName] = $oTool;
+		self::claim('tool', self::$aTools, $oTool->overrides() ?? $sIdentifier, $oTool);
 	}
 
 	/**
@@ -67,7 +92,7 @@ final class MCPRegistry
 	 */
 	public static function RegisterResource(AbstractMCPResource $oResource): void
 	{
-		self::validateName($oResource, $oResource->getName(), 'resource');
+		self::validateIdentity($oResource, $oResource->getQualifiedName(), 'resource');
 		self::validateProfiles($oResource, $oResource->requiredProfiles());
 		self::validateHandler($oResource, 'read');
 
@@ -80,8 +105,7 @@ final class MCPRegistry
 			));
 		}
 
-		self::noteOverride('resource', $sUri, self::$aResources[$sUri] ?? null, $oResource);
-		self::$aResources[$sUri] = $oResource;
+		self::claim('resource', self::$aResources, $oResource->overrides() ?? $sUri, $oResource);
 	}
 
 	/**
@@ -89,7 +113,7 @@ final class MCPRegistry
 	 */
 	public static function RegisterResourceTemplate(AbstractMCPResourceTemplate $oResourceTemplate): void
 	{
-		self::validateName($oResourceTemplate, $oResourceTemplate->getName(), 'resource template');
+		self::validateIdentity($oResourceTemplate, $oResourceTemplate->getQualifiedName(), 'resource template');
 		self::validateProfiles($oResourceTemplate, $oResourceTemplate->requiredProfiles());
 		$oRead = self::validateHandler($oResourceTemplate, 'read');
 
@@ -115,8 +139,7 @@ final class MCPRegistry
 			));
 		}
 
-		self::noteOverride('resource template', $sUriTemplate, self::$aResourceTemplates[$sUriTemplate] ?? null, $oResourceTemplate);
-		self::$aResourceTemplates[$sUriTemplate] = $oResourceTemplate;
+		self::claim('resource template', self::$aResourceTemplates, $oResourceTemplate->overrides() ?? $sUriTemplate, $oResourceTemplate);
 	}
 
 	/**
@@ -124,12 +147,11 @@ final class MCPRegistry
 	 */
 	public static function RegisterPrompt(AbstractMCPPrompt $oPrompt): void
 	{
-		$sName = self::validateName($oPrompt, $oPrompt->getName(), 'prompt');
+		$sIdentifier = self::validateIdentity($oPrompt, $oPrompt->getQualifiedName(), 'prompt');
 		self::validateProfiles($oPrompt, $oPrompt->requiredProfiles());
 		self::validateHandler($oPrompt, 'get');
 
-		self::noteOverride('prompt', $sName, self::$aPrompts[$sName] ?? null, $oPrompt);
-		self::$aPrompts[$sName] = $oPrompt;
+		self::claim('prompt', self::$aPrompts, $oPrompt->overrides() ?? $sIdentifier, $oPrompt);
 	}
 
 	/** @return AbstractMCPTool[] */
@@ -157,17 +179,31 @@ final class MCPRegistry
 	}
 
 	/**
-	 * Registrations that replaced an earlier one, keyed by "kind: identifier".
+	 * Declared overrides that took effect, keyed by "kind: identifier".
 	 *
-	 * Last-wins is a supported way for a pack to override a core tool, so it is
-	 * not an error - but it is never accidental either, hence the record.
-	 * MCPExtensionCollector writes them to the log once collection is done.
+	 * Replacing another element is supported, so this is not an error - but it
+	 * is never accidental either, hence the record. MCPExtensionCollector
+	 * writes these to the log once collection is done.
 	 *
 	 * @return array<string, array{0: string, 1: string}> identifier => [replaced class, replacing class]
 	 */
 	public static function GetOverrides(): array
 	{
 		return self::$aOverrides;
+	}
+
+	/**
+	 * Identifiers withdrawn because unrelated classes claimed them.
+	 *
+	 * Nothing is served under these; the operator resolves the clash by
+	 * disabling one of the classes through mcp_disabled_tools, which accepts a
+	 * class name precisely because the name is the thing in dispute.
+	 *
+	 * @return array<string, array<int, string>> identifier => claiming classes
+	 */
+	public static function GetClashes(): array
+	{
+		return self::$aClashes;
 	}
 
 	public static function Clear(): void
@@ -177,35 +213,104 @@ final class MCPRegistry
 		self::$aResourceTemplates = [];
 		self::$aPrompts = [];
 		self::$aOverrides = [];
-	}
-
-	private static function noteOverride(string $sKind, string $sIdentifier, ?object $oExisting, object $oNew): void
-	{
-		if ($oExisting === null || get_class($oExisting) === get_class($oNew)) {
-			// Re-registering the same class is how CollectAll() behaves when a
-			// provider is both discovered and explicitly registered: not an
-			// override, nothing to report.
-			return;
-		}
-
-		self::$aOverrides[$sKind.': '.$sIdentifier] = [get_class($oExisting), get_class($oNew)];
+		self::$aClashes = [];
 	}
 
 	/**
+	 * Awards an identifier, or withdraws it when two unrelated classes want it.
+	 *
+	 * Load order decides nothing here. Re-registering the same class is a
+	 * no-op (a provider that is both declared and discovered does exactly
+	 * that). A declared override wins whichever side registers first, so the
+	 * outcome does not depend on which module the setup happened to load
+	 * earlier. Anything else is two vendors colliding by accident: the
+	 * identifier is dropped and every class that claimed it is recorded, so
+	 * the operator gets a name that resolves to nothing and a log entry
+	 * naming both, rather than a tool that quietly does something other than
+	 * what its description says.
+	 *
+	 * @param array<string, object> $aStore
+	 */
+	private static function claim(string $sKind, array &$aStore, string $sIdentifier, object $oElement): void
+	{
+		$sKey = $sKind.': '.$sIdentifier;
+
+		if (isset(self::$aClashes[$sKey])) {
+			// Already withdrawn; a third claimant changes nothing but is worth recording.
+			self::$aClashes[$sKey][] = get_class($oElement);
+
+			return;
+		}
+
+		$oExisting = $aStore[$sIdentifier] ?? null;
+		if ($oExisting === null || get_class($oExisting) === get_class($oElement)) {
+			$aStore[$sIdentifier] = $oElement;
+
+			return;
+		}
+
+		if ($oElement->overrides() === $sIdentifier) {
+			self::$aOverrides[$sKey] = [get_class($oExisting), get_class($oElement)];
+			$aStore[$sIdentifier] = $oElement;
+
+			return;
+		}
+
+		if ($oExisting->overrides() === $sIdentifier) {
+			// The overriding element registered first; it keeps the identifier.
+			self::$aOverrides[$sKey] = [get_class($oElement), get_class($oExisting)];
+
+			return;
+		}
+
+		unset($aStore[$sIdentifier]);
+		self::$aClashes[$sKey] = [get_class($oExisting), get_class($oElement)];
+	}
+
+	/**
+	 * Validates the namespace, the name, and the identifier they compose.
+	 *
 	 * @throws MCPRegistrationException
 	 */
-	private static function validateName(object $oElement, ?string $sName, string $sKind): string
+	private static function validateIdentity(object $oElement, string $sIdentifier, string $sKind): string
 	{
-		if ($sName === null || !preg_match(self::NAME_PATTERN, $sName)) {
+		$sClass = get_class($oElement);
+		$sNamespace = $oElement->getNamespace();
+
+		if (!preg_match(self::NAMESPACE_PATTERN, $sNamespace)) {
 			throw new MCPRegistrationException(sprintf(
-				'%s: "%s" is not a usable %s name. Expected 1 to 128 characters matching [a-zA-Z0-9_-].',
-				get_class($oElement),
-				$sName ?? 'null',
+				'%s: "%s" is not a usable namespace. Expected 1 to 64 characters matching [a-zA-Z0-9-]; it qualifies the identifier clients address, so keep it yours - a vendor or module name.',
+				$sClass,
+				$sNamespace
+			));
+		}
+
+		if ($sNamespace === self::RESERVED_NAMESPACE && !str_starts_with($sClass, self::RESERVED_NAMESPACE_OWNER)) {
+			throw new MCPRegistrationException(sprintf(
+				'%s: the "%s" namespace belongs to the base extension. Use your own vendor or module name; to deliberately replace a core element, declare it through overrides().',
+				$sClass,
+				self::RESERVED_NAMESPACE
+			));
+		}
+
+		if (!preg_match(self::NAME_PATTERN, $sIdentifier)) {
+			throw new MCPRegistrationException(sprintf(
+				'%s: "%s" is not a usable %s identifier. Namespace and name compose it, and the result must be 1 to 128 characters matching [a-zA-Z0-9_-].',
+				$sClass,
+				$sIdentifier,
 				$sKind
 			));
 		}
 
-		return $sName;
+		$sOverrides = $oElement->overrides();
+		if ($sOverrides !== null && $sOverrides === $sIdentifier) {
+			throw new MCPRegistrationException(sprintf(
+				'%s: overrides() names this element itself. It must name the element being replaced, or return null.',
+				$sClass
+			));
+		}
+
+		return $sIdentifier;
 	}
 
 	/**

@@ -88,6 +88,11 @@ class UnboundArgumentTool extends FixtureTool
  */
 class UnsatisfiableTool extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getDescription(): ?string
 	{
 		return 'A tool whose mandatory argument is never requested.';
@@ -107,6 +112,11 @@ class UnsatisfiableTool extends AbstractMCPTool
 /** No handler at all. */
 class HandlerlessTool extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getDescription(): ?string
 	{
 		return 'A tool with no execute().';
@@ -127,12 +137,22 @@ class BadProfilesTool extends FixtureTool
 	}
 }
 
-/** Same name as FixtureTool, different class: a deliberate override. */
+/** Takes over FixtureTool's identifier, and says so. */
 class OverridingTool extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getName(): ?string
 	{
-		return 'FixtureTool';
+		return 'DeliberateReplacement';
+	}
+
+	public function overrides(): ?string
+	{
+		return 'test_FixtureTool';
 	}
 
 	public function getDescription(): ?string
@@ -201,6 +221,11 @@ class UnboundResourceTemplate extends AbstractMCPResourceTemplate
 /** A prompt with no get(). */
 class HandlerlessPrompt extends AbstractMCPPrompt
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Handlerless Prompt';
@@ -215,6 +240,11 @@ class HandlerlessPrompt extends AbstractMCPPrompt
 /** A tool whose execute() the SDK could never reach. */
 class PrivateHandlerTool extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getDescription(): ?string
 	{
 		return 'A tool whose execute() is private.';
@@ -228,5 +258,75 @@ class PrivateHandlerTool extends AbstractMCPTool
 	private function execute(): mixed
 	{
 		return 'unreachable';
+	}
+}
+
+/**
+ * Another vendor's tool that happens to land on the same identifier.
+ *
+ * The case the whole scheme is about: neither this nor FixtureTool knows the
+ * other exists, so neither declares an override.
+ */
+class ClashingTool extends AbstractMCPTool
+{
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
+	public function getName(): ?string
+	{
+		return 'FixtureTool';
+	}
+
+	public function getDescription(): ?string
+	{
+		return 'A tool from an unrelated vendor with the same name.';
+	}
+
+	public function getInputSchema(): ?array
+	{
+		return ['type' => 'object', 'properties' => []];
+	}
+
+	public function execute(): mixed
+	{
+		return 'the other vendor';
+	}
+}
+
+/** A third claimant on the same identifier. */
+class AlsoClashingTool extends ClashingTool
+{
+	public function getDescription(): ?string
+	{
+		return 'A third tool with the same name.';
+	}
+}
+
+/** Claims the namespace the base extension reserves for itself. */
+class SquattingTool extends FixtureTool
+{
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+}
+
+/** A namespace that would make the qualified name ambiguous to split. */
+class BadlyNamespacedTool extends FixtureTool
+{
+	public function getNamespace(): string
+	{
+		return 'not a namespace';
+	}
+}
+
+/** overrides() pointing at the element itself. */
+class SelfOverridingTool extends FixtureTool
+{
+	public function overrides(): ?string
+	{
+		return 'test_SelfOverridingTool';
 	}
 }

@@ -12,6 +12,11 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
 
 class FixturePrompt extends AbstractMCPPrompt
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Fixture Prompt';

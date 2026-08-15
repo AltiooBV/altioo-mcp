@@ -21,6 +21,11 @@ use RestUtils;
  */
 class ObjectCreate extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Create Object';

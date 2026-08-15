@@ -6,10 +6,32 @@ namespace Altioo\iTop\Extension\MCP\Abstract;
 
 abstract class AbstractMCPPrompt
 {
-	public function getName(): ?string //a short identifier for this prompt - defaults to the class name
+	/**
+	 * Namespace owning this prompt, e.g. 'core' or your own vendor or module
+	 * name. It qualifies the name the client sees. 'core' belongs to this
+	 * module; pick your own.
+	 */
+	abstract public function getNamespace(): string;
+
+	public function getName(): ?string //a short identifier for this prompt within its namespace - defaults to the class name
 	{
 		$ref = new \ReflectionClass($this);
 		return $ref->getShortName();
+	}
+
+	/** What the client sees and calls: namespace and name joined by '_'. */
+	final public function getQualifiedName(): string
+	{
+		return $this->getNamespace().'_'.$this->getName();
+	}
+
+	/**
+	 * Qualified name of an element this one deliberately replaces, or null.
+	 * The only way to claim an identifier that is not yours.
+	 */
+	public function overrides(): ?string
+	{
+		return null;
 	}
 
 	abstract public function getTitle(): ?string; //Human-readable title for display in UI

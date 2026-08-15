@@ -22,6 +22,11 @@ use DBObjectSet;
 class ObjectUpdate extends AbstractMCPTool
 {
 
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Update Object';

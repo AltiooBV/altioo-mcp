@@ -22,6 +22,16 @@ abstract class AbstractMCPResourceTemplate
 
 	abstract protected function getResourceNamespace(): string;
 
+	/**
+	 * Namespace owning this element, the same one that qualifies its URI.
+	 * Named alike on all four kinds so the registry can read it off any of
+	 * them. 'core' belongs to this module; pick your own.
+	 */
+	final public function getNamespace(): string
+	{
+		return $this->getResourceNamespace();
+	}
+
 	abstract protected function getResourcePath(): string; // contains {variables}
 
 	final public function getUriTemplate(): string
@@ -63,5 +73,20 @@ abstract class AbstractMCPResourceTemplate
 	public function requiredProfiles(): array
 	{
 		return [];
+	}
+
+	/** Namespace and name joined by '_', for clients that list by name. */
+	final public function getQualifiedName(): string
+	{
+		return $this->getNamespace().'_'.$this->getName();
+	}
+
+	/**
+	 * URI of an element this one deliberately replaces, or null. The only way
+	 * to claim an identifier that is not yours.
+	 */
+	public function overrides(): ?string
+	{
+		return null;
 	}
 }

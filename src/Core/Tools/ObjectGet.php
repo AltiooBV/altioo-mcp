@@ -20,6 +20,11 @@ use iAttributeNoGroupBy;
 class ObjectGet extends AbstractMCPTool
 {
 
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Get Object';

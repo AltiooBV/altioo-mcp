@@ -30,6 +30,11 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	const DEFAULT_OFFSET = 0;
 
 
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	protected static function serializeObject(\DBObject $oObject, string $sClass): array
 	{
 		$aData = [

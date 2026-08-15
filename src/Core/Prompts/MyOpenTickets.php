@@ -8,6 +8,11 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
 
 class MyOpenTickets extends AbstractMCPPrompt
 {
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'My Open Tickets';

@@ -56,15 +56,15 @@ final class MCPService
 	 */
 	private static function registerResources(Builder $builder, array $aDisabled): Builder
 	{
-		foreach (MCPRegistry::GetResources() as $resource) {
-			if (self::isHidden($resource->getUri(), $resource->isAvailable(), $resource->requiredProfiles(), $aDisabled)) {
+		foreach (MCPRegistry::GetResources() as $sUri => $resource) {
+			if (self::isHidden($sUri, $resource, $aDisabled)) {
 				continue;
 			}
 
 			$builder = $builder->addResource(
 				\Closure::fromCallable([$resource, 'read']),
-				$resource->getUri(),
-				$resource->getName(),
+				$sUri,
+				$resource->getQualifiedName(),
 				$resource->getTitle(),
 				$resource->getDescription(),
 				$resource->getMimeType(),
@@ -83,15 +83,15 @@ final class MCPService
 	 */
 	private static function registerResourceTemplates(Builder $builder, array $aDisabled): Builder
 	{
-		foreach (MCPRegistry::GetResourceTemplates() as $resourceTemplate) {
-			if (self::isHidden($resourceTemplate->getUriTemplate(), $resourceTemplate->isAvailable(), $resourceTemplate->requiredProfiles(), $aDisabled)) {
+		foreach (MCPRegistry::GetResourceTemplates() as $sUriTemplate => $resourceTemplate) {
+			if (self::isHidden($sUriTemplate, $resourceTemplate, $aDisabled)) {
 				continue;
 			}
 
 			$builder = $builder->addResourceTemplate(
 				\Closure::fromCallable([$resourceTemplate, 'read']),
-				$resourceTemplate->getUriTemplate(),
-				$resourceTemplate->getName(),
+				$sUriTemplate,
+				$resourceTemplate->getQualifiedName(),
 				$resourceTemplate->getTitle(),
 				$resourceTemplate->getDescription(),
 				$resourceTemplate->getMimeType(),
@@ -108,14 +108,14 @@ final class MCPService
 	 */
 	private static function registerTools(Builder $builder, array $aDisabled): Builder
 	{
-		foreach (MCPRegistry::GetTools() as $tool) {
-			if (self::isHidden($tool->getName(), $tool->isAvailable(), $tool->requiredProfiles(), $aDisabled)) {
+		foreach (MCPRegistry::GetTools() as $sName => $tool) {
+			if (self::isHidden($sName, $tool, $aDisabled)) {
 				continue;
 			}
 
 			$builder = $builder->addTool(
 				\Closure::fromCallable([$tool, 'execute']),
-				$tool->getName(),
+				$sName,
 				$tool->getTitle(),
 				$tool->getDescription(),
 				$tool->getAnnotations(),
@@ -134,14 +134,14 @@ final class MCPService
 	 */
 	private static function registerPrompts(Builder $builder, array $aDisabled): Builder
 	{
-		foreach (MCPRegistry::GetPrompts() as $prompt) {
-			if (self::isHidden($prompt->getName(), $prompt->isAvailable(), $prompt->requiredProfiles(), $aDisabled)) {
+		foreach (MCPRegistry::GetPrompts() as $sName => $prompt) {
+			if (self::isHidden($sName, $prompt, $aDisabled)) {
 				continue;
 			}
 
 			$builder = $builder->addPrompt(
 				\Closure::fromCallable([$prompt, 'get']),
-				$prompt->getName(),
+				$sName,
 				$prompt->getTitle(),
 				$prompt->getDescription(),
 				$prompt->getIcons(),
@@ -161,21 +161,24 @@ final class MCPService
 	 * (mcp_disabled_tools). Not being registered means it is neither listed nor
 	 * callable - the SDK can only route to what the builder was given.
 	 *
-	 * @param string             $sIdentifier Tool/prompt name, or resource URI.
-	 * @param array<int, string> $aRequiredProfiles
+	 * The operator can name either the identifier or the class. The class is
+	 * the only way to separate two extensions that picked the same identifier,
+	 * which is exactly the case where one of them has to go.
+	 *
+	 * @param string             $sIdentifier Qualified tool/prompt name, or resource URI, as awarded by the registry.
 	 * @param array<int, string> $aDisabled
 	 */
-	private static function isHidden(string $sIdentifier, bool $bAvailable, array $aRequiredProfiles, array $aDisabled): bool
+	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled): bool
 	{
-		if (!$bAvailable) {
+		if (!$oElement->isAvailable()) {
 			return true;
 		}
 
-		if (in_array($sIdentifier, $aDisabled, true)) {
+		if (in_array($sIdentifier, $aDisabled, true) || in_array(get_class($oElement), $aDisabled, true)) {
 			return true;
 		}
 
-		return self::lacksRequiredProfiles($aRequiredProfiles);
+		return self::lacksRequiredProfiles($oElement->requiredProfiles());
 	}
 
 	/**

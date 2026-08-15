@@ -42,27 +42,27 @@ class MCPRegistryTest extends TestCase
 		$this->assertSame([], MCPRegistry::GetPrompts());
 	}
 
-	public function testToolsAreKeyedByName(): void
+	public function testToolsAreKeyedByQualifiedName(): void
 	{
 		$oTool = new FixtureTool();
 		MCPRegistry::RegisterTool($oTool);
 
-		$this->assertArrayHasKey('FixtureTool', MCPRegistry::GetTools());
-		$this->assertSame($oTool, MCPRegistry::GetTools()['FixtureTool']);
+		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
+		$this->assertSame($oTool, MCPRegistry::GetTools()['test_FixtureTool']);
 	}
 
 	/**
-	 * Keying by name means a later registration silently wins. Extensions rely
-	 * on that to override a core tool, so it must not turn into a duplicate.
+	 * Registering the same class twice is what a provider that is both
+	 * declared and discovered does; it must not turn into a duplicate.
 	 */
-	public function testRegisteringTheSameNameReplacesRatherThanDuplicates(): void
+	public function testRegisteringTheSameClassTwiceKeepsOneEntry(): void
 	{
 		MCPRegistry::RegisterTool(new FixtureTool());
 		$oSecond = new FixtureTool();
 		MCPRegistry::RegisterTool($oSecond);
 
 		$this->assertCount(1, MCPRegistry::GetTools());
-		$this->assertSame($oSecond, MCPRegistry::GetTools()['FixtureTool']);
+		$this->assertSame($oSecond, MCPRegistry::GetTools()['test_FixtureTool']);
 	}
 
 	public function testResourcesAreKeyedByUri(): void
@@ -81,11 +81,11 @@ class MCPRegistryTest extends TestCase
 		$this->assertArrayHasKey('itop://test/fixture/{id}', MCPRegistry::GetResourceTemplates());
 	}
 
-	public function testPromptsAreKeyedByName(): void
+	public function testPromptsAreKeyedByQualifiedName(): void
 	{
 		MCPRegistry::RegisterPrompt(new FixturePrompt());
 
-		$this->assertArrayHasKey('FixturePrompt', MCPRegistry::GetPrompts());
+		$this->assertArrayHasKey('test_FixturePrompt', MCPRegistry::GetPrompts());
 	}
 
 	public function testCollectionsAreIndependent(): void

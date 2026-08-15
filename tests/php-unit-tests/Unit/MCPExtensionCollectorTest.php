@@ -87,7 +87,7 @@ class MCPExtensionCollectorTest extends TestCase
 		MCPExtensionCollector::CollectAll();
 
 		$this->assertSame(1, FixtureServiceProvider::$iCallCount);
-		$this->assertArrayHasKey('FixtureTool', MCPRegistry::GetTools());
+		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
 	}
 
 	/**
@@ -116,7 +116,7 @@ class MCPExtensionCollectorTest extends TestCase
 			1,
 			array_filter(
 				array_keys(MCPRegistry::GetTools()),
-				static fn (string $sName): bool => $sName === 'FixtureTool'
+				static fn (string $sName): bool => $sName === 'test_FixtureTool'
 			)
 		);
 	}
@@ -134,6 +134,6 @@ class MCPExtensionCollectorTest extends TestCase
 		MCPExtensionCollector::CollectAll();
 
 		$this->assertSame(1, FixtureServiceProvider::$iCallCount);
-		$this->assertArrayHasKey('FixtureTool', MCPRegistry::GetTools());
+		$this->assertArrayHasKey('test_FixtureTool', MCPRegistry::GetTools());
 	}
 }

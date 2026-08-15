@@ -17,6 +17,11 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
  */
 class FixtureTool extends AbstractMCPTool
 {
+	public function getNamespace(): string
+	{
+		return 'test';
+	}
+
 	public function getDescription(): ?string
 	{
 		return 'A tool that exists only for tests.';

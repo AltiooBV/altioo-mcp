@@ -8,10 +8,44 @@ use \Mcp\Schema\ToolAnnotations;
 
 abstract class AbstractMCPTool
 {
-	public function getName(): ?string //a short identifier for this tool - defaults to the class name
+	/**
+	 * Namespace owning this tool, e.g. 'core' or your own vendor or module
+	 * name. It qualifies the name the client sees, so two extensions that have
+	 * never heard of each other cannot end up claiming one identifier.
+	 *
+	 * 'core' belongs to this module; pick your own.
+	 */
+	abstract public function getNamespace(): string;
+
+	public function getName(): ?string //a short identifier for this tool within its namespace - defaults to the class name
 	{
 		$ref = new \ReflectionClass($this);
 		return $ref->getShortName();
+	}
+
+	/**
+	 * What the client sees and calls: namespace and name joined by '_'.
+	 *
+	 * Final on purpose - an extension cannot accidentally un-qualify itself
+	 * back into the shared space. To deliberately take over another element's
+	 * identifier, say so through {@see overrides()}.
+	 */
+	final public function getQualifiedName(): string
+	{
+		return $this->getNamespace().'_'.$this->getName();
+	}
+
+	/**
+	 * Qualified name of an element this one deliberately replaces, or null.
+	 *
+	 * This is the only way to claim an identifier that is not yours. Two
+	 * extensions colliding by accident never declare it, which is exactly what
+	 * lets the registry tell an intended override from a name clash instead of
+	 * guessing from load order.
+	 */
+	public function overrides(): ?string
+	{
+		return null;
 	}
 
 	abstract public function getDescription(): ?string; //A human-readable description of the tool This can be used by clients to improve the LLM's understanding of available tools. It can be thought of like a "hint" to the model.

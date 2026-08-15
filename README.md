@@ -37,14 +37,18 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
-| `ObjectSearchByOQL` | Search objects with an OQL query |
-| `ObjectSearchByClass` | Search objects of a class by attribute criteria |
-| `ObjectGet` | Retrieve a single object by class and ID |
-| `ObjectGetRelated` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `ObjectCreate` | Create an object |
-| `ObjectUpdate` | Update an object's attributes |
-| `ObjectApplyStimulus` | Apply a lifecycle stimulus (state transition) |
-| `ObjectDelete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
+| `core_ObjectSearchByOQL` | Search objects with an OQL query |
+| `core_ObjectSearchByClass` | Search objects of a class by attribute criteria |
+| `core_ObjectGet` | Retrieve a single object by class and ID |
+| `core_ObjectGetRelated` | Walk a named relation (impacts, depends on…) for impact analysis |
+| `core_ObjectCreate` | Create an object |
+| `core_ObjectUpdate` | Update an object's attributes |
+| `core_ObjectApplyStimulus` | Apply a lifecycle stimulus (state transition) |
+| `core_ObjectDelete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
+
+Names are qualified by the namespace that owns them, the way resource URIs already
+are — `core` belongs to this module, an extension uses its own. Two packs from two
+vendors therefore cannot claim one identifier by both calling a class `TicketAddLogEntry`.
 
 **Resources**
 
@@ -59,7 +63,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Prompt | Purpose |
 |---|---|
-| `MyOpenTickets` | Summarise the current user's open tickets |
+| `core_MyOpenTickets` | Summarise the current user's open tickets |
 
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
@@ -68,7 +72,7 @@ Because the schema is read live from `MetaModel`, whatever your datamodel custom
 
 Streamable HTTP, over a single endpoint, stateless: each request is authenticated on its own
 and no server-side session is carried between requests. SSE streaming and resumability are not
-supported. Authentication is by iTop token; OAuth is not wired up.
+supported. Authentication is delegated to iTop itself — see [Granting access](#granting-access).
 
 ## Installation
 
@@ -83,7 +87,8 @@ production instance.
 
 ## Granting access
 
-Access is gated three times, and every gate must pass.
+Access is gated by a profile, by a credential, and by iTop's own permissions. Every gate that
+applies must pass.
 
 **1. A profile.** By default only users holding **Administrator** or **MCP Services User**
 may reach the endpoint. `MCP Services User` is created by this extension; like iTop's own
@@ -94,17 +99,32 @@ profiles, so grant it alongside a functional profile, never on its own.
 Change the allowed list with the `mcp_allowed_profiles` module parameter (below), or set
 `secure_mcp_services` to `false` to drop the profile check entirely.
 
-**2. A token with the MCP scope.** Create a Personal Token (My Account → Personal Tokens) or
-a User Token, tick the **MCP** scope, and give it to the client. This extension adds that
-scope to iTop's token classes, so a token minted for REST/JSON or for Export cannot be
-replayed against the MCP endpoint, and vice versa.
+**2. A credential iTop accepts.** Authentication is delegated to iTop's login stack
+(`LoginWebPage::DoLogin()`), so any login mode iTop can perform **non-interactively** works
+here, subject to your `allowed_login_types`:
+
+- **A Personal or User token** (recommended). Create one under My Account → Personal Tokens,
+  tick the **MCP** scope, and give it to the client. This extension adds that scope to iTop's
+  token classes, so a token minted for REST/JSON or for Export cannot be replayed against the
+  MCP endpoint, and vice versa.
+- **Basic authentication**, exactly as for iTop's REST/JSON API. Scopes are a property of token
+  objects, so none applies here — the profile gate and iTop's permissions are what protect the
+  endpoint.
+- **`external` mode**, where a reverse proxy authenticates the caller and passes `REMOTE_USER`.
+  This is where OAuth/OIDC belongs: terminate it in the web server (`mod_auth_openidc`,
+  `oauth2-proxy`) and let iTop consume the result. The extension carries no OAuth code of its
+  own, and needs none.
+
+Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint — a headless MCP
+client has no way to follow a redirect to an identity provider — and neither can a session
+cookie, since the endpoint resets the session on every request.
 
 **3. iTop's own permissions.** Every operation goes through `UserRights` — class rights,
 object-level rights, per-attribute read and write rights, and stimulus rights. Sensitive
 attributes (those whose type implements `iAttributeNoGroupBy`) are masked in output.
 
 On top of those three, `mcp_disabled_tools` lets you turn individual tools, prompts and
-resources off outright, whichever extension registered them.
+resources off outright, by name or by class, whichever extension registered them.
 
 ## Endpoint
 
@@ -125,6 +145,15 @@ Point your MCP client at that URL and authenticate with the token above:
   }
 }
 ```
+
+`Auth-Token: <your-itop-token>` works too, and is the header iTop's own `authent-token` module
+reads natively. Prefer it if `Authorization` never reaches PHP in your deployment: under
+FastCGI, Apache drops that header unless `CGIPassAuth On` (or an equivalent
+`SetEnvIf Authorization` rewrite) is in effect.
+
+MCP clients that offer only a "Connect" button, with no field for a credential, expect the
+server to advertise OAuth discovery (RFC 9728). This extension does not, by design — put an
+OAuth-terminating proxy in front of it if you need to serve such a client.
 
 ## Configuration
 
@@ -147,7 +176,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*` |
-| `mcp_disabled_tools` | *(empty)* | Kill switch. List tool names, prompt names, resource URIs or resource template URIs — e.g. `array('ObjectDelete', 'itop://core/current-user')`. Anything listed is neither advertised nor callable, whichever extension registered it |
+| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_ObjectDelete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
@@ -191,8 +220,11 @@ the same string the server sends to clients in `serverInfo`.
 
 ### 2. Write a tool
 
-Extend `AbstractMCPTool`. `getName()` defaults to the class short name, and that is what the
-client sees — pick something unlikely to collide with another extension's tool.
+Extend `AbstractMCPTool`. `getNamespace()` is yours to pick — a vendor or module name,
+`[a-zA-Z0-9-]`, and not `core`, which belongs to this module. `getName()` defaults to the
+class short name. What the client sees and calls is the two joined by `_`, so
+`acme` + `TicketAddLogEntry` is advertised as `acme_TicketAddLogEntry`. That composition is
+`final`: an extension cannot put itself back into the shared space by accident.
 
 The parameter names of `execute()` **must match the properties of the input schema** you
 declare: the server binds arguments by name, so a property with no matching parameter is
@@ -207,6 +239,11 @@ use Mcp\Schema\ToolAnnotations;
 
 class TicketAddLogEntry extends AbstractMCPTool
 {
+    public function getNamespace(): string
+    {
+        return 'acme';
+    }
+
     public function getTitle(): ?string
     {
         return 'Add a log entry to a ticket';
@@ -280,6 +317,8 @@ Resources extend `AbstractMCPResource` and expose `read()`; resource templates e
 
 The URI is assembled from `getResourceNamespace()` and `getResourcePath()` as
 `itop://<namespace>/<path>`. **Use your own namespace** — `core` belongs to this module.
+That is the same namespace tools and prompts declare through `getNamespace()`; resources
+had it first, and it is why they never had the collision problem.
 
 ```php
 class MyThing extends AbstractMCPResource
@@ -339,15 +378,31 @@ element, and then surfaces as an empty listing or an unrelated error from inside
 
 | Kind | Checked |
 |---|---|
-| all | `getName()` matches `[a-zA-Z0-9_-]{1,128}`; `requiredProfiles()` returns a list of non-empty strings; the handler (`execute()` / `read()` / `get()`) exists and is public |
+| all | `getNamespace()` matches `[a-zA-Z0-9-]{1,64}` and is not the reserved `core` unless you *are* core; the composed identifier matches `[a-zA-Z0-9_-]{1,128}`; `overrides()` returns null or another element's identifier, never its own; `requiredProfiles()` returns a list of non-empty strings; the handler (`execute()` / `read()` / `get()`) exists and is public |
 | tools | non-empty `getDescription()`; input schema is a JSON Schema of type `object`; every `required` entry is declared under `properties`; every property maps to a parameter of `execute()`; every parameter of `execute()` without a default is listed under `required` |
 | resources | the URI carries no `{variable}` |
 | resource templates | the URI template carries at least one `{variable}`, and each one matches a parameter of `read()` |
 
-**Name collisions are last-wins**, deliberately: it is how a pack replaces a core tool with its
-own. Both classes are written to the log when it happens, so an override that was not intended
-is visible rather than silent. Load order decides the winner, so do not rely on it to override
-something — rely on it only to know that you did.
+### Who owns an identifier
+
+Namespacing makes a collision between two unrelated packs unlikely, not impossible — two
+vendors can still pick the same namespace. When one identifier is claimed by two different
+classes, the registry does not pick a winner:
+
+- **Same class registered twice** — nothing happens. That is what a provider both declared in
+  `register.php` and found by discovery looks like.
+- **One of them declares `overrides()`** — it takes the identifier, whichever order the two
+  registered in, and the replacement is written to the log. This is how you deliberately
+  replace a core tool: return `'core_ObjectDelete'` from `overrides()` and keep the name the
+  clients already use. It is the only way to claim an identifier that is not yours.
+- **Neither declares anything** — an accident, and it is treated as one. The identifier is
+  **withdrawn**: it is served to nobody, and every class that claimed it is logged. The
+  alternative, awarding it to whoever loaded last, would have a client call the tool whose
+  description it was shown and run a different vendor's code. The rest of both packs is
+  unaffected; only the disputed name goes.
+
+The operator resolves a withdrawal with `mcp_disabled_tools`, which accepts a class name for
+exactly this reason — the identifier no longer tells the two apart, and the class does.
 
 ### What the framework guarantees you
 

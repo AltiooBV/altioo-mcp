@@ -37,6 +37,11 @@ class ObjectGetRelated extends AbstractMCPTool
 	const DIRECTION_DOWN = 'down';
 	const DIRECTION_UP = 'up';
 
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Get Related Objects';

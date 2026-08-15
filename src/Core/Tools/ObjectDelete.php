@@ -23,6 +23,11 @@ use DeletionPlan;
 class ObjectDelete extends AbstractMCPTool
 {
 
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
 	public function getTitle(): ?string
 	{
 		return 'Delete Object';
