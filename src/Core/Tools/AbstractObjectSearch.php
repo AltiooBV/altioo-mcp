@@ -65,7 +65,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			],
 			'offset' => [
 				'type'        => 'integer',
-				'description' => 'Number of objects to skip. Paging is stable: results are ordered by the requested attribute and then by id, so no object is returned twice or skipped between pages.',
+				'description' => 'Number of objects to skip. Paging is stable: results are ordered by the requested attribute and then by id, so no object is returned twice or skipped between pages. The result reports has_more and next_offset; pass next_offset back here for the following page rather than working the arithmetic out, since a page can be shorter than limit when object-level rights remove rows from it.',
 				'default'     => self::DEFAULT_OFFSET,
 				'minimum'     => self::MIN_OFFSET,
 			],
@@ -138,6 +138,33 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		$aOrderBy[self::TIEBREAK_ATTRIBUTE] ??= $bAscending;
 
 		return $aOrderBy;
+	}
+
+	/**
+	 * Whether another page exists, and the offset that reads it.
+	 *
+	 * Derivable from total, limit and offset, and derived wrongly often enough
+	 * to be worth stating: a page can come back shorter than limit because
+	 * object-level rights removed rows from it, and a caller that concludes
+	 * "short page, therefore the end" stops early and silently. The database
+	 * skipped limit rows whatever the caller was allowed to see, so the next
+	 * page starts at offset + limit and the count decides whether there is one.
+	 *
+	 * next_offset is null at the end rather than the offset past the end, so
+	 * that "call again with this" and "there is nothing more" cannot be
+	 * confused for one another.
+	 *
+	 * @return array{has_more: bool, next_offset: int|null}
+	 */
+	protected static function pagingFooter(int $iTotal, int $iLimit, int $iOffset): array
+	{
+		$iNext = $iOffset + $iLimit;
+		$bHasMore = $iNext < $iTotal;
+
+		return [
+			'has_more'    => $bHasMore,
+			'next_offset' => $bHasMore ? $iNext : null,
+		];
 	}
 
 	/**

@@ -109,7 +109,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults, // hides objects that the user shouldn't see
-			]);
+			] + self::pagingFooter(0, $limit, $offset));
 		}
 
 		// Execute the search and fetch results
@@ -135,14 +135,16 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
+			$iTotal = $oSet->Count();
+
 			return ToolOutput::Json([
 				'class' => $class,
 				'oql'       => $oql,
-				'total'     => $oSet->Count(),
+				'total'     => $iTotal,
 				'limit'     => $limit,
 				'offset'    => $offset,
 				'objects'   => $aResults,
-			]);
+			] + self::pagingFooter($iTotal, $limit, $offset));
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
 		}

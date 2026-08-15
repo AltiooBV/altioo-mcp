@@ -124,7 +124,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults, // hides objects that the user shouldn't see
-			]);
+			] + self::pagingFooter(0, $limit, $offset));
 		}
 		$sSetClass = $oSet->GetClass();
 		if ($sSetClass !== $class) {
@@ -138,7 +138,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'limit'   => $limit,
 					'offset'  => $offset,
 					'objects' => $aResults, // hides objects that the user shouldn't see
-				]);
+				] + self::pagingFooter(0, $limit, $offset));
 			}
 
 			if (!UserRights::IsActionAllowed($sSetClass, UR_ACTION_BULK_READ, $oSet)) {
@@ -150,7 +150,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'limit'   => $limit,
 					'offset'  => $offset,
 					'objects' => $aResults, // hides objects that the user shouldn't see
-				]);
+				] + self::pagingFooter(0, $limit, $offset));
 			}
 		}
 
@@ -176,15 +176,17 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
 			}
 
+			$iTotal = $oSet->Count();
+
 			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
 				'filters' => $filters,
-				'total'   => $oSet->Count(),
+				'total'   => $iTotal,
 				'limit'   => $limit,
 				'offset'  => $offset,
 				'objects' => $aResults,
-			]);
+			] + self::pagingFooter($iTotal, $limit, $offset));
 		} catch (\Exception $e) {
 			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
 		}
