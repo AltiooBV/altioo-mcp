@@ -280,6 +280,18 @@ reads natively. Prefer it if `Authorization` never reaches PHP in your deploymen
 FastCGI, Apache drops that header unless `CGIPassAuth On` (or an equivalent
 `SetEnvIf Authorization` rewrite) is in effect.
 
+Scope that directive to this one file rather than turning it on for the whole server. It
+makes PHP see `Authorization` on every request it covers, and the rest of iTop has no use
+for that header — a narrower blast radius costs one block:
+
+```apache
+<Directory /path/to/itop/extensions/altioo-mcp>
+    <Files "index.php">
+        CGIPassAuth On
+    </Files>
+</Directory>
+```
+
 iTop ships an `extensions/.htaccess` (and an `extensions/web.config` for IIS) that denies
 every request under `extensions/` except a short list of static file types, PHP not among
 them — which is the right default for a directory full of module sources, and would otherwise
@@ -297,6 +309,15 @@ unauthenticated call is answered `401` with a `WWW-Authenticate: Bearer` challen
 document your proxy serves. That is the pointer such a client follows, and the proxy cannot
 add it to a `401` it never sees.
 
+> **If you put an OIDC proxy in front of iTop, it must not forward the upstream token as the
+> iTop credential.** The proxy authenticates the caller and then presents iTop with an
+> identity it controls — `REMOTE_USER` in `external` mode, or an iTop token the proxy holds
+> for that user. Passing the access token it received straight through is the
+> *token-passthrough* anti-pattern, which the MCP specification forbids with a MUST NOT: the
+> token was issued for the proxy as its audience, iTop cannot validate that it was meant for
+> this resource, and a token stolen from any other service the caller uses becomes a working
+> iTop credential. Terminate the token at the proxy; map identity, not credentials.
+
 ## Configuration
 
 All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
@@ -305,6 +326,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 'altioo-mcp' => array(
     'secure_mcp_services' => true,
     'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
+    'mcp_allowed_hosts' => array(),
     'mcp_allowed_origins' => array(),
     'mcp_disabled_tools' => array(),
     'mcp_enabled_toolsets' => array(),
@@ -322,6 +344,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 |---|---|---|
 | `secure_mcp_services` | `true` | When true, callers must hold one of `mcp_allowed_profiles`. Setting it to `false` opens the endpoint to every authenticated user |
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
+| `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects` and `relations`, and a pack declares its own. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
@@ -332,6 +355,38 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
+
+### Settings outside this module that matter here
+
+Two of them, both in the main body of `config-itop.php` rather than in the `altioo-mcp`
+block, and both worth setting before the first client connects.
+
+**Disable the configuration editor.** The console's built-in editor executes the PHP you
+save into it — that is what it is for, and it is documented behaviour. It is also a code
+execution path that an Administrator-scoped credential reaches, which changes what a
+successful prompt injection is worth: the difference between a wrongly closed ticket and
+arbitrary PHP on the server.
+
+```php
+'itop-config' => array(
+    'config_editor' => 'disabled',
+),
+```
+
+Treat this as mandatory wherever the MCP endpoint is enabled. Edit the file directly when
+you need to change configuration; the editor buys nothing an SSH session does not.
+
+**Start read-only.** The recommended opening position is an instance that cannot write and
+tokens that cannot either:
+
+```php
+'mcp_capabilities' => array('read'),
+```
+
+with clients issued `MCP-read` tokens. Widen one grade at a time, and only once you have
+watched the audit trail for what the assistant actually does. `mcp_capabilities` is the
+instance-wide floor and the token scope narrows further within it, so the two together let
+one credential be weaker than the instance without a second user account.
 
 ### Audit trail
 

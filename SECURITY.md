@@ -91,9 +91,25 @@ Follow [iTop's security guidance](https://www.itophub.io/wiki/page?id=latest:ins
 In particular, and specifically relevant here:
 
 - Serve iTop over **HTTPS with HSTS**. A bearer token on a plaintext connection is a shared secret.
-- Set `session.cookie_secure`, `session.cookie_httponly` and `zend.exception_ignore_args` in PHP.
+- Set `session.cookie_secure` and `session.cookie_httponly` in PHP.
+- Set **`zend.exception_ignore_args=On`** in `php.ini`. With it off, a stack trace records the
+  arguments of every frame — and the frame that authenticates a request was handed the raw
+  token. That is how a credential ends up in a log file nobody thinks of as sensitive.
+- Disable the console configuration editor wherever this endpoint is enabled:
+  `'itop-config' => array('config_editor' => 'disabled')`. It executes the PHP saved into it by
+  design, and an Administrator-scoped token reaches it — which is the difference between a
+  prompt injection that closes a ticket and one that runs code.
 - Keep `mcp_allowed_origins` empty unless a browser-based client you control needs it. Never `*`.
-- Start with `mcp_read_only => true`, widen deliberately.
+- Leave `mcp_allowed_hosts` derived unless iTop answers under a name `app_root_url` does not
+  carry. `array('*')` disables the `Host` check and belongs only behind a proxy that performs
+  it itself.
+- Start with `mcp_capabilities => array('read')` and issue `MCP-read` tokens. Widen one grade
+  at a time, against what the audit trail shows the assistant actually doing.
+- Scope `CGIPassAuth On` to `extensions/altioo-mcp/index.php`, never to the whole server.
+- Behind an OIDC proxy: map identity to an iTop credential the proxy holds. Never forward the
+  upstream access token as the iTop credential — the MCP specification forbids that
+  passthrough with a MUST NOT, and it turns a token stolen from any other service into a
+  working iTop credential.
 - Grant `MCP Services User` alongside a functional profile chosen for this purpose — the paired
   profile is the real blast radius, not the MCP profile itself.
 - Leave `log_mcp_level` at `error` in normal operation: `debug` stores raw request parameters,
