@@ -14,6 +14,7 @@ use AttributeDefinition;
 use AttributeExternalField;
 use AttributeLinkedSet;
 use DBObject;
+use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
 use ormDocument;
@@ -101,11 +102,16 @@ final class ObjectSerializer
 
 		$aUnreadable = [];
 
+		// Built on first use and only when some attribute answers DEPENDS, so
+		// an install whose addon never does - the shipped one never does - pays
+		// nothing for the query.
+		$oInstanceSet = null;
+
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
 			if ($aFields !== null && !in_array($sAttCode, $aFields, true)) {
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ)) {
+			if (!self::MayRead($oObject, $sClass, $sAttCode, $oInstanceSet)) {
 				continue;
 			}
 
@@ -128,6 +134,46 @@ final class ObjectSerializer
 		}
 
 		return $aData;
+	}
+
+	/**
+	 * Whether this caller may read this attribute of this object.
+	 *
+	 * IsActionAllowedOnAttribute() is tri-state. Read as a boolean,
+	 * UR_ALLOWED_DEPENDS is 2 and therefore truthy, so an addon saying "ask me
+	 * again with the object" was being read as "yes" - and every attribute it
+	 * grades per object was served on every read. The shipped addon never
+	 * answers DEPENDS for attributes, so nothing changes on a stock install;
+	 * under one that does, this is the difference between honouring its answer
+	 * and ignoring it.
+	 *
+	 * The instance set is built once per object and only if some attribute
+	 * actually answers DEPENDS, which keeps the query off the common path.
+	 *
+	 * @param DBObjectSet|null $oInstanceSet Reused across attributes of one object; created here on first need.
+	 */
+	private static function MayRead(DBObject $oObject, string $sClass, string $sAttCode, ?DBObjectSet &$oInstanceSet): bool
+	{
+		$iAllowed = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ);
+
+		if ($iAllowed === UR_ALLOWED_YES) {
+			return true;
+		}
+		if ($iAllowed === UR_ALLOWED_NO) {
+			return false;
+		}
+
+		// DEPENDS, and the object is what it depends on. An object with no key
+		// is not in the database to be asked about, so the question cannot be
+		// resolved and the answer stays no.
+		$iKey = (int)$oObject->GetKey();
+		if ($iKey < 1) {
+			return false;
+		}
+
+		$oInstanceSet ??= new DBObjectSet(ObjectQuery::ById($sClass, $iKey));
+
+		return UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ, $oInstanceSet) === UR_ALLOWED_YES;
 	}
 
 	/**

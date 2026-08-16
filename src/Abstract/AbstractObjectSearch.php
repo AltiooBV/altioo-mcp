@@ -134,7 +134,8 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE && !MetaModel::IsValidAttCode($sClass, $sOrderBy)) {
 				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
 			}
-			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE && !UserRights::IsActionAllowedOnAttribute($sClass, $sOrderBy, UR_ACTION_READ)) {
+			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
+				&& UserRights::IsActionAllowedOnAttribute($sClass, $sOrderBy, UR_ACTION_READ) === UR_ALLOWED_NO) {
 				// Ordering by an attribute reports on its values, so it takes
 				// the same right as reading it.
 				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");

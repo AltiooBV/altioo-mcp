@@ -356,7 +356,11 @@ class ObjectAttach extends AbstractMCPTool
 		if (!$oAttDef->IsWritable()) {
 			throw new ToolCallException("Attribute '{$sAttCode}' is not writable.");
 		}
-		if (!UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY)) {
+		// With the object in hand, UR_ALLOWED_DEPENDS is resolved and anything
+		// short of a yes is a no. Read as a boolean, DEPENDS is 2 and therefore
+		// truthy, which turns "ask me again with the object" into "yes".
+		$oInstanceSet = new DBObjectSet(ObjectQuery::ById($sClass, $iId));
+		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
 			throw new ToolCallException("Write access denied on attribute '{$sAttCode}'.");
 		}
 

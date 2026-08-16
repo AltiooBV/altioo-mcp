@@ -138,7 +138,10 @@ class ObjectCreate extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY)) {
+			// No object exists yet, so "depends on the object" cannot be
+			// answered; only an outright refusal counts, and DBInsert() checks
+			// again once there is something to check against.
+			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY) === UR_ALLOWED_NO) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;
 			}

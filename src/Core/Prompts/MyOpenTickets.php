@@ -129,7 +129,7 @@ class MyOpenTickets extends AbstractMCPPrompt
 			if (!MetaModel::IsValidAttCode(self::TICKET_CLASS, $sAttCode)) {
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, $sAttCode, UR_ACTION_READ)) {
+			if (UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
 				continue;
 			}
 
@@ -143,7 +143,7 @@ class MyOpenTickets extends AbstractMCPPrompt
 	private static function hasOperationalStatus(): bool
 	{
 		return MetaModel::IsValidAttCode(self::TICKET_CLASS, self::OPERATIONAL_STATUS)
-			&& UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, self::OPERATIONAL_STATUS, UR_ACTION_READ);
+			&& UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, self::OPERATIONAL_STATUS, UR_ACTION_READ) !== UR_ALLOWED_NO;
 	}
 
 	private function instruction(): string
