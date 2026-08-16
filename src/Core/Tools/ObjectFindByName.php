@@ -286,6 +286,35 @@ class ObjectFindByName extends AbstractMCPTool
 	}
 
 	/**
+	 * A needle that matches itself, rather than acting as a pattern.
+	 *
+	 * AddCondition_FullText() wraps the needle in %...% and binds it as a
+	 * parameter, so nothing here reaches the query text and this is not a
+	 * escaping-for-safety measure. iTop escapes _ inside that method, for the
+	 * stated reason that it is a single-character wildcard; % is the
+	 * many-character one and is left alone, so a search for "100%" or "50% off"
+	 * currently matches every object of every readable class.
+	 *
+	 * For the console that is a curiosity a human notices immediately. Here the
+	 * caller is a model, which cannot see that its needle was a pattern: it gets
+	 * a full page of unrelated objects and no signal that they are unrelated, so
+	 * it reports them as matches. A wrong answer delivered confidently is worse
+	 * than an empty one.
+	 *
+	 * A deliberate divergence from the console, then, and the only one this tool
+	 * makes. Anyone wanting pattern matching has core_object_search_by_oql,
+	 * where writing LIKE is an explicit act.
+	 *
+	 * Escaped before the call rather than after, because iTop escapes _ on the
+	 * needle it is handed; a backslash introduced here carries no _ of its own,
+	 * so the two compose.
+	 */
+	private static function literal(string $sNeedle): string
+	{
+		return str_replace('%', '\\%', $sNeedle);
+	}
+
+	/**
 	 * The objects of one class that match, checked one by one.
 	 *
 	 * @param array<int, string> $aNeedles
@@ -297,7 +326,7 @@ class ObjectFindByName extends AbstractMCPTool
 		try {
 			$oFilter = new DBObjectSearch($sClass);
 			foreach ($aNeedles as $sNeedle) {
-				$oFilter->AddCondition_FullText($sNeedle);
+				$oFilter->AddCondition_FullText(self::literal($sNeedle));
 			}
 			$oFilter->SetShowObsoleteData(utils::ShowObsoleteData());
 

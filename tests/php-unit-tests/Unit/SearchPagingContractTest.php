@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -175,5 +176,39 @@ class SearchPagingContractTest extends TestCase
 		// reflection since PHP 8.1, and the call is deprecated from 8.5.
 		return (new \ReflectionMethod(AbstractObjectSearch::class, 'pagingFooter'))
 			->invoke(null, $iTotal, $iLimit, $iOffset);
+	}
+
+	/**
+	 * A free-text needle matches itself, not a pattern.
+	 *
+	 * AddCondition_FullText() binds the needle as a parameter wrapped in %...%,
+	 * so nothing here is about injection - the needle never reaches the query
+	 * text. It is about the answer being right. iTop escapes _ inside that
+	 * method because it is the single-character wildcard, and leaves % alone,
+	 * so "100%" matched every object of every readable class.
+	 *
+	 * A human sees that instantly. A model cannot: it gets a full page of
+	 * unrelated objects with no signal that they are unrelated, and reports
+	 * them as matches.
+	 *
+	 * @dataProvider needleProvider
+	 */
+	public function testAPercentIsMatchedLiterally(string $sNeedle, string $sExpected): void
+	{
+		$oLiteral = new \ReflectionMethod(ObjectFindByName::class, 'literal');
+
+		$this->assertSame($sExpected, $oLiteral->invoke(null, $sNeedle));
+	}
+
+	/** @return array<string, array{0: string, 1: string}> */
+	public static function needleProvider(): array
+	{
+		return [
+			'percent is escaped'         => ['100% off', '100\% off'],
+			'a bare percent'             => ['%', '\%'],
+			'underscore is left to iTop' => ['srv_01', 'srv_01'],
+			'ordinary text is untouched' => ['web server', 'web server'],
+			'empty stays empty'          => ['', ''],
+		];
 	}
 }
