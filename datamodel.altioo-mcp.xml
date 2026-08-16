@@ -26,6 +26,9 @@
             <value id="MCP-toolset-relations" _delta="define">
               <code>MCP-toolset-relations</code>
             </value>
+            <value id="MCP-toolset-documents" _delta="define">
+              <code>MCP-toolset-documents</code>
+            </value>
           </values>
         </field>
       </fields>
@@ -54,6 +57,9 @@
             </value>
             <value id="MCP-toolset-relations" _delta="define">
               <code>MCP-toolset-relations</code>
+            </value>
+            <value id="MCP-toolset-documents" _delta="define">
+              <code>MCP-toolset-documents</code>
             </value>
           </values>
         </field>
@@ -280,6 +286,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restrict this token to the tools that read and write objects]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP: relations toolset]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents"><![CDATA[MCP: documents toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents+"><![CDATA[Restrict this token to the tools that read and store files]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP: read]]></entry>
@@ -294,6 +302,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restrict this token to the tools that read and write objects]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP: relations toolset]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents"><![CDATA[MCP: documents toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents+"><![CDATA[Restrict this token to the tools that read and store files]]></entry>
         <!--
           Titles of the MCP elements themselves, as a client shows them to a
           person. Only titles are translated: a description is written for the
@@ -308,6 +318,8 @@
         <entry id="MCP:tool:core_class_list:title"><![CDATA[List Classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title"><![CDATA[Get Class Schema]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title"><![CDATA[Apply Stimulus]]></entry>
+        <entry id="MCP:tool:core_object_attach:title"><![CDATA[Attach Document]]></entry>
+        <entry id="MCP:tool:core_object_attach:title"><![CDATA[Attach Document]]></entry>
         <entry id="MCP:tool:core_object_bulk_create:title"><![CDATA[Create Objects in Bulk]]></entry>
         <entry id="MCP:tool:core_object_bulk_delete:title"><![CDATA[Delete Objects in Bulk]]></entry>
         <entry id="MCP:tool:core_object_bulk_update:title"><![CDATA[Update Objects in Bulk]]></entry>
@@ -315,6 +327,7 @@
         <entry id="MCP:tool:core_object_delete:title"><![CDATA[Delete Object]]></entry>
         <entry id="MCP:tool:core_object_find_by_name:title"><![CDATA[Find Objects by Name]]></entry>
         <entry id="MCP:tool:core_object_get:title"><![CDATA[Get Object]]></entry>
+        <entry id="MCP:tool:core_object_get_document:title"><![CDATA[Get Document]]></entry>
         <entry id="MCP:tool:core_object_get_related:title"><![CDATA[Get Related Objects]]></entry>
         <entry id="MCP:tool:core_object_search_by_class:title"><![CDATA[Search Objects by Class]]></entry>
         <entry id="MCP:tool:core_object_search_by_oql:title"><![CDATA[Search Objects by OQL]]></entry>
@@ -323,6 +336,7 @@
         <entry id="MCP:resource:core_current_user:title"><![CDATA[Current User]]></entry>
         <entry id="MCP:resource:core_version:title"><![CDATA[iTop Version]]></entry>
         <entry id="MCP:resource_template:core_class_detail:title"><![CDATA[iTop Class Detail]]></entry>
+        <entry id="MCP:resource_template:core_object_document:title"><![CDATA[iTop Document]]></entry>
         <entry id="MCP:prompt:core_my_open_tickets:title"><![CDATA[My Open Tickets]]></entry>
       </entries>
     </dictionary>
@@ -366,6 +380,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP : outils relations]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents"><![CDATA[MCP : outils documents]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents+"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP : lecture]]></entry>
@@ -380,6 +396,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP : outils relations]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents"><![CDATA[MCP : outils documents]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents+"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
         <!--
           Titres des éléments MCP, tels qu'un client les présente à un
           utilisateur. Seuls les titres sont traduits : une description est
@@ -390,6 +408,8 @@
         <entry id="MCP:tool:core_class_list:title"><![CDATA[Lister les classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title"><![CDATA[Obtenir le schéma d'une classe]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title"><![CDATA[Appliquer un stimulus]]></entry>
+        <entry id="MCP:tool:core_object_attach:title"><![CDATA[Joindre un document]]></entry>
+        <entry id="MCP:tool:core_object_attach:title"><![CDATA[Joindre un document]]></entry>
         <entry id="MCP:tool:core_object_bulk_create:title"><![CDATA[Créer des objets en masse]]></entry>
         <entry id="MCP:tool:core_object_bulk_delete:title"><![CDATA[Supprimer des objets en masse]]></entry>
         <entry id="MCP:tool:core_object_bulk_update:title"><![CDATA[Modifier des objets en masse]]></entry>
@@ -397,6 +417,7 @@
         <entry id="MCP:tool:core_object_delete:title"><![CDATA[Supprimer un objet]]></entry>
         <entry id="MCP:tool:core_object_find_by_name:title"><![CDATA[Rechercher des objets par nom]]></entry>
         <entry id="MCP:tool:core_object_get:title"><![CDATA[Obtenir un objet]]></entry>
+        <entry id="MCP:tool:core_object_get_document:title"><![CDATA[Obtenir un document]]></entry>
         <entry id="MCP:tool:core_object_get_related:title"><![CDATA[Obtenir les objets liés]]></entry>
         <entry id="MCP:tool:core_object_search_by_class:title"><![CDATA[Rechercher des objets par classe]]></entry>
         <entry id="MCP:tool:core_object_search_by_oql:title"><![CDATA[Rechercher des objets en OQL]]></entry>
@@ -405,6 +426,7 @@
         <entry id="MCP:resource:core_current_user:title"><![CDATA[Utilisateur courant]]></entry>
         <entry id="MCP:resource:core_version:title"><![CDATA[Version d'iTop]]></entry>
         <entry id="MCP:resource_template:core_class_detail:title"><![CDATA[Détail d'une classe iTop]]></entry>
+        <entry id="MCP:resource_template:core_object_document:title"><![CDATA[Document iTop]]></entry>
         <entry id="MCP:prompt:core_my_open_tickets:title"><![CDATA[Mes tickets ouverts]]></entry>
       </entries>
     </dictionary>
@@ -478,6 +500,17 @@
       -->
       <mcp_read_only type="bool">false</mcp_read_only>
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
+      <!--
+        Largest document served or accepted through this endpoint, in bytes.
+        Reading an object never returns file content - it returns the name, the
+        type, the size and the URI - so this bounds the one call that does ask
+        for a file, in both directions. 5 MB of file is about 6.7 MB of JSON
+        once base64-encoded, which is most of a context window spent on one
+        document; raise it for an instance whose users genuinely need larger
+        files read, and remember that PHP's upload_max_filesize and
+        post_max_size still apply on the way in.
+      -->
+      <mcp_max_document_bytes type="integer">5242880</mcp_max_document_bytes>
       <!--
         URL of the RFC 9728 protected-resource metadata document, served by
         the OAuth-terminating proxy in front of iTop when there is one. It is

@@ -60,6 +60,7 @@ class CoreExtensionsTest extends TestCase
 				'core_class_list',
 				'core_class_schema',
 				'core_object_apply_stimulus',
+				'core_object_attach',
 				'core_object_bulk_create',
 				'core_object_bulk_delete',
 				'core_object_bulk_update',
@@ -67,6 +68,7 @@ class CoreExtensionsTest extends TestCase
 				'core_object_delete',
 				'core_object_find_by_name',
 				'core_object_get',
+				'core_object_get_document',
 				'core_object_get_related',
 				'core_object_search_by_class',
 				'core_object_search_by_oql',
@@ -94,7 +96,13 @@ class CoreExtensionsTest extends TestCase
 	{
 		CoreExtensions::RegisterServiceProvider();
 
-		$this->assertSame(['itop://core/class/{class}'], $this->sortedKeys(MCPRegistry::GetResourceTemplates()));
+		$this->assertSame(
+			[
+				'itop://core/class/{class}',
+				'itop://core/document/{class}/{id}/{att_code}',
+			],
+			$this->sortedKeys(MCPRegistry::GetResourceTemplates())
+		);
 	}
 
 	public function testRegistersTheExpectedPrompts(): void
@@ -169,7 +177,9 @@ class CoreExtensionsTest extends TestCase
 			'core_object_search_by_class' => AccessPolicy::CAPABILITY_READ,
 			'core_object_find_by_name'    => AccessPolicy::CAPABILITY_READ,
 			'core_object_get'             => AccessPolicy::CAPABILITY_READ,
+			'core_object_get_document'    => AccessPolicy::CAPABILITY_READ,
 			'core_object_get_related'     => AccessPolicy::CAPABILITY_READ,
+			'core_object_attach'          => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_create'          => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_bulk_create'     => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_bulk_update'     => AccessPolicy::CAPABILITY_WRITE,
