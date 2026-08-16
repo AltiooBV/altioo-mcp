@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -23,6 +27,9 @@ use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use UserRights;
 
+/**
+ * @since 1.0.0
+ */
 final class MCPService
 {
 
@@ -34,6 +41,11 @@ final class MCPService
 	{
 		MCPExtensionCollector::CollectAll();
 
+		// A locator, not an implementation: it finds a PSR-17 factory on the
+		// autoloader and throws when there is none. The implementation is
+		// nyholm/psr7, required by composer.json and named nowhere else in this
+		// module - see Psr17AvailabilityTest for why that dependency has a test
+		// guarding it, and why it is not Guzzle.
 		$factory = new Psr17Factory();
 		$request = $factory->createServerRequestFromGlobals();
 

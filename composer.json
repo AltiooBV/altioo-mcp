@@ -21,7 +21,8 @@
   "require": {
     "php": ">=8.2 <8.5",
     "composer-runtime-api": "^2.0",
-    "mcp/sdk": "^0.7.1"
+    "mcp/sdk": "^0.7.1",
+    "nyholm/psr7": "^1.8"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.6"

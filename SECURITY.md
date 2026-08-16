@@ -124,3 +124,11 @@ API can change between minors. The extension pins the minor it was tested agains
 SDK upgrade as a release of its own, with the test suite as the gate; nothing on an installed
 instance changes until you install a new version of this extension. `composer audit` runs in CI
 against the lock file.
+
+The other one worth knowing about is **`nyholm/psr7`**, the PSR-17 implementation every request
+and response is built through. No line of this module names it: it is located at runtime by
+`php-http/discovery`, which makes it look unused to a reader and to anything that prunes
+dependencies. `Psr17AvailabilityTest` fails if it goes missing. Nyholm rather than Guzzle
+deliberately — iTop ships `guzzlehttp/psr7` itself, and this module's autoloader is registered
+before iTop's, so vendoring a second copy of that namespace would shadow iTop's own for the
+whole request.
