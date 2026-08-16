@@ -67,6 +67,8 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_search_by_class` | Search objects of a class by attribute criteria |
 | `core_object_get` | Retrieve a single object by class and ID |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
+| `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
+| `core_object_attach` | Attach a file to an object, or set one of its document attributes. Dry run by default |
 | `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
 | `core_object_update` | Update an object's attributes. Dry run by default |
 | `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition). Dry run by default |
@@ -89,6 +91,37 @@ cut to a ceiling that the value itself declares, unless you name that attribute 
 `output_fields`, which is the way to read one in full. Paging is stable: every page is
 ordered by `order_by` and then by `id`, so nothing is returned twice or skipped between
 pages.
+
+**Files are read one at a time, and never by accident.** A read reports a document attribute
+as what it is — filename, media type, size — and a `uri`:
+
+```json
+"contents": {
+  "filename": "screenshot.png", "mimetype": "image/png", "size": 184320,
+  "uri": "itop://core/document/Attachment/71/contents"
+}
+```
+
+Reading that URI, as a resource or through `core_object_get_document`, returns the file
+itself: an image as an image, so a model can actually look at the screenshot someone pasted
+into a ticket, anything else as an embedded file. The reason the bytes are not simply in the
+read is arithmetic — `AttributeBlob`'s JSON form is the whole file base64-encoded, base64
+costs a third again, and `core_object_get` defaults to every attribute, so one call on a
+ticket carrying a 4 MB PDF is a 5.4 MB response, larger than the context window it is being
+read into and paid for before the caller can decide it did not want it. A search returning
+fifty rows multiplies that by fifty, and none of it can be taken back once it is in the
+conversation. So a file never arrives *unasked*; asking for one by name is a call of its own.
+`mcp_max_document_bytes` (5 MB by default) bounds it in both directions, and the whole
+document surface — two tools and the resource template — is the `documents` toolset, so an
+instance that would rather serve no files at all turns off one thing.
+
+Attachments are ordinary `Attachment` objects, so `core_object_search_by_class` on
+`item_class` and `item_id` is how you find what is attached to a ticket; each result reports
+its `contents` with the `uri` that reads it. Going the other way, `core_object_attach` stores
+a file you already hold, base64-encoded — as an attachment, or into a named blob attribute.
+It deliberately does not fetch: "download this URL and attach it" would have iTop make an
+HTTP call to an address chosen by whatever the model was reading, from inside iTop's own
+network.
 
 **Nothing writes on a first call.** Every writing tool takes `simulate`, defaulting to
 `true`: it runs iTop's own `CheckToWrite()` — mandatory attributes, `DoCheckToWrite()` on the
@@ -136,6 +169,7 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 | `itop://core/current-user` | The authenticated user and their profiles |
 | `itop://core/classes` | The list of classes in the datamodel |
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle |
+| `itop://core/document/{class}/{id}/{att_code}` | One document, by the URI a read reported |
 
 The last two are deliberately served twice — as resources, and as the `core_class_list` /
 `core_class_schema` tools over the same code. Plenty of clients never fetch resources at all,
@@ -281,7 +315,7 @@ credentials of different strength.
 | `MCP-read` | Only tools that declare `readOnlyHint` |
 | `MCP-write` | Read, create and modify — **not** delete |
 | `MCP-delete` | Tools that declare `destructiveHint` |
-| `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects` |
+| `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects`. The base extension ships `datamodel`, `objects`, `relations` and `documents` |
 
 They combine, and the grades are a union: `MCP-write` is read *and* write, because granting
 write without read describes nothing anyone means by it. `MCP-read` together with
@@ -381,7 +415,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_pagination_limit' => 200,
     'mcp_protected_resource_metadata' => '',
     'log_mcp_service' => true,
-    'log_mcp_method' => array('resources/read', 'tools/call', 'prompts/get', 'exceptions'),
+    'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
     'log_mcp_level' => 'error',
 ),
 ```
@@ -393,13 +427,14 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
-| `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects` and `relations`, and a pack declares its own. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
+| `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations` and `documents`, and a pack declares its own. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
+| `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. The SDK defaults to 50 and pages the rest behind a cursor, which a client that ignores `nextCursor` never asks for — the 51st tool then exists, is callable, and is advertised to nobody |
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
 | `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
-| `log_mcp_method` | see above | Which MCP methods are audited |
+| `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
 
 ### Settings outside this module that matter here

@@ -129,6 +129,58 @@ class MCPHelper
 	const MCP_METHOD_EXCEPTION = 'exceptions';
 
 	/**
+	 * The JSON-RPC method a client sends to open a session.
+	 *
+	 * Audited apart from the rest: it is the only record that a client
+	 * connected at all, and the row is worth having whether or not the
+	 * connection went on to call anything.
+	 *
+	 * @since 1.1.0
+	 */
+	const MCP_METHOD_INITIALIZE = 'initialize';
+
+	/**
+	 * The methods audited when the operator has not said otherwise.
+	 *
+	 * The setting used to fall back to an empty list, which read as "audit
+	 * nothing" - so a fresh install had log_mcp_service defaulting to true and
+	 * an audit trail that stayed empty for ever. The default is now the list
+	 * the README has always documented, plus initialize.
+	 *
+	 * @var array<int, string>
+	 *
+	 * @since 1.1.0
+	 */
+	const DEFAULT_LOG_METHODS = [
+		self::MCP_METHOD_INITIALIZE,
+		'tools/call',
+		'resources/read',
+		'prompts/get',
+		self::MCP_METHOD_EXCEPTION,
+	];
+
+	/**
+	 * The MCP methods that earn an audit row on this instance.
+	 *
+	 * @return array<int, string>
+	 *
+	 * @since 1.1.0
+	 */
+	public static function GetAuditedMethods(): array
+	{
+		$aMethods = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_LOG_METHOD, self::DEFAULT_LOG_METHODS);
+
+		if (!is_array($aMethods)) {
+			$sType = gettype($aMethods);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_LOG_METHOD."' should be an array instead of $sType");
+
+			return self::DEFAULT_LOG_METHODS;
+		}
+
+		return array_values(array_filter($aMethods, 'is_string'));
+	}
+
+	/**
 	 * @since 1.0.0
 	 */
 	public function __construct()
@@ -142,7 +194,7 @@ class MCPHelper
 	 * For a pack that wants to degrade rather than refuse: hide the one
 	 * element that needs a newer hook through isAvailable() and serve the rest.
 	 *
-	 * @since 1.0.0
+	 * @since 1.1.0
 	 */
 	public static function AtLeast(string $sVersion): bool
 	{
@@ -169,7 +221,7 @@ class MCPHelper
 	 *
 	 * @throws MCPRegistrationException When this module is older than that.
 	 *
-	 * @since 1.0.0
+	 * @since 1.1.0
 	 */
 	public static function RequireVersion(string $sVersion, string $sRequires = ''): void
 	{
@@ -199,7 +251,7 @@ class MCPHelper
 	 * already carries means a pack that ships no dictionary reads exactly as
 	 * it did before, and a pack that ships one is translated.
 	 *
-	 * @since 1.0.0
+	 * @since 1.1.0
 	 */
 	public static function Translate(string $sKey, string $sDefault): string
 	{
@@ -303,7 +355,7 @@ class MCPHelper
 	 * Browser origins allowed to read this endpoint's responses.
 	 *
 	 * @return array<int, string>
-	 * @since 1.0.0
+	 * @since 1.1.0
 	 */
 	public static function GetAllowedOrigins(): array
 	{
@@ -326,7 +378,7 @@ class MCPHelper
 	 * unable to express "only this name".
 	 *
 	 * @return array<int, string> Hostnames without port, or [MCPHttp::ANY_HOST] for no check.
-	 * @since 1.0.0
+	 * @since 1.1.0
 	 */
 	public static function GetAllowedHosts(): array
 	{

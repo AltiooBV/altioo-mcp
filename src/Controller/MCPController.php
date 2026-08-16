@@ -363,6 +363,13 @@ final class MCPController
 					'tools/call'      => $aParams['name'] ?? null,
 					'resources/read'  => $aParams['uri'] ?? null,
 					'prompts/get'     => $aParams['name'] ?? null,
+					// The one row that says a client connected is worth naming
+					// the client on. clientInfo is what the caller declares
+					// about itself and nothing verifies it, so it identifies a
+					// well-behaved integration rather than authenticating
+					// anyone - which is what an operator reading the trail is
+					// after: which of these connected, and when did it stop.
+					MCPHelper::MCP_METHOD_INITIALIZE => self::clientDescription($aParams),
 					default           => null,
 				};
 			}
@@ -471,25 +478,70 @@ final class MCPController
 	}
 
 
+	/**
+	 * How an initialize request describes the client sending it.
+	 *
+	 * Free text written by the caller, so it is trimmed and cut to what the
+	 * column holds and never treated as anything but a label.
+	 *
+	 * @param array<string, mixed> $aParams The params of the initialize request.
+	 */
+	private static function clientDescription(array $aParams): ?string
+	{
+		$aClient = $aParams['clientInfo'] ?? null;
+		if (!is_array($aClient)) {
+			return null;
+		}
+
+		$sName    = is_string($aClient['name'] ?? null) ? trim($aClient['name']) : '';
+		$sVersion = is_string($aClient['version'] ?? null) ? trim($aClient['version']) : '';
+
+		if ($sName === '') {
+			return null;
+		}
+
+		return mb_substr($sVersion === '' ? $sName : $sName.' '.$sVersion, 0, 255);
+	}
+
+	/**
+	 * Whether this row is the record that a client connected.
+	 *
+	 * Kept out of the "successes are not worth a row" rule that the default log
+	 * level applies, and deliberately: a successful connection is precisely the
+	 * one success an operator needs. Without it the trail answers what was
+	 * called and never who arrived - so a token quietly in use by something
+	 * nobody remembers issuing it to leaves no trace until it does something,
+	 * and an integration that stopped connecting looks exactly like one that
+	 * connected and had nothing to do.
+	 *
+	 * There is one of these per session rather than per call, so it costs a row
+	 * per connection.
+	 */
+	private static function isConnection(string $sMethod): bool
+	{
+		return $sMethod === MCPHelper::MCP_METHOD_INITIALIZE;
+	}
+
 	private static function logIfConfigured(MCPResult $oResult): void
 	{
 		if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, MCPHelper::DEFAULT_LOG_SETTING) !== true) {
 			return;
 		}
 
-		// Only log actual MCP method calls, skip infrastructure requests
-		// (initialize, notifications/initialized, tools/list, etc.)
+		// Only log actual MCP method calls, skip the rest of the handshake
+		// (notifications/initialized, tools/list, etc.)
 		$sMethod = $oResult->mcpMethod;
 		if (utils::IsNullOrEmptyString($sMethod)) {
 			return;
 		}
 
-		$aLoggedMethods = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_METHOD, []);
-		if (!in_array($sMethod, $aLoggedMethods, true)) {
+		if (!in_array($sMethod, MCPHelper::GetAuditedMethods(), true)) {
 			return;
 		}
 		// If the response is successful and the log level is set to error, skip logging to avoid filling the logs with successful calls
-		if ($oResult->isSuccess() && MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL) === MCPHelper::LOG_LEVEL_ERROR) {
+		if ($oResult->isSuccess()
+			&& !self::isConnection($sMethod)
+			&& MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL) === MCPHelper::LOG_LEVEL_ERROR) {
 			return;
 		}
 
