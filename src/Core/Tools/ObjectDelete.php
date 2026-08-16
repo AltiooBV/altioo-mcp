@@ -152,6 +152,7 @@ class ObjectDelete extends AbstractMCPTool
 		// GetFinalClassName() was a query asking for something that had already
 		// arrived. Rewound immediately: IsActionAllowed() below is handed this
 		// same set, and the rights addon is free to iterate it.
+		$oObject = $oSet->Fetch();
 		$oSet->Rewind();
 
 		$sFinalClass = get_class($oObject);
@@ -171,7 +172,6 @@ class ObjectDelete extends AbstractMCPTool
 		if (!UserRights::IsActionAllowed($class,  UR_ACTION_DELETE, $oSet)) {
 			throw new ToolCallException("Access denied: cannot delete objects of class '{$class}'.");
 		}
-		$oObject = $oSet->Fetch();
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot delete object.");
 		}

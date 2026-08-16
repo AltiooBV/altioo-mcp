@@ -4,6 +4,8 @@
 # administrator finds on the instance in a year's time, and documentation that
 # only exists on a web page is documentation that instance does not have.
 # tests/ ships too - iTop's own Extensions testsuite scans env-production/.
+# tools/ does not: it is maintenance tooling for this repository, and it reads
+# git history, which no installed copy has.
 
 .DS_Store
 ._*
@@ -17,3 +19,4 @@ composer.phar
 phpunit.xml
 .phpunit.result.cache
 .phpunit.cache
+tools

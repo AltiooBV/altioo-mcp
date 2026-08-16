@@ -6,31 +6,6 @@ All notable changes to this extension are recorded here. The format follows
 `Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
 `Helper/` and the checker under `Testing/`. See the README, [Extending](README.md#extending).
 
-## [Unreleased]
-
-### Added
-
-- **The audit trail records that a client connected, and which one.** `initialize` is audited
-  whatever `log_mcp_level` says — the level exists to keep successful calls out of the trail,
-  and a successful connection is the one success an operator needs. Without it a token quietly
-  in use by something nobody remembers issuing leaves no trace until it does something, and an
-  integration that stopped connecting looks like one that connected and had nothing to do. The
-  row names the client from `clientInfo`; nothing verifies it, so it identifies a well-behaved
-  integration rather than authenticating anyone.
-
-### Fixed
-
-- **`log_mcp_method` fell back to an empty list, which reads as "audit nothing".** A fresh
-  install had `log_mcp_service` defaulting to `true`, an **MCP Service Call** class sitting in
-  the console, and a trail that stayed empty for ever. Nothing failed; the rows were simply
-  never written. The default is now the list the README publishes, and a test holds the two
-  together.
-- **Two queries per object, in every tool that acts on one.** `MetaModel::GetObject()` and
-  `DBObjectSet::Fetch()` both go through `GetObjectByRow()`, which reads the `finalclass`
-  column and instantiates the leaf — so `GetFinalClassName()` was asking for a name that had
-  arrived with the row, and `core_object_get` read the whole object a second time under a name
-  it already had. Every rights check and every message is unchanged.
-
 ## [1.0.0] - 2026-08-16
 
 First public release.
@@ -156,6 +131,14 @@ first call, and that a tool is graded read / write / delete by the annotations i
   because object-level rights removed rows from it, and a caller that reads a short page as
   the end of the set stops early and silently.
 
+- **The audit trail records that a client connected, and which one.** `initialize` is audited
+  whatever `log_mcp_level` says — the level exists to keep successful calls out of the trail,
+  and a successful connection is the one success an operator needs. Without it a token quietly
+  in use by something nobody remembers issuing leaves no trace until it does something, and an
+  integration that stopped connecting looks like one that connected and had nothing to do. The
+  row names the client from `clientInfo`; nothing verifies it, so it identifies a well-behaved
+  integration rather than authenticating anyone.
+
 ### Fixed
 
 - **`core_object_bulk_update` validated nothing before writing.** It set its values and called
@@ -191,6 +174,17 @@ first call, and that a tool is graded read / write / delete by the annotations i
   probe `DBObjectSet` goes too — its constructor runs no query, so it never caught the error
   it was written for.
 
+- **`log_mcp_method` fell back to an empty list, which reads as "audit nothing".** A fresh
+  install had `log_mcp_service` defaulting to `true`, an **MCP Service Call** class sitting in
+  the console, and a trail that stayed empty for ever. Nothing failed; the rows were simply
+  never written. The default is now the list the README publishes, and a test holds the two
+  together.
+- **Two queries per object, in every tool that acts on one.** `MetaModel::GetObject()` and
+  `DBObjectSet::Fetch()` both go through `GetObjectByRow()`, which reads the `finalclass`
+  column and instantiates the leaf — so `GetFinalClassName()` was asking for a name that had
+  arrived with the row, and `core_object_get` read the whole object a second time under a name
+  it already had. Every rights check and every message is unchanged.
+
 ### Changed
 
 - A tool's default `getTitle()` is the class name rather than the identifier, now that
@@ -208,3 +202,21 @@ first call, and that a tool is graded read / write / delete by the annotations i
 
 - The module ships its own `.htaccess` and `web.config`. iTop's `extensions/` rules deny PHP,
   so the documented endpoint answered `403` on a stock Apache or IIS install.
+
+- **The licence is declared the same way in all three places it appears.** `composer.json` said
+  `AGPL-3.0-or-later` while the file headers pointed at the OSI page for AGPL-3.0 — the
+  version-only licence — and thirty-one files under `src/` carried no header at all. Every PHP
+  file in `src/` and `tests/`, plus `index.php`, `register.php` and the module declaration, now
+  opens with the same two lines, and the `@license` value carries the SPDX identifier verbatim
+  so it matches `composer.json` as a string rather than merely in spirit. The exception is
+  `model.altioo-mcp.php`, which the compiler overwrites on every setup run.
+- **`@since` on the surface the versioning promise covers.** The abstracts, `MCPRegistry`,
+  `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers and the checker under `Testing/`
+  tag their public methods; every class in `src/` tags itself. A pack author reading a method
+  can now tell whether it was there in 1.0.0 without consulting this file.
+- The datamodel declares schema `3.2` rather than `3.0`, matching the branch the extension
+  targets. Nothing in the compiler reads the attribute — it says which reference the file was
+  written against.
+- Scaffold leftovers removed: the empty `templates/`, `assets/css/` and `assets/js/`
+  directories, the `.gitkeep` files under directories that have had real contents for some
+  time, and the `exclude.txt` and `web.config` entries that named them.

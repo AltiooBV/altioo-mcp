@@ -59,7 +59,7 @@ use UserRights;
  * Unlike the core tools it serves, it declares no namespace: that is yours,
  * and the registry refuses 'core' from anything outside this module.
  *
- * @since 1.1.0
+ * @since 1.0.0
  * @since 1.0.0 Moved here from Core\Tools and covered by the versioning policy.
  */
 abstract class AbstractBulkTool extends AbstractMCPTool

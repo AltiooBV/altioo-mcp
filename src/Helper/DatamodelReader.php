@@ -197,6 +197,20 @@ final class DatamodelReader
 	}
 
 	/**
+	 * The attributes of $sClass this caller may read.
+	 *
+	 * Filtered by the same right the object tools apply, for two reasons. The
+	 * schema is what a model builds its next call from, so listing an attribute
+	 * it may not read sends it to ask for something that comes back missing:
+	 * ObjectSerializer skips unreadable attributes silently, and a model reads
+	 * an absent field as an empty one rather than as a refusal. And a label, a
+	 * description and an enumeration of allowed values say a good deal about a
+	 * field even when none of its values are ever returned.
+	 *
+	 * UR_ALLOWED_DEPENDS keeps the attribute: it means the answer varies by
+	 * object, and the object tools decide it per object. Only an outright
+	 * refusal for the whole class removes it here.
+	 *
 	 * @param string $sClass The class for which to retrieve attribute details
 	 * @return array An array of attribute details
 	 */
@@ -205,6 +219,10 @@ final class DatamodelReader
 		$aAttributes = [];
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
+			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+				continue;
+			}
+
 			$aAttributes[$sAttCode] = [
 				'label'         => MetaModel::GetLabel($sClass, $sAttCode),
 				'description'   => $oAttDef->GetDescription(),

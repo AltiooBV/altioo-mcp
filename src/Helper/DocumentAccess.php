@@ -125,7 +125,11 @@ final class DocumentAccess
 				"Attribute '{$sAttCode}' on '{$sClass}' holds no document. Read it with core_object_get."
 			);
 		}
-		if (!UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ)) {
+		// The class-level gate, before an object is read at all: an attribute
+		// refused for the whole class is refused here, and no query is spent on
+		// it. UR_ALLOWED_DEPENDS passes - it means the answer varies by object,
+		// which is the question asked again below once there is an object.
+		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
 			throw new MCPDocumentException("Read access denied on attribute '{$sAttCode}'.");
 		}
 
@@ -136,8 +140,25 @@ final class DocumentAccess
 			throw new MCPDocumentException("Object {$sClass}::{$iId} not found."); // hide that the object exists
 		}
 
+		// Fetched before the check and rewound after, not the other way round:
+		// the check is handed this same set, an addon is free to iterate it, and
+		// a Fetch() on a spent cursor returns null - which would surface as a
+		// fatal rather than as a refusal.
 		/** @var DBObject $oObject */
 		$oObject = $oSet->Fetch();
+		$oSet->Rewind();
+
+		// And again with the object in hand. Under the shipped addon this
+		// answers the same as above - it ignores the set for attributes - so
+		// what protects the document on someone else's record is the set
+		// itself: ObjectQuery::ById goes through GetSelectFilter, which only
+		// returns objects this caller may read. The set is passed because the
+		// API is tri-state and an addon that does grade per object says so with
+		// UR_ALLOWED_DEPENDS, which a truthy test would read as a yes.
+		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ, $oSet) !== UR_ALLOWED_YES) {
+			throw new MCPDocumentException("Read access denied on attribute '{$sAttCode}'.");
+		}
+
 		$value = $oObject->Get($sAttCode);
 
 		if (!$value instanceof ormDocument || $value->IsEmpty()) {
