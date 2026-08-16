@@ -115,19 +115,25 @@ class ObjectGet extends AbstractMCPTool
 		if ($oObject === null) {
 			throw new ToolCallException("Object {$class}::{$id} not found.");
 		}
-		// Check the final class of the object
-		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+
+		// GetObject() goes through MetaModel::GetObjectByRow(), which reads the
+		// finalclass column and instantiates the leaf - so the object in hand is
+		// already the right one, and its class is already known. Asking
+		// GetFinalClassName() for that name, and then reading the object a
+		// second time under it, was two queries spent on an answer that had
+		// already arrived.
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
+			// Being allowed to read the parent says nothing about the child, at
+			// class level or - a profile whose rights depend on the object - at
+			// object level. Both checks stay.
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
-			$oSetFinal = new DBObjectSet($oSearchFinal);
+			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			if (!UserRights::IsActionAllowed($sFinalClass,  UR_ACTION_READ, $oSetFinal)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			//Get it again with the correct class
-			$oObject = MetaModel::GetObject($sFinalClass, $id, false);
 		}
 
 		return ToolOutput::Json([

@@ -183,14 +183,20 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
-		// Check the final class of the object
-		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+		// Fetch() instantiates the leaf from the finalclass column it has
+		// already read, so the object in hand names its own class.
+		// GetFinalClassName() was a query asking for something that had already
+		// arrived. Rewound immediately: IsActionAllowed() below is handed this
+		// same set, and the rights addon is free to iterate it.
+		$oObject = $oSet->Fetch();
+		$oSet->Rewind();
+
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
-			$oSetFinal = new DBObjectSet($oSearchFinal);
+			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
@@ -203,7 +209,6 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
 		}
 		// Validate its current state
-		$oObject = $oSet->Fetch();
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot apply stimulus on object.");
 		}
@@ -241,9 +246,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
 				continue;
 			}
-			// With the object in hand, not just its class: an attribute the
-			// caller may set on one object of this class is not necessarily one
-			// they may set on this one. See ObjectUpdate for the long version.
+			// Only UR_ALLOWED_YES is a yes - this is tri-state, and a truthy
+			// test reads UR_ALLOWED_DEPENDS as permission. The mono set is
+			// passed for the addon that grades per object; the shipped one does
+			// not. See ObjectUpdate for the long version.
 			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;

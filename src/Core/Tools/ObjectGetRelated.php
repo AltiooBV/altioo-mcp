@@ -166,23 +166,29 @@ class ObjectGetRelated extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
-		// Check the final class of the object
-		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+		// Fetch() instantiates the leaf from the finalclass column it has
+		// already read, so the object in hand names its own class.
+		// GetFinalClassName() was a query asking for something that had already
+		// arrived. Rewound because the set itself, not the object, is what the
+		// relation graph below is built from.
+		$oObject = $oSet->Fetch();
+		$oSet->Rewind();
+
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
-			$oSetFinal = new DBObjectSet($oSearchFinal);
+			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			//Update the Set witht the correct class
+			// Walk the relation from the class the object actually is: a
+			// relation is declared per class, and the parent's may not be the
+			// one that matters here.
 			$oSet = $oSetFinal;
 		}
-		$oObject = $oSet->Fetch();
-
 
 		// Build a single-object set as the source for the relation graph
 		if ($direction === self::DIRECTION_DOWN) {

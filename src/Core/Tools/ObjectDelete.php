@@ -147,14 +147,19 @@ class ObjectDelete extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
-		// Check the final class of the object
-		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+		// Fetch() instantiates the leaf from the finalclass column it has
+		// already read, so the object in hand names its own class.
+		// GetFinalClassName() was a query asking for something that had already
+		// arrived. Rewound immediately: IsActionAllowed() below is handed this
+		// same set, and the rights addon is free to iterate it.
+		$oSet->Rewind();
+
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
-			$oSetFinal = new DBObjectSet($oSearchFinal);
+			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists

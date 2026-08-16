@@ -151,14 +151,20 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
-		// Check the final class of the object
-		$sFinalClass = MetaModel::GetFinalClassName($class, $id);
+		// Fetch() instantiates the leaf from the finalclass column it has
+		// already read, so the object in hand names its own class.
+		// GetFinalClassName() was a query asking for something that had already
+		// arrived. Rewound immediately: IsActionAllowed() below is handed this
+		// same set, and the rights addon is free to iterate it.
+		$oObject = $oSet->Fetch();
+		$oSet->Rewind();
+
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
-			$oSearchFinal = ObjectQuery::ById($sFinalClass, $id);
-			$oSetFinal = new DBObjectSet($oSearchFinal);
+			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
@@ -171,7 +177,6 @@ class ObjectUpdate extends AbstractMCPTool
 		}
 
 		// Get the object
-		$oObject = $oSet->Fetch();
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot update object.");
 		}
@@ -189,12 +194,19 @@ class ObjectUpdate extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
 				continue;
 			}
-			// $oSet holds this object and no other. The rights addon grades an
-			// attribute per object - "may modify their own Person" rather than
-			// "may modify a Person" - and says so by answering
-			// UR_ALLOWED_DEPENDS to the class-level question. Passing the set
-			// is what resolves it; asking without it and reading DEPENDS as a
-			// yes skips the object-level rule entirely.
+			// Two things, and it is worth being clear which is which.
+			//
+			// The comparison is the part that bites today: this returns
+			// UR_ALLOWED_NO, _YES or _DEPENDS, and a truthy test reads DEPENDS
+			// as a yes. Only YES is a yes.
+			//
+			// The set is the part that may bite later. iTop's shipped addon
+			// documents that it ignores the instance set for attributes, so
+			// under a stock install this reads the same with or without it -
+			// object-level protection here comes from the set the object was
+			// fetched through and from CheckToWrite() below. An addon that does
+			// grade per object signals it with DEPENDS, and iTop passes a mono
+			// set at every equivalent call site.
 			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;

@@ -59,7 +59,7 @@ use UserRights;
  * Unlike the core tools it serves, it declares no namespace: that is yours,
  * and the registry refuses 'core' from anything outside this module.
  *
- * @since 1.0.0
+ * @since 1.1.0
  * @since 1.0.0 Moved here from Core\Tools and covered by the versioning policy.
  */
 abstract class AbstractBulkTool extends AbstractMCPTool
@@ -187,7 +187,6 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 */
 	protected static function objectFor(string $sClass, int $iId, int $iAction, string $sVerb)
 	{
-		$sKey = MetaModel::DBGetKey($sClass);
 		$oSet = new DBObjectSet(ObjectQuery::ById($sClass, $iId));
 
 		// The set applies read rights itself, so an empty one is "not found or
@@ -196,7 +195,19 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			return "Object {$sClass}::{$iId} not found.";
 		}
 
-		$sFinalClass = MetaModel::GetFinalClassName($sClass, $iId);
+		// Fetched before anything is decided about the class: Fetch()
+		// instantiates the leaf from the finalclass column it has already read,
+		// so the object answers what GetFinalClassName() was being asked in a
+		// query of its own. Reading the row the Count() above already matched
+		// costs nothing extra, and the order of the answers below is unchanged.
+		//
+		// Rewound immediately, because IsActionAllowed() below is handed this
+		// same set and the rights addon is free to iterate it: a spent cursor
+		// would have it decide on no objects at all.
+		$oObject = $oSet->Fetch();
+		$oSet->Rewind();
+
+		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $sClass) {
 			return "Object {$sClass}::{$iId} is of class '{$sFinalClass}'; call this tool again with that class.";
 		}
@@ -205,7 +216,6 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			return "Access denied: cannot {$sVerb} {$sClass}::{$iId}.";
 		}
 
-		$oObject = $oSet->Fetch();
 		if ($oObject->IsReadOnly()) {
 			return "Object {$sClass}::{$iId} is read-only.";
 		}
