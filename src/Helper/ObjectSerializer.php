@@ -38,8 +38,8 @@ use iAttributeNoGroupBy;
  * The second is that a response feeds a context window. Four attribute kinds
  * have no natural size and are handled here rather than left to GetForJSON: a
  * blob, whose JSON form embeds the whole file base64-encoded, is reported as
- * its metadata alone; a case log, a link set and a long text are cut to a
- * ceiling that the value itself declares.
+ * its metadata and the URI that serves it; a case log, a link set and a long
+ * text are cut to a ceiling that the value itself declares.
  *
  * None of those ceilings applies when the caller named the attributes it wants
  * through output_fields. Asking for one attribute by name is the decision to
