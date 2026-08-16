@@ -172,4 +172,63 @@ class WriteToolContractTest extends TestCase
 			$this->assertNull($aComment[0]->getDefaultValue(), "{$sName} defaults to a reason nobody gave");
 		}
 	}
+
+	/**
+	 * A dry run reports what a caller may not read as masked, never in clear.
+	 *
+	 * The masking of sensitive attributes lives in ObjectSerializer::Value(),
+	 * but the read *right* is applied by Serialize() - and a write plan does
+	 * not go through Serialize(). Writing an attribute and reading it are
+	 * separate rights in iTop, and iTop fills in more attributes than the
+	 * caller named, because DoComputeValues() and the lifecycle set their own
+	 * from data the caller may have no right to. So the gate has to be applied
+	 * here explicitly, and it was not.
+	 *
+	 * Checked as a shape rather than a behaviour, the way
+	 * AttributeRightsContractTest checks the same family: reproducing it needs
+	 * a rights addon that grades attributes per object and a live database,
+	 * while what actually goes wrong is Value() being called without the gate
+	 * in front of it. That is a shape.
+	 */
+	public function testTheWritePlanAppliesTheReadRightBeforeRenderingAValue(): void
+	{
+		$sBody = $this->methodBody(WritePlan::class, 'Changes');
+
+		$iGate = strpos($sBody, 'MayReadAttribute');
+		$iValue = strpos($sBody, 'ObjectSerializer::Value');
+
+		$this->assertIsInt($iGate, 'WritePlan::Changes() no longer checks the read right, so a dry run can render an attribute the caller may write but not read');
+		$this->assertIsInt($iValue, 'WritePlan::Changes() no longer renders values');
+		$this->assertLessThan($iValue, $iGate, 'the read right must be checked before the value is rendered');
+		$this->assertStringContainsString(
+			'ObjectSerializer::MASK',
+			$sBody,
+			'an unreadable attribute must be reported masked, not dropped: a dry run that omits part of what the write does is worse than one that says the value is hidden'
+		);
+	}
+
+	/**
+	 * The body of a method, comments stripped, so that a doc comment describing
+	 * a check cannot stand in for the check.
+	 */
+	private function methodBody(string $sClass, string $sMethod): string
+	{
+		$oMethod = new \ReflectionMethod($sClass, $sMethod);
+		$aLines = file($oMethod->getFileName());
+		$sSource = implode('', array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		));
+
+		$sCode = '';
+		foreach (token_get_all('<?php '.$sSource) as $mToken) {
+			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+				continue;
+			}
+			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
+		}
+
+		return $sCode;
+	}
 }

@@ -59,7 +59,7 @@ final class ObjectSerializer
 	 * of REST - a difference in the mask is a way to tell the two apart, and
 	 * nothing gains by it.
 	 */
-	private const MASK = '*****';
+	public const MASK = '*****';
 
 	/** What a caller asks for to get every readable attribute. */
 	public const ALL_FIELDS = '*';
@@ -111,7 +111,7 @@ final class ObjectSerializer
 			if ($aFields !== null && !in_array($sAttCode, $aFields, true)) {
 				continue;
 			}
-			if (!self::MayRead($oObject, $sClass, $sAttCode, $oInstanceSet)) {
+			if (!self::MayReadAttribute($oObject, $sClass, $sAttCode, $oInstanceSet)) {
 				continue;
 			}
 
@@ -152,7 +152,7 @@ final class ObjectSerializer
 	 *
 	 * @param DBObjectSet|null $oInstanceSet Reused across attributes of one object; created here on first need.
 	 */
-	private static function MayRead(DBObject $oObject, string $sClass, string $sAttCode, ?DBObjectSet &$oInstanceSet): bool
+	public static function MayReadAttribute(DBObject $oObject, string $sClass, string $sAttCode, ?DBObjectSet &$oInstanceSet): bool
 	{
 		$iAllowed = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ);
 

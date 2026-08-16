@@ -177,6 +177,21 @@ final class WritePlan
 	 * are rendered the same way a read renders them, so a dry run and the
 	 * object it describes cannot disagree about what a value looks like.
 	 *
+	 * Rendered under the same read rights, too, which is not automatic: the
+	 * masking of sensitive attributes lives in ObjectSerializer::Value(), but
+	 * the read right is applied by Serialize(), and a write plan does not go
+	 * through Serialize(). Writing an attribute and reading it are separate
+	 * rights in iTop, so the set of attributes here is not a subset of what the
+	 * caller may see - and iTop fills in more of them than the caller named,
+	 * because DoComputeValues() and the lifecycle set attributes of their own
+	 * from data the caller may have no right to.
+	 *
+	 * An unreadable attribute is reported as changed, with its value masked,
+	 * rather than dropped: a dry run exists to be shown to someone before they
+	 * approve the write, and one that silently omits part of what the write
+	 * does is worse than one that says "this changes too, and you may not see
+	 * it".
+	 *
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
@@ -184,13 +199,19 @@ final class WritePlan
 	{
 		$aChanges = [];
 
+		// Built once per object, and only if some attribute answers DEPENDS -
+		// see ObjectSerializer::MayReadAttribute().
+		$oInstanceSet = null;
+
 		foreach (array_keys($oObject->ListChanges()) as $sAttCode) {
 			if (!is_string($sAttCode) || $sAttCode === 'finalclass') {
 				continue;
 			}
 
 			try {
-				$aChanges[$sAttCode] = ObjectSerializer::Value($oObject, $sClass, $sAttCode);
+				$aChanges[$sAttCode] = ObjectSerializer::MayReadAttribute($oObject, $sClass, $sAttCode, $oInstanceSet)
+					? ObjectSerializer::Value($oObject, $sClass, $sAttCode)
+					: ObjectSerializer::MASK;
 			} catch (Throwable $e) {
 				// Reporting a value is never worth failing the call it
 				// describes.
