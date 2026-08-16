@@ -6,6 +6,31 @@ All notable changes to this extension are recorded here. The format follows
 `Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
 `Helper/` and the checker under `Testing/`. See the README, [Extending](README.md#extending).
 
+## [Unreleased]
+
+### Added
+
+- **The audit trail records that a client connected, and which one.** `initialize` is audited
+  whatever `log_mcp_level` says — the level exists to keep successful calls out of the trail,
+  and a successful connection is the one success an operator needs. Without it a token quietly
+  in use by something nobody remembers issuing leaves no trace until it does something, and an
+  integration that stopped connecting looks like one that connected and had nothing to do. The
+  row names the client from `clientInfo`; nothing verifies it, so it identifies a well-behaved
+  integration rather than authenticating anyone.
+
+### Fixed
+
+- **`log_mcp_method` fell back to an empty list, which reads as "audit nothing".** A fresh
+  install had `log_mcp_service` defaulting to `true`, an **MCP Service Call** class sitting in
+  the console, and a trail that stayed empty for ever. Nothing failed; the rows were simply
+  never written. The default is now the list the README publishes, and a test holds the two
+  together.
+- **Two queries per object, in every tool that acts on one.** `MetaModel::GetObject()` and
+  `DBObjectSet::Fetch()` both go through `GetObjectByRow()`, which reads the `finalclass`
+  column and instantiates the leaf — so `GetFinalClassName()` was asking for a name that had
+  arrived with the row, and `core_object_get` read the whole object a second time under a name
+  it already had. Every rights check and every message is unchanged.
+
 ## [1.0.0] - 2026-08-16
 
 First public release.
@@ -46,7 +71,7 @@ first call, and that a tool is graded read / write / delete by the annotations i
   may open a ticket and add a note, may not delete anything.
 - **Toolsets.** `getToolset()` groups elements by what they are for, defaulting to the
   namespace; `mcp_enabled_toolsets` serves a subset, and `MCP-toolset-<name>` scopes a token
-  to one. The core surface declares `datamodel`, `objects` and `relations`.
+  to one. The core surface declares `datamodel`, `objects`, `relations` and `documents`.
 - **`CheckToWrite()` on every write.** Only the delete tool ran a pre-write check; the others
   went straight to `DBInsert()` / `DBUpdate()` / `ApplyStimulus()`, so a missing mandatory
   attribute surfaced as an ORM exception written for a developer. The dry run reports what it
@@ -92,6 +117,22 @@ first call, and that a tool is graded read / write / delete by the annotations i
   titles ship in English and French. Descriptions are deliberately not translated: they are
   read by the model choosing the tool, and one that changed with the caller's language would
   change what the model does.
+- **Documents can be read and stored**, without putting bytes back into results that fan out.
+  A blob attribute was reported as filename, type and size and there was no way to reach the
+  file at all; it now also carries a `uri`, and reading that URI — as the
+  `itop://core/document/{class}/{id}/{att_code}` resource template, or through
+  `core_object_get_document` for the many clients that read no resources — returns the one
+  document, an image as an image so a model can look at it. `core_object_attach` goes the
+  other way, storing content the caller already holds as an attachment or into a named blob
+  attribute; it fetches nothing, because "download this URL and attach it" is an outbound
+  request from inside iTop's network to an address the model read somewhere. What has not
+  changed is the rule that made the metadata-only read right in the first place: a file never
+  arrives unasked. `AttributeBlob`'s JSON form is the whole file base64-encoded, base64 costs
+  a third again, and `core_object_get` defaults to every attribute — one call on a ticket with
+  a 4 MB PDF would be a 5.4 MB response, and a fifty-row search fifty of them.
+  `mcp_max_document_bytes` (5 MB) bounds both directions, and the two tools and the template
+  form the `documents` toolset, with an `MCP-toolset-documents` token scope.
+
 - **Changes are attributed in the object's own history.** Every write went into the change log
   under the calling user's name and nothing else, which through this endpoint says less than it
   looks: the same name appears whether the person made the change, asked an assistant to make
