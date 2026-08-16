@@ -38,10 +38,10 @@ require_once __DIR__.'/../bootstrap.php';
  * fail anything, because nothing ever built the server.
  *
  * The request is built here rather than from $_SERVER, which is the one thing
- * MCPService::run() does differently - there is no php://input under CLI. Note
- * that this needs a PSR-17 implementation on the autoloader: the module vendors
- * only the interfaces and php-http/discovery, and finds Guzzle's factory
- * through iTop's own autoloader at runtime.
+ * MCPService::run() does differently - there is no php://input under CLI. The
+ * PSR-17 implementation it goes through is nyholm/psr7, required by
+ * composer.json; Psr17AvailabilityTest is what holds that dependency in place,
+ * and needs no iTop to do it.
  */
 class ServerBootTest extends ItopDataTestCaseAlias
 {
