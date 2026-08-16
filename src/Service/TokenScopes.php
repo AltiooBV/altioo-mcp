@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -22,6 +22,8 @@ use Throwable;
  * login, by matching them against the ContextTag stack - it never tells the
  * endpoint which of them matched. Reading them back is therefore a second
  * look at the same credential, done once the login has already succeeded.
+ *
+ * @since 1.0.0
  */
 final class TokenScopes
 {

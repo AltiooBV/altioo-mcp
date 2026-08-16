@@ -1,10 +1,15 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
@@ -20,6 +25,8 @@ use DBObjectSet;
  * Update attributes on an existing iTop object.
  *
  * Only the provided fields are updated; omitted attributes are left untouched.
+ *
+ * @since 1.0.0
  */
 class ObjectUpdate extends AbstractMCPTool
 {
@@ -36,7 +43,7 @@ class ObjectUpdate extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Update Object';
 	}
@@ -87,6 +94,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),
+				'comment'  => ChangeTracking::CommentSchemaProperty('the change is being made'),
 			],
 			'required' => ['class', 'id', 'fields'],
 		];
@@ -97,14 +105,16 @@ class ObjectUpdate extends AbstractMCPTool
 	 * @param int $id The ID of the object to update, e.g. 123
 	 * @param array $fields An array of attribute => value pairs to update
 	 * @param bool $simulate When true (default), the change is validated and described but not written
+	 * @param string|null $comment Why the change is being made, recorded in the object's history
 	 * @return array The class and ID of the object, and the attributes the call changes or would change
 	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
 	 */
 	public static function execute(
-		string $class,
-		int    $id,
-		array  $fields,
-		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		string  $class,
+		int     $id,
+		array   $fields,
+		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		?string $comment = null,
 	): mixed {
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -166,6 +176,11 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot update object.");
 		}
 
+		// A set holding this object and nothing else, built fresh: $oSet has
+		// been Fetch()ed above and its cursor is spent, and the rights addon is
+		// free to iterate whatever it is handed.
+		$oInstanceSet = DBObjectSet::FromObject($oObject);
+
 		// Validate fields before applying any changes
 		$aIssues = [];
 		$aValidatedValues = [];
@@ -174,7 +189,13 @@ class ObjectUpdate extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY)) {
+			// $oSet holds this object and no other. The rights addon grades an
+			// attribute per object - "may modify their own Person" rather than
+			// "may modify a Person" - and says so by answering
+			// UR_ALLOWED_DEPENDS to the class-level question. Passing the set
+			// is what resolves it; asking without it and reading DEPENDS as a
+			// yes skips the object-level rule entirely.
+			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;
 			}
@@ -229,6 +250,10 @@ class ObjectUpdate extends AbstractMCPTool
 				'changes'   => $aChanges,
 			]);
 		}
+
+		// Said before the write, because the change record is built by the
+		// write itself and reads what was last said.
+		ChangeTracking::Explain($comment);
 
 		try {
 			$oObject->DBUpdate();

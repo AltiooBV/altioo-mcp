@@ -1,7 +1,7 @@
 <?php
 /**
- * @copyright Copyright (C) 2026 Altioo
- * @license   http://opensource.org/licenses/AGPL-3.0
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -18,6 +18,8 @@ use Exception;
  * entry point carries text we did not author - iTop CoreException messages
  * embed SQL fragments, class and table names - and is answered with a generic
  * message instead.
+ *
+ * @since 1.0.0
  */
 class MCPAuthException extends Exception
 {

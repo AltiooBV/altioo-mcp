@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -28,6 +32,8 @@ use UserRights;
  *   relation:  "impacts"
  *   direction: "down"
  *   depth:     4
+ *
+ * @since 1.0.0
  */
 class ObjectGetRelated extends AbstractMCPTool
 {
@@ -50,7 +56,7 @@ class ObjectGetRelated extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Get Related Objects';
 	}

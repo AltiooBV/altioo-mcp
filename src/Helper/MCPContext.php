@@ -1,7 +1,14 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+/**
+ * @since 1.0.0
+ */
 class MCPContext
 {
 	const TAG_MCP = 'MCP';

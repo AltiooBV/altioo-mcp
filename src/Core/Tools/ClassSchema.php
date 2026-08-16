@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -19,6 +23,8 @@ use Mcp\Schema\ToolAnnotations;
  * on: attribute codes, allowed values and stimuli are what an ObjectCreate or
  * an ObjectApplyStimulus call has to get right, and a model that cannot read
  * them invents them.
+ *
+ * @since 1.0.0
  */
 class ClassSchema extends AbstractMCPTool
 {
@@ -35,7 +41,7 @@ class ClassSchema extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Get Class Schema';
 	}

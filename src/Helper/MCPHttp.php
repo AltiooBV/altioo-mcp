@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -13,6 +13,8 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  *
  * Carries no iTop dependency on purpose: it runs before DoLogin() and is
  * exercised by a unit test that never boots the application.
+ *
+ * @since 1.0.0
  */
 final class MCPHttp
 {
@@ -79,6 +81,7 @@ final class MCPHttp
 	 * here, so it is a setting rather than an implementation.
 	 *
 	 * @param string|null $sResourceMetadataUrl As configured, or null when nothing is.
+	 * @since 1.0.0
 	 */
 	public static function BearerChallenge(?string $sResourceMetadataUrl): string
 	{
@@ -125,6 +128,8 @@ final class MCPHttp
 	 * header, while iTop's token login only ever looks at Auth-Token; without
 	 * this the two never meet. Other schemes are left alone, so Basic still
 	 * reaches LoginBasic untouched.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function PromoteBearerToAuthToken(): void
 	{
@@ -155,6 +160,8 @@ final class MCPHttp
 	 * which is what lets ForgetAuthToken() run before the PSR-7 request is
 	 * built - and therefore what keeps the raw token out of that request's
 	 * server parameters, where it would otherwise sit for the whole call.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function CurrentAuthToken(): ?string
 	{
@@ -168,6 +175,8 @@ final class MCPHttp
 	 * have been read - the two things that need it - and before the request is
 	 * handed to the SDK. A token that no longer exists anywhere cannot be
 	 * copied into a request object, a stack trace or a var_dump.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function ForgetAuthToken(): void
 	{
@@ -198,6 +207,7 @@ final class MCPHttp
 	 * the same request.
 	 *
 	 * @param array<int, string> $aAllowedHosts Hostnames without port, or [ANY_HOST] to accept any.
+	 * @since 1.0.0
 	 */
 	public static function IsAllowedHost(?string $sOrigin, ?string $sHost, array $aAllowedHosts): bool
 	{
@@ -227,6 +237,8 @@ final class MCPHttp
 	/**
 	 * A Host header without its port. IPv6 literals keep their brackets, which
 	 * is the form parse_url() returns and therefore the form a list is written in.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function HostnameOf(string $sHost): string
 	{
@@ -245,6 +257,8 @@ final class MCPHttp
 	 * Parameters are ignored, so "application/json; charset=utf-8" passes: the
 	 * point is not the exact spelling but that the caller could not have sent
 	 * this without a preflight.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function IsJsonMediaType(?string $sContentType): bool
 	{
@@ -279,6 +293,8 @@ final class MCPHttp
 
 	/**
 	 * The bearer credential carried by the request, or null when there is none.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function ReadBearerToken(): ?string
 	{

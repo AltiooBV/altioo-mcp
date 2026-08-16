@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -25,6 +29,8 @@ use UserRights;
  * Two surfaces, one implementation: what core_class_schema reports and what
  * itop://core/class/{class} reports cannot drift apart, and the access checks
  * are written once rather than per surface.
+ *
+ * @since 1.0.0
  */
 final class DatamodelReader
 {
@@ -66,6 +72,8 @@ final class DatamodelReader
 	 * The two are deliberately answered together: callers report both as
 	 * "unknown class", so that probing this endpoint cannot map out the classes
 	 * a user is not allowed to see.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function IsReadable(string $sClass): bool
 	{
@@ -79,6 +87,7 @@ final class DatamodelReader
 	 * category anyone can ask for, so it is dropped here.
 	 *
 	 * @return array<int, string>
+	 * @since 1.0.0
 	 */
 	public static function Categories(): array
 	{
@@ -95,6 +104,7 @@ final class DatamodelReader
 	 * @param string $sCategory A category from {@see Categories()}; '' for all classes.
 	 *
 	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
 	 */
 	public static function ListClasses(string $sCategory = ''): array
 	{
@@ -126,6 +136,7 @@ final class DatamodelReader
 	 * @param array<int, array<string, mixed>> $aClasses Summaries, as returned by {@see ListClasses()}.
 	 *
 	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
 	 */
 	public static function FilterByText(array $aClasses, string $sText): array
 	{
@@ -151,6 +162,7 @@ final class DatamodelReader
 	 * What a class is and where it sits in the hierarchy, without its contents.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function Summarize(string $sClass): array
 	{
@@ -173,6 +185,7 @@ final class DatamodelReader
 	 * only the caller knows which exception its surface has to raise.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function Describe(string $sClass): array
 	{
@@ -308,6 +321,8 @@ final class DatamodelReader
 	 * Returns null rather than guessing: a format carrying a token this does
 	 * not know, or a backslash escape, yields no pattern at all. Pure - it
 	 * touches no MetaModel - which is what lets it be tested without iTop.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function PatternFromDateFormat(string $sFormat): ?string
 	{

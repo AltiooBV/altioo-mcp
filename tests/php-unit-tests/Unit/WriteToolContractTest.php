@@ -132,4 +132,44 @@ class WriteToolContractTest extends TestCase
 			$this->assertStringContainsString('simulate=false', $sDescription, "{$sName} does not say how to go through with it");
 		}
 	}
+
+	/**
+	 * Every write can say why it was made.
+	 *
+	 * The channel is filled in from the request whether anyone asks for it or
+	 * not, so a tool without this parameter still lands in the history
+	 * attributed. What it cannot do is carry the reason the user gave, and the
+	 * reason is the half of the row that the audit trail does not already hold
+	 * elsewhere.
+	 */
+	public function testEveryWritingToolCanRecordWhy(): void
+	{
+		foreach ($this->writingTools() as [$sName, $oTool]) {
+			$aProperties = $oTool->getInputSchema()['properties'];
+
+			$this->assertArrayHasKey('comment', $aProperties, "{$sName} cannot say why it wrote");
+			$this->assertSame('string', $aProperties['comment']['type'], "{$sName}: comment is not a string");
+		}
+	}
+
+	/**
+	 * Optional in the schema and optional in the signature. A model that has
+	 * nothing to say must be able to leave it out - and the SDK binds by name,
+	 * so a parameter the client did not send takes the value PHP has.
+	 */
+	public function testTheReasonIsOptionalOnBothSides(): void
+	{
+		foreach ($this->writingTools() as [$sName, $oTool]) {
+			$this->assertNotContains('comment', $oTool->getInputSchema()['required'], "{$sName} forces a reason to be invented");
+
+			$aComment = array_values(array_filter(
+				(new ReflectionMethod($oTool, 'execute'))->getParameters(),
+				static fn (\ReflectionParameter $oParameter): bool => $oParameter->getName() === 'comment'
+			));
+
+			$this->assertCount(1, $aComment, "{$sName}::execute() takes no comment");
+			$this->assertTrue($aComment[0]->isDefaultValueAvailable(), "{$sName}: comment is mandatory in PHP");
+			$this->assertNull($aComment[0]->getDefaultValue(), "{$sName} defaults to a reason nobody gave");
+		}
+	}
 }

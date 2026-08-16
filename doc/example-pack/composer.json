@@ -1,0 +1,59 @@
+{
+  "name": "acme/servicedesk-mcp-pack",
+  "type": "itop-extension",
+  "description": "Example MCP tool pack for iTop, built on altioo-mcp.",
+  "license": "AGPL-3.0-or-later",
+
+  "_comment_mcp_sdk": [
+    "mcp/sdk is a REAL RUNTIME dependency of this pack: the tools below type-hint",
+    "ToolAnnotations and throw ToolCallException, and both have to resolve when a",
+    "client calls them. It is nevertheless in require-dev, and that is not a",
+    "mislabelling - it is where the dependency is satisfied from. altioo-mcp",
+    "vendors the SDK and loads it from its own datamodel array, and iTop includes",
+    "a module's datamodel files after those of the modules it depends on, so",
+    "Mcp\\* is already registered by the time anything here is autoloaded.",
+    "",
+    "Shipping a second copy is what has to be avoided, and 'install it then delete",
+    "vendor/mcp before packaging' does not do it: classmap-authoritative dumps",
+    "every class it found into autoload_classmap.php, so the entries survive the",
+    "deletion, point at files that are gone, and the first call fatals on a",
+    "missing include. require-dev keeps the SDK out of the production dump",
+    "entirely, which is the only version of this that is safe.",
+    "",
+    "Pin the same constraint the base vendors - MCPHelper::SDK_CONSTRAINT - so",
+    "that what you compile against is what will be loaded."
+  ],
+
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "mcp/sdk": "^0.7.1",
+    "phpunit/phpunit": "^9.6"
+  },
+
+  "autoload": {
+    "psr-4": {
+      "Acme\\iTop\\Extension\\ServiceDesk\\": "src"
+    }
+  },
+
+  "_comment_autoload": [
+    "Both settings are load-bearing, and neither is the composer default.",
+    "iTop's InterfaceDiscovery enumerates candidate classes by reading",
+    "env-<env>/<module>/vendor/composer/autoload_classmap.php. A PSR-4-only dump",
+    "leaves that file essentially empty, so a provider in src/ is never",
+    "discovered - it registers only if register.php names it explicitly, and any",
+    "class the pack fails to autoload fails silently as 'not found'."
+  ],
+  "config": {
+    "optimize-autoloader": true,
+    "classmap-authoritative": true,
+    "autoloader-suffix": "AcmeServiceDeskMcpPack"
+  },
+
+  "scripts": {
+    "test": "phpunit",
+    "package": "@composer install --no-dev --optimize-autoloader --classmap-authoritative"
+  }
+}

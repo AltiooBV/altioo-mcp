@@ -1,14 +1,20 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Dict;
+use Throwable;
 use utils;
 
+/**
+ * @since 1.0.0
+ */
 class MCPHelper
 {
 	const MODULE_NAME = 'altioo-mcp';
@@ -27,6 +33,23 @@ class MCPHelper
 	 * optional hook with a default implementation is a minor one.
 	 */
 	const VERSION = '1.0.0';
+
+	/**
+	 * The mcp/sdk release line this module vendors, loads and is tested
+	 * against.
+	 *
+	 * A tool pack has a real runtime dependency on the SDK - it references
+	 * ToolAnnotations and throws ToolCallException, both of which have to
+	 * resolve when a client calls it - and must nevertheless not ship a copy,
+	 * because two copies in one PHP process resolve to whichever autoloader
+	 * answered first and there is no way to predict which. The dependency is
+	 * therefore real and satisfied by this module rather than by the pack;
+	 * this constant is the constraint a pack declares against so that the two
+	 * cannot drift apart unnoticed. See the README, Extending.
+	 *
+	 * @since 1.0.0
+	 */
+	const SDK_CONSTRAINT = '^0.7.1';
 
 	const MODULE_SETTING_LOG = 'log_mcp_service';
 	const DEFAULT_LOG_SETTING = true;
@@ -105,9 +128,96 @@ class MCPHelper
 	 */
 	const MCP_METHOD_EXCEPTION = 'exceptions';
 
+	/**
+	 * @since 1.0.0
+	 */
 	public function __construct()
 	{
 		MCPLog::Enable(APPROOT.'log/error.log');
+	}
+
+	/**
+	 * Whether the running base extension is at least $sVersion.
+	 *
+	 * For a pack that wants to degrade rather than refuse: hide the one
+	 * element that needs a newer hook through isAvailable() and serve the rest.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function AtLeast(string $sVersion): bool
+	{
+		return version_compare(self::VERSION, $sVersion, '>=');
+	}
+
+	/**
+	 * Stops a provider that needs a newer base extension than this one.
+	 *
+	 * iTop's module dependencies already express "altioo-mcp/1.0.0 or later"
+	 * and are the right place to say it: the setup refuses the install and the
+	 * administrator reads why. This is for the case that gets past them - an
+	 * instance where the base was downgraded after the pack was installed, or
+	 * a pack shipped as files rather than through the setup - where the
+	 * alternative is a fatal error on an undefined method, inside a request,
+	 * with the endpoint down for every other pack too.
+	 *
+	 * Call it first thing in RegisterServiceProvider(). The collector catches
+	 * what a provider throws, logs it and skips that provider alone, so the
+	 * failure mode becomes "this pack is missing and the log says why".
+	 *
+	 * @param string $sVersion  Minimum base version, e.g. '1.0.0'.
+	 * @param string $sRequires What needs it, named in the log entry.
+	 *
+	 * @throws MCPRegistrationException When this module is older than that.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RequireVersion(string $sVersion, string $sRequires = ''): void
+	{
+		if (self::AtLeast($sVersion)) {
+			return;
+		}
+
+		throw new MCPRegistrationException(sprintf(
+			'%s requires %s %s or later; this instance runs %s. Upgrade the base extension, or install a release of %s built for it.',
+			$sRequires === '' ? 'This tool pack' : $sRequires,
+			self::MODULE_NAME,
+			$sVersion,
+			self::VERSION,
+			$sRequires === '' ? 'the pack' : $sRequires
+		));
+	}
+
+	/**
+	 * A dictionary entry, or $sDefault when there is nothing to translate it
+	 * with.
+	 *
+	 * Three cases have to come out as the default rather than as a key: no
+	 * iTop at all (the unit suite runs without one), a dictionary that has not
+	 * been loaded yet - Dict::S() answers with the key itself there, which
+	 * would put "MCP:tool:acme_x:title" in front of a user - and an entry
+	 * nobody has written. Falling back to the English literal the element
+	 * already carries means a pack that ships no dictionary reads exactly as
+	 * it did before, and a pack that ships one is translated.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function Translate(string $sKey, string $sDefault): string
+	{
+		if (!class_exists(Dict::class)) {
+			return $sDefault;
+		}
+
+		try {
+			$sLabel = Dict::S($sKey, $sDefault);
+		} catch (Throwable $e) {
+			return $sDefault;
+		}
+
+		if (!is_string($sLabel) || $sLabel === '' || $sLabel === $sKey) {
+			return $sDefault;
+		}
+
+		return $sLabel;
 	}
 
 	/**
@@ -115,6 +225,8 @@ class MCPHelper
 	 *
 	 * Detail that must not reach the caller goes here: the response gets a
 	 * generic message, the log gets everything.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function LogError(string $sMessage, array $aContext = []): void
 	{
@@ -130,6 +242,7 @@ class MCPHelper
 	 * overrides, so setting both cannot come out wider than either.
 	 *
 	 * @return array<int, string> Granted grades, or an empty list for all of them.
+	 * @since 1.0.0
 	 */
 	public static function GetCapabilities(): array
 	{
@@ -153,6 +266,8 @@ class MCPHelper
 
 	/**
 	 * Whether this instance serves reads only.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function IsReadOnly(): bool
 	{
@@ -169,6 +284,7 @@ class MCPHelper
 	 * otherwise.
 	 *
 	 * @return array<int, string>
+	 * @since 1.0.0
 	 */
 	public static function GetEnabledToolsets(): array
 	{
@@ -187,6 +303,7 @@ class MCPHelper
 	 * Browser origins allowed to read this endpoint's responses.
 	 *
 	 * @return array<int, string>
+	 * @since 1.0.0
 	 */
 	public static function GetAllowedOrigins(): array
 	{
@@ -209,6 +326,7 @@ class MCPHelper
 	 * unable to express "only this name".
 	 *
 	 * @return array<int, string> Hostnames without port, or [MCPHttp::ANY_HOST] for no check.
+	 * @since 1.0.0
 	 */
 	public static function GetAllowedHosts(): array
 	{
@@ -267,6 +385,8 @@ class MCPHelper
 
 	/**
 	 * The protected-resource metadata URL to advertise, or null.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function GetProtectedResourceMetadataUrl(): ?string
 	{
@@ -277,6 +397,8 @@ class MCPHelper
 
 	/**
 	 * Elements per listing page, as configured.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function GetPaginationLimit(): int
 	{
@@ -294,6 +416,7 @@ class MCPHelper
 	 * Identifiers disabled by the operator, normalised to a list of strings.
 	 *
 	 * @return array<int, string>
+	 * @since 1.0.0
 	 */
 	public static function GetDisabledIdentifiers(): array
 	{

@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -40,6 +40,8 @@ use Altioo\iTop\Extension\MCP\Helper\MCPContext;
  *
  * A value object: no iTop, no configuration, no request. Every rule below is
  * decided here and tested without any of them.
+ *
+ * @since 1.0.0
  */
 final class AccessPolicy
 {

@@ -1,16 +1,19 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
+use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -20,10 +23,23 @@ use Mcp\Schema\ToolAnnotations;
  * The bulk case that comes up constantly - reassign these twelve tickets,
  * retire these thirty servers - and the one a model otherwise does by calling
  * core_object_update twelve times.
+ *
+ * @since 1.0.0
  */
 class ObjectBulkUpdate extends AbstractBulkTool
 {
-	public function getTitle(): ?string
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+	protected function defaultTitle(): string
 	{
 		return 'Update Objects in Bulk';
 	}
@@ -77,16 +93,18 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	 * @param array<int, mixed>  $ids      Ids of the objects to update
 	 * @param array<string, mixed> $fields  Attribute values applied to all of them
 	 * @param bool               $simulate When true (default), nothing is written
+	 * @param string|null        $comment  Why the batch is being applied, recorded in the history of every object in it
 	 *
 	 * @return mixed A per-object report
 	 *
 	 * @throws ToolCallException When the class, the ids or the bulk right rule out the whole call.
 	 */
 	public static function execute(
-		string $class,
-		array  $ids,
-		array  $fields,
-		bool   $simulate = true,
+		string  $class,
+		array   $ids,
+		array   $fields,
+		bool    $simulate = true,
+		?string $comment = null,
 	): mixed {
 		if (empty($fields)) {
 			throw new ToolCallException('No fields provided for update.');
@@ -94,6 +112,15 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_MODIFY, UR_ACTION_MODIFY, 'modify');
+
+		// The class-level gate, before a single object is read: an attribute
+		// this caller may not write on the class is refused for the whole call
+		// rather than a hundred times over.
+		self::checkAttributesWritable($class, $fields);
+
+		// Once for the batch, before the loop: forty objects changed by one
+		// call are one decision, and they share the one change record.
+		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
 		foreach ($aIds as $iId) {
@@ -104,8 +131,10 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			}
 
 			// Per object: the attribute rights of a User are not the attribute
-			// rights of another User.
-			[$aValues, $aIssues] = self::validatedValues($class, $fields);
+			// rights of another User, and the class-level gate above cannot
+			// tell them apart. The object goes in as a set of one, which is how
+			// iTop is asked about one object.
+			[$aValues, $aIssues] = self::validatedValues($class, $fields, DBObjectSet::FromObject($mObject));
 			if (!empty($aIssues)) {
 				$aOutcomes[] = self::outcome($iId, false, implode(' ', $aIssues));
 				continue;

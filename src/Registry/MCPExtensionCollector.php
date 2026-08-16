@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -10,6 +14,9 @@ use Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery;
 use LogAPI;
 use Throwable;
 
+/**
+ * @since 1.0.0
+ */
 final class MCPExtensionCollector
 {
 	/**
@@ -23,6 +30,7 @@ final class MCPExtensionCollector
 	 * way register.php does for CoreExtensions.
 	 *
 	 * @throws \InvalidArgumentException When the class does not implement the contract.
+	 * @since 1.0.0
 	 */
 	public static function RegisterServiceProvider(string $sClass): void
 	{
@@ -45,6 +53,8 @@ final class MCPExtensionCollector
 	 *
 	 * A provider that throws is logged and skipped: one broken tool pack must
 	 * not take the endpoint down for the others.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function CollectAll(): void
 	{

@@ -1,10 +1,15 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
@@ -27,6 +32,8 @@ use RestUtils;
  *   stimulus: "ev_assign"
  *   fields:   { "agent_id": 3, "team_id": 12 }
  *   comment:  "Assigned via MCP"
+ *
+ * @since 1.0.0
  */
 class ObjectApplyStimulus extends AbstractMCPTool
 {
@@ -43,7 +50,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Apply Stimulus';
 	}
@@ -99,6 +106,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('apply the stimulus'),
+				'comment'  => ChangeTracking::CommentSchemaProperty('the transition is being applied'),
 			],
 			'required' => ['class', 'id', 'stimulus'],
 		];
@@ -123,15 +131,17 @@ class ObjectApplyStimulus extends AbstractMCPTool
 	 * @param string $stimulus The stimulus code to apply, e.g. 'ev_assign'
 	 * @param array $fields Optional attribute values to set before applying the stimulus, e.g. ['agent_id' => 3]
 	 * @param bool $simulate When true (default), the transition is validated but not applied
+	 * @param string|null $comment Why the transition is being applied, recorded in the object's history
 	 * @return array The state the object is in, or the state it would move to
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
 	 */
 	public static function execute(
-		string $class,
-		int $id,
-		string $stimulus,
-		array  $fields = [],
-		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		string  $class,
+		int     $id,
+		string  $stimulus,
+		array   $fields = [],
+		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		?string $comment = null,
 	): mixed {
 		// Validate input parameters
 		if ($id < 1) {
@@ -217,6 +227,11 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot apply stimulus '{$stimulus}' to this object of class '{$class}'.");
 		}
 
+		// A set holding this object and nothing else, built fresh: $oSet has
+		// been Fetch()ed above and its cursor is spent, and the rights addon is
+		// free to iterate whatever it is handed.
+		$oInstanceSet = DBObjectSet::FromObject($oObject);
+
 		// Set fields before applying the stimulus (e.g. agent_id for ev_assign)
 		// Validate fields before applying any changes
 		$aIssues = [];
@@ -226,7 +241,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY)) {
+			// With the object in hand, not just its class: an attribute the
+			// caller may set on one object of this class is not necessarily one
+			// they may set on this one. See ObjectUpdate for the long version.
+			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;
 			}
@@ -304,6 +322,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				'changes'       => $aChanges,
 			]);
 		}
+
+		// Said before the write, because the change record is built by the
+		// write itself and reads what was last said.
+		ChangeTracking::Explain($comment);
 
 		// All validations passed, apply the stimulus
 		$bApplied = false;

@@ -17,9 +17,3 @@ composer.phar
 phpunit.xml
 .phpunit.result.cache
 .phpunit.cache
-assets/css/.gitkeep
-assets/img/.gitkeep
-assets/js/.gitkeep
-src/.gitkeep
-templates/.gitkeep
-doc/.gitkeep

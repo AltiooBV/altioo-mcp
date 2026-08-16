@@ -1,14 +1,14 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Core\Tools;
+namespace Altioo\iTop\Extension\MCP\Abstract;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use DBObject;
@@ -36,10 +36,31 @@ use UserRights;
  * right would quietly hand back what was deliberately withheld.
  *
  * The second is that the class-level answer is never the end of it. Every
- * object is checked on its own, because iTop's object-level rights are what
- * separate "may modify a User" from "may modify their own User and no one
- * else's" - the password case. A bulk tool that checks the class once and then
- * loops is an escalation with a progress counter.
+ * object is asked about on its own, and written through CheckToWrite(), which
+ * is where a datamodel expresses "only the owner may close this" -
+ * DoCheckToWrite() sees the object, and nothing above it does. A bulk tool
+ * that checks the class once and then loops is an escalation with a progress
+ * counter.
+ *
+ * Be careful what is expected of the rights check specifically. iTop's shipped
+ * addon documents that it ignores the instance set for attributes - "acceptable
+ * to consider only the root class of the object set" - so under a stock install
+ * a profile that may write an attribute may write it on every object of the
+ * class it can see. The mono set is still passed, because the API is tri-state
+ * and an addon that does grade per object signals it with UR_ALLOWED_DEPENDS,
+ * and because iTop's own code passes one at every equivalent call site. What it
+ * is not is a substitute for CheckToWrite().
+ *
+ * Both rules are the reason this is worth extending rather than reproducing:
+ * a pack that writes its own bulk tool and forgets either one has written an
+ * escalation, and neither omission shows up in testing, because the account a
+ * developer tests with holds both rights.
+ *
+ * Unlike the core tools it serves, it declares no namespace: that is yours,
+ * and the registry refuses 'core' from anything outside this module.
+ *
+ * @since 1.0.0
+ * @since 1.0.0 Moved here from Core\Tools and covered by the versioning policy.
  */
 abstract class AbstractBulkTool extends AbstractMCPTool
 {
@@ -51,17 +72,6 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * wrote itself, and the blast radius of a mistake stops being reviewable.
 	 */
 	const MAX_OBJECTS = 100;
-
-	public function getNamespace(): string
-	{
-		return 'core';
-	}
-
-	/** Reading and writing the objects themselves. */
-	public function getToolset(): string
-	{
-		return 'objects';
-	}
 
 	/**
 	 * The class argument, the id list and the dry run, spelled once.
@@ -87,6 +97,10 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				'description' => 'true (the default) checks every object and reports what would happen, without changing anything. Show that report to the user, then call again with simulate=false to '.$sWhatHappens.'.',
 				'default'     => true,
 			],
+			// One reason for the batch, because one call is one decision: the
+			// forty tickets are being closed for the same reason, and that is
+			// what makes the line worth reading on each of them.
+			'comment'  => ChangeTracking::CommentSchemaProperty('these objects are being changed'),
 		];
 	}
 
@@ -200,16 +214,72 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	}
 
 	/**
-	 * Attribute values, checked and converted, or the reasons they were not.
+	 * The class-level gate on the attributes a batch means to write.
 	 *
-	 * Per-attribute write rights are checked per object rather than once for
-	 * the class, for the same reason the object right is.
+	 * Asked once, before any object is looked at, and it throws rather than
+	 * reporting per object: an attribute the caller may not write on the class
+	 * is not going to become writable on the fortieth object, and answering
+	 * that with a hundred identical failures buries the one thing the caller
+	 * needs to read.
+	 *
+	 * It is a gate, not the decision. IsActionAllowedOnAttribute() answers
+	 * UR_ALLOWED_DEPENDS when the addon grades the attribute per object, and
+	 * that counts as passing here - the per-object check in validatedValues()
+	 * is what resolves it.
 	 *
 	 * @param array<string, mixed> $aFields
 	 *
+	 * @throws ToolCallException When an attribute is refused for the class outright.
+	 */
+	protected static function checkAttributesWritable(string $sClass, array $aFields): void
+	{
+		$aRefused = [];
+
+		foreach (array_keys($aFields) as $sAttCode) {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+				$aRefused[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
+				continue;
+			}
+			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY) === UR_ALLOWED_NO) {
+				$aRefused[] = "Write access denied on attribute '{$sAttCode}'.";
+				continue;
+			}
+			if (!MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
+				$aRefused[] = "Attribute '{$sAttCode}' is not writable.";
+			}
+		}
+
+		if (!empty($aRefused)) {
+			throw new ToolCallException(
+				'This call cannot be made on any object of this class: '.implode(' ', $aRefused)
+			);
+		}
+	}
+
+	/**
+	 * Attribute values, checked and converted, or the reasons they were not.
+	 *
+	 * The write right is asked with the object in hand, not just its class.
+	 * IsActionAllowedOnAttribute() is tri-state, and an addon that grades an
+	 * attribute per object says so by answering UR_ALLOWED_DEPENDS to the
+	 * class-level question; passing the instance set is what turns that into a
+	 * yes or a no. iTop's own code passes a mono set at every equivalent call
+	 * site - see cmdbchangeop.class.inc.php.
+	 *
+	 * The shipped addon is not one of those: UserRightsProfile ignores the set
+	 * for attributes on purpose, so on a stock install this answers per class
+	 * and profile. It is passed anyway because it costs nothing, because the
+	 * contract allows better, and because treating DEPENDS as a yes is the one
+	 * reading that is wrong under every addon. The per-object rule that does
+	 * hold on a stock install is DoCheckToWrite(), reached through
+	 * WritePlan::Check().
+	 *
+	 * @param array<string, mixed> $aFields
+	 * @param DBObjectSet|null     $oInstanceSet The object being written, as a set of one. Null falls back to the class-level answer.
+	 *
 	 * @return array{0: array<string, mixed>, 1: array<int, string>} Values, and issues.
 	 */
-	protected static function validatedValues(string $sClass, array $aFields): array
+	protected static function validatedValues(string $sClass, array $aFields, ?DBObjectSet $oInstanceSet = null): array
 	{
 		$aValues = [];
 		$aIssues = [];
@@ -219,7 +289,16 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				$aIssues[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
 				continue;
 			}
-			if (!UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY)) {
+			// With an object in hand, UR_ALLOWED_DEPENDS has been resolved and
+			// anything short of a yes is a no. Without one - a creation, where
+			// there is no object yet to grade - only an outright refusal counts,
+			// because "depends on the object" cannot be answered before the
+			// object exists, and DBInsert() checks it again anyway.
+			$iAllowed = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet);
+			$bDenied = $oInstanceSet === null
+				? $iAllowed === UR_ALLOWED_NO
+				: $iAllowed !== UR_ALLOWED_YES;
+			if ($bDenied) {
 				$aIssues[] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;
 			}

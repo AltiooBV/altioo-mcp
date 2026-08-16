@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -16,6 +16,7 @@ use AttributeLinkedSet;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
+use ormDocument;
 use Throwable;
 use UserRights;
 use iAttributeNoGroupBy;
@@ -44,6 +45,8 @@ use iAttributeNoGroupBy;
  * through output_fields. Asking for one attribute by name is the decision to
  * read it in full; the ceilings are there so that a broad read cannot spend a
  * context window nobody asked it to spend.
+ *
+ * @since 1.0.0
  */
 final class ObjectSerializer
 {
@@ -83,6 +86,7 @@ final class ObjectSerializer
 	 * @param array<int, string>|null $aFields Attribute codes to report; null for all of them.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function Serialize(DBObject $oObject, string $sClass, ?array $aFields = null): array
 	{
@@ -132,6 +136,7 @@ final class ObjectSerializer
 	 * @param bool $bClip Whether the unbounded kinds are cut to their ceilings.
 	 *
 	 * @return mixed A scalar, or a structure of scalars; never an ORM object.
+	 * @since 1.0.0
 	 */
 	public static function Value(DBObject $oObject, string $sClass, string $sAttCode, bool $bClip = true): mixed
 	{
@@ -149,7 +154,7 @@ final class ObjectSerializer
 
 		if ($oAttDef instanceof AttributeBlob) {
 			// GetForJSON() would base64 the whole file into the response.
-			return self::document($oObject->Get($sAttCode));
+			return self::document($oObject->Get($sAttCode), $sClass, (int)$oObject->GetKey(), $sAttCode);
 		}
 
 		$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
@@ -312,23 +317,25 @@ final class ObjectSerializer
 	}
 
 	/**
-	 * A document reported by what it is, never by what it contains.
+	 * A document reported by what it is, never by what it contains - and by
+	 * where the caller can go and get it.
+	 *
+	 * The `uri` is what keeps this from being a dead end. The bytes stay out of
+	 * every read, because a read fans out and a file base64-encoded into one is
+	 * a context window spent without anyone choosing to; naming the one document
+	 * wanted is the choice, and {@see DocumentAccess} is where it is served.
 	 *
 	 * @param mixed $value An ormDocument, or null.
 	 *
 	 * @return array<string, mixed>|null
 	 */
-	private static function document($value): ?array
+	private static function document($value, string $sClass, int $iId, string $sAttCode): ?array
 	{
-		if (!is_object($value) || !method_exists($value, 'IsEmpty') || $value->IsEmpty()) {
+		if (!$value instanceof ormDocument || $value->IsEmpty()) {
 			return null;
 		}
 
-		return [
-			'filename' => $value->GetFileName(),
-			'mimetype' => $value->GetMimeType(),
-			'size'     => strlen((string)$value->GetData()),
-		];
+		return DocumentAccess::Describe($value, $sClass, $iId, $sAttCode);
 	}
 
 	/**
@@ -348,6 +355,7 @@ final class ObjectSerializer
 	 * @return array<int, string>|null The attribute codes to report, or null for all of them.
 	 *
 	 * @throws ToolCallException When a code is not an attribute of the class.
+	 * @since 1.0.0
 	 */
 	public static function ParseFieldList(string $sClass, string $sOutputFields): ?array
 	{
@@ -393,6 +401,7 @@ final class ObjectSerializer
 	 * so that one argument does not end up with two spellings.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function FieldsSchemaProperty(string $sDefault): array
 	{
@@ -419,6 +428,8 @@ final class ObjectSerializer
 	 * is that resolving it in IsSensitive() rather than at the call site means
 	 * every caller gets it, including the schema tool that reports which
 	 * attributes are sensitive.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function IsSensitive(AttributeDefinition $oAttDef): bool
 	{

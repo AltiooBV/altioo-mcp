@@ -1,10 +1,14 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Core\Tools\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
@@ -22,11 +26,23 @@ use UserRights;
  * Example:
  *   class: "UserRequest"
  *   filters: { "status": "open", "agent_id": 12 }
+ *
+ * @since 1.0.0
  */
 class ObjectSearchByClass extends AbstractObjectSearch
 {
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
 
-	public function getTitle(): ?string
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+	protected function defaultTitle(): string
 	{
 		return 'Search Objects by Class';
 	}

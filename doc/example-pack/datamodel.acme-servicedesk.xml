@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The half of a toolset that lives outside PHP.
+
+  Declaring getToolset() = 'acme-servicedesk' on the tools is what lets an
+  operator write mcp_enabled_toolsets => array('acme-servicedesk') in
+  config-itop.php. It does NOT, on its own, give anyone an
+  MCP-toolset-acme-servicedesk token scope:
+
+    - a scope is a value of the 'scope' enum on PersonalToken and UserToken, so
+      one that is not declared there cannot be picked when a token is created;
+    - and TokenScopes::DeclaredContextTags() pushes exactly the declared values
+      as context tags before login, which is how iTop honours a scope at all -
+      an undeclared scope is a token that cannot log in rather than a token
+      with a narrower reach.
+
+  So a pack that wants its toolset to be grantable per credential ships this
+  file. The base extension reads the enumeration rather than a list of its own,
+  which is precisely so that it does not need to know your name.
+
+  Both classes, because either kind of token can carry it, and _delta="define"
+  on the value with _delta="if_exists" on the class and field so that this
+  applies to whatever authent-token already declared.
+-->
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0">
+  <classes>
+    <class id="PersonalToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP-toolset-acme-servicedesk" _delta="define">
+              <code>MCP-toolset-acme-servicedesk</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+    <class id="UserToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP-toolset-acme-servicedesk" _delta="define">
+              <code>MCP-toolset-acme-servicedesk</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+  </classes>
+
+  <dictionaries>
+    <dictionary id="EN US">
+      <entries>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk"><![CDATA[MCP: Acme service desk toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk+"><![CDATA[Restrict this token to the Acme service desk tools]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk"><![CDATA[MCP: Acme service desk toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk+"><![CDATA[Restrict this token to the Acme service desk tools]]></entry>
+        <!--
+          Element titles. Only titles are translated - a description is written
+          for the model choosing the tool, and one that changed with the
+          caller's language would change what the model does. A key that does
+          not exist falls back to defaultTitle(), so this file is optional.
+        -->
+        <entry id="MCP:tool:acme_ticket_add_log_entry:title"><![CDATA[Add a Log Entry to a Ticket]]></entry>
+        <entry id="MCP:tool:acme_ticket_search_mine:title"><![CDATA[Search My Tickets]]></entry>
+        <entry id="MCP:prompt:acme_triage_my_queue:title"><![CDATA[Triage My Queue]]></entry>
+      </entries>
+    </dictionary>
+    <dictionary id="FR FR">
+      <entries>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk"><![CDATA[MCP : outils centre de services Acme]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk+"><![CDATA[Restreindre ce jeton aux outils du centre de services Acme]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk"><![CDATA[MCP : outils centre de services Acme]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk+"><![CDATA[Restreindre ce jeton aux outils du centre de services Acme]]></entry>
+        <entry id="MCP:tool:acme_ticket_add_log_entry:title"><![CDATA[Ajouter une entrée au journal d'un ticket]]></entry>
+        <entry id="MCP:tool:acme_ticket_search_mine:title"><![CDATA[Rechercher mes tickets]]></entry>
+        <entry id="MCP:prompt:acme_triage_my_queue:title"><![CDATA[Trier ma file]]></entry>
+      </entries>
+    </dictionary>
+  </dictionaries>
+</itop_design>

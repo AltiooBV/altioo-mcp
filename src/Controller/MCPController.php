@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -24,6 +28,9 @@ use ContextTag;
 use utils;
 use MetaModel;
 
+/**
+ * @since 1.0.0
+ */
 final class MCPController
 {
 	public static function handleRequest(): void

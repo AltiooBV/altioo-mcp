@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -18,6 +22,8 @@ use Mcp\Schema\ToolAnnotations;
  * is exposed on both surfaces. Narrowing is what the resource cannot offer: a
  * stock iTop declares several hundred classes, and the handful a model needs
  * are almost always one category ('bizmodel') or one word ('ticket') away.
+ *
+ * @since 1.0.0
  */
 class ClassList extends AbstractMCPTool
 {
@@ -34,7 +40,7 @@ class ClassList extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'List Classes';
 	}

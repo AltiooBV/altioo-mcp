@@ -1,16 +1,30 @@
 # Serves the MCP endpoint, and nothing else in this directory.
 #
-# iTop's own extensions/.htaccess denies every request under extensions/ except
-# a short list of static asset extensions, PHP not among them. That is the right
-# default - a module's src/, vendor/ and composer.json have no business being
-# reachable - but this module's whole purpose is one PHP entry point, so it
-# re-grants access to that one file and leaves the parent's deny in place for
-# everything else.
+# This module's whole public surface is one PHP entry point. Everything else
+# that ships with it - src/, the vendored SDK, tests/, composer.json - has no
+# business being reachable over HTTP, so this denies the directory and grants
+# back exactly one file.
 #
-# The setup copies this file alongside the module into env-<env>/altioo-mcp/,
-# where the parent deny does not apply and the grant is simply redundant.
+# The deny is stated here rather than inherited, because the two places this
+# file ends up protect different amounts on their own:
+#
+#   extensions/altioo-mcp/   iTop's extensions/.htaccess already denies the
+#                            subtree except for a list of static asset
+#                            extensions, PHP not among them. Only the grant
+#                            below is needed - the deny is redundant.
+#
+#   env-<env>/altioo-mcp/    The setup copies this file alongside the module.
+#                            The compiler writes its own .htaccess once at the
+#                            env root, and that one's FilesMatch DOES include
+#                            php, granted for the whole subtree. Without the
+#                            deny below, every file under src/ and vendor/
+#                            would be served from the compiled tree.
+#
+# Keep this in step with web.config, which does the same job on IIS.
 
 <IfModule mod_authz_core.c>
+	# Apache 2.4
+	Require all denied
 	<Files "index.php">
 		Require all granted
 	</Files>
@@ -18,9 +32,13 @@
 
 <IfModule !mod_authz_core.c>
 	# Apache 2.2
+	Deny from all
+	Satisfy All
 	<Files "index.php">
 		Order Allow,Deny
 		Allow from all
-		Satisfy Any
 	</Files>
 </IfModule>
+
+# Apache 2.2 and 2.4
+IndexIgnore *

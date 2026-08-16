@@ -1,10 +1,15 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -20,6 +25,8 @@ use RestUtils;
  * The `fields` parameter is a key/value map of attribute codes to values.
  * Use the itop://core/class/{classname} resource to discover mandatory attributes
  * and their types before calling this tool.
+ *
+ * @since 1.0.0
  */
 class ObjectCreate extends AbstractMCPTool
 {
@@ -35,7 +42,7 @@ class ObjectCreate extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Create Object';
 	}
@@ -83,6 +90,7 @@ class ObjectCreate extends AbstractMCPTool
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+				'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
 			],
 			'required' => ['class'],
 		];
@@ -92,13 +100,15 @@ class ObjectCreate extends AbstractMCPTool
 	 * @param string $class The class of the object to create, e.g. 'UserRequest'
 	 * @param array $fields A key/value map of attribute codes to values, e.g. ['title' => 'My request', 'description' => 'Details about my request']
 	 * @param bool $simulate When true (default), the object is validated and described but not created
+	 * @param string|null $comment Why the object is being created, recorded in its history
 	 * @return array The class and ID of the newly created object, or what creating it would write
 	 * @throws ToolCallException if the class is unknown, if it's abstract, if access is denied, or if any provided attribute is invalid or not writable.
 	 */
 	public static function execute(
-		string $class,
-		array  $fields = [],
-		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		string  $class,
+		array   $fields = [],
+		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		?string $comment = null,
 	): mixed {
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
@@ -178,6 +188,10 @@ class ObjectCreate extends AbstractMCPTool
 				'changes'   => $aChanges,
 			]);
 		}
+
+		// Said before the write, because the change record is built by the
+		// write itself and reads what was last said.
+		ChangeTracking::Explain($comment);
 
 		try {
 			$iId = $oObject->DBInsert();

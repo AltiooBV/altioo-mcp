@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -32,6 +32,8 @@ use Throwable;
  * call again - is what makes that true of every write. Running the check
  * without the write is exactly what makes a dry run worth anything: it answers
  * "would this work", not just "is this well formed".
+ *
+ * @since 1.0.0
  */
 final class WritePlan
 {
@@ -45,6 +47,7 @@ final class WritePlan
 	 * @param string $sWhatItWouldDo e.g. 'create the object'
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function SimulateSchemaProperty(string $sWhatItWouldDo): array
 	{
@@ -69,6 +72,7 @@ final class WritePlan
 	 * @param array<int, string>                  $aRequired   Property names it always reports.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function OutcomeSchema(array $aProperties = [], array $aRequired = []): array
 	{
@@ -105,6 +109,7 @@ final class WritePlan
 	 * What a deletion would take with it, as a schema.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function DeletionPlanSchema(): array
 	{
@@ -144,6 +149,7 @@ final class WritePlan
 	 * are exactly what a model needs to fix the call and try again.
 	 *
 	 * @throws ToolCallException When the object cannot be written as described.
+	 * @since 1.0.0
 	 */
 	public static function Check(DBObject $oObject, string $sWhat): void
 	{
@@ -172,6 +178,7 @@ final class WritePlan
 	 * object it describes cannot disagree about what a value looks like.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function Changes(DBObject $oObject, string $sClass): array
 	{

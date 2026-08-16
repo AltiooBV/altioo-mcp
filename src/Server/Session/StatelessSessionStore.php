@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 namespace Altioo\iTop\Extension\MCP\Server\Session;
 
@@ -27,6 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * which is worse than none.
  *
  * @see https://modelcontextprotocol.io/specification/basic/transports Streamable HTTP without a session
+ * @since 1.0.0
  */
 class StatelessSessionStore implements SessionStoreInterface
 {

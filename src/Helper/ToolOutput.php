@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -31,6 +31,8 @@ use Mcp\Schema\Result\CallToolResult;
  *
  * A pack may keep returning arrays; nothing breaks. This is the cheaper way,
  * and what every core tool does.
+ *
+ * @since 1.0.0
  */
 final class ToolOutput
 {
@@ -45,6 +47,7 @@ final class ToolOutput
 	 * @param mixed $data Anything json_encode can take: the shape the tool documents.
 	 *
 	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @since 1.0.0
 	 */
 	public static function Json($data): TextContent
 	{
@@ -83,9 +86,69 @@ final class ToolOutput
 	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
 	 *
 	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @since 1.0.0
 	 */
 	public static function Structured(array $aData): CallToolResult
 	{
 		return new CallToolResult([self::Json($aData)], false, $aData);
+	}
+
+	/**
+	 * The payload of a result, whichever of the three shapes it arrived in.
+	 *
+	 * For the pack that subclasses a core tool to add something to what it
+	 * returns. Calling parent::execute() gets back whatever that tool chose -
+	 * a TextContent from {@see Json()}, a CallToolResult from
+	 * {@see Structured()}, or a plain array - and a subclass that wants to add
+	 * a key has to get at the data underneath without caring which. Doing it by
+	 * hand means an instanceof ladder in every such tool, and a json_decode
+	 * whose failure mode is silently returning null.
+	 *
+	 * Re-encode the result you build with {@see Json()} or
+	 * {@see Structured()}; this only opens the envelope.
+	 *
+	 * @param mixed $mResult What execute() returned.
+	 *
+	 * @return array<mixed> The decoded payload.
+	 *
+	 * @throws ToolCallException When it holds no JSON object that can be read back.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function Decode($mResult): array
+	{
+		if (is_array($mResult)) {
+			return $mResult;
+		}
+
+		if ($mResult instanceof CallToolResult) {
+			// The structured half is the same data, already decoded.
+			$aStructured = $mResult->structuredContent ?? null;
+			if (is_array($aStructured)) {
+				return $aStructured;
+			}
+
+			$aContent = $mResult->content ?? [];
+			$mResult = $aContent[0] ?? null;
+		}
+
+		if (!$mResult instanceof TextContent) {
+			throw new ToolCallException(sprintf(
+				'This result carries no readable payload (got %s).',
+				is_object($mResult) ? get_class($mResult) : gettype($mResult)
+			));
+		}
+
+		try {
+			$mDecoded = json_decode($mResult->text, true, 512, JSON_THROW_ON_ERROR);
+		} catch (JsonException $e) {
+			throw new ToolCallException('This result is not JSON and cannot be extended: '.$e->getMessage());
+		}
+
+		if (!is_array($mDecoded)) {
+			throw new ToolCallException('This result is a JSON scalar rather than an object, so there is nothing to add to.');
+		}
+
+		return $mDecoded;
 	}
 }

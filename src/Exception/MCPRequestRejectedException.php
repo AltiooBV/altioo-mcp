@@ -1,7 +1,7 @@
 <?php
 /**
- * @copyright Copyright (C) 2026 Altioo
- * @license   http://opensource.org/licenses/AGPL-3.0
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -21,6 +21,8 @@ use Exception;
  *
  * The HTTP status travels on the exception rather than being inferred from the
  * message, and is carried as the exception code.
+ *
+ * @since 1.0.0
  */
 class MCPRequestRejectedException extends Exception
 {

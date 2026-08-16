@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -19,6 +19,8 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  *
  * Deriving it from the class name rather than asking for it keeps one name in
  * one place: a pack writes a PHP class, and the identifier follows.
+ *
+ * @since 1.0.0
  */
 final class Identifier
 {
@@ -30,6 +32,8 @@ final class Identifier
 	 * The second half is what keeps an acronym together: without it OQL comes
 	 * out as o_q_l, and ClassSchema is fine either way, so the naive version
 	 * looks correct until the first acronym.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function SnakeCase(string $sName): string
 	{

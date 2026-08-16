@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
@@ -46,6 +50,7 @@ use LogAPI;
  * through to LogAPI as-is so they appear in file logs and EventIssue data.
  *
  * @see https://www.php-fig.org/psr/psr-3/
+ * @since 1.0.0
  */
 class LogAPILogger extends AbstractLogger
 {
@@ -84,6 +89,7 @@ class LogAPILogger extends AbstractLogger
 	 * @param string|null          $channel   Optional channel override.
 	 *
 	 * @throws \InvalidArgumentException When $logClass is not a subclass of LogAPI.
+	 * @since 1.0.0
 	 */
 	public function __construct(string $logClass, ?string $channel = null)
 	{
@@ -107,6 +113,7 @@ class LogAPILogger extends AbstractLogger
 	 * {@inheritDoc}
 	 *
 	 * @throws \InvalidArgumentException For unrecognised PSR-3 levels (PSR-3 §1.1).
+	 * @since 1.0.0
 	 */
 	public function log($level, $message, array $context = []): void
 	{
@@ -134,6 +141,7 @@ class LogAPILogger extends AbstractLogger
 	 * @param string $channel
 	 *
 	 * @return static
+	 * @since 1.0.0
 	 */
 	public function withChannel(string $channel): static
 	{

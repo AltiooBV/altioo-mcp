@@ -2,45 +2,9 @@
 
 All notable changes to this extension are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versioning is
-[semver](https://semver.org/) over the surface a tool pack can touch: the four abstracts,
-`MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider` and the helpers under
-`Helper/`. See the README, [Extending](README.md#extending).
-
-## [Unreleased]
-
-### Added
-
-- **`core_object_find_by_name`**, the console's global search as a tool. Every other reading
-  tool needs the class before it can do anything, and a question rarely arrives with one. It
-  is iTop's own search — the same needle splitting and quoted phrase, the same
-  `full_text_needle_min` floor, `MetaModel::GetClasses('searchable')` or `EnumChildClasses()`
-  when a class is named, `AddCondition_FullText()` over every searchable scalar attribute, and
-  the same leaf rule that stops one object being reported once per class in its ancestry. The
-  rights are `core_object_get`'s, applied per object. `full_text_chunk_duration` bounds the
-  scan and `truncated` says when it stopped early.
-- `has_more` and `next_offset` on both searches. A page can come back shorter than `limit`
-  because object-level rights removed rows from it, and a caller that reads a short page as
-  the end of the set stops early and silently.
-
-### Fixed
-
-- **`core_my_open_tickets` asks in the terms the instance actually uses.** It named
-  `UserRequest` and two status codes, so it was wrong without a ticketing module, wrong for a
-  profile that cannot read tickets, and wrong wherever a delta had renamed the attributes. It
-  now queries `Ticket` on `operational_status`, checks every attribute for existence and read
-  rights before naming it, and withdraws itself through `isAvailable()` when too little
-  survives. It also still called `ObjectSearchByOQL`, which has not been the name since the
-  identifiers became `snake_case`.
-- Two queries per row of every search result, both for something already in hand: `Fetch()`
-  returns each row as its final class, so `GetFinalClassName()` asked for a name that had just
-  arrived and `GetObject()` re-read an object already loaded. Both rights checks stay. The
-  probe `DBObjectSet` goes too — its constructor runs no query, so it never caught the error
-  it was written for.
-
-### Packaging
-
-- The module ships its own `.htaccess` and `web.config`. iTop's `extensions/` rules deny PHP,
-  so the documented endpoint answered `403` on a stock Apache or IIS install.
+[semver](https://semver.org/) over the surface a tool pack can touch: the abstracts under
+`Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
+`Helper/` and the checker under `Testing/`. See the README, [Extending](README.md#extending).
 
 ## [1.0.0] - 2026-08-16
 
@@ -98,6 +62,58 @@ first call, and that a tool is graded read / write / delete by the annotations i
 - `mcp_pagination_limit`, defaulting to 200, so a client that ignores `nextCursor` cannot
   silently miss the 51st tool.
 - `Helper\ToolOutput::Json()`, the recommended return for a tool.
+- **An example tool pack, in `doc/example-pack/`.** Two tools, a prompt, the module
+  declaration, the composer settings, the datamodel delta and a contract test — a complete
+  pack to copy into `extensions/` and rename, rather than a documentation section to assemble
+  a pack from. Its module file carries a `.tpl` suffix because the setup `eval`s every
+  `module.*.php` under `extensions/`, `doc/` included, and an example that appears in the
+  module list is not an example.
+- **`Testing\ElementContract`**, the registration contract as a list of findings rather than an
+  exception, so a pack can assert its own elements in one line per element. It ships in the
+  production autoload deliberately: `autoload-dev` is absent from a production dump and iTop's
+  discovery ignores `tests/`, so the version under `tests/` is the one version a downstream
+  pack cannot reach. It references no dev dependency, and nothing that serves a request refers
+  to it. Alongside the refusals it reports what registers and then disappoints — chief among
+  them a tool with no annotations, which works for an administrator and is invisible to every
+  scoped token.
+- **`MCPRegistry::Check()`**, running the registration checks against one element without
+  registering it. The register methods now call it, so there is one copy of the rules.
+- **`MCPHelper::RequireVersion()` and `MCPHelper::AtLeast()`**, for a pack that needs a base
+  newer than the one installed. The module dependency remains the real gate; this catches the
+  base being downgraded under a pack already installed, where the alternative is a fatal error
+  inside a request that takes the endpoint down for every other pack too.
+- **`MCPHelper::SDK_CONSTRAINT`**, publishing the `mcp/sdk` line this module vendors so a pack
+  can compile against what will actually be loaded.
+- **`ToolOutput::Decode()`**, opening a result whichever of the three shapes it arrived in, for
+  a pack that subclasses a core tool to add to what it returns.
+- **Titles are translated.** `getTitle()` on all four kinds now resolves
+  `MCP:<kind>:<qualified name>:title` through iTop's dictionary and falls back to the new
+  `defaultTitle()` hook, so a pack that ships no dictionary reads exactly as before. Core
+  titles ship in English and French. Descriptions are deliberately not translated: they are
+  read by the model choosing the tool, and one that changed with the caller's language would
+  change what the model does.
+- **Changes are attributed in the object's own history.** Every write went into the change log
+  under the calling user's name and nothing else, which through this endpoint says less than it
+  looks: the same name appears whether the person made the change, asked an assistant to make
+  it, or issued a token to an agent that has been making it nightly. A change now reads
+  `Jane Doe (MCP: core_object_update)` — the tool is taken from the request rather than asked
+  for, so a pack's tools are attributed exactly like the core ones without their author doing
+  anything. Every writing tool also takes an optional `comment`, iTop's REST/JSON `comment` by
+  another route, which adds the why. The origin stays `custom-extension`: an `mcp` value on
+  that enum would read better in a filter and would cost an `ALTER TABLE` on `priv_change` at
+  every setup. Packs spell the parameter with `ChangeTracking::CommentSchemaProperty()` and
+  record it with `ChangeTracking::Explain()` — see the README, [Extending](README.md#extending).
+- **`core_object_find_by_name`**, the console's global search as a tool. Every other reading
+  tool needs the class before it can do anything, and a question rarely arrives with one. It
+  is iTop's own search — the same needle splitting and quoted phrase, the same
+  `full_text_needle_min` floor, `MetaModel::GetClasses('searchable')` or `EnumChildClasses()`
+  when a class is named, `AddCondition_FullText()` over every searchable scalar attribute, and
+  the same leaf rule that stops one object being reported once per class in its ancestry. The
+  rights are `core_object_get`'s, applied per object. `full_text_chunk_duration` bounds the
+  scan and `truncated` says when it stopped early.
+- `has_more` and `next_offset` on both searches. A page can come back shorter than `limit`
+  because object-level rights removed rows from it, and a caller that reads a short page as
+  the end of the set stops early and silently.
 
 ### Fixed
 
@@ -121,6 +137,18 @@ first call, and that a tool is graded read / write / delete by the annotations i
   nothing serves or a `core_` name that is not registered.
 - Results are sent once. An array return was JSON-encoded into the text content *and* copied
   into `structuredContent`, pretty-printed — roughly twice the tokens per read.
+- **`core_my_open_tickets` asks in the terms the instance actually uses.** It named
+  `UserRequest` and two status codes, so it was wrong without a ticketing module, wrong for a
+  profile that cannot read tickets, and wrong wherever a delta had renamed the attributes. It
+  now queries `Ticket` on `operational_status`, checks every attribute for existence and read
+  rights before naming it, and withdraws itself through `isAvailable()` when too little
+  survives. It also still called `ObjectSearchByOQL`, which has not been the name since the
+  identifiers became `snake_case`.
+- Two queries per row of every search result, both for something already in hand: `Fetch()`
+  returns each row as its final class, so `GetFinalClassName()` asked for a name that had just
+  arrived and `GetObject()` re-read an object already loaded. Both rights checks stay. The
+  probe `DBObjectSet` goes too — its constructor runs no query, so it never caught the error
+  it was written for.
 
 ### Changed
 
@@ -128,3 +156,14 @@ first call, and that a tool is graded read / write / delete by the annotations i
   identifiers are `snake_case`.
 - Sensitive attributes are masked before conversion rather than after, and one predicate
   decides what "sensitive" means for both the schema and the object tools.
+- **`AbstractObjectSearch` and `AbstractBulkTool` moved from `Core\Tools\` to `Abstract\`** and
+  are now covered by the versioning policy. They were the parts of this module most worth
+  extending and the only ones a pack could not rely on. Both used to hardcode
+  `getNamespace() = 'core'`, which the registry refuses from anything outside this module — so
+  extending them from a pack could not have worked in the first place; the core tools that use
+  them declare their own namespace and toolset now.
+
+### Packaging
+
+- The module ships its own `.htaccess` and `web.config`. iTop's `extensions/` rules deny PHP,
+  so the documented endpoint answered `403` on a stock Apache or IIS install.

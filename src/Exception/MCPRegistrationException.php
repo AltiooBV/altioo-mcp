@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -22,6 +22,8 @@ use InvalidArgumentException;
  * It is a programming error in the registering extension, never something a
  * client did: {@see \Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector}
  * catches it per provider, logs it and keeps serving everything else.
+ *
+ * @since 1.0.0
  */
 class MCPRegistrationException extends InvalidArgumentException
 {

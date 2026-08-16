@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -9,10 +13,13 @@ use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
+/**
+ * @since 1.0.0
+ */
 class ClassList extends AbstractMCPResource
 {
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'iTop Classes';
 	}

@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
@@ -48,6 +49,11 @@ final class MCPService
 		// guarding it, and why it is not Guzzle.
 		$factory = new Psr17Factory();
 		$request = $factory->createServerRequestFromGlobals();
+
+		// Before anything can write: every change made from here on is
+		// attributed to the tool the request is calling, whichever extension
+		// registered that tool and whether or not its author knew this existed.
+		ChangeTracking::ForRequest($request);
 
 		$server = self::createServer($oPolicy);
 

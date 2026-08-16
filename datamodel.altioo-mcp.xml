@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0">
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
   <classes>
     <class id="PersonalToken" _delta="if_exists">
       <fields>
@@ -67,8 +67,8 @@
  * Records each inbound MCP request with its method, tool/resource name,
  * execution status and any error message.
  *
- * @copyright Copyright (C) 2026 Altioo
- * @license   http://opensource.org/licenses/AGPL-3.0
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */]]></comment>
         <category>application</category>
         <abstract>false</abstract>
@@ -294,6 +294,36 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restrict this token to the tools that read and write objects]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP: relations toolset]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
+        <!--
+          Titles of the MCP elements themselves, as a client shows them to a
+          person. Only titles are translated: a description is written for the
+          model that decides whether to call the tool, and one that changed with
+          the caller's language would change what the model does. A tool pack
+          writes the same keys under its own namespace to have its titles
+          translated too - MCP:tool:<qualified name>:title, and likewise
+          MCP:resource:, MCP:resource_template: and MCP:prompt:. An entry that
+          does not exist falls back to what defaultTitle() returns, so a pack
+          that ships no dictionary reads exactly as it did before.
+        -->
+        <entry id="MCP:tool:core_class_list:title"><![CDATA[List Classes]]></entry>
+        <entry id="MCP:tool:core_class_schema:title"><![CDATA[Get Class Schema]]></entry>
+        <entry id="MCP:tool:core_object_apply_stimulus:title"><![CDATA[Apply Stimulus]]></entry>
+        <entry id="MCP:tool:core_object_bulk_create:title"><![CDATA[Create Objects in Bulk]]></entry>
+        <entry id="MCP:tool:core_object_bulk_delete:title"><![CDATA[Delete Objects in Bulk]]></entry>
+        <entry id="MCP:tool:core_object_bulk_update:title"><![CDATA[Update Objects in Bulk]]></entry>
+        <entry id="MCP:tool:core_object_create:title"><![CDATA[Create Object]]></entry>
+        <entry id="MCP:tool:core_object_delete:title"><![CDATA[Delete Object]]></entry>
+        <entry id="MCP:tool:core_object_find_by_name:title"><![CDATA[Find Objects by Name]]></entry>
+        <entry id="MCP:tool:core_object_get:title"><![CDATA[Get Object]]></entry>
+        <entry id="MCP:tool:core_object_get_related:title"><![CDATA[Get Related Objects]]></entry>
+        <entry id="MCP:tool:core_object_search_by_class:title"><![CDATA[Search Objects by Class]]></entry>
+        <entry id="MCP:tool:core_object_search_by_oql:title"><![CDATA[Search Objects by OQL]]></entry>
+        <entry id="MCP:tool:core_object_update:title"><![CDATA[Update Object]]></entry>
+        <entry id="MCP:resource:core_class_list:title"><![CDATA[iTop Classes]]></entry>
+        <entry id="MCP:resource:core_current_user:title"><![CDATA[Current User]]></entry>
+        <entry id="MCP:resource:core_version:title"><![CDATA[iTop Version]]></entry>
+        <entry id="MCP:resource_template:core_class_detail:title"><![CDATA[iTop Class Detail]]></entry>
+        <entry id="MCP:prompt:core_my_open_tickets:title"><![CDATA[My Open Tickets]]></entry>
       </entries>
     </dictionary>
     <dictionary id="FR FR">
@@ -350,6 +380,32 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations"><![CDATA[MCP : outils relations]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
+        <!--
+          Titres des éléments MCP, tels qu'un client les présente à un
+          utilisateur. Seuls les titres sont traduits : une description est
+          écrite pour le modèle qui décide d'appeler l'outil, et une
+          description qui changerait avec la langue de l'appelant changerait le
+          comportement du modèle.
+        -->
+        <entry id="MCP:tool:core_class_list:title"><![CDATA[Lister les classes]]></entry>
+        <entry id="MCP:tool:core_class_schema:title"><![CDATA[Obtenir le schéma d'une classe]]></entry>
+        <entry id="MCP:tool:core_object_apply_stimulus:title"><![CDATA[Appliquer un stimulus]]></entry>
+        <entry id="MCP:tool:core_object_bulk_create:title"><![CDATA[Créer des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_bulk_delete:title"><![CDATA[Supprimer des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_bulk_update:title"><![CDATA[Modifier des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_create:title"><![CDATA[Créer un objet]]></entry>
+        <entry id="MCP:tool:core_object_delete:title"><![CDATA[Supprimer un objet]]></entry>
+        <entry id="MCP:tool:core_object_find_by_name:title"><![CDATA[Rechercher des objets par nom]]></entry>
+        <entry id="MCP:tool:core_object_get:title"><![CDATA[Obtenir un objet]]></entry>
+        <entry id="MCP:tool:core_object_get_related:title"><![CDATA[Obtenir les objets liés]]></entry>
+        <entry id="MCP:tool:core_object_search_by_class:title"><![CDATA[Rechercher des objets par classe]]></entry>
+        <entry id="MCP:tool:core_object_search_by_oql:title"><![CDATA[Rechercher des objets en OQL]]></entry>
+        <entry id="MCP:tool:core_object_update:title"><![CDATA[Modifier un objet]]></entry>
+        <entry id="MCP:resource:core_class_list:title"><![CDATA[Classes iTop]]></entry>
+        <entry id="MCP:resource:core_current_user:title"><![CDATA[Utilisateur courant]]></entry>
+        <entry id="MCP:resource:core_version:title"><![CDATA[Version d'iTop]]></entry>
+        <entry id="MCP:resource_template:core_class_detail:title"><![CDATA[Détail d'une classe iTop]]></entry>
+        <entry id="MCP:prompt:core_my_open_tickets:title"><![CDATA[Mes tickets ouverts]]></entry>
       </entries>
     </dictionary>
   </dictionaries>

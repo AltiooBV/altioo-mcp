@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -43,6 +43,8 @@ use utils;
  * the caller named. A class the caller cannot read is not searched; an object
  * they cannot read is not reported; and neither is distinguishable in the
  * answer from one that does not exist.
+ *
+ * @since 1.0.0
  */
 class ObjectFindByName extends AbstractMCPTool
 {
@@ -74,7 +76,7 @@ class ObjectFindByName extends AbstractMCPTool
 		return 'objects';
 	}
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Find Objects by Name';
 	}

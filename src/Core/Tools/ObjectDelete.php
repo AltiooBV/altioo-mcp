@@ -1,10 +1,15 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
@@ -21,6 +26,8 @@ use DeletionPlan;
  * iTop's DBDelete handles cascading deletion plans automatically.
  * The response includes the deletion plan summary so the caller
  * knows what related objects were also affected.
+ *
+ * @since 1.0.0
  */
 class ObjectDelete extends AbstractMCPTool
 {
@@ -37,7 +44,7 @@ class ObjectDelete extends AbstractMCPTool
 	}
 
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'Delete Object';
 	}
@@ -86,6 +93,7 @@ class ObjectDelete extends AbstractMCPTool
 					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Set it to false to actually delete, once the plan has been confirmed by the user.',
 					'default'     => true,
 				],
+				'comment'  => ChangeTracking::CommentSchemaProperty('the object is being deleted'),
 			],
 			'required' => ['class', 'id'],
 		];
@@ -97,13 +105,15 @@ class ObjectDelete extends AbstractMCPTool
 	 * @param string $class The class of the object to delete
 	 * @param int $id The ID of the object to delete
 	 * @param bool $simulate When true (default), only the deletion plan is computed and returned
+	 * @param string|null $comment Why the object is being deleted, recorded in the history of everything the deletion touches
 	 * @return array The result of the deletion operation
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
 	 */
 	public static function execute(
-		string $class,
-		int    $id,
-		bool   $simulate = true,
+		string  $class,
+		int     $id,
+		bool    $simulate = true,
+		?string $comment = null,
 	): mixed {
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -176,6 +186,10 @@ class ObjectDelete extends AbstractMCPTool
 
 		if (!$simulate)
 		{
+			// Said before the write: a deletion also updates the objects that
+			// pointed at this one, and the reason belongs in their history too.
+			ChangeTracking::Explain($comment);
+
 			try {
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);

@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -23,6 +23,8 @@ use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
  *
  * Kept short on purpose. This text is in the context of every session, whether
  * or not any tool is ever called.
+ *
+ * @since 1.0.0
  */
 final class ServerInstructions
 {

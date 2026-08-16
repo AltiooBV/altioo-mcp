@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -25,6 +25,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  * flag restores the distinction JSON already carried: objects become
  * `stdClass`, lists stay PHP arrays - which is what link sets
  * ({@see \AttributeLinkedSet}) and tag sets require.
+ * @since 1.0.0
  */
 final class RestValue
 {
@@ -42,6 +43,8 @@ final class RestValue
 	 *                        (e.g. malformed UTF-8). Callers already wrap
 	 *                        MakeValue() in a try/catch reporting the offending
 	 *                        attribute, so this surfaces as a field error.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function FromDecodedJson(mixed $value): mixed
 	{
@@ -62,6 +65,7 @@ final class RestValue
 	 * @return array<string, mixed>
 	 *
 	 * @throws \JsonException
+	 * @since 1.0.0
 	 */
 	public static function FromDecodedJsonFields(array $aFields): array
 	{

@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -29,6 +29,8 @@ use UserRights;
  * is checked before it is used. What cannot be checked is not asked for, and if
  * too little survives the checks the prompt is not offered at all, which is
  * more useful than a prompt that produces an OQL error.
+ *
+ * @since 1.0.0
  */
 class MyOpenTickets extends AbstractMCPPrompt
 {
@@ -56,7 +58,7 @@ class MyOpenTickets extends AbstractMCPPrompt
 		return 'core';
 	}
 
-	public function getTitle(): ?string
+	protected function defaultTitle(): string
 	{
 		return 'My Open Tickets';
 	}

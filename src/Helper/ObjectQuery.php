@@ -1,7 +1,7 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -19,6 +19,8 @@ use MetaModel;
  * UserRights::IsActionAllowed() can be asked about that object rather than
  * about the class - which is the check that stops a caller learning an object
  * exists by being refused it.
+ *
+ * @since 1.0.0
  */
 final class ObjectQuery
 {
@@ -41,6 +43,8 @@ final class ObjectQuery
 	 * The class stays interpolated because OQL names the class in its FROM
 	 * clause, where no parameter can go; it is validated with
 	 * MetaModel::IsValidClass() before reaching here.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function ById(string $sClass, int $iId): DBObjectSearch
 	{
@@ -61,6 +65,7 @@ final class ObjectQuery
 	 * where an unexpected value in the list turns into query syntax.
 	 *
 	 * @param array<int|string, int|string> $aIds Keys are ignored; the values are the identifiers.
+	 * @since 1.0.0
 	 */
 	public static function ByIds(string $sClass, array $aIds): DBObjectSearch
 	{

@@ -1,10 +1,13 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Core\Tools;
+namespace Altioo\iTop\Extension\MCP\Abstract;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use DBObject;
@@ -15,7 +18,22 @@ use MetaModel;
 use UserRights;
 
 /**
- * What the two search tools share: paging, ordering and serialization.
+ * Paging, ordering and serialization for a tool that returns a set of objects.
+ *
+ * Written for the two core searches and kept general enough to be the base of
+ * yours: a pack that has its own way of selecting objects - a saved query, a
+ * class of its own, a filter no OQL expresses in one line - gets the parts
+ * that are the same either way, which are the ones easy to get subtly wrong.
+ * The offset/limit contract in particular has a rule in it that costs a caller
+ * silent data loss when missed: object-level rights remove rows from a page
+ * *after* the database has counted them, so a short page is not the end of the
+ * set, and `has_more` rather than `count($rows) < $limit` is the answer.
+ *
+ * Unlike the core tools it serves, it declares no namespace: that is yours,
+ * and the registry refuses 'core' from anything outside this module.
+ *
+ * @since 1.0.0
+ * @since 1.0.0 Moved here from Core\Tools and covered by the versioning policy.
  */
 abstract class AbstractObjectSearch extends AbstractMCPTool
 {
@@ -35,18 +53,6 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 
 	/** The one attribute every class has, and the only unique one. */
 	const TIEBREAK_ATTRIBUTE = 'id';
-
-
-	public function getNamespace(): string
-	{
-		return 'core';
-	}
-
-	/** Reading and writing the objects themselves. */
-	public function getToolset(): string
-	{
-		return 'objects';
-	}
 
 
 	/**

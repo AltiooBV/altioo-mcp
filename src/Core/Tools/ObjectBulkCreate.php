@@ -1,13 +1,15 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Mcp\Exception\ToolCallException;
@@ -21,10 +23,23 @@ use MetaModel;
  * question is the class right and the attribute rights - and the dry run,
  * which here is the only way to find out that the thirtieth row is missing a
  * mandatory attribute before the first twenty-nine exist.
+ *
+ * @since 1.0.0
  */
 class ObjectBulkCreate extends AbstractBulkTool
 {
-	public function getTitle(): ?string
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+	protected function defaultTitle(): string
 	{
 		return 'Create Objects in Bulk';
 	}
@@ -79,6 +94,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 					'description' => 'true (the default) validates every entry without creating anything. Show the result to the user, then call again with simulate=false to create them.',
 					'default'     => true,
 				],
+				'comment'  => ChangeTracking::CommentSchemaProperty('these objects are being created'),
 			],
 			'required' => ['class', 'objects'],
 		];
@@ -88,15 +104,17 @@ class ObjectBulkCreate extends AbstractBulkTool
 	 * @param string                          $class    The class to instantiate
 	 * @param array<int, array<string, mixed>> $objects One attribute map per object
 	 * @param bool                            $simulate When true (default), nothing is created
+	 * @param string|null                     $comment  Why the batch is being created, recorded in the history of every object in it
 	 *
 	 * @return mixed A per-row report
 	 *
 	 * @throws ToolCallException When the class or the bulk right rules out the whole call.
 	 */
 	public static function execute(
-		string $class,
-		array  $objects,
-		bool   $simulate = true,
+		string  $class,
+		array   $objects,
+		bool    $simulate = true,
+		?string $comment = null,
 	): mixed {
 		if (empty($objects)) {
 			throw new ToolCallException('No objects given.');
@@ -114,6 +132,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// concerned: there is no UR_ACTION_BULK_CREATE, so the bulk gate is
 		// the modify one and the single gate is create.
 		self::checkBulkAllowed($class, UR_ACTION_BULK_MODIFY, UR_ACTION_CREATE, 'create');
+
+		// Once for the batch, before the loop: the objects created by one call
+		// are one decision, and they share the one change record.
+		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
 		foreach (array_values($objects) as $iRow => $aFields) {

@@ -1,13 +1,15 @@
 <?php
 /**
  * @copyright   Copyright (C) 2026 Altioo
- * @license     http://opensource.org/licenses/AGPL-3.0
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
@@ -23,10 +25,23 @@ use MetaModel;
  * not merely the default but the only way to find out what a call would do:
  * iTop deletion cascades, so forty ids can take a great deal more than forty
  * objects with them.
+ *
+ * @since 1.0.0
  */
 class ObjectBulkDelete extends AbstractBulkTool
 {
-	public function getTitle(): ?string
+	public function getNamespace(): string
+	{
+		return 'core';
+	}
+
+	/** Reading and writing the objects themselves. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
+	protected function defaultTitle(): string
 	{
 		return 'Delete Objects in Bulk';
 	}
@@ -67,18 +82,24 @@ class ObjectBulkDelete extends AbstractBulkTool
 	 * @param string            $class    The class every listed object belongs to
 	 * @param array<int, mixed> $ids      Ids of the objects to delete
 	 * @param bool              $simulate When true (default), nothing is deleted
+	 * @param string|null       $comment  Why the batch is being deleted, recorded in the history of everything the deletions touch
 	 *
 	 * @return mixed A per-object report, each carrying what its deletion would take with it
 	 *
 	 * @throws ToolCallException When the class, the ids or the bulk right rule out the whole call.
 	 */
 	public static function execute(
-		string $class,
-		array  $ids,
-		bool   $simulate = true,
+		string  $class,
+		array   $ids,
+		bool    $simulate = true,
+		?string $comment = null,
 	): mixed {
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_DELETE, UR_ACTION_DELETE, 'delete');
+
+		// Once for the batch, before the loop: the objects deleted by one call
+		// are one decision, and they share the one change record.
+		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
 		foreach ($aIds as $iId) {

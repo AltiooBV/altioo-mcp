@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -32,6 +36,8 @@ use ReflectionNamedType;
  * withdrawn rather than awarded to whichever provider happened to load last:
  * a client that asks for it gets nothing, instead of silently getting the
  * other vendor's implementation behind the description it was shown.
+ *
+ * @since 1.0.0
  */
 final class MCPRegistry
 {
@@ -89,21 +95,109 @@ final class MCPRegistry
 
 	/**
 	 * @throws MCPRegistrationException When the tool does not honour the contract.
+	 * @since 1.0.0
 	 */
 	public static function RegisterTool(AbstractMCPTool $oTool): void
 	{
-		$sIdentifier = self::validateIdentity($oTool, $oTool->getQualifiedName(), 'tool');
-		self::validateProfiles($oTool, $oTool->requiredProfiles());
-		$oExecute = self::validateHandler($oTool, 'execute');
-		self::validateToolDeclaration($oTool, $sIdentifier, $oExecute);
+		$sIdentifier = self::checkTool($oTool);
 
 		self::claim('tool', self::$aTools, $oTool->overrides() ?? $sIdentifier, $oTool);
 	}
 
 	/**
 	 * @throws MCPRegistrationException When the resource does not honour the contract.
+	 * @since 1.0.0
 	 */
 	public static function RegisterResource(AbstractMCPResource $oResource): void
+	{
+		$sUri = self::checkResource($oResource);
+
+		self::claim('resource', self::$aResources, $oResource->overrides() ?? $sUri, $oResource);
+	}
+
+	/**
+	 * @throws MCPRegistrationException When the resource template does not honour the contract.
+	 * @since 1.0.0
+	 */
+	public static function RegisterResourceTemplate(AbstractMCPResourceTemplate $oResourceTemplate): void
+	{
+		$sUriTemplate = self::checkResourceTemplate($oResourceTemplate);
+
+		self::claim('resource template', self::$aResourceTemplates, $oResourceTemplate->overrides() ?? $sUriTemplate, $oResourceTemplate);
+	}
+
+	/**
+	 * @throws MCPRegistrationException When the prompt does not honour the contract.
+	 * @since 1.0.0
+	 */
+	public static function RegisterPrompt(AbstractMCPPrompt $oPrompt): void
+	{
+		$sIdentifier = self::checkPrompt($oPrompt);
+
+		self::claim('prompt', self::$aPrompts, $oPrompt->overrides() ?? $sIdentifier, $oPrompt);
+	}
+
+	/**
+	 * Runs the contract checks against an element without registering it.
+	 *
+	 * Everything Register*() would refuse, refused here too and in the same
+	 * words - but with nothing claimed, nothing stored, and no effect on a
+	 * server being built. That is what lets a pack assert its own elements in
+	 * its own suite against the rules that will actually be applied at boot,
+	 * rather than against a copy of them that drifts from them.
+	 *
+	 * @see \Altioo\iTop\Extension\MCP\Testing\ElementContract, which collects
+	 *      the failures instead of stopping at the first one.
+	 *
+	 * @return string The identifier the element would claim.
+	 *
+	 * @throws MCPRegistrationException  When the element does not honour the contract.
+	 * @throws \InvalidArgumentException When it is not an MCP element at all.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function Check(object $oElement): string
+	{
+		if ($oElement instanceof AbstractMCPTool) {
+			return self::checkTool($oElement);
+		}
+		if ($oElement instanceof AbstractMCPResource) {
+			return self::checkResource($oElement);
+		}
+		if ($oElement instanceof AbstractMCPResourceTemplate) {
+			return self::checkResourceTemplate($oElement);
+		}
+		if ($oElement instanceof AbstractMCPPrompt) {
+			return self::checkPrompt($oElement);
+		}
+
+		throw new \InvalidArgumentException(sprintf(
+			'%s extends none of AbstractMCPTool, AbstractMCPResource, AbstractMCPResourceTemplate or AbstractMCPPrompt.',
+			get_class($oElement)
+		));
+	}
+
+	/**
+	 * @return string The qualified name it would claim.
+	 *
+	 * @throws MCPRegistrationException
+	 */
+	private static function checkTool(AbstractMCPTool $oTool): string
+	{
+		$sIdentifier = self::validateIdentity($oTool, $oTool->getQualifiedName(), 'tool');
+		self::validateProfiles($oTool, $oTool->requiredProfiles());
+		$oExecute = self::validateHandler($oTool, 'execute');
+		self::validateToolDeclaration($oTool, $sIdentifier, $oExecute);
+
+		return $sIdentifier;
+	}
+
+	/**
+	 * @return string The URI it would claim.
+	 *
+	 * @throws MCPRegistrationException
+	 */
+	private static function checkResource(AbstractMCPResource $oResource): string
 	{
 		self::validateIdentity($oResource, $oResource->getQualifiedName(), 'resource');
 		self::validateProfiles($oResource, $oResource->requiredProfiles());
@@ -118,13 +212,29 @@ final class MCPRegistry
 			));
 		}
 
-		self::claim('resource', self::$aResources, $oResource->overrides() ?? $sUri, $oResource);
+		return $sUri;
 	}
 
 	/**
-	 * @throws MCPRegistrationException When the resource template does not honour the contract.
+	 * @return string The qualified name it would claim.
+	 *
+	 * @throws MCPRegistrationException
 	 */
-	public static function RegisterResourceTemplate(AbstractMCPResourceTemplate $oResourceTemplate): void
+	private static function checkPrompt(AbstractMCPPrompt $oPrompt): string
+	{
+		$sIdentifier = self::validateIdentity($oPrompt, $oPrompt->getQualifiedName(), 'prompt');
+		self::validateProfiles($oPrompt, $oPrompt->requiredProfiles());
+		self::validateHandler($oPrompt, 'get');
+
+		return $sIdentifier;
+	}
+
+	/**
+	 * @return string The URI template it would claim.
+	 *
+	 * @throws MCPRegistrationException
+	 */
+	private static function checkResourceTemplate(AbstractMCPResourceTemplate $oResourceTemplate): string
 	{
 		self::validateIdentity($oResourceTemplate, $oResourceTemplate->getQualifiedName(), 'resource template');
 		self::validateProfiles($oResourceTemplate, $oResourceTemplate->requiredProfiles());
@@ -152,40 +262,40 @@ final class MCPRegistry
 			));
 		}
 
-		self::claim('resource template', self::$aResourceTemplates, $oResourceTemplate->overrides() ?? $sUriTemplate, $oResourceTemplate);
-	}
-
-	/**
-	 * @throws MCPRegistrationException When the prompt does not honour the contract.
-	 */
-	public static function RegisterPrompt(AbstractMCPPrompt $oPrompt): void
-	{
-		$sIdentifier = self::validateIdentity($oPrompt, $oPrompt->getQualifiedName(), 'prompt');
-		self::validateProfiles($oPrompt, $oPrompt->requiredProfiles());
-		self::validateHandler($oPrompt, 'get');
-
-		self::claim('prompt', self::$aPrompts, $oPrompt->overrides() ?? $sIdentifier, $oPrompt);
+		return $sUriTemplate;
 	}
 
 	/** @return AbstractMCPTool[] */
+	/**
+	 * @since 1.0.0
+	 */
 	public static function GetTools(): array
 	{
 		return self::$aTools;
 	}
 
 	/** @return AbstractMCPResource[] */
+	/**
+	 * @since 1.0.0
+	 */
 	public static function GetResources(): array
 	{
 		return self::$aResources;
 	}
 
 	/** @return AbstractMCPResourceTemplate[] */
+	/**
+	 * @since 1.0.0
+	 */
 	public static function GetResourceTemplates(): array
 	{
 		return self::$aResourceTemplates;
 	}
 
 	/** @return AbstractMCPPrompt[] */
+	/**
+	 * @since 1.0.0
+	 */
 	public static function GetPrompts(): array
 	{
 		return self::$aPrompts;
@@ -201,6 +311,8 @@ final class MCPRegistry
 	 *
 	 * Kept short, for the same reason: this text costs every session, whether
 	 * or not any of your tools is ever called.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function AddInstructions(string $sInstructions): void
 	{
@@ -213,6 +325,9 @@ final class MCPRegistry
 	}
 
 	/** @return array<int, string> */
+	/**
+	 * @since 1.0.0
+	 */
 	public static function GetInstructions(): array
 	{
 		return self::$aInstructions;
@@ -226,6 +341,7 @@ final class MCPRegistry
 	 * writes these to the log once collection is done.
 	 *
 	 * @return array<string, array{0: string, 1: string}> identifier => [replaced class, replacing class]
+	 * @since 1.0.0
 	 */
 	public static function GetOverrides(): array
 	{
@@ -240,12 +356,16 @@ final class MCPRegistry
 	 * class name precisely because the name is the thing in dispute.
 	 *
 	 * @return array<string, array<int, string>> identifier => claiming classes
+	 * @since 1.0.0
 	 */
 	public static function GetClashes(): array
 	{
 		return self::$aClashes;
 	}
 
+	/**
+	 * @since 1.0.0
+	 */
 	public static function Clear(): void
 	{
 		self::$aTools = [];

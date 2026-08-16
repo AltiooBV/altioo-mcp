@@ -98,11 +98,35 @@ more than a formality check: for an update, the moment between the check and the
 only one where the pending values are still pending, so the report can tell you that setting
 `status` to `closed` also cleared three other attributes, *before* it does.
 
+**Every write says where it came from, in the object's own history.** iTop attaches each
+change to a `CMDBChange`, and what the console shows on an object's History tab is the line
+that record carries. Left alone it is the user's name, which through this endpoint says less
+than it looks: the same name appears whether the person made the change themselves, asked an
+assistant to make it, or issued a token to an agent that has been making it nightly for a
+month. A change made here reads `Jane Doe (MCP: core_object_update)`, and the tool is filled
+in from the request — so a tool from a pack that has never heard of any of this is attributed
+exactly like a core one.
+
+Every writing tool also takes an optional `comment`, iTop's REST/JSON `comment` by another
+route, which adds the *why*: `Jane Doe (MCP: core_object_update) - caller confirmed the laptop
+came back`. It is optional rather than mandatory because a required field is answered by
+whoever is asked, and what a model writes when it has nothing to say is a sentence restating
+the call. The change origin stays `custom-extension`, the value iTop reserves for extensions;
+`SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` is what finds them all. This is the object's
+own history, and it is not the same thing as the endpoint audit trail below — that one records
+the calls, including the ones that read and the ones that failed.
+
 **The bulk tools** check `UR_ACTION_BULK_MODIFY` / `UR_ACTION_BULK_DELETE` first — a profile
-can be allowed to edit one object and not a thousand — and then check every object and every
-attribute individually, because object-level rights are what separate "may modify a User"
-from "may modify their own User". A call can partly succeed, and the response reports each
-object separately.
+can be allowed to edit one object and not a thousand — and then take every object one at a
+time: the rights question is asked with that object in hand, and the write goes through
+`CheckToWrite()`, which is where a datamodel expresses "only the owner may close this". A call
+can partly succeed, and the response reports each object separately.
+
+Note what the rights check does and does not give you. iTop's shipped rights add-on documents
+that it ignores the instance set for attributes, so on a stock install "may write this
+attribute" is decided per class and profile, not per object; the instance set is passed because
+the API is tri-state and an add-on that *does* grade per object signals it with
+`UR_ALLOWED_DEPENDS`. The per-object rule that always holds is `DoCheckToWrite()`.
 
 **Resources**
 
@@ -139,6 +163,28 @@ Because the schema is read live from `MetaModel`, whatever your datamodel custom
 Streamable HTTP, over a single endpoint, stateless: each request is authenticated on its own
 and no server-side session is carried between requests. SSE streaming and resumability are not
 supported. Authentication is delegated to iTop itself — see [Granting access](#granting-access).
+
+### Sizing the worker pool
+
+Every call occupies one PHP worker for its whole duration, and MCP calls are not the short
+requests a console page is. A search may read a thousand objects, a bulk tool may read and
+write a hundred, and a model exploring a datamodel it has not seen before will make a
+succession of them without pausing to think. Several assistants connected at once therefore
+hold several workers at once, and they are the same workers the console is served from — an
+endpoint sized as an afterthought takes iTop down with it, not just itself.
+
+Nothing here needs a separate pool, but two numbers are worth setting deliberately:
+
+| | |
+|---|---|
+| `pm.max_children` (PHP-FPM) | Leave headroom above what the console alone needs. The endpoint's ceiling is roughly the number of clients you expect to be connected, not the number of people using iTop |
+| `request_terminate_timeout` (PHP-FPM), `max_execution_time` (PHP) | A tool call that will not finish should be cut off rather than held. Set these below whatever timeout sits in front of them, so the worker is released before the proxy gives up on it |
+
+The cheapest way to keep the numbers down is to keep the responses small: `output_fields`
+rather than `*`, and a `limit` that matches the question. The defaults already do this — the
+search tools return `id` and `friendlyname` unless asked otherwise — and the [audit
+trail](#audit-trail) records duration and response size per call, which is where to look
+first when the pool is under pressure.
 
 ## Installation
 
@@ -405,11 +451,25 @@ identifier that an internal error also gives the caller, so the audit row and th
 > data your users would not expect to find in an audit log. Use it for troubleshooting, not
 > as a standing setting.
 
+The two records answer two different questions and neither replaces the other. This one is
+per *call*: it holds the reads, the failures and the calls that changed nothing, and it is
+where you look when you are asking what this endpoint has been doing. The change log
+described under [What it exposes](#what-it-exposes) is per *object*: it is what an auditor
+opening a CI six months from now reads, and it is where "who changed this, through what, and
+why" has to be, because that is the tab they open. `log_mcp_service => false` turns this one
+off; attribution in the object's history is not configurable, and costs nothing — it is a
+string on a record iTop was going to write anyway.
+
 ## Extending
 
 An extension adds its own tools, resources, resource templates and prompts by implementing a
 **service provider** and registering objects into the registry. It never has to touch this
 module's code.
+
+> **A working pack ships in this archive: [`doc/example-pack/`](doc/example-pack/).** Two tools,
+> a prompt, the module declaration, the composer settings, the datamodel delta and a contract
+> test — everything below, applied once, in a directory you can copy into `extensions/`. If you
+> are starting a pack, start by copying that and renaming `acme`.
 
 ### 1. Depend on the base module
 
@@ -421,16 +481,48 @@ In your own `module.<your-extension>.php`:
 ),
 ```
 
-Do not bundle your own copy of `mcp/sdk`: this module ships it and loads it, and two copies
-in one PHP process will collide. The types you may reference from it (`Mcp\Schema\ToolAnnotations`,
-`Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`, `Mcp\Exception\ResourceReadException`)
-are part of the contract described here, pinned to the SDK version this module vendors.
+This is the version check that matters: the setup refuses the install and tells the
+administrator why, which is a better place to find out than a log entry on the first request.
+For the case that gets past it — a base extension downgraded under a pack already installed —
+call `MCPHelper::RequireVersion('1.0.0', 'your-pack')` at the top of your provider. It throws,
+and a provider that throws is logged and skipped on its own, so the failure mode is "this pack
+is missing and the log says why" rather than a fatal error taking the endpoint down for every
+other pack. `MCPHelper::AtLeast()` is the same question without the exception, for a pack that
+would rather hide one element through `isAvailable()` and serve the rest.
+
+**Your autoloader has to produce a classmap.** Not the composer default, and the failure is
+silent. iTop's `InterfaceDiscovery` — the mechanism that finds a provider you did not declare —
+enumerates candidate classes by reading `env-<env>/<module>/vendor/composer/autoload_classmap.php`.
+A PSR-4-only dump leaves that file essentially empty, so nothing is discovered, and any class
+the pack fails to autoload fails as "not found". Set both, and list the autoloader first in the
+module's `datamodel` array so it is in place before `register.php` names a class:
+
+```json
+"config": { "optimize-autoloader": true, "classmap-authoritative": true }
+```
+
+**Do not ship `mcp/sdk` — put it in `require-dev`.** It is a genuine *runtime* dependency of
+your code: your tools type-hint `Mcp\Schema\ToolAnnotations` and throw `Mcp\Exception\ToolCallException`,
+and both have to resolve when a client calls them. `require-dev` is not a mislabelling of that,
+it is where the dependency is satisfied from — this module vendors the SDK and loads it from
+its own `datamodel` array, and iTop includes a module's datamodel files after those of the
+modules it depends on, so `Mcp\*` is already registered by the time anything of yours is
+autoloaded. Two copies in one process resolve to whichever autoloader answered first.
+
+Installing it and deleting `vendor/mcp` before packaging does **not** work:
+`classmap-authoritative` has already written those classes into `autoload_classmap.php`, so the
+entries outlive the files and the first call fatals on a missing include. Pin the same
+constraint this module vendors, published as `MCPHelper::SDK_CONSTRAINT`, so that what you
+compile against is what will be loaded. The types that are part of the contract described here
+are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`
+and `Mcp\Exception\ResourceReadException`.
 
 **Versioning.** The extension follows semver, and the surface it applies to is what you touch
-from a pack: the four abstracts, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`
-and the helpers under `Helper/`. A breaking change there is a major bump; a new optional hook
-with a default implementation is a minor one. The running version is `MCPHelper::VERSION` —
-the same string the server sends to clients in `serverInfo`.
+from a pack: the abstracts under `Abstract/` — the four element bases plus `AbstractObjectSearch`
+and `AbstractBulkTool` — `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the
+helpers under `Helper/` and the checker under `Testing/`. A breaking change there is a major
+bump; a new optional hook with a default implementation is a minor one. The running version is
+`MCPHelper::VERSION` — the same string the server sends to clients in `serverInfo`.
 
 ### 2. Write a tool
 
@@ -504,6 +596,26 @@ tool that declares nothing is graded `delete` — withheld from every token scop
 `MCP-read` or `MCP-write`, and from any instance running with `mcp_capabilities`. The
 symptom is a tool that works for an administrator and is invisible to everyone else.
 
+**A tool that writes should take a `comment`.** Attribution itself is not yours to remember —
+every change made during a request already carries the tool that made it, yours included, set
+before any tool runs. What a pack has to offer is the *why*, and there is one spelling of it
+so that a model does not meet three:
+
+```php
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+
+// In getInputSchema(), beside 'simulate':
+'comment' => ChangeTracking::CommentSchemaProperty('the entry is being added'),
+
+// In execute(), immediately before the DBUpdate()/DBInsert()/DBDelete():
+ChangeTracking::Explain($comment);
+```
+
+Call it before the write and not after — iTop builds the change record from what was last
+said, at the moment the write happens. Call it once per batch rather than per object: one
+call is one decision, and the objects it touches share one record. On a dry run it costs
+nothing, since nothing is written for it to describe.
+
 **Return `ToolOutput::Json()` rather than an array.** Both work, but an array is JSON-encoded
 into the text content *and* copied into `structuredContent`, pretty-printed — the whole result
 twice, in a response a model pays for by the token. Returning a `TextContent` takes both
@@ -512,7 +624,34 @@ duplicate is at least validated against something.
 
 **Declare a `getToolset()`** if your pack has more than one kind of tool in it. It defaults to
 your namespace, which lets an operator turn the pack on or off as a whole; naming groups lets
-them turn on the half they use, and gives them `MCP-toolset-<name>` token scopes for free.
+them turn on the half they use, through `mcp_enabled_toolsets`.
+
+**A toolset token scope needs a line of datamodel as well.** `getToolset()` alone gets you the
+configuration setting and nothing else — it does *not* give you an `MCP-toolset-<name>` token
+scope. A scope is a value of the `scope` enum on `PersonalToken` and `UserToken`: one that is
+not declared there cannot be selected when a token is created, and because iTop honours a scope
+only when a context tag of the same name was pushed before login, a token carrying an
+undeclared scope **cannot log in at all**. So a pack that wants its toolset grantable per
+credential ships the delta itself:
+
+```xml
+<class id="PersonalToken" _delta="if_exists">
+  <fields>
+    <field id="scope" _delta="if_exists">
+      <values>
+        <value id="MCP-toolset-acme-servicedesk" _delta="define">
+          <code>MCP-toolset-acme-servicedesk</code>
+        </value>
+      </values>
+    </field>
+  </fields>
+</class>
+```
+
+Both token classes, since either kind can carry it. This module reads the declared enumeration
+rather than a list of its own — `TokenScopes::DeclaredContextTags()` — precisely so that it
+needs to know nothing about your name. [`doc/example-pack/datamodel.acme-servicedesk.xml`](doc/example-pack/datamodel.acme-servicedesk.xml)
+is the whole file, dictionary entries included.
 
 Two optional hooks, available on **all four kinds** — tools, resources, resource templates
 and prompts — and applied to all four when the server is built:
@@ -543,6 +682,115 @@ reaches you as a PHP array — while `RestUtils` branches on `stdClass` to tell 
 from an id, and a caselog append from a plain string. Without that call the wrong branch is
 taken silently. Scalars pass through untouched and JSON lists stay arrays, which is what link
 sets and tag sets need.
+
+**Two base classes worth extending instead of `AbstractMCPTool`**, both under `Abstract/` and
+both covered by the versioning policy above:
+
+| Extend | When | What you stop having to write |
+|---|---|---|
+| `AbstractObjectSearch` | Your tool returns a set of objects | Paging, ordering, field selection, and `has_more` / `next_offset` |
+| `AbstractBulkTool` | Your tool acts on a list of ids | The bulk right check, the per-object right check, id validation, the dry run |
+
+Neither declares a namespace — that is yours, and the registry refuses `core` from anything
+outside this module. The reason to prefer them over copying is not brevity in either case.
+`AbstractObjectSearch` knows that object-level rights remove rows from a page *after* the
+database counted them, so a short page is not the end of the set and a caller that reads it as
+one stops early and silently. `AbstractBulkTool` knows that `UR_ACTION_BULK_MODIFY` is a
+separate grant from `UR_ACTION_MODIFY`, and that the class-level answer is never the end of it.
+A bulk tool that checks the class once and then loops is an escalation with a progress counter,
+and it passes every test written by a developer whose own account holds both rights.
+
+### Augmenting a core tool
+
+`overrides()` replaces an identifier wholesale. The commoner want is smaller — the core tool is
+right except for one thing — and the way to get it is to **subclass the core tool and declare
+the override**, which works because the registry validates *your* schema against *your*
+`execute()`, not against the parent's:
+
+```php
+class ObjectGet extends \Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet
+{
+    public function getNamespace(): string { return 'acme'; }
+
+    /** Take over the identifier clients already use. */
+    public function overrides(): ?string { return 'core_object_get'; }
+
+    public function getInputSchema(): ?array
+    {
+        $aSchema = parent::getInputSchema();
+        $aSchema['properties']['include_history'] = [
+            'type' => 'boolean', 'default' => false,
+            'description' => 'Also return the last ten changes to this object.',
+        ];
+
+        return $aSchema;
+    }
+
+    public static function execute(
+        string $class, int $id, string $output_fields = '', bool $include_history = false
+    ): mixed {
+        $oResult = parent::execute($class, $id, $output_fields);
+
+        return $include_history ? self::withHistory($oResult, $class, $id) : $oResult;
+    }
+}
+```
+
+Three rules make this hold. New parameters go **last and with defaults**, so the arguments the
+model already sends still bind by name. The declared override is what stops the registry
+treating your class and the core one as an accidental clash and withdrawing the name from both.
+And `parent::execute()` returns a `TextContent`, not an array — post-processing means decoding
+it, which `ToolOutput::Decode()` does.
+
+What this does not give you is a change applied across *every* tool — redaction, an extra audit
+field, a rate limit. There is no middleware pipeline; see [Limitations](#limitations).
+
+### Translating what a person reads
+
+`getTitle()` on all four kinds resolves through iTop's dictionary, falling back to what
+`defaultTitle()` returns. So override `defaultTitle()` with the English literal, and add
+dictionary entries if you want it translated:
+
+```php
+protected function defaultTitle(): string { return 'Add a Log Entry to a Ticket'; }
+```
+
+```xml
+<entry id="MCP:tool:acme_ticket_add_log_entry:title"><![CDATA[Add a Log Entry to a Ticket]]></entry>
+```
+
+The key is `MCP:<kind>:<qualified name>:title`, with `<kind>` one of `tool`, `resource`,
+`resource_template` or `prompt`; `titleDictionaryKey()` returns it if you would rather not
+spell it. A key nobody wrote falls back silently, so a pack that ships no dictionary reads
+exactly as it did before.
+
+**Descriptions are deliberately not translated.** A title is read by a person; a description is
+read by the model deciding whether to call the tool. English is what those models have seen
+thousands of examples of, and a description that changed with the caller's language would change
+what the model does — a French-speaking user and an English-speaking one would get different
+tool selection from the same instance. Write descriptions in English and leave them there.
+
+### Testing your pack
+
+`ElementContract` runs the same checks the registry runs at boot and returns them instead of
+throwing, so a pack's whole contract suite is one assertion per element:
+
+```php
+use Altioo\iTop\Extension\MCP\Testing\ElementContract;
+
+self::assertSame([], ElementContract::Violations(new TicketAddLogEntry()));
+```
+
+It needs neither iTop nor a database, and it references no dev dependency of this module —
+which is why it ships in the production autoload rather than under `tests/`, where
+`autoload-dev` and iTop's own path exclusions would both put it out of your reach. Nothing that
+serves a request refers to it, and the autoloader is a classmap, so an instance that never calls
+it never reads the file.
+
+Alongside the refusals it reports the things that register cleanly and then disappoint — chief
+among them a tool with no `getAnnotations()`, which works for an administrator and is invisible
+to every scoped token. `MCPRegistry::Check()` is the underlying single-shot version, if you want
+the exception rather than the list.
 
 ### 3. Write a resource or a prompt
 
@@ -617,6 +865,10 @@ element, and then surfaces as an empty listing or an unrelated error from inside
 | tools | non-empty `getDescription()`; input schema is a JSON Schema of type `object`; every `required` entry is declared under `properties`; every property maps to a parameter of `execute()`; every parameter of `execute()` without a default is listed under `required` |
 | resources | the URI carries no `{variable}` |
 | resource templates | the URI template carries at least one `{variable}`, and each one matches a parameter of `read()` |
+
+`MCPRegistry::Check()` runs exactly these against one element without registering it, and
+[`ElementContract`](#testing-your-pack) wraps it for a test suite — so a pack can meet all of
+this in CI rather than on an instance.
 
 ### Who owns an identifier
 
@@ -720,8 +972,9 @@ The extension is free and maintained in the open. What that means concretely:
 ## Versioning and compatibility
 
 The extension follows [semver](https://semver.org/), and the surface it applies to is what a
-tool pack touches: the four abstracts, `MCPRegistry`, `MCPExtensionCollector`,
-`iMCPServiceProvider` and the helpers under `Helper/`. A breaking change there is a major bump;
+tool pack touches: the abstracts under `Abstract/`, `MCPRegistry`, `MCPExtensionCollector`,
+`iMCPServiceProvider`, the helpers under `Helper/` and the checker under `Testing/`. A breaking
+change there is a major bump;
 a new optional hook with a default implementation is a minor one. The running version is
 `MCPHelper::VERSION` — the same string the server sends clients in `serverInfo`, and the same
 string in `extension.xml` and the module declaration.
@@ -756,7 +1009,12 @@ Known and deliberate, so that none of them is a discovery made after installing:
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`
   appears to be missing tools for every scoped token. That is the safe direction of failure,
-  but it is a failure people meet.
+  but it is a failure people meet — `ElementContract` reports it, which is the reason it
+  reports warnings at all and not only refusals.
+- **No middleware around tool execution.** A pack can replace a named tool through `overrides()`
+  or subclass it, but there is no hook that applies to *every* call — no place to put redaction,
+  a rate limit, an extra audit field or per-tenant filtering once. Cross-cutting behaviour of
+  that kind currently means touching this module.
 - **A tool result is read into a context window.** Reads narrow by default and long values are
   clipped; a deliberately wide `output_fields => *` over thousands of objects is still your
   cost to pay.
@@ -780,6 +1038,11 @@ ITOP_ROOT=/path/to/itop/web composer test:integration
 
 Build a release archive with `composer install --no-dev`; `exclude.txt` lists what is kept
 out of the package.
+
+[`doc/example-pack/`](doc/example-pack/) ships in that archive on purpose — a pack author on an
+instance in a year's time has it to hand. Its module declaration carries a `.tpl` suffix so
+that the setup, which `eval`s every `module.*.php` it finds anywhere under `extensions/`, does
+not offer the example as something to install.
 
 ## License
 

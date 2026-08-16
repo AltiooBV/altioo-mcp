@@ -1,4 +1,8 @@
 <?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
 
 declare(strict_types=1);
 
@@ -7,6 +11,9 @@ namespace Altioo\iTop\Extension\MCP\Core;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
 
+/**
+ * @since 1.0.0
+ */
 class CoreExtensions implements iMCPServiceProvider
 {
 	public static function RegisterServiceProvider(): void
