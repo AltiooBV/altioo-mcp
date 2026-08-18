@@ -48,6 +48,42 @@ Fixes are issued on the latest patch of the newest minor. The extension follows 
 branch policy: a version supported here runs on the iTop branches named in the README, and a
 branch that Combodo has retired is not tested against.
 
+### Support period
+
+**Five years of security fixes from the release date of a minor version.** For `1.0.x`, the
+clock starts at the `v1.0.0` tag.
+
+Five years is the floor the EU [Cyber Resilience Act](https://eur-lex.europa.eu/eli/reg/2024/2847/oj)
+sets for a product with digital elements, and it is committed to here whether or not this
+extension ends up inside that Act's scope. Whether it does turns on whether it is supplied in
+the course of a commercial activity — a question about how Altioo offers it, not about anything
+in this repository, and not one an operator planning a deployment should have to wait on.
+
+Ending support for a minor earlier than that would be announced in the CHANGELOG and in the
+GitHub releases **six months** ahead. It will not happen quietly.
+
+### Single point of contact
+
+<security@altioo.com>, alongside the GitHub advisory channel above. The same address is in the
+README and in `composer.json` under `support.security`, so it travels inside the package
+instead of living only on a web page — which is the point of the requirement.
+
+Where the CRA's 24-hour and 72-hour reporting duties for an *actively exploited* vulnerability
+apply, they are met from that address, and they run in parallel with the timetable above rather
+than replacing it: a reporter still gets an acknowledgement within 5 working days.
+
+### What ships beside the archive
+
+| File | What it answers |
+|---|---|
+| `<archive>.zip.sha256` | "is the file I downloaded the file CI built" |
+| `sbom.cyclonedx.json` | CycloneDX inventory of every production dependency |
+| `licenses.json` | the licence of each of those dependencies |
+
+The SBOM is what makes a same-day vulnerability answer possible. When a CVE lands on something
+under `vendor/`, "does this extension ship it, and at which version" has to be answerable in
+minutes. Regenerate both with `composer sbom` and `composer licenses`.
+
 ## What the extension does, in security terms
 
 **It adds one public URL**: `extensions/altioo-mcp/index.php`. The module's `.htaccess`
