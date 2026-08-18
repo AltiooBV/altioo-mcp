@@ -18,27 +18,32 @@ use Symfony\Component\Uid\Uuid;
  * the next.
  *
  * The SDK does not currently offer a stateless mode, so it is given a store
- * that satisfies the interface without storing anything: writes go to a static
- * array that dies with the process, and exists() accepts any id because there
- * is nothing to look up. A client that keeps sending an Mcp-Session-Id back is
- * therefore never contradicted, which is the point - it is also never
- * remembered.
+ * that satisfies the interface and stores nothing. write() accepts and
+ * discards, read() always answers "no such session", and exists() accepts any
+ * id because there is nothing to look up. A client that keeps sending an
+ * Mcp-Session-Id back is therefore never contradicted, which is the point - it
+ * is also never remembered.
+ *
+ * Discarding rather than keeping a per-process array costs nothing, and that
+ * is worth saying because the array looks useful. The SDK builds exactly one
+ * Session per request and caches its data in the object for the life of that
+ * request (see Mcp\Server\Session\Session::readData()); the store is read once,
+ * before anything has been written, and written once, after everything has
+ * been read. So the only reader an entry could ever have is a later request -
+ * and a later request either runs in a fresh PHP context, where the array is
+ * empty anyway, or in a persistent worker (FrankenPHP, RoadRunner), where
+ * keeping it would be an unbounded leak that also hands one caller's session
+ * data to whoever guesses the id. Neither is a thing to keep state for.
  *
  * This is a workaround, not a design: it stands in until the PHP SDK supports
  * stateless operation directly, at which point this class goes away rather
- * than being improved. Nothing here is a place to start keeping state - any
- * state kept would be per PHP process and would survive exactly one request,
- * which is worse than none.
+ * than being improved. Nothing here is a place to start keeping state.
  *
  * @see https://modelcontextprotocol.io/specification/basic/transports Streamable HTTP without a session
  * @since 1.0.0
  */
 class StatelessSessionStore implements SessionStoreInterface
 {
-
-	// In-memory only — survives this request, gone on next
-	private static array $sessions = [];
-
 	public function exists(Uuid $id): bool
 	{
 		return true; // accept any ID
@@ -46,19 +51,20 @@ class StatelessSessionStore implements SessionStoreInterface
 
 	public function read(Uuid $id): string|false
 	{
-		return self::$sessions[$id->toRfc4122()] ?? false;
+		return false; // there is never anything to read back
 	}
 
 	public function write(Uuid $id, string $data): bool
 	{
-		self::$sessions[$id->toRfc4122()] = $data;
+		// Accepted and discarded. Returning false would make the SDK log a
+		// failed save on every single request; there is nothing failing here,
+		// there is simply nowhere for it to go.
 		return true;
 	}
 
 	public function destroy(Uuid $id): bool
 	{
-		unset(self::$sessions[$id->toRfc4122()]);
-		return true;
+		return true; // nothing was stored, so it is already gone
 	}
 
 	public function gc(): array
