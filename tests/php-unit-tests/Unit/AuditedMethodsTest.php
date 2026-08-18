@@ -21,7 +21,7 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * The setting used to fall back to an empty list, and an empty list reads as
  * "audit nothing": a fresh install had log_mcp_service defaulting to true, an
- * EventMCPService class in the console, and a trail that stayed empty for ever.
+ * AltiooEventMCPService class in the console, and a trail that stayed empty for ever.
  * Nothing failed, which is what made it worth pinning here rather than leaving
  * to the first operator who went looking for a call they remembered making.
  */

@@ -19,7 +19,7 @@ use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Combodo\iTop\Application\WebPage\JsonPage;
-use EventMCPService;
+use AltiooEventMCPService;
 use ExecutionKPI;
 use LoginWebPage;
 use Throwable;
@@ -546,7 +546,7 @@ final class MCPController
 		}
 
 		try {
-			$oLog = new EventMCPService();
+			$oLog = new AltiooEventMCPService();
 			$oLog->SetTrim('userinfo', UserRights::GetUser());
 			$oLog->Set('message', $oResult->message);
 			$oLog->Set('mcp_method', $sMethod);
@@ -569,7 +569,7 @@ final class MCPController
 			$oLog->DBInsertNoReload();
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
-			MCPHelper::LogError('Failed to log EventMCPService: '.$e->getMessage());
+			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
 		}
 	}
 

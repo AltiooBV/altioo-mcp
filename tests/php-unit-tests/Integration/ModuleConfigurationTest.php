@@ -156,7 +156,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 
 	/**
 	 * Dict::S() returns the key itself when a translation is missing, so the
-	 * console renders raw keys like "Class:EventMCPService". Comparing the
+	 * console renders raw keys like "Class:AltiooEventMCPService". Comparing the
 	 * lookup against the key is the way to catch that.
 	 *
 	 * @dataProvider dictionaryKeyProvider
@@ -170,15 +170,15 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	public static function dictionaryKeyProvider(): array
 	{
 		$aKeys = [
-			'Class:EventMCPService',
-			'Class:EventMCPService/Attribute:mcp_method',
-			'Class:EventMCPService/Attribute:mcp_name',
-			'Class:EventMCPService/Attribute:status',
-			'Class:EventMCPService/Attribute:status/Value:success',
-			'Class:EventMCPService/Attribute:status/Value:error',
-			'Class:EventMCPService/Attribute:request_params',
-			'fieldset:EventMCPService:main',
-			'fieldset:EventMCPService:details',
+			'Class:AltiooEventMCPService',
+			'Class:AltiooEventMCPService/Attribute:mcp_method',
+			'Class:AltiooEventMCPService/Attribute:mcp_name',
+			'Class:AltiooEventMCPService/Attribute:status',
+			'Class:AltiooEventMCPService/Attribute:status/Value:success',
+			'Class:AltiooEventMCPService/Attribute:status/Value:error',
+			'Class:AltiooEventMCPService/Attribute:request_params',
+			'fieldset:AltiooEventMCPService:main',
+			'fieldset:AltiooEventMCPService:details',
 			'Class:PersonalToken/Attribute:scope/Value:MCP',
 			'Class:UserToken/Attribute:scope/Value:MCP',
 		];
@@ -191,6 +191,6 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testClassLabelIsNotTheRawClassName(): void
 	{
-		$this->assertSame('MCP Service Call', MetaModel::GetName('EventMCPService'));
+		$this->assertSame('MCP Service Call', MetaModel::GetName('AltiooEventMCPService'));
 	}
 }

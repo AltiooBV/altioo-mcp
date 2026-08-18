@@ -433,7 +433,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. The SDK defaults to 50 and pages the rest behind a cursor, which a client that ignores `nextCursor` never asks for — the 51st tool then exists, is callable, and is advertised to nobody |
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
-| `log_mcp_service` | `true` | Write an `EventMCPService` audit entry per call |
+| `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
 
@@ -471,7 +471,7 @@ one credential be weaker than the instance without a second user account.
 
 ### Audit trail
 
-Calls are recorded as **MCP Service Call** (`EventMCPService`) objects, visible in the
+Calls are recorded as **MCP Service Call** (`AltiooEventMCPService`) objects, visible in the
 console. Each entry holds the MCP method, the tool or resource invoked, the outcome, and the
 calling user.
 
@@ -933,7 +933,7 @@ exactly this reason — the identifier no longer tells the two apart, and the cl
 - Exceptions are caught at the entry point. `ToolCallException` and `ResourceReadException`
   messages reach the client; anything else is answered generically and correlated to
   `log/error.log` by a reference, so internal detail (SQL, class names) does not leak.
-- Your call is audited as an `EventMCPService` under the same rules as the core tools.
+- Your call is audited as an `AltiooEventMCPService` under the same rules as the core tools.
 - Your element is registered only if it honours the contract above, and only if the operator
   has not disabled it through `mcp_disabled_tools`.
 
@@ -969,7 +969,7 @@ rights and the masking of attributes whose type implements `iAttributeNoGroupBy`
 lawful basis for processing does not cover sending a ticket's contents to a third-party model,
 that decision belongs at the profile you grant, before the first connection.
 
-**What the module stores.** One `EventMCPService` row per audited call: timestamp, user,
+**What the module stores.** One `AltiooEventMCPService` row per audited call: timestamp, user,
 method, element invoked, outcome, duration, response size. Request *parameters* are stored only
 at `log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your
 own retention on that table as you do for iTop's other event classes.
@@ -1053,7 +1053,7 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **A tool result is read into a context window.** Reads narrow by default and long values are
   clipped; a deliberately wide `output_fields => *` over thousands of objects is still your
   cost to pay.
-- **The audit trail grows.** One `EventMCPService` row per audited call, with no built-in purge
+- **The audit trail grows.** One `AltiooEventMCPService` row per audited call, with no built-in purge
   — set retention as you do for iTop's other event classes.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.
 

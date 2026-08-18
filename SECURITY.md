@@ -61,7 +61,7 @@ iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is 
 that matters most against prompt injection: a model acting on text that came from outside the
 organisation cannot silently commit a change on the strength of that text alone.
 
-**Every call is audited** as an `EventMCPService` object, with the method, the element invoked,
+**Every call is audited** as an `AltiooEventMCPService` object, with the method, the element invoked,
 the outcome, the duration and the calling user.
 
 **Errors do not leak internals.** Only `ToolCallException` and `ResourceReadException` messages
@@ -114,7 +114,7 @@ In particular, and specifically relevant here:
   profile is the real blast radius, not the MCP profile itself.
 - Leave `log_mcp_level` at `error` in normal operation: `debug` stores raw request parameters,
   which may contain data your users would not expect to find in an audit log.
-- Review `EventMCPService` retention against your own data-retention policy.
+- Review `AltiooEventMCPService` retention against your own data-retention policy.
 
 ## Dependencies
 

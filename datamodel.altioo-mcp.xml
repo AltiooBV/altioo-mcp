@@ -65,7 +65,7 @@
         </field>
       </fields>
     </class>
-    <class id="EventMCPService" _delta="define">
+    <class id="AltiooEventMCPService" _delta="define">
       <parent>Event</parent>
       <properties>
         <comment><![CDATA[/**
@@ -79,7 +79,7 @@
         <category>application</category>
         <abstract>false</abstract>
         <key_type>autoincrement</key_type>
-        <db_table>priv_event_mcp_service</db_table>
+        <db_table>priv_altioo_event_mcp_service</db_table>
         <db_key_field>id</db_key_field>
         <db_final_class_field/>
         <naming>
@@ -173,7 +173,7 @@
             <item id="col:col0">
               <rank>10</rank>
               <items>
-                <item id="fieldset:EventMCPService:main">
+                <item id="fieldset:AltiooEventMCPService:main">
                   <rank>10</rank>
                   <items>
                     <item id="date">
@@ -204,7 +204,7 @@
             <item id="col:col1">
               <rank>20</rank>
               <items>
-                <item id="fieldset:EventMCPService:details">
+                <item id="fieldset:AltiooEventMCPService:details">
                   <rank>10</rank>
                   <items>
                     <item id="message">
@@ -250,28 +250,28 @@
       <english_description>English</english_description>
       <localized_description>English</localized_description>
       <entries>
-        <entry id="Class:EventMCPService"><![CDATA[MCP Service Call]]></entry>
-        <entry id="Class:EventMCPService+"><![CDATA[Audit trail of an inbound MCP request]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_method"><![CDATA[MCP method]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_method+"><![CDATA[JSON-RPC method carried by the request, e.g. tools/call]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_name"><![CDATA[Tool / resource]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_name+"><![CDATA[Name of the tool or prompt, or URI of the resource, that was invoked]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status"><![CDATA[Status]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status+"><![CDATA[Outcome of the call]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:success"><![CDATA[Success]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[The request completed without error]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Error]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[The request failed]]></entry>
-        <entry id="Class:EventMCPService/Attribute:duration_ms"><![CDATA[Duration (ms)]]></entry>
-        <entry id="Class:EventMCPService/Attribute:duration_ms+"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
-        <entry id="Class:EventMCPService/Attribute:response_bytes"><![CDATA[Response size (bytes)]]></entry>
-        <entry id="Class:EventMCPService/Attribute:response_bytes+"><![CDATA[Size of the response body sent back to the client]]></entry>
-        <entry id="Class:EventMCPService/Attribute:error_ref"><![CDATA[Log reference]]></entry>
-        <entry id="Class:EventMCPService/Attribute:error_ref+"><![CDATA[Reference of the matching entry in log/error.log, for an error answered generically]]></entry>
-        <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Request parameters]]></entry>
-        <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
-        <entry id="fieldset:EventMCPService:main"><![CDATA[General information]]></entry>
-        <entry id="fieldset:EventMCPService:details"><![CDATA[Details]]></entry>
+        <entry id="Class:AltiooEventMCPService"><![CDATA[MCP Service Call]]></entry>
+        <entry id="Class:AltiooEventMCPService+"><![CDATA[Audit trail of an inbound MCP request]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method"><![CDATA[MCP method]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method+"><![CDATA[JSON-RPC method carried by the request, e.g. tools/call]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name"><![CDATA[Tool / resource]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+"><![CDATA[Name of the tool or prompt, or URI of the resource, that was invoked]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status"><![CDATA[Status]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status+"><![CDATA[Outcome of the call]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success"><![CDATA[Success]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+"><![CDATA[The request completed without error]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error"><![CDATA[Error]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+"><![CDATA[The request failed]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms"><![CDATA[Duration (ms)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes"><![CDATA[Response size (bytes)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+"><![CDATA[Size of the response body sent back to the client]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref"><![CDATA[Log reference]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref+"><![CDATA[Reference of the matching entry in log/error.log, for an error answered generically]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params"><![CDATA[Request parameters]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params+"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:main"><![CDATA[General information]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:details"><![CDATA[Details]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP: read]]></entry>
@@ -344,28 +344,28 @@
       <english_description>French</english_description>
       <localized_description>Français</localized_description>
       <entries>
-        <entry id="Class:EventMCPService"><![CDATA[Appel de service MCP]]></entry>
-        <entry id="Class:EventMCPService+"><![CDATA[Journal d'audit d'une requête MCP entrante]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_method"><![CDATA[Méthode MCP]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_method+"><![CDATA[Méthode JSON-RPC portée par la requête, par exemple tools/call]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_name"><![CDATA[Outil / ressource]]></entry>
-        <entry id="Class:EventMCPService/Attribute:mcp_name+"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status"><![CDATA[Statut]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status+"><![CDATA[Résultat de l'appel]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:success"><![CDATA[Succès]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:success+"><![CDATA[La requête s'est terminée sans erreur]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:error"><![CDATA[Erreur]]></entry>
-        <entry id="Class:EventMCPService/Attribute:status/Value:error+"><![CDATA[La requête a échoué]]></entry>
-        <entry id="Class:EventMCPService/Attribute:duration_ms"><![CDATA[Durée (ms)]]></entry>
-        <entry id="Class:EventMCPService/Attribute:duration_ms+"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
-        <entry id="Class:EventMCPService/Attribute:response_bytes"><![CDATA[Taille de la réponse (octets)]]></entry>
-        <entry id="Class:EventMCPService/Attribute:response_bytes+"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
-        <entry id="Class:EventMCPService/Attribute:error_ref"><![CDATA[Référence de log]]></entry>
-        <entry id="Class:EventMCPService/Attribute:error_ref+"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
-        <entry id="Class:EventMCPService/Attribute:request_params"><![CDATA[Paramètres de la requête]]></entry>
-        <entry id="Class:EventMCPService/Attribute:request_params+"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
-        <entry id="fieldset:EventMCPService:main"><![CDATA[Informations générales]]></entry>
-        <entry id="fieldset:EventMCPService:details"><![CDATA[Détails]]></entry>
+        <entry id="Class:AltiooEventMCPService"><![CDATA[Appel de service MCP]]></entry>
+        <entry id="Class:AltiooEventMCPService+"><![CDATA[Journal d'audit d'une requête MCP entrante]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method"><![CDATA[Méthode MCP]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method+"><![CDATA[Méthode JSON-RPC portée par la requête, par exemple tools/call]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name"><![CDATA[Outil / ressource]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status"><![CDATA[Statut]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status+"><![CDATA[Résultat de l'appel]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success"><![CDATA[Succès]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+"><![CDATA[La requête s'est terminée sans erreur]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error"><![CDATA[Erreur]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms"><![CDATA[Durée (ms)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes"><![CDATA[Taille de la réponse (octets)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref"><![CDATA[Référence de log]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref+"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params"><![CDATA[Paramètres de la requête]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params+"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:main"><![CDATA[Informations générales]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:details"><![CDATA[Détails]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP"><![CDATA[MCP]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read"><![CDATA[MCP : lecture]]></entry>

@@ -19,14 +19,14 @@ use MetaModel;
 require_once __DIR__.'/../bootstrap.php';
 
 /**
- * The EventMCPService audit class, against a live datamodel.
+ * The AltiooEventMCPService audit class, against a live datamodel.
  *
  * Uses core MetaModel/DBObject APIs rather than the helpers on iTop's
  * ItopDataTestCase, so the suite is not tied to one iTop minor's test harness.
  */
-class EventMCPServiceTest extends ItopDataTestCaseAlias
+class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 {
-	private const CLASS_NAME = 'EventMCPService';
+	private const CLASS_NAME = 'AltiooEventMCPService';
 
 	public function testClassIsDeclared(): void
 	{
@@ -45,7 +45,7 @@ class EventMCPServiceTest extends ItopDataTestCaseAlias
 
 	public function testUsesItsOwnTable(): void
 	{
-		$this->assertSame('priv_event_mcp_service', MetaModel::DBGetTable(self::CLASS_NAME));
+		$this->assertSame('priv_altioo_event_mcp_service', MetaModel::DBGetTable(self::CLASS_NAME));
 	}
 
 	/**
