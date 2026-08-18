@@ -7,6 +7,7 @@ Context Protocol client) can search, read and update CMDB and ticketing objects.
 [Changelog](CHANGELOG.md) ·
 [Security](SECURITY.md) ·
 [Client setup](doc/clients.md) ·
+[Troubleshooting](#troubleshooting) ·
 [Support](#support)
 
 This is the **base extension**. It is free, it works on its own, and it is designed to be
@@ -222,6 +223,20 @@ first when the pool is under pressure.
 
 ## Installation
 
+**Before you start.** Installing this runs the iTop setup, and the iTop setup rewrites the
+compiled datamodel and applies schema changes to the live database. That is true of every iTop
+extension and it is not reversible from inside the application.
+
+- **Take a backup first** — the database *and* `conf/`. iTop's own backup (Admin tools →
+  Backup) covers the database; `conf/<env>/config-itop.php` is the file the setup rewrites and
+  the one you will want if a module parameter ends up somewhere unexpected.
+- **Do it in a maintenance window.** The setup takes the application offline while it runs, and
+  a compilation that fails half way leaves the instance down until it is re-run or restored.
+- **Rehearse on a copy** if the instance matters. A restored backup on a second host is the
+  cheapest way to find out how long the setup takes on your data volume.
+
+Then:
+
 1. Unzip the extension into your iTop `extensions/` directory, so that you get
    `<itop>/extensions/altioo-mcp/`.
 2. Run the iTop setup (`<itop-url>/setup/`) and tick **Altioo MCP iTop Extension** in the
@@ -234,6 +249,27 @@ production instance.
 Nothing is reachable yet at this point: the endpoint answers `401` until someone holds one of
 the allowed profiles *and* presents a credential. See [Granting access](#granting-access).
 
+### After the setup, before granting anyone access
+
+Four checks. Each one fails in a way that is much harder to diagnose later than now:
+
+1. **The audit class exists.** In the console, an administrator should find **MCP Service Call**
+   under the event log (class `AltiooEventMCPService`). If it is absent, the datamodel did not
+   compile and nothing below will work.
+2. **The profile exists.** Administration → Profiles should list **MCP Services User**. That is
+   the profile named in `mcp_allowed_profiles`, and it is what the endpoint checks for. A
+   profile list without it means the same compilation problem as above — and note that the
+   endpoint matches on the profile *name*, so a profile renamed in the console stops matching
+   until `mcp_allowed_profiles` is updated to say the same thing.
+3. **The configuration block was written.** `conf/<env>/config-itop.php` should now contain an
+   `'altioo-mcp' => array(...)` block under `module_settings`, carrying the defaults in
+   [Configuration](#configuration). If it is missing, the module is installed but every setting
+   falls back to its compiled-in default, and editing the file is how you change them.
+4. **Only `index.php` is reachable.** `<itop-url>/extensions/altioo-mcp/index.php` should answer
+   (a `401` is the correct answer at this point); `<itop-url>/extensions/altioo-mcp/composer.json`
+   and `.../src/Controller/MCPController.php` should not. If they are served, the `.htaccess` or
+   `web.config` is not being honoured and the source tree is public.
+
 ### What the install changes
 
 Everything this module adds, so that the change can be reviewed before it is made and found
@@ -241,24 +277,37 @@ again afterwards:
 
 | | |
 |---|---|
-| **One table** | `EventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
+| **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
 | **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
 | **Enum values** | Seven `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken` (`_delta="if_exists"`, so no core class is redefined) |
 | **One URL** | `extensions/altioo-mcp/index.php`. The module's `.htaccess` / `web.config` re-grant web access to that one file and leave iTop's deny over the rest of `extensions/` alone |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
 | **Nothing else** | No core class is modified, no core menu, no cron task, no scheduled job, no outbound connection |
 
-**Removing it.** Untick the extension in the setup (or delete
-`<itop>/extensions/altioo-mcp/`) and run the setup again. iTop leaves the `EventMCPService`
-table in place — as it does for any removed module — so the audit history survives the removal
-and can be dropped by hand once you no longer need it. Tokens keep their `MCP*` scope values as
-stored strings; those scopes simply stop meaning anything, and no token gains access to
-anything else as a result. The `MCP Services User` profile disappears with the datamodel;
-users who held it keep their other profiles untouched.
+**Removing it.** Back up first, for the same reason as installing: this is another setup run.
+Untick the extension in the setup (or delete `<itop>/extensions/altioo-mcp/`) and run the setup
+again. Then, if you want the instance genuinely clean rather than merely inert, two things
+survive on purpose and have to be removed by hand:
 
-**Upgrading.** Unzip the new version over the old directory and re-run the setup. Read
-[CHANGELOG.md](CHANGELOG.md) first: a major version means an identifier or a default that
-clients and tool packs depend on has changed.
+| What survives | Where | What to do |
+|---|---|---|
+| The audit history | Table **`priv_altioo_event_mcp_service`** (class `AltiooEventMCPService`) | iTop leaves the table behind for any removed module, so the trail outlives the extension. Export it if you need to keep it, then `DROP TABLE priv_altioo_event_mcp_service;` |
+| The module settings | The **`'altioo-mcp' => array(...)`** block under `module_settings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
+
+Tokens keep their `MCP*` scope values as stored strings; those scopes simply stop meaning
+anything, and no token gains access to anything else as a result. The `MCP Services User`
+profile disappears with the datamodel; users who held it keep their other profiles untouched.
+
+**Upgrading.** Back up, take a maintenance window, unzip the new version over the old directory
+and re-run the setup. Read [CHANGELOG.md](CHANGELOG.md) first: a major version means an
+identifier or a default that clients and tool packs depend on has changed.
+
+**Downgrading is not supported.** There is no path back to an earlier version of this
+extension, and unzipping an older archive over a newer install is not one: the setup compiles
+forward, an older datamodel does not describe the schema the newer one applied, and no attempt
+is made to reverse a migration. If a release has to be undone, the rollback *is* the backup you
+took before installing it — restore the database and `conf/`, then put the old archive back.
+This is why the backup is listed first rather than as an afterthought.
 
 ## Granting access
 
@@ -494,6 +543,90 @@ opening a CI six months from now reads, and it is where "who changed this, throu
 why" has to be, because that is the tab they open. `log_mcp_service => false` turns this one
 off; attribution in the object's history is not configurable, and costs nothing — it is a
 string on a record iTop was going to write anyway.
+
+## Troubleshooting
+
+Everything below is diagnosed from one file. Whatever the endpoint answered, the reason is in
+**`<itop>/log/error.log`** — the module writes every refusal, every unhandled failure and every
+configuration complaint there, deliberately, because the response is kept vague on purpose and
+the log is not.
+
+**Turn the detail up.** `log_mcp_level` decides how much the *audit trail* keeps, not the error
+log, and it is worth raising while you are looking:
+
+```php
+'altioo-mcp' => array(
+    // 'error' (default) records failures. 'info' records successes too, which is how you
+    // confirm a call arrived at all. 'debug' additionally stores the raw JSON parameters.
+    'log_mcp_level' => 'debug',
+),
+```
+
+Put it back to `'error'` afterwards. `'debug'` stores whatever the caller sent, which can
+include data your users would not expect to find in an audit log.
+
+**Is the call arriving at all?** Look for an `AltiooEventMCPService` row with the method
+`initialize`. That row is written whenever a client connects, at every log level. No row means
+the request never reached the module — a web server rule, a proxy, or a wrong URL — and nothing
+in this module's configuration will change that.
+
+### The three that account for most of it
+
+**1. `401` on a credential you know is right, and no `initialize` row.**
+
+Under FastCGI, Apache drops the `Authorization` header before PHP sees it, so the module never
+receives the bearer token and iTop answers as it would to an anonymous caller. Nothing is
+misconfigured in iTop, and nothing in `log/error.log` says so, because as far as PHP is
+concerned no credential was sent.
+
+Confirm it by sending the same credential as `Auth-Token:` instead of `Authorization: Bearer` —
+that header is not affected. If that works, the problem is the header, not the token.
+
+Fix it with `CGIPassAuth On`, scoped to this one file — see [Endpoint](#endpoint) for the block.
+
+**2. `403`, with a body that says only "This host is not served by the MCP endpoint".**
+
+The refusal is deliberately silent about *which* hostnames are configured; a caller probing for
+them has no business being told. The reason is in `log/error.log`, and it names both the
+`Origin` and the `Host` that were refused:
+
+```
+Refused an MCP request: neither its Origin (-) nor its Host (mcp.internal:8080) is in
+'mcp_allowed_hosts'. Set that module parameter to the hostname this instance is served under.
+```
+
+This happens when iTop is reached under a name `app_root_url` does not carry — an internal
+hostname, a container name, a second vhost. Set the parameter to the name the client actually
+uses:
+
+```php
+'mcp_allowed_hosts' => array('itop.example.com', 'mcp.internal'),
+```
+
+Hostnames, no port. `array('*')` turns the check off, which is the right answer only when a
+reverse proxy in front of iTop validates `Host` itself.
+
+**3. `401` on a token that works everywhere else in iTop.**
+
+A token needs a scope this module declares — `MCP`, or one of the `MCP-*` scopes — and a token
+created for the REST API has none of them. iTop honours a token scope only when the module has
+pushed a context tag of the same name, so a token scoped for something else does not partially
+work here; it does not authenticate at all.
+
+Open the token in the console and confirm at least one `MCP*` scope is ticked. Scopes cannot be
+added to an existing personal token in every iTop version — if the field is read-only, issue a
+new one. See [Granting access](#granting-access) for which scope grants what.
+
+### Less common, and what they look like
+
+| Symptom | Cause |
+|---|---|
+| `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
+| A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. Since 1.0 the module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
+| `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
+| Only the first 50 tools appear in a client | That client ignores `nextCursor`. Raise `mcp_pagination_limit` — it defaults to 200 for this reason |
+| "The MCP request could not be completed. Server log reference: `a1b2c3…`" | An internal failure, answered generically on purpose. Grep `log/error.log` for that reference; the audit row carries it too, in **Log reference** |
+| A stored file comes back as a different media type than declared | Deliberate. The declared type is checked against the bytes, and the bytes win — the response says so in `mimetype_note` |
 
 ## Extending
 
