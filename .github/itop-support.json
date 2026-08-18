@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "The iTop branches this extension claims to support, and the PHP versions each is",
+    "tested on. This file is the single source of truth: the CI matrix is computed from",
+    "it, and the supported-versions line of the Hub listing has to agree with it.",
+    "",
+    "A branch names a minor (3.2), never a patch. CI resolves the latest patch of that",
+    "branch at run time, so a new 3.2.x published by Combodo is exercised by the next",
+    "scheduled run without anyone editing anything - which is the point: the version we",
+    "break on is usually the one released after we last looked.",
+    "",
+    "  branch           the iTop minor, as it appears in the tag names of Combodo/iTop",
+    "  php              PHP versions to install that branch on. Two is enough: the floor",
+    "                   and the ceiling of what composer.json allows. The middle version",
+    "                   is covered by the unit matrix in ci.yml.",
+    "  allow_prerelease resolve to an alpha/beta/rc when the branch has no stable patch",
+    "                   yet. True for a branch we intend to support at its GA and want to",
+    "                   be told about early; never for one users are already running.",
+    "  pin              an exact tag, when a resolved patch is known broken and the",
+    "                   failure is not ours. Temporary by nature: say why, in this file."
+  ],
+  "branches": [
+    {
+      "branch": "3.2",
+      "php": ["8.2", "8.4"]
+    },
+    {
+      "branch": "3.3",
+      "php": ["8.2", "8.4"],
+      "allow_prerelease": true
+    }
+  ]
+}
