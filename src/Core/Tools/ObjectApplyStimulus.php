@@ -290,31 +290,37 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$aTargetStateDef = $aStates[$sTargetState];
 		$aExpectedAttributes = $aTargetStateDef['attribute_list'] ?? [];
 
-		$aMissingMandatory = array();
-		$aMissingMandatoryNotWritable = array();
+		// Two buckets, not one list: an empty mandatory attribute the caller may
+		// set is a call it can correct, and one it may not set is a call that
+		// will never work. Told only "missing mandatory: a, b, c", a model sets
+		// all three, is refused on c, and cannot tell a typo from a denial.
+		$aMissingFillable = [];
+		$aMissingBlocked  = [];
+
 		foreach($aExpectedAttributes as $sAttCode => $iExpectCode)
 		{
 			// Soft comparison on purpose: Get() returns mixed (string, int, ormLinkSet,
 			// AttributeDate...) depending on the attribute, so neither === '' nor
 			// utils::IsNullOrEmptyString() (typed ?string) can stand in here.
-			if (($iExpectCode & OPT_ATT_MANDATORY) && ($oObject->Get($sAttCode) == ''))
-			{
-				if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
-					$aMissingMandatoryNotWritable[] = $sAttCode;
-				} else  {
-					$aMissingMandatory[] = $sAttCode;
-				}
+			if (!($iExpectCode & OPT_ATT_MANDATORY) || ($oObject->Get($sAttCode) != '')) {
+				continue;
 			}
+
+			$sBlocked = self::whyItCannotBeSet($class, $sAttCode, $oInstanceSet);
+			if ($sBlocked !== null) {
+				$aMissingBlocked[$sAttCode] = $sBlocked;
+				continue;
+			}
+
+			$aMissingFillable[] = $sAttCode;
 		}
-		if (!empty($aMissingMandatory)) {
-			throw new ToolCallException(
-				"Missing mandatory attribute(s) for applying stimulus '{$stimulus}': ".implode(', ', $aMissingMandatory).'.'
-			);
-		}
-		if (!empty($aMissingMandatoryNotWritable)) {
-			throw new ToolCallException(
-				"Missing mandatory attribute(s) that are not writable by you for applying stimulus '{$stimulus}': ".implode(', ', $aMissingMandatoryNotWritable).'.'
-			);
+
+		// Both at once. Raising the fillable ones first and the blocked ones
+		// only on the next call means the caller sets a and b onto an object
+		// for a transition it was never going to be allowed to complete, and
+		// learns that on a second round trip.
+		if (!empty($aMissingFillable) || !empty($aMissingBlocked)) {
+			throw new ToolCallException(self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked));
 		}
 
 		// iTop's own pre-write check, on top of the target-state check above:
@@ -366,5 +372,70 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				'would_move_to' => $sTargetState,
 				'changes'       => $aChanges,
 			]);
+	}
+	/**
+	 * Why this caller cannot set an attribute the target state requires, or
+	 * null when it can.
+	 *
+	 * Two reasons, and they are not the same problem. A right is a grant an
+	 * administrator can make; an attribute the datamodel declares unwritable is
+	 * not writable by anybody, and no grant changes that. Saying which one it
+	 * is decides whether the caller has anyone to ask.
+	 *
+	 * Both are checked, in that order, exactly as the field validation earlier
+	 * in this method checks them - it asked the right and then IsWritable(),
+	 * and the mandatory-attribute check asked only the right, so a mandatory
+	 * attribute that is read-only on the class was reported as one the caller
+	 * should fill in.
+	 *
+	 * UR_ALLOWED_DEPENDS counts as a no: the object is in hand, so the addon
+	 * has been given everything it needs to answer, and anything short of a yes
+	 * is a no. See ObjectUpdate for the long version.
+	 */
+	private static function whyItCannotBeSet(string $sClass, string $sAttCode, DBObjectSet $oInstanceSet): ?string
+	{
+		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
+			return 'write access denied for this user';
+		}
+
+		if (!MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
+			return 'not writable on this class';
+		}
+
+		return null;
+	}
+
+	/**
+	 * One refusal naming everything the transition is missing, and separating
+	 * what the caller can do something about from what it cannot.
+	 *
+	 * Blocked attributes lead, because they decide whether retrying is worth
+	 * anything at all: a caller that reads only the first sentence should come
+	 * away knowing the call cannot succeed, rather than setting the fillable
+	 * ones and arriving back here.
+	 *
+	 * @param array<int, string>    $aFillable Attribute codes this caller may set.
+	 * @param array<string, string> $aBlocked  Attribute code => why it cannot be set.
+	 */
+	private static function missingMandatoryMessage(string $sStimulus, array $aFillable, array $aBlocked): string
+	{
+		if (empty($aBlocked)) {
+			return "Missing mandatory attribute(s) for applying stimulus '{$sStimulus}': ".implode(', ', $aFillable).'.';
+		}
+
+		$aNamed = [];
+		foreach ($aBlocked as $sAttCode => $sReason) {
+			$aNamed[] = "{$sAttCode} ({$sReason})";
+		}
+
+		$sMessage = "Stimulus '{$sStimulus}' cannot be applied: the target state requires mandatory attribute(s) this call cannot set: "
+			.implode(', ', $aNamed).'. Retrying will not help - the missing rights have to be granted, or those attributes set another way.';
+
+		if (!empty($aFillable)) {
+			$sMessage .= ' Also missing, and settable by this user: '.implode(', ', $aFillable)
+				.' - setting those alone will not be enough.';
+		}
+
+		return $sMessage;
 	}
 }
