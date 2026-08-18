@@ -31,27 +31,41 @@ The items marked **pending** are the ones that cannot be closed inside the repos
 **Green CI.** Unit suite on PHP 8.2, 8.3 and 8.4; `composer validate --strict`;
 `composer check-platform-reqs`; `composer audit --locked`.
 
+**The archive is built by CI, not by hand.** Pushing a `v*` tag runs
+[release.yml](../.github/workflows/release.yml), which refuses a tag that disagrees with
+`extension.xml`, builds the production vendor tree on PHP 8.2, assembles the zip from
+`exclude.txt`, and attaches four files to the release: the archive, its `.sha256`, a CycloneDX
+`sbom.cyclonedx.json` and `licenses.json`. The last two also go *inside* the archive, so an
+instance found in a year's time can answer what it is running without reaching the internet.
+`workflow_dispatch` runs the same build without publishing, which is how to exercise it before
+the tag exists.
+
+Publish the SHA-256 wherever the download is announced. `vendor/` ships, so "the file I
+downloaded is the file CI built" has to be a question with an answer.
+
 **A real install.** Not a claim — a run:
 
-1. Build the archive: `composer install --no-dev --optimize-autoloader`, then zip the module
-   directory minus the entries in `exclude.txt`.
+1. Download the archive the release workflow built and check it against the published SHA-256.
+   (Building it locally — `composer install --no-dev --optimize-autoloader`, then zip minus
+   `exclude.txt` — is for debugging the packaging, not for publishing.)
 2. Unzip it into a clean iTop 3.2 at `<itop>/extensions/altioo-mcp/`.
 3. Run the setup, tick the extension, complete it.
 4. Create a personal token with an `MCP` scope; connect a real MCP client (see
    [clients.md](clients.md)); list tools; read one object; run one write with `simulate` left
    at its default and confirm nothing was written.
-5. Check that an `EventMCPService` row was recorded for those calls.
+5. Check that an `AltiooEventMCPService` row was recorded for those calls.
 6. Confirm `<itop>/extensions/altioo-mcp/src/` and `/vendor/` are **not** reachable over HTTP
    while `index.php` is.
 7. Record which iTop patch and which PHP this ran on, in the changelog entry.
 
 **Upgrade path.** Unzip over the previous version, re-run the setup, confirm the endpoint still
-answers and no `EventMCPService` history was lost.
+answers and no `AltiooEventMCPService` history was lost.
 
 **Archive contents.** `vendor/` present and built with `--no-dev`; `README.md`, `SECURITY.md`,
 `CHANGELOG.md`, `LICENSE` and `doc/` present; `tests/` present (iTop's own Extensions testsuite
-scans `env-production/`); no `.git`, no `.DS_Store`, no `.idea`. The `package` job in CI checks
-the parts of this that can be checked without a zip.
+scans `env-production/`); `sbom.cyclonedx.json` and `licenses.json` present; no `.git`, no
+`.DS_Store`, no `.idea`, no `tools/`. The `package` job in CI checks the parts of this that can
+be checked without a zip, and the release workflow checks the zip itself.
 
 **Hub listing.** Update the text from [hub-listing.md](hub-listing.md) — in particular the
 supported-versions line and the "tested on" line, which change per release.

@@ -43,7 +43,13 @@
   "scripts": {
     "test": "phpunit",
     "test:unit": "phpunit --testsuite unit",
-    "test:integration": "phpunit --testsuite integration"
+    "test:integration": "phpunit --testsuite integration",
+    "sbom": "php tools/sbom.php",
+    "licenses": "@composer licenses --no-dev --format=json"
+  },
+  "scripts-descriptions": {
+    "sbom": "Writes a CycloneDX bill of materials for the production dependencies to stdout.",
+    "licenses": "Lists the licence of every production dependency, as JSON."
   },
   "config": {
     "sort-packages": true,

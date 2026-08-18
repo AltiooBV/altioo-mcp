@@ -1,0 +1,131 @@
+name: Release
+
+# What a published release has to be: an archive built by a machine from a tag,
+# with a checksum somebody can verify and an inventory of everything vendor/
+# carries. Building it by hand on a laptop is how an archive comes to contain
+# something nobody meant to ship.
+
+on:
+  push:
+    tags: ['v*']
+  # Same build, no publication - so the packaging can be exercised before a tag
+  # exists rather than discovered to be broken by the tag itself.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Build, checksum and publish the archive
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # The floor this extension claims. Building on the oldest supported
+          # PHP is what keeps the shipped autoloader loadable on all of them.
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: The tag and the module must declare the same version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          declared=$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' extension.xml | head -1)
+          test "$tag" = "$declared" \
+            || { echo "tag $GITHUB_REF_NAME does not match extension.xml ($declared)"; exit 1; }
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict --no-check-publish
+
+      # What store users unzip into extensions/: production dependencies only,
+      # nothing from require-dev, and vendor/ present because they will never
+      # run composer themselves.
+      - name: Build the production vendor tree
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      - name: Unit suite against the shipped tree
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          composer test:unit
+          composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      # vendor/ ships, so what is in it is not an implementation detail - it is
+      # the audit surface, and an operator asked to install this is entitled to
+      # a list of what they are installing.
+      - name: Bill of materials and licence inventory
+        run: |
+          set -euo pipefail
+          # Reproducible: the same lock produces the same document.
+          export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+          composer sbom > sbom.cyclonedx.json
+          composer licenses --no-dev --format=json > licenses.json
+          php -r 'json_decode(file_get_contents("sbom.cyclonedx.json"), true, 512, JSON_THROW_ON_ERROR);'
+          php -r 'json_decode(file_get_contents("licenses.json"), true, 512, JSON_THROW_ON_ERROR);'
+
+      - name: Assemble the archive
+        id: archive
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' extension.xml | head -1)
+          name="altioo-mcp-${version}"
+
+          # The module has to unzip as extensions/altioo-mcp/, so the directory
+          # name inside the archive is the module code and nothing else.
+          mkdir -p "build/altioo-mcp"
+          # exclude.txt is the single source of truth for what stays out; rsync
+          # reads it directly so the list cannot drift from what CI does.
+          rsync -a --exclude-from=exclude.txt \
+                --exclude 'build' --exclude 'sbom.cyclonedx.json' --exclude 'licenses.json' \
+                ./ "build/altioo-mcp/"
+
+          # The archive carries its own inventory: an instance found in a year's
+          # time can answer what it is running without reaching the internet.
+          cp sbom.cyclonedx.json licenses.json "build/altioo-mcp/"
+
+          ( cd build && zip -qr "../${name}.zip" altioo-mcp )
+          sha256sum "${name}.zip" > "${name}.zip.sha256"
+
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          cat "${name}.zip.sha256"
+
+      - name: The archive contains what it is supposed to, and nothing else
+        run: |
+          set -euo pipefail
+          cd build/altioo-mcp
+          for f in index.php README.md SECURITY.md CHANGELOG.md LICENSE \
+                   extension.xml module.altioo-mcp.php datamodel.altioo-mcp.xml \
+                   doc/clients.md vendor/autoload.php tests/php-unit-tests/bootstrap.php \
+                   sbom.cyclonedx.json licenses.json; do
+            test -e "$f" || { echo "missing from the package: $f"; exit 1; }
+          done
+          test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
+          test ! -e .git || { echo ".git leaked into the package"; exit 1; }
+          test ! -d tools || { echo "tools/ leaked into the package"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.archive.outputs.name }}
+          path: |
+            ${{ steps.archive.outputs.name }}.zip
+            ${{ steps.archive.outputs.name }}.zip.sha256
+            sbom.cyclonedx.json
+            licenses.json
+
+      # The checksum is published beside the archive so that "the file I
+      # downloaded is the file CI built" is a question with an answer.
+      - name: Attach everything to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.archive.outputs.name }}.zip
+            ${{ steps.archive.outputs.name }}.zip.sha256
+            sbom.cyclonedx.json
+            licenses.json

@@ -96,3 +96,19 @@ jobs:
           done
           ! grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests)' exclude.txt
           test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
+
+      # Exercised on every change rather than only at a tag: a bill of
+      # materials that first runs during a release is one that first fails
+      # during a release. The release workflow ships what this proves buildable.
+      - name: The bill of materials and licence inventory build
+        run: |
+          set -e
+          composer sbom > /tmp/sbom.json
+          composer licenses --no-dev --format=json > /tmp/licenses.json
+          php -r 'json_decode(file_get_contents("/tmp/sbom.json"), true, 512, JSON_THROW_ON_ERROR);'
+          php -r '
+            $a = json_decode(file_get_contents("/tmp/sbom.json"), true);
+            $n = count($a["components"] ?? []);
+            if ($n < 1) { fwrite(STDERR, "the SBOM lists no dependencies\n"); exit(1); }
+            echo $n, " production dependencies inventoried\n";
+          '

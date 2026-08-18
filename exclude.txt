@@ -20,3 +20,6 @@ phpunit.xml
 .phpunit.result.cache
 .phpunit.cache
 tools
+build
+altioo-mcp-*.zip
+altioo-mcp-*.zip.sha256
