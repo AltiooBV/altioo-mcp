@@ -53,7 +53,8 @@ class ObjectDelete extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
-			.'Runs as a dry run by default: call it with simulate=true to obtain the deletion plan, show that plan to the user, and only then call it again with simulate=false to delete for real.';
+			.'Runs as a dry run by default: call it with simulate=true to obtain the deletion plan, show that plan to the user, and only then call it again with simulate=false to delete for real. '
+			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal says which class is in the way.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -188,6 +189,12 @@ class ObjectDelete extends AbstractMCPTool
 					: ' Reasons: '.implode(', ', $aIssues))
 			);
 		}
+
+		// iTop builds the plan with rights off, so what it came back with may
+		// reach classes this caller was never granted. Refused rather than
+		// filtered, and refused on a dry run as well as on the real call - see
+		// WritePlan::CheckDeletionRights().
+		WritePlan::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
 
 		if (!$simulate)
 		{
