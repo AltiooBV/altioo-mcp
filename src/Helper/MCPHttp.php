@@ -30,6 +30,13 @@ final class MCPHttp
 	 */
 	private const AUTHORIZATION_KEYS = ['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'];
 
+	/**
+	 * Where something other than a header says who the caller is: Basic once
+	 * the SAPI has decoded it, and the identity an authenticating webserver or
+	 * proxy decided on. Both are written by the server, never by the request.
+	 */
+	private const SERVER_IDENTITY_KEYS = ['PHP_AUTH_USER', 'REMOTE_USER', 'REDIRECT_REMOTE_USER'];
+
 	private const BEARER_PREFIX = 'Bearer ';
 
 	/** Named in the challenge so a human reading a 401 knows what refused them. */
@@ -151,6 +158,60 @@ final class MCPHttp
 
 		self::$sAuthToken = $sToken;
 		$_SERVER[self::AUTH_TOKEN_KEY] = $sToken;
+	}
+
+	/**
+	 * Whether this request presented a credential of its own, whatever kind.
+	 *
+	 * Broader than CurrentAuthToken(), and deliberately: that one answers "is
+	 * there a token", which is null for Basic and for a reverse proxy that
+	 * authenticates upstream. What the caller of this method needs to know is
+	 * narrower and older than any scheme - did this request bring something
+	 * with it, or is it riding on whatever the browser attached by itself.
+	 *
+	 * A browser sends cookies to a cross-site URL without being asked and
+	 * sends none of these, which is exactly the distinction that makes it
+	 * safe to touch the iTop session on one and not on the other.
+	 *
+	 * PHP_AUTH_USER is Basic already decoded by the SAPI - mod_php strips the
+	 * header once it has parsed it - and REMOTE_USER is what a webserver or an
+	 * authenticating proxy sets when it has decided who this is. Both are set
+	 * by the server rather than copied from the request, so neither can be
+	 * spoofed by a caller that PHP can see.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function CarriesACredential(): bool
+	{
+		if (self::ExistingAuthToken() !== null) {
+			return true;
+		}
+
+		foreach (self::AUTHORIZATION_KEYS as $sKey) {
+			$sHeader = $_SERVER[$sKey] ?? null;
+			if (is_string($sHeader) && trim($sHeader) !== '') {
+				return true;
+			}
+		}
+
+		foreach (self::SERVER_IDENTITY_KEYS as $sKey) {
+			$sValue = $_SERVER[$sKey] ?? null;
+			if (is_string($sValue) && $sValue !== '') {
+				return true;
+			}
+		}
+
+		// Same SAPI gap ReadBearerToken() works around: some expose
+		// Authorization to getallheaders() and not to $_SERVER.
+		if (function_exists('getallheaders')) {
+			foreach (getallheaders() as $sName => $sValue) {
+				if (strcasecmp($sName, 'Authorization') === 0 && is_string($sValue) && trim($sValue) !== '') {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**

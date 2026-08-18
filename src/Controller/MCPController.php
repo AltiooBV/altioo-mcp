@@ -62,15 +62,18 @@ final class MCPController
 			$oKPI->ComputeAndReport('Data model loaded');
 
 			// Both of these run before ResetSession(), which is the point of
-			// them. The reset is unauthenticated and unconditional, so a page
-			// on any website could otherwise make a logged-in user's browser
-			// call this URL and end their console session - no credential
-			// needed, and nothing in the audit trail that looks like an attack.
+			// them: a page on any website could otherwise make a logged-in
+			// user's browser call this URL and end their console session - no
+			// credential needed, and nothing in the audit trail that looks
+			// like an attack. The third guard on that path is the credential
+			// check below, which is what makes the reset conditional at all.
 			self::rejectUnlessHostIsServed();
 			self::rejectUnlessBodyIsJson();
 
 			MCPHttp::PromoteBearerToAuthToken();
-			LoginWebPage::ResetSession(true);
+			self::rejectUnlessACredentialWasPresented();
+
+			LoginWebPage::ResetSession();
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
 			$oKPI->ComputeAndReport('User login');
 
@@ -204,6 +207,43 @@ final class MCPController
 		throw new MCPRequestRejectedException(
 			'A POST to the MCP endpoint must carry Content-Type: '.MCPHttp::JSON_MEDIA_TYPE.'.',
 			MCPRequestRejectedException::HTTP_UNSUPPORTED_MEDIA_TYPE
+		);
+	}
+
+	/**
+	 * Refuses a request that brought no credential of its own.
+	 *
+	 * This is the guard that lets ResetSession() be conditional, and both
+	 * halves of it matter.
+	 *
+	 * The reset destroys whatever iTop session the browser is holding. It is
+	 * unauthenticated, so without this an <img src> on any website is a logout
+	 * for every console user who loads that page - a side effect no MCP client
+	 * ever asked for, on a request that was never going to be served.
+	 *
+	 * Skipping the reset alone would be worse than leaving it: a credential-less
+	 * request would then reach DoLogin() with the browser's iTop cookie intact
+	 * and be authenticated by it, which is the whole endpoint reachable on
+	 * ambient authority. So the answer is not to reset later but to refuse
+	 * earlier - the outcome for such a request is the 401 it already got, minus
+	 * the collateral damage.
+	 *
+	 * What counts as a credential is anything the caller or the webserver put
+	 * there deliberately - see MCPHttp::CarriesACredential(). A cookie is not
+	 * one: the browser attaches it without being asked, which is precisely what
+	 * makes it useless as evidence that this request was meant.
+	 *
+	 * @throws MCPAuthException
+	 */
+	private static function rejectUnlessACredentialWasPresented(): void
+	{
+		if (MCPHttp::CarriesACredential()) {
+			return;
+		}
+
+		throw new MCPAuthException(
+			'The MCP endpoint requires a credential on every request; a browser session is not one.',
+			MCPResult::UNAUTHORIZED
 		);
 	}
 

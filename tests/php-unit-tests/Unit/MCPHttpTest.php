@@ -25,7 +25,14 @@ class MCPHttpTest extends TestCase
 	{
 		parent::setUp();
 		$this->aServerBackup = $_SERVER;
-		unset($_SERVER['HTTP_AUTH_TOKEN'], $_SERVER['HTTP_AUTHORIZATION'], $_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+		unset(
+			$_SERVER['HTTP_AUTH_TOKEN'],
+			$_SERVER['HTTP_AUTHORIZATION'],
+			$_SERVER['REDIRECT_HTTP_AUTHORIZATION'],
+			$_SERVER['PHP_AUTH_USER'],
+			$_SERVER['REMOTE_USER'],
+			$_SERVER['REDIRECT_REMOTE_USER']
+		);
 	}
 
 	protected function tearDown(): void
@@ -132,6 +139,88 @@ class MCPHttpTest extends TestCase
 
 		$this->assertArrayNotHasKey('HTTP_AUTH_TOKEN', $_SERVER);
 		$this->assertNull(MCPHttp::ReadBearerToken());
+	}
+
+	/**
+	 * The predicate MCPController gates LoginWebPage::ResetSession() on.
+	 *
+	 * A request with nothing but cookies is the CSRF shape: a page on any
+	 * website makes the browser call this URL, the browser attaches the iTop
+	 * session by itself, and the reset would log the user out of the console.
+	 */
+	public function testACookieOnlyRequestCarriesNoCredential(): void
+	{
+		$_SERVER['HTTP_COOKIE'] = 'itop-a1b2c3=deadbeef';
+
+		$this->assertFalse(MCPHttp::CarriesACredential());
+	}
+
+	public function testABearerRequestCarriesACredential(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer abc123';
+
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
+	public function testAnAuthTokenHeaderCarriesACredential(): void
+	{
+		$_SERVER['HTTP_AUTH_TOKEN'] = 'abc123';
+
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
+	/**
+	 * Basic is not a bearer and is left for LoginBasic to consume, so
+	 * CurrentAuthToken() is null for it. Gating the reset on the token alone
+	 * would therefore have refused every Basic-authenticated client.
+	 */
+	public function testBasicCarriesACredentialEvenThoughItIsNotAToken(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Basic '.base64_encode('user:password');
+
+		$this->assertTrue(MCPHttp::CarriesACredential());
+		$this->assertNull(MCPHttp::ReadBearerToken());
+	}
+
+	/**
+	 * mod_php parses Basic itself and removes the header, leaving only this.
+	 */
+	public function testBasicDecodedByTheSapiStillCounts(): void
+	{
+		$_SERVER['PHP_AUTH_USER'] = 'someone';
+
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
+	/**
+	 * An authenticating proxy in front of iTop decides who this is and says so
+	 * here. Refusing it would break the deployment the README recommends.
+	 */
+	public function testAnIdentityDecidedUpstreamCounts(): void
+	{
+		$_SERVER['REMOTE_USER'] = 'someone@example.org';
+
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
+	public function testTheRedirectPrefixedVariantsCountToo(): void
+	{
+		$_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = 'Bearer abc123';
+		$this->assertTrue(MCPHttp::CarriesACredential());
+
+		unset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+		$_SERVER['REDIRECT_REMOTE_USER'] = 'someone';
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
+	/**
+	 * A header that is present and blank is not evidence of anything.
+	 */
+	public function testAnEmptyAuthorizationHeaderIsNotACredential(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = '   ';
+
+		$this->assertFalse(MCPHttp::CarriesACredential());
 	}
 
 	public function testReadBearerTokenReturnsTheRawCredential(): void

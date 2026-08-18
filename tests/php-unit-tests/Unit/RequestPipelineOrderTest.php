@@ -72,13 +72,14 @@ class RequestPipelineOrderTest extends TestCase
 
 	/**
 	 * The session reset is what stops a browser cookie being a credential for
-	 * this endpoint. Without it a logged-in user's session would authenticate
-	 * the request, and every CSRF defence would have to be rebuilt from
-	 * scratch - so it must run before the login that would otherwise accept
-	 * that cookie.
+	 * this endpoint, for every request that gets as far as it. Without it a
+	 * logged-in user's session would authenticate the call, so it must run
+	 * before the login that would otherwise accept that cookie.
 	 *
-	 * It reads as redundant next to the token check, which is exactly why it
-	 * needs a test: it is the kind of line someone removes while tidying.
+	 * It reads as redundant next to the credential check that now guards it,
+	 * which is exactly why it needs a test: the two are belt and braces, and
+	 * either one alone leaves a hole - see
+	 * testNothingIsResetForARequestThatBroughtNoCredential().
 	 */
 	public function testTheSessionIsResetBeforeAnythingCanAuthenticateWithIt(): void
 	{
@@ -90,10 +91,10 @@ class RequestPipelineOrderTest extends TestCase
 	}
 
 	/**
-	 * ResetSession() is unauthenticated and unconditional: reaching it is
-	 * enough to end the caller's iTop session. Any website can make a browser
-	 * issue this request, so the host has to be checked before the reset
-	 * rather than inside the SDK, which only runs much later.
+	 * ResetSession() is unauthenticated: reaching it is enough to end the
+	 * caller's iTop session. Any website can make a browser issue this
+	 * request, so the host has to be checked before the reset rather than
+	 * inside the SDK, which only runs much later.
 	 */
 	public function testTheHostIsCheckedBeforeTheSessionIsReset(): void
 	{
@@ -115,6 +116,37 @@ class RequestPipelineOrderTest extends TestCase
 			'rejectUnlessBodyIsJson',
 			'ResetSession',
 			'the Content-Type check must run before ResetSession()'
+		);
+	}
+
+	/**
+	 * The reset only happens for a request that brought a credential of its
+	 * own, and the check that decides it runs first.
+	 *
+	 * Order is the whole of it. After the reset the check is a comment: the
+	 * session it was protecting is already gone, and an <img src> on any
+	 * website is still a logout for every console user who loads that page.
+	 */
+	public function testNothingIsResetForARequestThatBroughtNoCredential(): void
+	{
+		$this->assertComesBefore(
+			'rejectUnlessACredentialWasPresented',
+			'ResetSession',
+			'the credential check must run before ResetSession(), or a credential-less request still ends a console session'
+		);
+	}
+
+	/**
+	 * The check reads the headers the promotion writes, so it cannot run
+	 * before it: a bearer that has not been promoted yet is still only an
+	 * Authorization header, and the two must agree on what counts.
+	 */
+	public function testTheCredentialIsPromotedBeforeItIsCheckedFor(): void
+	{
+		$this->assertComesBefore(
+			'PromoteBearerToAuthToken',
+			'rejectUnlessACredentialWasPresented',
+			'the bearer must be promoted before the credential check reads for one'
 		);
 	}
 
