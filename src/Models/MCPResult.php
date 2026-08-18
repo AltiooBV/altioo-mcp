@@ -103,9 +103,4 @@ class MCPResult implements \JsonSerializable
 			'requestParams' => $this->requestParams,
 		];
 	}
-
-	public function SanitizeContent(): void
-	{
-		// Override to strip sensitive data before logging
-	}
 }

@@ -15,7 +15,6 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
-use MetaModel;
 use UserRights;
 
 /**

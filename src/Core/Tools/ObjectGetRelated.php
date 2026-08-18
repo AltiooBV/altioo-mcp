@@ -70,9 +70,9 @@ class ObjectGetRelated extends AbstractMCPTool
 	{
 		return new ToolAnnotations(
 			$this->getTitle() ?? 'Get related iTop objects',
-			true,  // readOnlyHint
-			false,  // destructiveHint — additive create
-			true,  // idempotentHint — each call can create another row
+			true,   // readOnlyHint
+			false,  // destructiveHint
+			true,   // idempotentHint
 			false,  // openWorldHint
 		);
 	}

@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Controller;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
-use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\MCPService;

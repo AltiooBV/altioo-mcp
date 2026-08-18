@@ -461,6 +461,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_enabled_toolsets' => array(),
     'mcp_capabilities' => array(),
     'mcp_read_only' => false,
+    'mcp_max_document_bytes' => 5242880,
     'mcp_pagination_limit' => 200,
     'mcp_protected_resource_metadata' => '',
     'log_mcp_service' => true,
