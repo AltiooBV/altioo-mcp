@@ -521,7 +521,18 @@
       -->
       <mcp_protected_resource_metadata type="string"></mcp_protected_resource_metadata>
       <log_mcp_service type="bool">true</log_mcp_service>
+      <!--
+        The MCP methods that earn an audit row. This list is what an installed
+        instance actually filters against - MCPHelper::DEFAULT_LOG_METHODS is
+        only the fallback for a configuration that does not declare the
+        parameter at all - so a method missing here is a method missing from
+        the trail on every install. "initialize" is the one record that a
+        client connected: without it the trail answers what was called and
+        never who arrived. "exceptions" is the pseudo-method stamped on a
+        request that died before its JSON-RPC method could be read.
+      -->
       <log_mcp_method type="array">
+        <item>initialize</item>
         <item>resources/read</item>
         <item>tools/call</item>
         <item>prompts/get</item>

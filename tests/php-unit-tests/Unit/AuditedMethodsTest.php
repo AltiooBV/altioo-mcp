@@ -76,6 +76,37 @@ class AuditedMethodsTest extends TestCase
 	}
 
 	/**
+	 * The list that decides what an installed instance audits.
+	 *
+	 * DEFAULT_LOG_METHODS is only the fallback for a configuration that does
+	 * not declare log_mcp_method at all, and an installed iTop always declares
+	 * it: the setup copies <module_parameters> into config-itop.php. So the
+	 * datamodel is the value in force on every install, the constant is the
+	 * value in force on none of them, and the two silently disagreeing is how
+	 * "initialize" came to be argued for in code and audited nowhere.
+	 */
+	public function testTheDatamodelDeclaresTheSameListAsTheConstant(): void
+	{
+		$oXml = simplexml_load_file(__DIR__.'/../../../datamodel.altioo-mcp.xml');
+		$this->assertNotFalse($oXml, 'the module datamodel could not be parsed');
+
+		$aDeclared = $oXml->xpath('//module_parameters/parameters[@id="altioo-mcp"]/log_mcp_method/item');
+		$this->assertNotEmpty($aDeclared, 'the datamodel declares no log_mcp_method, so an install audits whatever it likes');
+
+		$aDeclared = array_map('strval', $aDeclared);
+		sort($aDeclared);
+
+		$aExpected = MCPHelper::DEFAULT_LOG_METHODS;
+		sort($aExpected);
+
+		$this->assertSame(
+			$aExpected,
+			$aDeclared,
+			'the shipped log_mcp_method and DEFAULT_LOG_METHODS have drifted apart, and the shipped one is the one that runs'
+		);
+	}
+
+	/**
 	 * The README publishes this list as the value to copy into config-itop.php,
 	 * so the two have to say the same thing.
 	 */

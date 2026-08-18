@@ -62,6 +62,18 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 		$this->assertNotContains('*', $aOrigins);
 	}
 
+	/**
+	 * The connection record goes through the same allow-list as everything
+	 * else, so an installed instance drops it unless the compiled datamodel
+	 * names it - whatever DEFAULT_LOG_METHODS says.
+	 */
+	public function testTheConnectionMethodIsAudited(): void
+	{
+		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_METHOD, []);
+
+		$this->assertContains(MCPHelper::MCP_METHOD_INITIALIZE, $aLogged);
+	}
+
 	public function testLoggingSettingsAreDeclared(): void
 	{
 		$this->assertIsBool(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, null));
