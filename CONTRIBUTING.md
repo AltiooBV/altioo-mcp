@@ -21,6 +21,10 @@ run it if your change touches `MetaModel`, `UserRights` or the request pipeline:
 ITOP_ROOT=/path/to/itop/web composer test:integration
 ```
 
+If you would rather not keep an iTop of your own, `tools/ci/install-itop.sh` downloads a
+packaged release and installs this module into it with iTop's unattended setup — the same
+script CI uses. [doc/ci-itop-matrix.md](doc/ci-itop-matrix.md) has the commands.
+
 New behaviour comes with a test. A fix comes with the test that would have caught it.
 
 ## AI-assisted contributions

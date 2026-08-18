@@ -34,6 +34,13 @@ The items marked **pending** are the ones that cannot be closed inside the repos
 **Green CI.** Unit suite on PHP 8.2, 8.3 and 8.4; `composer validate --strict`;
 `composer check-platform-reqs`; `composer audit --locked`.
 
+**Green iTop matrix.** [itop-matrix.yml](../.github/workflows/itop-matrix.yml) installs the
+module with iTop's unattended setup on the newest patch of every branch in
+[.github/itop-support.json](../.github/itop-support.json), runs the integration suite there and
+calls the endpoint over HTTP. Check the run resolved the versions you mean to claim — it prints
+them in the job summary — and that the packaged-archive job ran, which it does not do on pull
+requests. [ci-itop-matrix.md](ci-itop-matrix.md) explains what each check is for.
+
 **The archive is built by CI, not by hand.** Pushing a `v*` tag runs
 [release.yml](../.github/workflows/release.yml), which refuses a tag that disagrees with
 `extension.xml`, builds the production vendor tree on PHP 8.2, assembles the zip from
@@ -46,7 +53,9 @@ the tag exists.
 Publish the SHA-256 wherever the download is announced. `vendor/` ships, so "the file I
 downloaded is the file CI built" has to be a question with an answer.
 
-**A real install.** Not a claim — a run:
+**A real install.** CI installs on every supported branch and proves the endpoint answers;
+what it cannot do is use the thing. This is the part that needs hands — start from the
+published archive, not from a build tree:
 
 1. Download the archive the release workflow built and check it against the published SHA-256.
    (Building it locally — `composer install --no-dev --optimize-autoloader`, then zip minus
@@ -62,7 +71,8 @@ downloaded is the file CI built" has to be a question with an answer.
 7. Record which iTop patch and which PHP this ran on, in the changelog entry.
 
 **Upgrade path.** Unzip over the previous version, re-run the setup, confirm the endpoint still
-answers and no `AltiooEventMCPService` history was lost.
+answers and no `AltiooEventMCPService` history was lost. Still manual; see the last section of
+[ci-itop-matrix.md](ci-itop-matrix.md) for what automating it would take.
 
 **Archive contents.** `vendor/` present and built with `--no-dev`; `README.md`, `SECURITY.md`,
 `CHANGELOG.md`, `LICENSE` and `doc/` present; `tests/` present (iTop's own Extensions testsuite
