@@ -996,13 +996,18 @@ The extension is free and maintained in the open. What that means concretely:
 
 | | |
 |---|---|
-| **Bugs and questions** | Open an issue on the repository (link at the top of this page). Include the iTop version, the extension version, the PHP version, and the request that reproduces it |
-| **Security** | Not via a public issue — see [SECURITY.md](SECURITY.md) |
-| **Response** | Best effort. There is no service commitment attached to the free extension, and this page will not pretend otherwise |
+| **Bugs and questions** | [GitHub issues](https://github.com/altioo/mcp-server-extension/issues). Include the iTop version, the extension version, the PHP version, and the request that reproduces it — see [Troubleshooting](#troubleshooting) for where those come from |
+| **Security** | Not via a public issue. [Report a vulnerability](https://github.com/altioo/mcp-server-extension/security/advisories/new) privately, or email <security@altioo.com>. Acknowledged within 5 working days — the full commitment is in [SECURITY.md](SECURITY.md) |
+| **Response** | **Best effort, with no service commitment.** Issues are read and triaged as time allows. The security channel above is the one thing on this page that carries a stated response time, and it carries one because a vulnerability report cannot wait on goodwill |
 | **Paid support, custom tool packs, integration work** | Available from Altioo — see [Custom work](#custom-work) |
 
-> **To be filled in before publication:** the support and security channels above, and any
-> response commitment attached to a paid arrangement. The rest of this page stands as written.
+There is deliberately no support SLA attached to the free extension. Stating one and then
+missing it on a busy month would be worse than saying plainly that there is none: an operator
+deciding whether this belongs on a production CMDB is better served by an honest "best effort"
+than by a number nobody is on the hook for.
+
+If you are deploying this somewhere that needs a commitment, that is what the paid arrangement
+is for, and the terms are agreed there rather than promised here.
 
 ## Versioning and compatibility
 

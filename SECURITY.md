@@ -6,19 +6,36 @@ install can read what it does before it is on their instance.
 
 ## Reporting a vulnerability
 
-> **TO BE FILLED IN BEFORE PUBLICATION.** Replace this block with the reporting channel and
-> the response commitment — an address, or GitHub private vulnerability reporting on
-> `altioo/mcp-server-extension` (Settings → Security → Private vulnerability reporting), plus
-> the times below. Everything else on this page is accurate as it stands; this is the only
-> part that depends on something outside the repository.
->
-> - Where to send it: *(pending)*
-> - Acknowledgement: *(pending — state a number of working days)*
-> - Fix or mitigation for a confirmed high-severity issue: *(pending)*
+Report it privately, through either channel:
+
+- **GitHub** — [Report a vulnerability](https://github.com/altioo/mcp-server-extension/security/advisories/new)
+  on `altioo/mcp-server-extension`. Preferred: it keeps the report, the discussion and the
+  eventual advisory in one place, and it works without you having to trust an email route.
+- **Email** — <security@altioo.com>, if you would rather not use GitHub, or if you cannot
+  reach it.
+
+What we commit to:
+
+| | |
+|---|---|
+| Acknowledgement | Within **5 working days** |
+| Assessment, with a severity and a plan | Within **10 working days** of acknowledgement |
+| Fix or documented mitigation, confirmed high severity | Within **90 days** of acknowledgement |
+| Credit | In the CHANGELOG entry and the advisory, unless you ask us not to |
+
+If 90 days pass without a fix or an agreed extension, publish. We will not ask you to sit on a
+report indefinitely, and a deadline that only one side can move is not coordinated disclosure.
 
 Please do not open a public issue for a suspected vulnerability. Include the iTop version, the
 extension version (`MCPHelper::VERSION`, also sent to clients as `serverInfo`), the PHP version,
 and the request that reproduces it.
+
+**Out of scope**, because they are decisions rather than defects: iTop's own permissions
+letting a user reach something you did not expect (that is what `mcp_allowed_profiles`,
+`mcp_capabilities` and the token scopes are for); a model being talked into calling a tool it
+was allowed to call; and anything reachable only by an administrator, who can already edit the
+datamodel. A tool that lets a caller exceed *their own* iTop permissions is very much in
+scope — that is the property this extension exists to keep.
 
 ## Supported versions
 

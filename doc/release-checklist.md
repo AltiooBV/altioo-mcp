@@ -11,16 +11,19 @@ The items marked **pending** are the ones that cannot be closed inside the repos
       module declaration, and of the link line at the top of the README. One dead link is the
       first thing an evaluator clicks. If the final URL differs, change it in those five
       places — `ModuleMetadataTest` asserts they agree.
-- [ ] **Enable private vulnerability reporting** on that repository (Settings → Security), and
-      replace the pending block in [SECURITY.md](../SECURITY.md) with the channel and the
-      response times you commit to.
-- [ ] **Fill in the support block** in the README (`## Support`) — where issues go, and what,
-      if anything, is promised.
+- [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
+      [SECURITY.md](../SECURITY.md) already points at
+      `/security/advisories/new` and commits to 5 working days to acknowledge and 90 days to a
+      fix; the link 404s until the setting is on.
+- [ ] **Create `security@altioo.com`** and make sure somebody reads it. It is published in
+      SECURITY.md and in the README support table as the alternative to GitHub.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an
-      `EventMCPService` list showing calls that were made.
-- [ ] **Tag `v1.0.0`** once the run below is green, and attach the archive to the release.
+      `AltiooEventMCPService` list showing calls that were made.
+- [ ] **Tag `v1.0.0`** once the run below is green. The archive, its SHA-256, the SBOM and the
+      licence inventory are attached by [release.yml](../.github/workflows/release.yml); nothing
+      is uploaded by hand.
 
 ## Every release
 
