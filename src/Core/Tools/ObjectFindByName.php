@@ -52,6 +52,10 @@ class ObjectFindByName extends AbstractMCPTool
 	const DEFAULT_LIMIT = 20;
 	const MAX_LIMIT = 100;
 
+
+	const NEEDLE_MIN_DEFAULT = 3;
+	const CHUNK_DURATION_DEFAULT = 2.0;
+
 	/**
 	 * How long the scan may run before it reports what it has.
 	 *
@@ -375,13 +379,13 @@ class ObjectFindByName extends AbstractMCPTool
 	{
 		$iMin = (int)MetaModel::GetConfig()->Get(self::NEEDLE_MIN_SETTING);
 
-		return $iMin > 0 ? $iMin : 3;
+		return $iMin > 0 ? $iMin : self::NEEDLE_MIN_DEFAULT;
 	}
 
 	private static function chunkDuration(): float
 	{
 		$fDuration = (float)MetaModel::GetConfig()->Get(self::CHUNK_DURATION_SETTING);
 
-		return $fDuration > 0 ? $fDuration : 2.0;
+		return $fDuration > 0 ? $fDuration : self::CHUNK_DURATION_DEFAULT;
 	}
 }
