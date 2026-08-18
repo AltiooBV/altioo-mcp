@@ -44,6 +44,11 @@ final class ToolOutput
 	 * survive as themselves rather than as escape sequences - shorter, and
 	 * easier for a model to quote back.
 	 *
+	 * The encoding itself lives in {@see JsonPayload::Encode()}, shared with
+	 * {@see ResourceOutput::Json()}: a class label has to come back spelled the
+	 * same way whether it was read through a tool or through a resource, and
+	 * two copies of the flag list is how that stops being true.
+	 *
 	 * @param mixed $data Anything json_encode can take: the shape the tool documents.
 	 *
 	 * @throws ToolCallException When the result cannot be encoded at all.
@@ -52,10 +57,7 @@ final class ToolOutput
 	public static function Json($data): TextContent
 	{
 		try {
-			$sJson = json_encode(
-				$data,
-				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
-			);
+			$sJson = JsonPayload::Encode($data);
 		} catch (JsonException $e) {
 			// The caller gets a tool error it can act on rather than a
 			// protocol error that ends the call.

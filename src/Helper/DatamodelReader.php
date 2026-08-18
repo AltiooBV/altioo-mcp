@@ -159,6 +159,43 @@ final class DatamodelReader
 	}
 
 	/**
+	 * The class list as both surfaces report it: the narrowing that was asked
+	 * for, how many classes came back, and the classes themselves.
+	 *
+	 * The envelope is here rather than in the tool because the resource serves
+	 * the same answer and used to serve a bare array instead - so a client
+	 * reading itop://core/classes got no count, could not tell a complete list
+	 * from a clipped one, and saw a different shape from the one
+	 * core_class_list documents for the identical data.
+	 *
+	 * category and filter are echoed back even when empty, which is what makes
+	 * the two surfaces the same shape: the resource takes no arguments, so its
+	 * answer is this envelope with both narrowings unset rather than a
+	 * different envelope.
+	 *
+	 * The category is validated by the caller, not here - only the caller
+	 * knows whether an unknown one is a ToolCallException or a
+	 * ResourceReadException. See {@see Categories()}.
+	 *
+	 * @param string $sCategory A category from {@see Categories()}; '' for all classes.
+	 * @param string $sFilter   Case-insensitive text matched against name, label and description; '' for no filter.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function ClassListPayload(string $sCategory = '', string $sFilter = ''): array
+	{
+		$aClasses = self::FilterByText(self::ListClasses($sCategory), $sFilter);
+
+		return [
+			'category' => $sCategory,
+			'filter'   => $sFilter,
+			'total'    => count($aClasses),
+			'classes'  => $aClasses,
+		];
+	}
+
+	/**
 	 * What a class is and where it sits in the hierarchy, without its contents.
 	 *
 	 * @return array<string, mixed>

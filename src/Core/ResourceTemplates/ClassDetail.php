@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -57,8 +58,9 @@ class ClassDetail extends AbstractMCPResourceTemplate
 	/**
 	 * @param string $uri The full URI that was called, e.g. 'itop://core/class/UserRequest'
 	 * @param string $class The {class} variable extracted from the URI, e.g. 'UserRequest'
-	 * @return string A JSON-encoded array containing class details
-	 * @throws ResourceReadException if the class is missing, unknown, or access is denied.
+	 * @return string A JSON-encoded array containing class details - the same
+	 *                payload core_class_schema returns, encoded the same way
+	 * @throws ResourceReadException if the class is missing, unknown, access is denied, or the result cannot be encoded.
 	 */
 	public function read(string $uri, string $class): mixed
 	{
@@ -74,6 +76,6 @@ class ClassDetail extends AbstractMCPResourceTemplate
 			throw new ResourceReadException("Unknown class '{$sClass}'.");
 		}
 
-		return json_encode(DatamodelReader::Describe($sClass));
+		return ResourceOutput::Json(DatamodelReader::Describe($sClass));
 	}
 }

@@ -103,13 +103,8 @@ class ClassList extends AbstractMCPTool
 			));
 		}
 
-		$aClasses = DatamodelReader::FilterByText(DatamodelReader::ListClasses($sCategory), $sFilter);
-
-		return ToolOutput::Json([
-			'category' => $sCategory,
-			'filter'   => $sFilter,
-			'total'    => count($aClasses),
-			'classes'  => $aClasses,
-		]);
+		// The envelope itself is DatamodelReader's, so that itop://core/classes
+		// answers with the same shape for the same data.
+		return ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter));
 	}
 }

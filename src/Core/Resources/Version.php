@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 use utils;
@@ -46,7 +47,7 @@ class Version extends AbstractMCPResource
 	{
 		return new Annotations(
 			[Role::Assistant],
-			0.7,
+			1,
 		);
 	}
 
@@ -65,7 +66,7 @@ class Version extends AbstractMCPResource
 	 */
 	public function read(): mixed
 	{
-		return json_encode([
+		return ResourceOutput::Json([
 			'version' => ITOP_CORE_VERSION,
 			'build' => ITOP_REVISION,
 			'buildDate' => ITOP_BUILD_DATE,

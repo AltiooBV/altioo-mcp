@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
+use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
@@ -53,8 +55,13 @@ class ClassList extends AbstractMCPResource
 		);
 	}
 
+	/**
+	 * @return string The same envelope core_class_list returns, with neither
+	 *                narrowing applied: a static URI takes no arguments.
+	 * @throws ResourceReadException if the class list cannot be encoded.
+	 */
 	public function read(): mixed
 	{
-		return json_encode(DatamodelReader::ListClasses());
+		return ResourceOutput::Json(DatamodelReader::ClassListPayload());
 	}
 }
