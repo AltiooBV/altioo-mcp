@@ -32,6 +32,23 @@
 # be installed at all" in under a minute, on every supported version, with no
 # database service, no schema and nothing to tear down.
 #
+# Not iTop's own setup/unattended-install/install-itop.sh, and the reason is
+# worth stating because that script is the obvious thing to reach for. It is a
+# wrapper for an administrator standing inside an unzipped iTop with a response
+# file already filled in, installing once: it defaults installation.xml, clears
+# the maintenance lock, and calls unattended-install.php with --use_itop_config.
+# Nothing in it accepts --install=0, --clean=1 or --check-consistency=1, so the
+# dry-run gate below, a repeatable re-install and the datamodel check are all
+# out of reach through it; and --use_itop_config, which it hardcodes, silently
+# prefers an existing config-itop.php over the response file, which is wrong
+# every time a workspace is reused.
+#
+# The install itself is theirs either way - this calls unattended-install.php
+# with the documented options. What is here is everything around it that a
+# script shipped inside an iTop cannot do: fetch the right release, put the
+# module in extensions/, write the response file, and check afterwards that the
+# module is actually installed.
+#
 # Usage: ITOP_ZIP_URL=... tools/ci/install-itop.sh
 #        ITOP_ZIP_URL=... DRY_RUN_ONLY=1 tools/ci/install-itop.sh
 #

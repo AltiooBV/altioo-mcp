@@ -113,6 +113,29 @@ Release and tag do not always share a label — the archive `iTop-3.2.2-1-17851.
 under a tag called `3.2.2` — so the resolver reads SourceForge's listing for the release and
 then pairs a tag to it, trying the exact label and then the label without its re-spin suffix.
 
+## Why not iTop's own `install-itop.sh`
+
+`setup/unattended-install/` ships two things. `unattended-install.php` is the installer, and it
+is what actually runs here — called with its documented options, not reimplemented.
+`install-itop.sh` next to it is a wrapper, and that one is not used.
+
+It is written for an administrator inside an unzipped iTop with a response file already filled
+in, installing once. Stripped of argument handling it defaults `installation.xml`, clears the
+maintenance lock, and calls the PHP with `--use_itop_config`. Four things follow that rule it
+out for CI:
+
+- no way to pass **`--install=0`**, which is the whole database-free `installable` job;
+- no way to pass **`--clean=1`**, so a re-install is not repeatable;
+- no way to pass **`--check-consistency=1`**;
+- **`--use_itop_config` is hardcoded**, and it overrides the response file's database settings,
+  URL and language from an existing `config-itop.php` whenever one is present — harmless on a
+  fresh runner, wrong on any reused workspace.
+
+Everything else in `install-itop.sh` here is work that cannot live in a script shipped inside
+an iTop: choosing and fetching a release, placing this module in `extensions/`, writing the
+response file, and checking afterwards that the module is installed. Two of its 140 lines are
+the call to Combodo's installer.
+
 ## The trap in the response file
 
 `<selected_extensions>` looks like the place to name this module. It is not, and naming it
