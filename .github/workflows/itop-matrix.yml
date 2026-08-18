@@ -1,0 +1,208 @@
+name: iTop matrix
+
+# The unit suite in ci.yml proves the code is right about itself. This one
+# proves it is right about iTop: that the setup still selects the module, that
+# the compiled datamodel still holds what the controller reads, and that the
+# endpoint still answers over HTTP. Those break without a commit here - they
+# break when Combodo publishes a patch - which is why this also runs on a
+# schedule and not only on pull requests.
+#
+# The versions come from .github/itop-support.json, resolved to the newest
+# release of each supported branch at run time. Adding a branch is one line
+# there; nothing in this file names a version.
+#
+# What gets installed is the packaged release from SourceForge, never a git
+# tree: the repository does not carry every module a release ships, and one of
+# the missing ones is a dependency of this module. See doc/ci-itop-matrix.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Monday morning. A release published on Friday is then a Monday finding
+    # rather than something a user reports.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # A throwaway instance on a throwaway machine. Nothing here is a secret; the
+  # token the smoke test uses is minted at run time and masked.
+  DB_HOST: 127.0.0.1
+  DB_PORT: '3306'
+  DB_USER: root
+  DB_PWD: itop
+  DB_NAME: itop_ci
+  ITOP_ADMIN_USER: admin
+  ITOP_ADMIN_PWD: Admin*2026!
+
+jobs:
+  versions:
+    name: Resolve the supported versions
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - id: resolve
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          php tools/ci/resolve-itop-versions.php | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "matrix=$(php tools/ci/resolve-itop-versions.php --matrix)" >> "$GITHUB_OUTPUT"
+
+  # The first gate, and the cheap one: no database, no schema, nothing to tear
+  # down. It downloads the release, puts the module in extensions/ and asks the
+  # setup to compute what it would install - which is where "this extension is
+  # not selectable on that version" shows up. About a minute, against the
+  # several that a real install costs, and the install jobs do not start until
+  # every version has answered.
+  installable:
+    name: Installable on iTop ${{ matrix.itop_release }} (no database)
+    needs: versions
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ !matrix.stable }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.versions.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      # --no-dev, because what gets installed into iTop has to be what ships.
+      - name: Build the vendor tree that ships
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      - name: Would the setup install this module
+        env:
+          ITOP_ZIP_URL: ${{ matrix.zip_url }}
+          ITOP_DIR: ${{ runner.temp }}/itop
+          DRY_RUN_ONLY: '1'
+        run: tools/ci/install-itop.sh
+
+      - name: Keep the log of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dryrun-${{ matrix.itop_release }}-php${{ matrix.php }}
+          path: ${{ runner.temp }}/itop/ci-dryrun.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  install:
+    name: iTop ${{ matrix.itop_release }} on PHP ${{ matrix.php }}
+    needs: [versions, installable]
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ !matrix.stable }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.versions.outputs.matrix) }}
+
+    services:
+      mariadb:
+        # What iTop is developed against and what most instances run. The
+        # version is pinned: a database that changes under us would turn every
+        # job red at once with a cause nobody would look for here.
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: itop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      ITOP_DIR: ${{ runner.temp }}/itop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      # The setup draws the impact-analysis graphs with it and warns without it.
+      - name: Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+
+      - name: Build the vendor tree that ships
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      - name: Unattended install with the module in extensions/
+        env:
+          ITOP_ZIP_URL: ${{ matrix.zip_url }}
+          # Only for its tests/php-unit-tests. The iTop itself is the release.
+          ITOP_TAG: ${{ matrix.itop_tag }}
+        run: tools/ci/install-itop.sh
+
+      # iTop's own validation for third-party modules: it walks everything the
+      # setup compiled and checks the dictionaries resolve. It is their test,
+      # run against our module, which makes it the one check here we did not
+      # write and cannot accidentally make agree with us.
+      - name: iTop's module validation suite
+        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          php vendor/bin/phpunit -c module_integration.xml.dist
+
+      # The suite that skips itself everywhere else. It extends iTop's
+      # ItopDataTestCase, so it only ever runs where there is a real MetaModel -
+      # here, and on a maintainer's local instance.
+      - name: The module's integration suite, against this iTop
+        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
+        run: |
+          set -euo pipefail
+          php vendor/bin/phpunit \
+            --no-configuration \
+            --bootstrap unittestautoload.php \
+            --testdox \
+            "${ITOP_DIR}/env-production/altioo-mcp/tests/php-unit-tests/Integration"
+
+      # One step, because the token exists only between these two lines.
+      - name: Datamodel checks, then the endpoint over HTTP
+        run: |
+          set -euo pipefail
+          token=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER" | tail -1)
+          echo "::add-mask::$token"
+          ITOP_TOKEN="$token" tools/ci/http-smoke.sh
+
+      # The setup log is the only account of why a module was not selected, and
+      # it is on a machine that is about to be deleted.
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: itop-${{ matrix.itop_release }}-php${{ matrix.php }}-logs
+          path: |
+            ${{ runner.temp }}/itop/ci-dryrun.log
+            ${{ runner.temp }}/itop/ci-install.log
+            ${{ runner.temp }}/itop/ci-httpd.log
+            ${{ runner.temp }}/itop/log/
+          retention-days: 7
+          if-no-files-found: warn
