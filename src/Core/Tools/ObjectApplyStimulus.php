@@ -291,6 +291,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$aExpectedAttributes = $aTargetStateDef['attribute_list'] ?? [];
 
 		$aMissingMandatory = array();
+		$aMissingMandatoryNotWritable = array();
 		foreach($aExpectedAttributes as $sAttCode => $iExpectCode)
 		{
 			// Soft comparison on purpose: Get() returns mixed (string, int, ormLinkSet,
@@ -298,12 +299,21 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			// utils::IsNullOrEmptyString() (typed ?string) can stand in here.
 			if (($iExpectCode & OPT_ATT_MANDATORY) && ($oObject->Get($sAttCode) == ''))
 			{
-				$aMissingMandatory[] = $sAttCode;
+				if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
+					$aMissingMandatoryNotWritable[] = $sAttCode;
+				} else  {
+					$aMissingMandatory[] = $sAttCode;
+				}
 			}
 		}
 		if (!empty($aMissingMandatory)) {
 			throw new ToolCallException(
 				"Missing mandatory attribute(s) for applying stimulus '{$stimulus}': ".implode(', ', $aMissingMandatory).'.'
+			);
+		}
+		if (!empty($aMissingMandatoryNotWritable)) {
+			throw new ToolCallException(
+				"Missing mandatory attribute(s) that are not writable by you for applying stimulus '{$stimulus}': ".implode(', ', $aMissingMandatoryNotWritable).'.'
 			);
 		}
 
