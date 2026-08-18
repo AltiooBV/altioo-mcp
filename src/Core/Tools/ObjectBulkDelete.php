@@ -17,7 +17,6 @@ use DBObject;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
-use MetaModel;
 
 /**
  * Delete a list of objects of one class.
@@ -103,23 +102,27 @@ class ObjectBulkDelete extends AbstractBulkTool
 		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
-		foreach ($aIds as $iId) {
+		foreach ($aIds as $iRow => $iId) {
 			$mObject = self::objectFor($class, $iId, UR_ACTION_DELETE, 'delete');
 			if (!$mObject instanceof DBObject) {
-				$aOutcomes[] = self::outcome($iId, false, $mObject);
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
 				continue;
 			}
 
-			$aOutcomes[] = self::deleteOne($mObject, $class, $iId, $simulate);
+			$aOutcomes[] = self::deleteOne($mObject, $class, $iId, $iRow, $simulate);
 		}
 
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes));
+		// An entry that never got as far as a plan still reports one, empty:
+		// the schema promises deletionPlan on every entry.
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, [
+			'deletionPlan' => WritePlan::SerializeDeletionPlan(null),
+		]));
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
-	private static function deleteOne(DBObject $oObject, string $sClass, int $iId, bool $bSimulate): array
+	private static function deleteOne(DBObject $oObject, string $sClass, int $iId, int $iRow, bool $bSimulate): array
 	{
 		// CheckToDelete() returns a boolean and fills the plan by reference;
 		// the reasons live on the plan.
@@ -127,7 +130,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		if (!$oObject->CheckToDelete($oPlan)) {
 			$aIssues = $oPlan->GetIssues();
 
-			return self::outcome($iId, false, empty($aIssues)
+			return self::outcome($iId, $iRow, false, empty($aIssues)
 				? 'Cannot be deleted; some related objects must be deleted or updated explicitly first.'
 				: 'Cannot be deleted: '.implode(', ', $aIssues));
 		}
@@ -139,38 +142,13 @@ class ObjectBulkDelete extends AbstractBulkTool
 			} catch (\Exception $e) {
 				// CheckToDelete() above already reported everything the caller
 				// could act on, with the plan's own wording.
-				return self::outcome($iId, false, MCPHelper::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
+				return self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
 			}
 		}
 
-		$aOutcome = self::outcome($iId, true, $bSimulate ? 'Would be deleted.' : '');
-		$aOutcome['deletionPlan'] = self::serializeDeletionPlan($oPlan);
+		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
+		$aOutcome['deletionPlan'] = WritePlan::SerializeDeletionPlan($oPlan);
 
 		return $aOutcome;
-	}
-
-	/**
-	 * What goes with an object when it goes.
-	 *
-	 * @return array<string, mixed>
-	 */
-	private static function serializeDeletionPlan(DeletionPlan $oPlan): array
-	{
-		$aDeleted = [];
-		$aUpdated = [];
-
-		foreach ($oPlan->ListDeletes() as $sClass => $aObjects) {
-			foreach (array_keys($aObjects) as $iId) {
-				$aDeleted[] = ['class' => $sClass, MetaModel::DBGetKey($sClass) => $iId];
-			}
-		}
-
-		foreach ($oPlan->ListUpdates() as $sClass => $aObjects) {
-			foreach (array_keys($aObjects) as $iId) {
-				$aUpdated[] = ['class' => $sClass, MetaModel::DBGetKey($sClass) => $iId];
-			}
-		}
-
-		return ['deleted' => $aDeleted, 'updated' => $aUpdated];
 	}
 }

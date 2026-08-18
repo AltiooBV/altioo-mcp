@@ -69,10 +69,7 @@ class ObjectCreate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
-			'valid' => [
-				'type'        => 'boolean',
-				'description' => 'Present on a dry run only: the object passed every check and would be created.',
-			],
+			'changes' => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
 		]);
 	}
 
@@ -185,12 +182,15 @@ class ObjectCreate extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Structured([
-				'class'     => $class,
-				'simulated' => true,
-				'valid'     => true,
-				'changes'   => $aChanges,
-			]);
+			// id is null rather than absent: a dry run has created nothing, and
+			// saying so is not the same as answering with a different shape.
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, null)
+				+ [
+					'simulated' => true,
+					'valid'     => true,
+					'changes'   => $aChanges,
+				]);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -200,13 +200,13 @@ class ObjectCreate extends AbstractMCPTool
 		try {
 			$iId = $oObject->DBInsert();
 
-			return ToolOutput::Structured([
-				'class' => $class,
-				MetaModel::DBGetKey($class) => $iId,
-				'id'        => $iId,
-				'simulated' => false,
-				'changes'   => $aChanges,
-			]);
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $iId)
+				+ [
+					'simulated' => false,
+					'valid'     => true,
+					'changes'   => $aChanges,
+				]);
 		} catch (\Exception $e) {
 			// WritePlan::Check() ran first and refused everything the caller
 			// could have corrected, so what reaches here is the instance's

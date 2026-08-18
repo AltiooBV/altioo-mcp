@@ -9,8 +9,12 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use DBObject;
+use DBObjectSet;
+use DeletionPlan;
 use Mcp\Exception\ToolCallException;
+use MetaModel;
 use Throwable;
+use UserRights;
 
 /**
  * What a write would do, established before it does it.
@@ -68,40 +72,83 @@ final class WritePlan
 	 * with a handful of scalars whose shape never varies, so both objections
 	 * fall away - see {@see ToolOutput::Structured()}.
 	 *
-	 * @param array<string, array<string, mixed>> $aProperties Properties this particular tool adds.
-	 * @param array<int, string>                  $aRequired   Property names it always reports.
+	 * One shape, whatever `simulate` was. That is the correction: these tools
+	 * used to answer with one set of keys on a dry run and a different set on a
+	 * real write - `valid` on the first only, `id` on the second only - and
+	 * declare the union of the two as their schema, with `required` narrowed to
+	 * the intersection. A schema like that describes neither response. Nothing
+	 * validating it could catch a create that came back without an id, and the
+	 * consumer that actually matters here reads the schema as prose and cannot
+	 * tell which fields to expect when.
+	 *
+	 * So every property is always present and always required, and it is the
+	 * *values* that vary: `id` is null until there is one, `simulated` says
+	 * which call this was, `changes` is empty rather than absent. A field that
+	 * appears and disappears is a second interface hiding inside the first.
+	 *
+	 * `changes` is not in the core set, and that is not a relapse: a tool
+	 * declares it through {@see ChangesSchemaProperty()} and then always
+	 * reports it. Forcing it on every tool would make core_object_attach
+	 * enumerate the attributes of an Attachment, one of which is the file, and
+	 * a write outcome is not the place to send a document back. Different tools
+	 * may describe different things; what none of them may do is describe
+	 * different things on different calls.
+	 *
+	 * @param array<string, array<string, mixed>> $aProperties Properties this particular tool adds. They are required too - a tool that declares a property must always report it.
 	 *
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function OutcomeSchema(array $aProperties = [], array $aRequired = []): array
+	public static function OutcomeSchema(array $aProperties = []): array
 	{
+		$aCore = [
+			'class'     => [
+				'type'        => 'string',
+				'description' => 'Final class of the object the call acted on.',
+			],
+			'id'        => [
+				'type'        => ['integer', 'null'],
+				'description' => 'Identifier of the object, or null when there is not one yet - a create dry run has not created anything.',
+			],
+			'simulated' => [
+				'type'        => 'boolean',
+				'description' => 'true when the call validated everything and wrote nothing.',
+			],
+			'valid'     => [
+				'type'        => 'boolean',
+				'description' => 'Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape.',
+			],
+		];
+
 		return [
 			'type'       => 'object',
-			'properties' => [
-				'class'     => [
-					'type'        => 'string',
-					'description' => 'Final class of the object the call acted on.',
-				],
-				'id'        => [
-					'type'        => 'integer',
-					'description' => 'Identifier of the object. Absent from a create dry run, which has not created anything yet.',
-				],
-				'simulated' => [
-					'type'        => 'boolean',
-					'description' => 'true when the call validated everything and wrote nothing.',
-				],
-				'changes'   => [
-					'type'                 => 'object',
-					'additionalProperties' => true,
-					'description'          => 'Attribute code => the value this write set, or would set. Every attribute for a creation, only the modified ones for an update.',
-				],
-			] + $aProperties,
-			'required'   => array_values(array_unique(array_merge(['class', 'simulated'], $aRequired))),
-			// The identifier is reported a second time under the class's own
-			// key attribute - 'id' for every stock class but a link class,
-			// where it is 'link_id' - so the shape is open by construction.
+			'properties' => $aCore + $aProperties,
+			'required'   => array_values(array_merge(array_keys($aCore), array_keys($aProperties))),
+			// A link class reports its identifier a second time under its own
+			// key attribute, 'link_id'. Two stock classes do that and the rest
+			// name it 'id', so it cannot be a declared property - see
+			// {@see Identity()}.
 			'additionalProperties' => true,
+		];
+	}
+
+	/**
+	 * The `changes` property, for a tool that reports what a write touched.
+	 *
+	 * Declared by the tools that have something legible to say - create,
+	 * update, apply stimulus - and by them on every call, dry run or not. See
+	 * {@see Changes()} for what fills it and why an unreadable attribute is
+	 * masked rather than dropped.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function ChangesSchemaProperty(string $sWhichOnes = 'Every attribute for a creation, only the modified ones for an update.'): array
+	{
+		return [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'description'          => 'Attribute code => the value this write set, or would set. '.$sWhichOnes.' Empty when the write touched nothing.',
 		];
 	}
 
@@ -139,6 +186,281 @@ final class WritePlan
 			],
 			'required'    => ['deleted', 'updated'],
 		];
+	}
+
+	/**
+	 * Refuses a deletion whose cascade reaches objects this caller may not
+	 * read, delete or modify.
+	 *
+	 * iTop does not do this, and the omission is deliberate on its side:
+	 * MakeDeletionPlan() walks the references with
+	 * GetReferencingObjectsForDeletion() in its allow-all-data mode, so the
+	 * plan is complete whoever asked for it, and the console checks the delete right
+	 * on the object the user clicked and on nothing the cascade drags along
+	 * (cmdbabstract.class.inc.php). That is defensible there. A person clicked
+	 * a button, saw the impact analysis iTop renders, and confirmed it.
+	 *
+	 * It is not defensible here. The caller is a language model acting on an
+	 * instruction, often without a person reading the plan before the second
+	 * call, and cascade is precisely the path by which "delete this one ticket"
+	 * reaches classes an operator withheld on purpose. A right that can be
+	 * routed around by deleting something else is not a right, and nothing in
+	 * the audit trail would show it happening: the row says the tool deleted
+	 * the ticket it was asked to delete.
+	 *
+	 * So this endpoint is stricter than the console, and knowingly: a deletion
+	 * the console would perform can be refused here. That is the intended
+	 * trade. An operator who wants the cascade to go through grants the rights
+	 * on the classes it reaches, which is the same thing said out loud.
+	 *
+	 * Three questions per class in the plan, and the order matters. A class the
+	 * caller cannot read at all is never named - the refusal says only that
+	 * something unreadable is in the way, so a caller cannot map out the
+	 * datamodel by deleting things and reading the error. A class it can read
+	 * is named, because that is what makes the refusal actionable. The instance
+	 * set is passed on the second and third, so an addon that grades rights per
+	 * object gets to answer about these objects rather than about the class.
+	 *
+	 * @param DeletionPlan $oPlan  A plan already computed by CheckToDelete().
+	 * @param string       $sWhat  What is being deleted, e.g. "UserRequest::12", named in the refusal.
+	 *
+	 * @throws ToolCallException When the cascade reaches something this caller may not touch.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat): void
+	{
+		$aRefused  = [];
+		$bUnreadable = false;
+
+		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
+			self::JudgeCascadedClass(
+				$sClass,
+				self::ObjectsOf($aEntries, 'to_delete'),
+				UR_ACTION_DELETE,
+				'deleted',
+				$aRefused,
+				$bUnreadable
+			);
+		}
+
+		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
+			self::JudgeCascadedClass(
+				$sClass,
+				self::ObjectsOf($aEntries, 'to_reset'),
+				UR_ACTION_MODIFY,
+				'modified',
+				$aRefused,
+				$bUnreadable
+			);
+		}
+
+		if ($bUnreadable) {
+			$aRefused[] = 'it also reaches related objects this user may not read.';
+		}
+
+		if (empty($aRefused)) {
+			return;
+		}
+
+		throw new ToolCallException(sprintf(
+			'%s cannot be deleted: iTop\'s cascading rules would reach objects this user is not allowed to touch. %s '
+			.'This endpoint checks the whole cascade, not just the object named in the call. '
+			.'Ask an administrator for the missing rights, or delete the related objects explicitly first.',
+			$sWhat,
+			implode(' ', $aRefused)
+		));
+	}
+
+	/**
+	 * Records what is wrong with one class of the cascade, if anything is.
+	 *
+	 * @param array<int, DBObject> $aObjects
+	 * @param array<int, string>   $aRefused     Appended to.
+	 * @param bool                 $bUnreadable  Raised when a class cannot be named at all.
+	 */
+	private static function JudgeCascadedClass(
+		string $sClass,
+		array $aObjects,
+		int $iAction,
+		string $sWhatWouldHappen,
+		array &$aRefused,
+		bool &$bUnreadable
+	): void {
+		if (empty($aObjects)) {
+			return;
+		}
+
+		// Asked without the set first, and answered without naming the class:
+		// a caller who may not read the class has no business learning that it
+		// exists, let alone that it points at what they just tried to delete.
+		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
+			$bUnreadable = true;
+
+			return;
+		}
+
+		$oSet = self::SetOf($sClass, $aObjects);
+
+		if ($oSet !== null && !self::Grants($sClass, UR_ACTION_READ, $oSet)) {
+			// The class is readable and these objects are not, which is an
+			// object-level rule the class-level question above cannot see.
+			$aRefused[] = sprintf(
+				"It would have %s objects of class '%s' that this user may not read.",
+				$sWhatWouldHappen,
+				$sClass
+			);
+
+			return;
+		}
+
+		if (!self::Grants($sClass, $iAction, $oSet)) {
+			$aRefused[] = sprintf(
+				"It would have %s %d object(s) of class '%s', which this user may not %s.",
+				$sWhatWouldHappen,
+				count($aObjects),
+				$sClass,
+				$iAction === UR_ACTION_DELETE ? 'delete' : 'modify'
+			);
+		}
+	}
+
+	/**
+	 * Whether the caller is allowed this action on these objects.
+	 *
+	 * IsActionAllowed() is tri-state, and the two states are read the way the
+	 * bulk tools already read them: with the objects in hand,
+	 * UR_ALLOWED_DEPENDS has been resolved and anything short of a yes is a no;
+	 * without them - the set could not be built - only an outright refusal
+	 * counts, because "depends on the object" is not an answer that can be
+	 * given about objects nobody passed.
+	 *
+	 * The first half is the strict reading, and it is the one that belongs on
+	 * a cascade: a DEPENDS treated as a yes here is a right the caller was
+	 * never actually granted.
+	 */
+	private static function Grants(string $sClass, int $iAction, ?DBObjectSet $oSet): bool
+	{
+		$iAllowed = UserRights::IsActionAllowed($sClass, $iAction, $oSet);
+
+		return $oSet === null
+			? $iAllowed !== UR_ALLOWED_NO
+			: $iAllowed === UR_ALLOWED_YES;
+	}
+
+	/**
+	 * The objects behind one class of a plan entry.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 *
+	 * @return array<int, DBObject>
+	 */
+	private static function ObjectsOf(array $aEntries, string $sKey): array
+	{
+		$aObjects = [];
+
+		foreach ($aEntries as $aData) {
+			$mObject = $aData[$sKey] ?? null;
+			if ($mObject instanceof DBObject) {
+				$aObjects[] = $mObject;
+			}
+		}
+
+		return $aObjects;
+	}
+
+	/**
+	 * Those objects as a set, so a rights addon that grades per object can.
+	 *
+	 * Null when the set cannot be built, which makes the caller fall back to
+	 * the class-level answer rather than skip the check: a set this module
+	 * failed to assemble is not evidence that anything is allowed.
+	 *
+	 * @param array<int, DBObject> $aObjects
+	 */
+	private static function SetOf(string $sClass, array $aObjects): ?DBObjectSet
+	{
+		try {
+			return DBObjectSet::FromArray($sClass, $aObjects);
+		} catch (Throwable $e) {
+			return null;
+		}
+	}
+
+	/**
+	 * What a deletion would take with it, as the two lists both delete tools
+	 * report.
+	 *
+	 * One implementation rather than the copy each tool used to carry: this is
+	 * read straight after {@see CheckDeletionRights()}, and a rights rule
+	 * applied to one copy and not the other is the bug that arrangement
+	 * invites.
+	 *
+	 * Nothing here filters. It does not have to: by the time a plan is
+	 * serialised, CheckDeletionRights() has refused every plan holding an
+	 * object this caller may not read, so the class and id of everything left
+	 * are things they could have looked up themselves. That is the other half
+	 * of why the check is a refusal rather than a mask - a plan shown to a
+	 * person before they approve it has to be complete, and the only way for it
+	 * to be both complete and safe is for the incomplete case not to exist.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function SerializeDeletionPlan(?DeletionPlan $oPlan): array
+	{
+		if ($oPlan === null) {
+			return ['deleted' => [], 'updated' => []];
+		}
+
+		$aDeleted = [];
+		$aUpdated = [];
+
+		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
+			foreach (array_keys($aEntries) as $iId) {
+				$aDeleted[] = self::Identity($sClass, (int)$iId);
+			}
+		}
+
+		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
+			foreach (array_keys($aEntries) as $iId) {
+				$aUpdated[] = self::Identity($sClass, (int)$iId);
+			}
+		}
+
+		return ['deleted' => $aDeleted, 'updated' => $aUpdated];
+	}
+
+	/**
+	 * How every write names the object it acted on.
+	 *
+	 * 'id' always, plus the class's own key attribute when that is not simply
+	 * 'id'. Two of the classes a stock iTop declares use 'link_id'; the other
+	 * 173 use 'id', and spelling both unconditionally - which is what the tools
+	 * used to do - wrote the same key twice into one array literal, so the
+	 * duplicate the schema described only ever existed for a link class. This
+	 * emits it exactly when it says something.
+	 *
+	 * @param int|null $iId Null before a creation has happened.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function Identity(string $sClass, ?int $iId): array
+	{
+		$aIdentity = ['id' => $iId];
+
+		try {
+			$sKeyField = MetaModel::DBGetKey($sClass);
+		} catch (Throwable $e) {
+			return $aIdentity;
+		}
+
+		if (is_string($sKeyField) && $sKeyField !== '' && $sKeyField !== 'id') {
+			$aIdentity[$sKeyField] = $iId;
+		}
+
+		return $aIdentity;
 	}
 
 	/**

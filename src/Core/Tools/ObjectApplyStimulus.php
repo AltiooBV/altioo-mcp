@@ -71,17 +71,14 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			],
 			'state'         => [
 				'type'        => 'string',
-				'description' => 'The state the object is in: the one it reached, or on a dry run the one it is still in.',
+				'description' => 'The state the object is in now: the one it reached on a real call, the one it is still in on a dry run.',
 			],
 			'would_move_to' => [
 				'type'        => 'string',
-				'description' => 'Present on a dry run only: the state the transition would reach.',
+				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
 			],
-			'valid'         => [
-				'type'        => 'boolean',
-				'description' => 'Present on a dry run only: the transition passed every check and would be applied.',
-			],
-		], ['id', 'stimulus', 'state']);
+			'changes'       => WritePlan::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
+		]);
 	}
 
 	public function getInputSchema(): ?array
@@ -317,17 +314,16 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Structured([
-				'class'         => $class,
-				MetaModel::DBGetKey($class) => $id,
-				'id'            => $id,
-				'stimulus'      => $stimulus,
-				'simulated'     => true,
-				'valid'         => true,
-				'state'         => $sCurrentState,
-				'would_move_to' => $sTargetState,
-				'changes'       => $aChanges,
-			]);
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'stimulus'      => $stimulus,
+					'simulated'     => true,
+					'valid'         => true,
+					'state'         => $sCurrentState,
+					'would_move_to' => $sTargetState,
+					'changes'       => $aChanges,
+				]);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -346,14 +342,19 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
-		return ToolOutput::Structured([
-			'class'     => $class,
-			MetaModel::DBGetKey($class)        => $id,
-			'id'        => $id,
-			'stimulus'  => $stimulus,
-			'simulated' => false,
-			'state'     => $oObject->GetState(),
-			'changes'   => $aChanges,
-		]);
+		return ToolOutput::Structured(['class' => $class]
+			+ WritePlan::Identity($class, $id)
+			+ [
+				'stimulus'      => $stimulus,
+				'simulated'     => false,
+				'valid'         => true,
+				'state'         => $oObject->GetState(),
+				// The target is reported on a real call too, so the shape does
+				// not depend on simulate. The object is in it by now, which is
+				// what makes the pair readable: state === would_move_to says
+				// the transition happened.
+				'would_move_to' => $sTargetState,
+				'changes'       => $aChanges,
+			]);
 	}
 }

@@ -149,6 +149,115 @@ class OutputSchemaContractTest extends TestCase
 		}
 	}
 
+	/**
+	 * One tool, one shape - whatever `simulate` was.
+	 *
+	 * These tools used to answer with one set of keys on a dry run and another
+	 * on a real write, and declare the union as their schema with `required`
+	 * narrowed to the intersection. A schema like that describes neither
+	 * response: nothing validating it can catch a create that came back with no
+	 * id, and the consumer that actually matters reads it as prose and cannot
+	 * tell which fields to expect when.
+	 *
+	 * Requiring every declared property is the structural form of the rule.
+	 * A field whose value varies is fine and is the point; a field that comes
+	 * and goes is a second interface hiding inside the first.
+	 */
+	public function testEveryDeclaredPropertyIsRequired(): void
+	{
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$aSchema = $oTool->getOutputSchema();
+			if ($aSchema === null) {
+				continue;
+			}
+
+			$this->assertSame(
+				[],
+				array_values(array_diff(array_keys($aSchema['properties']), $aSchema['required'] ?? [])),
+				"{$sName}: these properties are declared but not required, so the response shape depends on something the schema does not say"
+			);
+		}
+	}
+
+	/**
+	 * The same rule one level down, where a bulk tool describes its per-object
+	 * entries. A batch can half succeed, so the caller reading those entries is
+	 * precisely the one who cannot afford to guess which keys are there.
+	 */
+	public function testEveryDeclaredPropertyOfABulkEntryIsRequired(): void
+	{
+		$iChecked = 0;
+
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$aItems = $oTool->getOutputSchema()['properties']['objects']['items'] ?? null;
+			if (!is_array($aItems) || !isset($aItems['properties'])) {
+				continue;
+			}
+			++$iChecked;
+
+			$this->assertSame(
+				[],
+				array_values(array_diff(array_keys($aItems['properties']), $aItems['required'] ?? [])),
+				"{$sName}: a per-object entry declares properties it does not always report"
+			);
+		}
+
+		$this->assertGreaterThanOrEqual(3, $iChecked, 'the bulk tools were not found, so nothing above was checked');
+	}
+
+	/**
+	 * The prose form of the same defect, and the one that reaches the model:
+	 * a description saying a field is "present only" under some condition is a
+	 * schema admitting it describes more than one shape.
+	 */
+	public function testNoPropertyDescribesItselfAsConditional(): void
+	{
+		$aTells = ['present only', 'present on a dry run', 'absent from', 'omitted when'];
+
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$aSchema = $oTool->getOutputSchema();
+			if ($aSchema === null) {
+				continue;
+			}
+
+			foreach ($this->describedProperties($aSchema) as $sProperty => $sDescription) {
+				foreach ($aTells as $sTell) {
+					$this->assertStringNotContainsStringIgnoringCase(
+						$sTell,
+						$sDescription,
+						"{$sName}.{$sProperty}: a property that is sometimes there is a second response shape. Report it always, with a null or empty value when it has nothing to say."
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Property name => description, one level into the per-object entries too.
+	 *
+	 * @param array<string, mixed> $aSchema
+	 *
+	 * @return array<string, string>
+	 */
+	private function describedProperties(array $aSchema): array
+	{
+		$aDescriptions = [];
+
+		foreach ($aSchema['properties'] ?? [] as $sName => $aProperty) {
+			if (is_array($aProperty) && is_string($aProperty['description'] ?? null)) {
+				$aDescriptions[$sName] = $aProperty['description'];
+			}
+		}
+
+		foreach ($aSchema['properties']['objects']['items']['properties'] ?? [] as $sName => $aProperty) {
+			if (is_array($aProperty) && is_string($aProperty['description'] ?? null)) {
+				$aDescriptions['objects[].'.$sName] = $aProperty['description'];
+			}
+		}
+
+		return $aDescriptions;
+	}
+
 	public function testStructuredCarriesBothHalvesOfTheResult(): void
 	{
 		$aData = ['class' => 'UserRequest', 'id' => 42, 'simulated' => true];

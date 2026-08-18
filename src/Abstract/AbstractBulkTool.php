@@ -374,30 +374,56 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 					'items'       => [
 						'type'                 => 'object',
 						'additionalProperties' => true,
-						'properties'           => [
-							'id'      => [
-								'type'        => 'integer',
-								'description' => 'Identifier of the object. Absent from a creation that was only simulated.',
-							],
-							'row'     => [
-								'type'        => 'integer',
-								'description' => 'Zero-based position in the objects argument, for a creation, where there is no id to name it by.',
-							],
-							'status'  => [
-								'type'        => 'string',
-								'enum'        => ['ok', 'error'],
-								'description' => 'Outcome for this object alone.',
-							],
-							'message' => [
-								'type'        => 'string',
-								'description' => 'Why it failed, or what would have happened on a dry run.',
-							],
-						] + $aOutcomeProperties,
-						'required'             => ['status'],
+						'properties'           => self::outcomeProperties() + $aOutcomeProperties,
+						// Every declared key on every entry, the successes and
+						// the failures alike. An entry that carries `changes`
+						// when it worked and not when it did not is two shapes
+						// wearing one schema, and a caller reading a partly
+						// failed batch is exactly who cannot afford to guess -
+						// see report(), which is what guarantees it.
+						'required'             => array_values(array_merge(
+							array_keys(self::outcomeProperties()),
+							array_keys($aOutcomeProperties)
+						)),
 					],
 				],
 			],
 			'required'   => ['class', 'simulated', 'total', 'succeeded', 'failed', 'objects'],
+		];
+	}
+
+	/**
+	 * The keys every per-object entry carries, whatever the tool and whatever
+	 * happened to that object.
+	 *
+	 * `row` is here for the delete and update tools too, not only for create:
+	 * they loop over the ids in the order they were given, so the position is
+	 * as real there as it is for a creation, and a caller correlating a report
+	 * back to what it sent should not have to know which tool numbers its
+	 * entries and which names them.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function outcomeProperties(): array
+	{
+		return [
+			'row'     => [
+				'type'        => 'integer',
+				'description' => 'Zero-based position in the list that was sent, so an entry can be matched to its input.',
+			],
+			'id'      => [
+				'type'        => ['integer', 'null'],
+				'description' => 'Identifier of the object, or null when there is not one - a creation that was only simulated, or one that failed.',
+			],
+			'status'  => [
+				'type'        => 'string',
+				'enum'        => ['ok', 'error'],
+				'description' => 'Outcome for this object alone.',
+			],
+			'message' => [
+				'type'        => 'string',
+				'description' => 'Why it failed, or what happened - or would have happened - when it did not. Empty when there is nothing to add.',
+			],
 		];
 	}
 
@@ -408,12 +434,23 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * receives "38 succeeded" and nothing else cannot tell the user which two
 	 * did not, and a model will happily report the batch as done.
 	 *
+	 * $aDefaults is what makes the schema true rather than aspirational: a tool
+	 * declaring `changes` or `deletionPlan` passes its empty value here, and
+	 * every entry that did not produce one gets it. Doing it at the one place
+	 * the entries are collected beats remembering it on each of the six or
+	 * seven paths that can produce a failure.
+	 *
 	 * @param array<int, array<string, mixed>> $aOutcomes
+	 * @param array<string, mixed>             $aDefaults Extra keys this tool declares, with the value an entry gets when it has none.
 	 *
 	 * @return array<string, mixed>
 	 */
-	protected static function report(string $sClass, bool $bSimulate, array $aOutcomes): array
+	protected static function report(string $sClass, bool $bSimulate, array $aOutcomes, array $aDefaults = []): array
 	{
+		if (!empty($aDefaults)) {
+			$aOutcomes = array_map(static fn (array $a): array => $a + $aDefaults, $aOutcomes);
+		}
+
 		$iOk = count(array_filter($aOutcomes, static fn (array $a): bool => $a['status'] === 'ok'));
 
 		return [
@@ -427,15 +464,25 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	}
 
 	/**
+	 * One entry, with every key it is going to have.
+	 *
+	 * The message is emitted even when empty. It used to be added only when
+	 * there was one, which meant a successful real write answered with a
+	 * different set of keys from a successful dry run - the same
+	 * shape-by-parameter problem the single-object tools had, one level down.
+	 *
+	 * @param int|null $iId  Null when the object has no identifier yet, or never got one.
+	 * @param int      $iRow Zero-based position in the list that was sent.
+	 *
 	 * @return array<string, mixed>
 	 */
-	protected static function outcome(int $iId, bool $bOk, string $sMessage = ''): array
+	protected static function outcome(?int $iId, int $iRow, bool $bOk, string $sMessage = ''): array
 	{
-		$aOutcome = ['id' => $iId, 'status' => $bOk ? 'ok' : 'error'];
-		if ($sMessage !== '') {
-			$aOutcome['message'] = $sMessage;
-		}
-
-		return $aOutcome;
+		return [
+			'row'     => $iRow,
+			'id'      => $iId,
+			'status'  => $bOk ? 'ok' : 'error',
+			'message' => $sMessage,
+		];
 	}
 }

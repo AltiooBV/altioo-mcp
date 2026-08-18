@@ -69,10 +69,9 @@ class ObjectDelete extends AbstractMCPTool
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema(
-			['deletionPlan' => WritePlan::DeletionPlanSchema()],
-			['id', 'deletionPlan']
-		);
+		return WritePlan::OutcomeSchema([
+			'deletionPlan' => WritePlan::DeletionPlanSchema(),
+		]);
 	}
 
 	public function getInputSchema(): ?array
@@ -204,48 +203,12 @@ class ObjectDelete extends AbstractMCPTool
 			}
 		}
 
-		return ToolOutput::Structured([
-			'class'        => $class,
-			MetaModel::DBGetKey($class)          => $id,
-			'id'           => $id,
-			'simulated'    => $simulate,
-			'deletionPlan' => self::serializeDeletionPlan($oDeletionPlan),
-		]);
-	}
-
-	/**
-	 * Serializes a deletion plan into an array.
-	 *
-	 * @param ?\DeletionPlan $oPlan The deletion plan to serialize
-	 * @return array The serialized deletion plan
-	 */
-	private static function serializeDeletionPlan(?\DeletionPlan $oPlan): array
-	{
-		if ($oPlan === null) {
-			return [
-				'deleted'  => [],
-				'updated' => [],
-			];
-		}
-
-		$aDeleted  = [];
-		$aUpdated = [];
-
-		foreach ($oPlan->ListDeletes() as $sClass => $aObjects) {
-			foreach ($aObjects as $iId => $aData) {
-				$aDeleted[] = ['class' => $sClass, MetaModel::DBGetKey($sClass) => $iId];
-			}
-		}
-
-		foreach ($oPlan->ListUpdates() as $sClass => $aObjects) {
-			foreach ($aObjects as $iId => $aData) {
-				$aUpdated[] = ['class' => $sClass, MetaModel::DBGetKey($sClass) => $iId];
-			}
-		}
-
-		return [
-			'deleted'  => $aDeleted,
-			'updated' => $aUpdated,
-		];
+		return ToolOutput::Structured(['class' => $class]
+			+ WritePlan::Identity($class, $id)
+			+ [
+				'simulated'    => $simulate,
+				'valid'        => true,
+				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+			]);
 	}
 }

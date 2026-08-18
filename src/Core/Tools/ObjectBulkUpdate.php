@@ -124,10 +124,10 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
-		foreach ($aIds as $iId) {
+		foreach ($aIds as $iRow => $iId) {
 			$mObject = self::objectFor($class, $iId, UR_ACTION_MODIFY, 'modify');
 			if (!$mObject instanceof DBObject) {
-				$aOutcomes[] = self::outcome($iId, false, $mObject);
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
 				continue;
 			}
 
@@ -137,7 +137,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			// iTop is asked about one object.
 			[$aValues, $aIssues] = self::validatedValues($class, $fields, DBObjectSet::FromObject($mObject));
 			if (!empty($aIssues)) {
-				$aOutcomes[] = self::outcome($iId, false, implode(' ', $aIssues));
+				$aOutcomes[] = self::outcome($iId, $iRow, false, implode(' ', $aIssues));
 				continue;
 			}
 
@@ -153,7 +153,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// exception from the ORM half way through the batch.
 				WritePlan::Check($mObject, "{$class}::{$iId}");
 
-				$aOutcome = self::outcome($iId, true, $simulate ? 'Would be updated.' : '');
+				$aOutcome = self::outcome($iId, $iRow, true, $simulate ? 'Would be updated.' : 'Updated.');
 				$aOutcome['changes'] = WritePlan::Changes($mObject, $class);
 
 				if (!$simulate) {
@@ -164,12 +164,14 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			} catch (ToolCallException $e) {
 				// One object that cannot take the change does not cancel the
 				// other thirty-nine; it is reported as its own failure.
-				$aOutcomes[] = self::outcome($iId, false, $e->getMessage());
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $e->getMessage());
 			} catch (\Exception $e) {
-				$aOutcomes[] = self::outcome($iId, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
+				$aOutcomes[] = self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
 			}
 		}
 
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes));
+		// An entry that failed before anything was set still reports changes,
+		// empty: the schema promises it on every entry.
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => []]));
 	}
 }

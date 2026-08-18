@@ -114,8 +114,8 @@ class ObjectAttach extends AbstractMCPTool
 				'additionalProperties' => true,
 			],
 			'mimetype_note' => [
-				'type'        => 'string',
-				'description' => 'Present only when the stored media type is not the one that was declared, saying what was stored instead and why. The file itself is unchanged.',
+				'type'        => ['string', 'null'],
+				'description' => 'Why the stored media type is not the one that was declared, or null when it is. The file itself is unchanged either way.',
 			],
 		]);
 	}
@@ -255,7 +255,9 @@ class ObjectAttach extends AbstractMCPTool
 	 */
 	private static function mimeTypeNote(?string $sNote): array
 	{
-		return $sNote === null ? [] : ['mimetype_note' => $sNote];
+		// Always the key, null when there is nothing to say. A field that
+		// appears only sometimes is a second response shape.
+		return ['mimetype_note' => $sNote];
 	}
 
 	/**
@@ -339,12 +341,15 @@ class ObjectAttach extends AbstractMCPTool
 		WritePlan::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
 
 		if ($bSimulate) {
-			return ToolOutput::Structured([
-				'class'       => self::ATTACHMENT_CLASS,
-				'simulated'   => true,
-				'attached_to' => ['class' => $sClass, 'id' => $iId],
-				'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, 0, 'contents'),
-			] + self::mimeTypeNote($sMimeTypeNote));
+			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+				+ WritePlan::Identity(self::ATTACHMENT_CLASS, null)
+				+ [
+					'simulated'   => true,
+					'valid'       => true,
+					'attached_to' => ['class' => $sClass, 'id' => $iId],
+					'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, 0, 'contents'),
+				]
+				+ self::mimeTypeNote($sMimeTypeNote));
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -355,13 +360,15 @@ class ObjectAttach extends AbstractMCPTool
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
 		}
 
-		return ToolOutput::Structured([
-			'class'       => self::ATTACHMENT_CLASS,
-			'id'          => $iAttachmentId,
-			'simulated'   => false,
-			'attached_to' => ['class' => $sClass, 'id' => $iId],
-			'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, $iAttachmentId, 'contents'),
-		] + self::mimeTypeNote($sMimeTypeNote));
+		return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+			+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
+			+ [
+				'simulated'   => false,
+				'valid'       => true,
+				'attached_to' => ['class' => $sClass, 'id' => $iId],
+				'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, $iAttachmentId, 'contents'),
+			]
+			+ self::mimeTypeNote($sMimeTypeNote));
 	}
 
 	/**
@@ -399,13 +406,15 @@ class ObjectAttach extends AbstractMCPTool
 		WritePlan::Check($oTarget, "{$sClass}::{$iId}");
 
 		if ($bSimulate) {
-			return ToolOutput::Structured([
-				'class'       => $sClass,
-				'id'          => $iId,
-				'simulated'   => true,
-				'attached_to' => ['class' => $sClass, 'id' => $iId],
-				'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
-			] + self::mimeTypeNote($sMimeTypeNote));
+			return ToolOutput::Structured(['class' => $sClass]
+				+ WritePlan::Identity($sClass, $iId)
+				+ [
+					'simulated'   => true,
+					'valid'       => true,
+					'attached_to' => ['class' => $sClass, 'id' => $iId],
+					'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
+				]
+				+ self::mimeTypeNote($sMimeTypeNote));
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -416,12 +425,14 @@ class ObjectAttach extends AbstractMCPTool
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
 		}
 
-		return ToolOutput::Structured([
-			'class'       => $sClass,
-			'id'          => $iId,
-			'simulated'   => false,
-			'attached_to' => ['class' => $sClass, 'id' => $iId],
-			'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
-		] + self::mimeTypeNote($sMimeTypeNote));
+		return ToolOutput::Structured(['class' => $sClass]
+			+ WritePlan::Identity($sClass, $iId)
+			+ [
+				'simulated'   => false,
+				'valid'       => true,
+				'attached_to' => ['class' => $sClass, 'id' => $iId],
+				'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
+			]
+			+ self::mimeTypeNote($sMimeTypeNote));
 	}
 }

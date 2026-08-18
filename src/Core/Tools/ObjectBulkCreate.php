@@ -143,16 +143,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 			$aOutcomes[] = self::createOne($class, $iRow, is_array($aFields) ? $aFields : [], $simulate);
 		}
 
-		$iOk = count(array_filter($aOutcomes, static fn (array $a): bool => $a['status'] === 'ok'));
-
-		return ToolOutput::Structured([
-			'class'     => $class,
-			'simulated' => $simulate,
-			'total'     => count($aOutcomes),
-			'succeeded' => $iOk,
-			'failed'    => count($aOutcomes) - $iOk,
-			'objects'   => $aOutcomes,
-		]);
+		// Through report() like the other two, rather than a hand-rolled copy
+		// of it: the defaults it applies are what make every entry carry the
+		// keys the schema promises.
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => []]));
 	}
 
 	/**
@@ -162,21 +156,17 @@ class ObjectBulkCreate extends AbstractBulkTool
 	 */
 	private static function createOne(string $sClass, int $iRow, array $aFields, bool $bSimulate): array
 	{
-		// Rows are reported by position: there is no id yet to name them by,
-		// and a caller that sent thirty rows needs to know which one failed.
-		$aOutcome = ['row' => $iRow, 'status' => 'error'];
-
+		// Rows are reported by position: on a creation there is no id yet to
+		// name them by, and a caller that sent thirty rows needs to know which
+		// one failed. The id is reported all the same, as null until there is
+		// one, so an entry has the same keys whatever became of it.
 		if (empty($aFields)) {
-			$aOutcome['message'] = 'No fields given for this object.';
-
-			return $aOutcome;
+			return self::outcome(null, $iRow, false, 'No fields given for this object.');
 		}
 
 		[$aValues, $aIssues] = self::validatedValues($sClass, $aFields);
 		if (!empty($aIssues)) {
-			$aOutcome['message'] = implode(' ', $aIssues);
-
-			return $aOutcome;
+			return self::outcome(null, $iRow, false, implode(' ', $aIssues));
 		}
 
 		try {
@@ -190,30 +180,29 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// running.
 			WritePlan::Check($oObject, "Row {$iRow}");
 
+			// Read before the insert on both paths: DBInsert() clears the
+			// pending changes, so asking afterwards reports nothing and the
+			// real call would answer with an empty `changes` where the dry run
+			// answered with the object.
+			$aChanges = WritePlan::Changes($oObject, $sClass);
+
 			if ($bSimulate) {
-				return [
-					'row'     => $iRow,
-					'status'  => 'ok',
-					'message' => 'Would be created.',
-					'changes' => WritePlan::Changes($oObject, $sClass),
-				];
+				return self::outcome(null, $iRow, true, 'Would be created.') + ['changes' => $aChanges];
 			}
 
 			$iId = $oObject->DBInsert();
 
-			return ['row' => $iRow, 'status' => 'ok', MetaModel::DBGetKey($sClass) => $iId, 'id' => $iId];
+			return self::outcome($iId, $iRow, true, 'Created.')
+				+ WritePlan::Identity($sClass, $iId)
+				+ ['changes' => $aChanges];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
-			$aOutcome['message'] = $e->getMessage();
-
-			return $aOutcome;
+			return self::outcome(null, $iRow, false, $e->getMessage());
 		} catch (\Exception $e) {
 			// The ToolCallException branch above carries this module's own
 			// refusals, which are what the caller fixes the row with. This one
 			// carries the ORM's, which it does not.
-			$aOutcome['message'] = MCPHelper::OpaqueFailure("Row {$iRow} could not be created", $e);
-
-			return $aOutcome;
+			return self::outcome(null, $iRow, false, MCPHelper::OpaqueFailure("Row {$iRow} could not be created", $e));
 		}
 	}
 }

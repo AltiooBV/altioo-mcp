@@ -69,11 +69,8 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
-			'valid' => [
-				'type'        => 'boolean',
-				'description' => 'Present on a dry run only: the object passed every check and would take the change.',
-			],
-		], ['id']);
+			'changes' => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
+		]);
 	}
 
 	public function getInputSchema(): ?array
@@ -254,14 +251,13 @@ class ObjectUpdate extends AbstractMCPTool
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
-			return ToolOutput::Structured([
-				'class'     => $class,
-				MetaModel::DBGetKey($class) => $id,
-				'id'        => $id,
-				'simulated' => true,
-				'valid'     => true,
-				'changes'   => $aChanges,
-			]);
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'simulated' => true,
+					'valid'     => true,
+					'changes'   => $aChanges,
+				]);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -271,13 +267,13 @@ class ObjectUpdate extends AbstractMCPTool
 		try {
 			$oObject->DBUpdate();
 
-			return ToolOutput::Structured([
-				'class' => $class,
-				MetaModel::DBGetKey($class)    => $id,
-				'id'        => $id,
-				'simulated' => false,
-				'changes'   => $aChanges,
-			]);
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'simulated' => false,
+					'valid'     => true,
+					'changes'   => $aChanges,
+				]);
 		} catch (\Exception $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to update {$class}::{$id}", $e));
 		}
