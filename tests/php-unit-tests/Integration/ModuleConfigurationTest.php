@@ -63,6 +63,24 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * Read by MCPHelper::GetAllowedHosts(), which the endpoint consults before
+	 * ResetSession() and which the SDK's DNS-rebinding middleware consults
+	 * again. It was read in code without ever being declared, so an operator
+	 * whose endpoint answered 403 had a parameter named in the log and nothing
+	 * in config-itop.php to set.
+	 *
+	 * Must default to empty, which is not "no check": empty is what makes
+	 * MCPHelper derive the list from app_root_url and the localhost variants.
+	 */
+	public function testAllowedHostsIsDeclaredAndDefaultsToEmpty(): void
+	{
+		$aHosts = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_HOSTS, null);
+
+		$this->assertIsArray($aHosts, 'mcp_allowed_hosts must be declared in module_parameters');
+		$this->assertSame([], $aHosts, 'a shipped hostname would refuse every instance not served under it');
+	}
+
+	/**
 	 * The connection record goes through the same allow-list as everything
 	 * else, so an installed instance drops it unless the compiled datamodel
 	 * names it - whatever DEFAULT_LOG_METHODS says.

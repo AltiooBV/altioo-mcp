@@ -457,6 +457,18 @@
         token-authenticated endpoint called from a backend wants. Never use "*".
       -->
       <mcp_allowed_origins type="array"/>
+      <!--
+        Hostnames this endpoint answers to, checked against Origin - or against
+        Host when there is no Origin - before the request has any side effect,
+        and again by the SDK's own DNS-rebinding middleware. Empty is not "no
+        check": it means the list is derived from app_root_url plus the
+        localhost variants plus whatever mcp_allowed_origins already names.
+        Write hostnames without a port. The single entry "*" turns the check
+        off, which is the honest answer for an instance whose app_root_url uses
+        iTop's %SERVER_NAME% placeholder or that sits behind a proxy validating
+        Host itself.
+      -->
+      <mcp_allowed_hosts type="array"/>
       <mcp_allowed_profiles type="array">
         <item>Administrator</item>
         <item>MCP Services User</item>
@@ -468,13 +480,6 @@
         Empty means nothing is turned off.
       -->
       <mcp_disabled_tools type="array"/>
-      <!--
-        Elements per tools/list, resources/list or prompts/list page. The MCP
-        SDK defaults to 50 and pages the rest behind a cursor, which a client
-        that ignores nextCursor never asks for: the 51st tool then exists and
-        is callable, but is advertised to nobody. High enough that a normal
-        installation is one page.
-      -->
       <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects" and
@@ -499,6 +504,13 @@
         and without looking anything up.
       -->
       <mcp_read_only type="bool">false</mcp_read_only>
+      <!--
+        Elements per tools/list, resources/list or prompts/list page. The MCP
+        SDK defaults to 50 and pages the rest behind a cursor, which a client
+        that ignores nextCursor never asks for: the 51st tool then exists and
+        is callable, but is advertised to nobody. High enough that a normal
+        installation is one page.
+      -->
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
       <!--
         Largest document served or accepted through this endpoint, in bytes.
