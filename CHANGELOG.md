@@ -6,6 +6,82 @@ All notable changes to this extension are recorded here. The format follows
 `Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
 `Helper/` and the checker under `Testing/`. See the README, [Extending](README.md#extending).
 
+## [Unreleased]
+
+Findings from the pre-release review, applied before publication. Nothing here has shipped, so
+the breaking entry below breaks nothing that exists — it is recorded because the class it
+renames would otherwise be a data migration on any later date.
+
+### Breaking
+
+- **`EventMCPService` is now `AltiooEventMCPService`**, and its table `priv_event_mcp_service`
+  is now `priv_altioo_event_mcp_service`. The console label is unchanged ("MCP Service Call"):
+  it comes from the dictionary, which moved with the class. An unprefixed class name in a
+  shared datamodel is a collision waiting for the second extension that wants it, and after
+  publication this becomes a table rename on live instances rather than an edit.
+
+### Security
+
+- **The endpoint no longer resets the caller's iTop session for a request that presented no
+  credential.** `LoginWebPage::ResetSession()` is unauthenticated, so any website could make a
+  logged-in user's browser call this URL as a top-level GET and end their console session —
+  with nothing in the audit trail that looks like an attack. Such a request is now refused
+  `401` before the session is touched. A cookie is not a credential here: what counts is an
+  `Authorization` or `Auth-Token` header, or an identity the web server itself decided
+  (`REMOTE_USER`, Basic already parsed by the SAPI), so Basic and reverse-proxy deployments are
+  unaffected.
+- **iTop's own exception messages no longer reach the caller.** A failure from `DBInsert()`,
+  `DBUpdate()`, `DBDelete()`, `CheckToWrite()` or a query routinely carries SQL, table and
+  class names. Those now go to `log/error.log` under a reference the caller is given instead.
+  Messages this module composed — validation failures, `CheckToWrite()` issues, "Unknown
+  attribute" — are unchanged, because they are what lets a model correct its own call.
+- **An uploaded file's media type is verified against the bytes.** `core_object_attach` used to
+  store whatever the caller declared, and the stored type is what iTop later serves the file
+  as; markup labelled `image/png` was markup a browser would render under the instance's own
+  origin. The bytes now decide, the response says so in `mimetype_note`, and inert text formats
+  libmagic has no signature for (CSV, Markdown, YAML) are still honoured as declared.
+
+### Fixed
+
+- **`initialize` is audited on a fresh install.** It was in `MCPHelper::DEFAULT_LOG_METHODS`
+  and missing from the `log_mcp_method` block in the datamodel — and the datamodel is what the
+  setup writes into `config-itop.php`, so the default that ran on every install was the one
+  without it. The record that a client connected at all was therefore never written.
+- **`mcp_allowed_hosts` is declared.** It was read by the code, named in the error message a
+  `403` produces, and absent from `<module_parameters>` — so an operator told to set it found
+  nothing to set.
+- **`mcp_disabled_tools` and `mcp_enabled_toolsets` entries that match nothing are logged.** A
+  kill-switch entry pointing at a name nobody answers to hides nothing while looking exactly
+  like one that works, which is what an element renamed by an upgrade leaves behind.
+- **`StatelessSessionStore` stores nothing.** It kept writes in a private static array that no
+  reader could ever see — the SDK caches session data per request — and under a persistent
+  worker (FrankenPHP, RoadRunner) that array would have grown without bound and carried one
+  caller's session data into the next request.
+- `LoginWebPage::ResetSession()` no longer gets an argument; it takes none.
+
+### Changed
+
+- **Release archives are built by CI from a tag**, with a published SHA-256, a CycloneDX SBOM
+  and a licence inventory — attached to the release and carried inside the archive. `vendor/`
+  ships, so what is in it is the audit surface rather than an implementation detail.
+- The `extension.xml` description now says which of its claims are access controls (iTop's
+  permissions, the profile, the token scopes) and which is a guardrail (the dry run).
+- README: a Troubleshooting section covering the log, `log_mcp_level`, and the three failure
+  modes that account for most reports — FastCGI dropping `Authorization`, a host-check `403`
+  whose reason is only in the log, and a `401` on a token with no `MCP*` scope. Installation
+  now leads with backup and a maintenance window, states that downgrade is unsupported and
+  that the rollback is that backup, names what to remove by hand when uninstalling, and adds
+  post-install checks including the `MCP Services User` profile.
+- SECURITY.md carries a real disclosure channel and response commitment; the README support
+  block states plainly that there is no SLA on the free extension.
+
+### Internal
+
+- The seven packages this module and iTop both ship are now checked rather than assumed:
+  iTop's copies are the ones that load on the endpoint, and `VendoredDependencyResolutionTest`
+  fails if any of them stops satisfying what this module's dependency graph declares. One
+  known divergence (`psr/http-factory`) is recorded with the reason it is survivable.
+
 ## [1.0.0] - 2026-08-16
 
 First public release.
