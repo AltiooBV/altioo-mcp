@@ -22,6 +22,16 @@ renames would otherwise be a data migration on any later date.
 
 ### Added
 
+- **`JsonPayload`, `ResourceOutput` and `WritePlan::Identity()` / `CheckDeletionRights()` /
+  `SerializeDeletionPlan()` / `ChangesSchemaProperty()`**, all under the versioned helper
+  surface. `ResourceOutput::Json()` is the resource-side twin of `ToolOutput::Json()` for a
+  pack writing its own resources; the two share one encoder so they cannot drift.
+- **`MCPHelper::MCP_METHOD_TOOLS_CALL`, `MCP_METHOD_RESOURCES_READ` and
+  `MCP_METHOD_PROMPTS_GET`**, beside the existing `MCP_METHOD_INITIALIZE`. `tools/call`
+  decided behaviour in three files as a bare literal — audit extraction, the default audited
+  list, and change attribution in `ChangeTracking` — where a typo fails silently in both
+  directions.
+
 - **The `core/version` resource now reports the extension's own name, version, licence and
   source URL**, beside iTop's. This is the AGPL §13 source offer made where a caller can
   actually reach it: an MCP session has no page to carry a footer, so a client that speaks
@@ -38,6 +48,25 @@ renames would otherwise be a data migration on any later date.
   from a minor's release, with six months' notice to end one early.
 
 ### Security
+
+- **A deletion is now refused when its cascade reaches objects the caller may not read, delete
+  or modify.** iTop computes a deletion plan with rights off — deliberately, so the plan is
+  complete whoever asked for it — and checks the delete right on the object the user clicked
+  and on nothing the cascade drags along. That is defensible in the console, where a person
+  saw the impact analysis and confirmed it. It is not defensible here: the caller is a language
+  model acting on an instruction, cascade is the path by which "delete this ticket" reaches
+  classes an operator withheld on purpose, and the audit row afterwards says only that the
+  ticket was deleted. `core_object_delete` and `core_object_bulk_delete` now check the whole
+  plan, on the dry run as well as on the real call. **This endpoint is therefore stricter than
+  the iTop console: a deletion the console performs can be refused here.** Grant the rights on
+  the classes the cascade reaches, which is the same permission said out loud. A class the
+  caller cannot read is never named in the refusal, so the error cannot be used to map the
+  datamodel.
+- **The deletion plan no longer discloses objects the caller cannot see.** It reports the class
+  and id of everything the cascade touches, and iTop built that list with rights off. It is
+  closed by the check above rather than by filtering the output: a plan shown to a person
+  before they approve it has to be complete, so the only safe way for it to be complete is for
+  the incomplete case to be refused instead.
 
 - **The endpoint no longer resets the caller's iTop session for a request that presented no
   credential.** `LoginWebPage::ResetSession()` is unauthenticated, so any website could make a
@@ -60,6 +89,12 @@ renames would otherwise be a data migration on any later date.
 
 ### Fixed
 
+- **A write no longer reports its identifier twice into the same array key.** The tools spelled
+  both `'id' => $iId` and `MetaModel::DBGetKey($class) => $iId`, and `DBGetKey()` returns `id`
+  for 173 of the 175 stock classes — so the two collided in one array literal and the duplicate
+  the schema described only ever existed for the two link classes. `WritePlan::Identity()` now
+  emits the class's own key attribute exactly when it is not `id`.
+
 - **`initialize` is audited on a fresh install.** It was in `MCPHelper::DEFAULT_LOG_METHODS`
   and missing from the `log_mcp_method` block in the datamodel — and the datamodel is what the
   setup writes into `config-itop.php`, so the default that ran on every install was the one
@@ -77,6 +112,40 @@ renames would otherwise be a data migration on any later date.
 - `LoginWebPage::ResetSession()` no longer gets an argument; it takes none.
 
 ### Changed
+
+- **Every write tool answers with one shape, whatever `simulate` was.** `core_object_create`,
+  `core_object_update`, `core_object_apply_stimulus`, `core_object_delete`,
+  `core_object_attach` and the three bulk tools used to return one set of keys on a dry run and
+  a different set on a real write — `valid` on the first only, `id` on the second only — while
+  declaring the union of the two as their output schema with `required` narrowed to the
+  intersection. A schema like that describes neither response: nothing validating it could
+  catch a create that came back without an id, and a model reading it as prose cannot tell
+  which fields to expect when. Whatever a tool declares, it now reports on every call; it is the
+  *values* that vary, not the keys. Across tools the shapes still differ, and should: the four
+  single-object write tools share `class`, `id`, `simulated` and `valid` and each adds its own
+  (`changes` for create and update; `stimulus`, `state`, `would_move_to` and `changes` for
+  apply stimulus; `deletionPlan` for delete; `attached_to`, `document` and `mimetype_note` for
+  attach), while a bulk tool answers about a batch and so reports counts and a list of entries
+  carrying `row`, `id`, `status` and `message`. What changed is that within any one of them,
+  `id` is now `null` rather than absent until there is one, `valid` is reported on both paths,
+  `changes` is `{}` rather than absent, `would_move_to` is reported after a real transition as
+  well as before a simulated one, `mimetype_note` is `null` when the stored type is the
+  declared one, and a bulk entry carries its four keys whether it succeeded or failed. Pinned
+  by `OutputSchemaContractTest`, which now fails on any declared property that is not required
+  and on any description saying a field is "present only" under some condition.
+- **Resources and resource templates encode exactly as tools do.** Both surfaces now go through
+  `JsonPayload::Encode()`, so the same class label comes back spelled the same way from
+  `core_class_list` and from `itop://core/classes`. Previously the resources called
+  `json_encode()` bare: slashes and non-ASCII were escaped on one surface and not the other,
+  and on a payload that could not be encoded the resource returned `false`, which reached the
+  SDK as a boolean and came back to the caller as "unhandled type: boolean" with nothing naming
+  the resource. `itop://core/classes` also returns the same `{category, filter, total, classes}`
+  envelope `core_class_list` does, built once in `DatamodelReader::ClassListPayload()`.
+- **The unauthorised-profile message no longer names one profile as though it were the rule.**
+  It said "The profile MCP Services User is required", which omits `Administrator` — half the
+  shipped default — and states a default as though `mcp_allowed_profiles` did not exist. It now
+  says what the default is and names the parameter that decides. What the instance actually
+  requires goes to `log/error.log` with the refused username, not into the `401`.
 
 - **Release archives are built by CI from a tag**, with a published SHA-256, a CycloneDX SBOM
   and a licence inventory — attached to the release and carried inside the archive. `vendor/`
