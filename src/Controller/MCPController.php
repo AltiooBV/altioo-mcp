@@ -399,17 +399,17 @@ final class MCPController
 				// Extract tool/resource/prompt name depending on method
 				$aParams = $aPayload['params'] ?? [];
 				$sMcpName = match ($sMcpMethod) {
-					'tools/call'      => $aParams['name'] ?? null,
-					'resources/read'  => $aParams['uri'] ?? null,
-					'prompts/get'     => $aParams['name'] ?? null,
+					MCPHelper::MCP_METHOD_TOOLS_CALL     => $aParams['name'] ?? null,
+					MCPHelper::MCP_METHOD_RESOURCES_READ => $aParams['uri'] ?? null,
+					MCPHelper::MCP_METHOD_PROMPTS_GET    => $aParams['name'] ?? null,
 					// The one row that says a client connected is worth naming
 					// the client on. clientInfo is what the caller declares
 					// about itself and nothing verifies it, so it identifies a
 					// well-behaved integration rather than authenticating
 					// anyone - which is what an operator reading the trail is
 					// after: which of these connected, and when did it stop.
-					MCPHelper::MCP_METHOD_INITIALIZE => self::clientDescription($aParams),
-					default           => null,
+					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription($aParams),
+					default                              => null,
 				};
 			}
 		}

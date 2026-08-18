@@ -162,6 +162,24 @@ class MCPHelper
 	const MCP_METHOD_INITIALIZE = 'initialize';
 
 	/**
+	 * The three JSON-RPC methods that actually do something on this endpoint:
+	 * call a tool, read a resource, render a prompt.
+	 *
+	 * Named rather than spelled out at each use because the module branches on
+	 * them - ChangeTracking attributes a write to the tool named by a
+	 * tools/call body, the controller reads the element name out of a
+	 * different params key for each - and a literal that decides behaviour in
+	 * one file and appears as data in another is one typo away from a silent
+	 * failure: the attribution falls back to nothing, or the audit row loses
+	 * its name, with no error either way.
+	 *
+	 * @since 1.0.0
+	 */
+	const MCP_METHOD_TOOLS_CALL = 'tools/call';
+	const MCP_METHOD_RESOURCES_READ = 'resources/read';
+	const MCP_METHOD_PROMPTS_GET = 'prompts/get';
+
+	/**
 	 * The methods audited when the operator has not said otherwise.
 	 *
 	 * The setting used to fall back to an empty list, which read as "audit
@@ -175,9 +193,9 @@ class MCPHelper
 	 */
 	const DEFAULT_LOG_METHODS = [
 		self::MCP_METHOD_INITIALIZE,
-		'tools/call',
-		'resources/read',
-		'prompts/get',
+		self::MCP_METHOD_TOOLS_CALL,
+		self::MCP_METHOD_RESOURCES_READ,
+		self::MCP_METHOD_PROMPTS_GET,
 		self::MCP_METHOD_EXCEPTION,
 	];
 

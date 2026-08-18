@@ -239,7 +239,7 @@ final class ChangeTracking
 		}
 
 		$aPayload = json_decode($sBody, true);
-		if (!is_array($aPayload) || ($aPayload['method'] ?? null) !== 'tools/call') {
+		if (!is_array($aPayload) || ($aPayload['method'] ?? null) !== MCPHelper::MCP_METHOD_TOOLS_CALL) {
 			return null;
 		}
 
