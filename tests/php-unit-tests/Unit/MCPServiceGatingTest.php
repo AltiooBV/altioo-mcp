@@ -52,6 +52,75 @@ class MCPServiceGatingTest extends TestCase
 		);
 	}
 
+	/**
+	 * @param array<int, string>  $aConfigured
+	 * @param array<int, string>  $aKnown
+	 *
+	 * @return array<int, string>
+	 */
+	private function matchingNothing(array $aConfigured, array $aKnown): array
+	{
+		$oMethod = new ReflectionMethod(MCPService::class, 'entriesMatchingNothing');
+
+		return $oMethod->invoke(null, $aConfigured, array_fill_keys($aKnown, true));
+	}
+
+	/**
+	 * A kill-switch entry that matches nothing hides nothing, and looks
+	 * exactly like one that is working. The usual cause is an upgrade renaming
+	 * the element - at which point a tool somebody deliberately turned off is
+	 * back on, silently.
+	 */
+	public function testAnEntryThatMatchesNothingIsReported(): void
+	{
+		$this->assertSame(
+			['core_object_delet'],
+			$this->matchingNothing(['core_object_delet'], ['core_object_delete', 'core_object_get'])
+		);
+	}
+
+	public function testAnEntryThatMatchesIsNotReported(): void
+	{
+		$this->assertSame([], $this->matchingNothing(['core_object_delete'], ['core_object_delete']));
+	}
+
+	/**
+	 * The setting accepts a class name as well as an identifier, so both
+	 * spellings have to count as matched or naming the class would be
+	 * reported as a typo.
+	 */
+	public function testAClassNameCountsAsAMatch(): void
+	{
+		$this->assertSame(
+			[],
+			$this->matchingNothing([FixtureTool::class], ['test_fixture_tool', FixtureTool::class])
+		);
+	}
+
+	public function testNothingConfiguredReportsNothing(): void
+	{
+		$this->assertSame([], $this->matchingNothing([], ['core_object_delete']));
+		$this->assertSame([], $this->matchingNothing([], []));
+	}
+
+	/**
+	 * An instance with no elements at all makes every entry stale, which is
+	 * worth saying rather than dividing by zero somewhere.
+	 */
+	public function testEveryEntryIsStaleWhenNothingIsRegistered(): void
+	{
+		$this->assertSame(['a', 'b'], $this->matchingNothing(['a', 'b'], []));
+	}
+
+	/**
+	 * Reported once and in the order written, so the log entry reads like the
+	 * config block the operator has open.
+	 */
+	public function testARepeatedEntryIsReportedOnce(): void
+	{
+		$this->assertSame(['b', 'a'], $this->matchingNothing(['b', 'a', 'b'], ['known']));
+	}
+
 	public function testAnElementIsServedWhenNothingDisablesIt(): void
 	{
 		$this->assertFalse($this->isHidden(new FixtureTool(), []));

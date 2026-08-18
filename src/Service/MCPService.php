@@ -112,7 +112,123 @@ final class MCPService
 		$builder = self::registerTools($builder, $aDisabled, $oPolicy);
 		$builder = self::registerPrompts($builder, $aDisabled, $oPolicy);
 
+		self::warnAboutSettingsThatMatchNothing($aDisabled);
+
 		return $builder->build();
+	}
+
+	/**
+	 * Tells the log when mcp_disabled_tools or mcp_enabled_toolsets names
+	 * something that is not there.
+	 *
+	 * Both settings fail silently by construction. Disabling is "hide anything
+	 * whose identifier or class is in this list", and a list entry matching
+	 * nothing hides nothing - which looks exactly like a kill switch that is
+	 * working. Enabling toolsets is the same shape from the other side: a
+	 * misspelt toolset name serves nothing rather than everything, so the
+	 * failure at least announces itself, but it announces itself as "the tools
+	 * are gone" rather than as "this line is wrong".
+	 *
+	 * The case this is really for is an upgrade. An element renamed by a new
+	 * release leaves the operator's entry pointing at a name nobody answers
+	 * to, and the tool they had turned off comes back on - on an instance
+	 * where somebody once decided it should not be callable, without anything
+	 * having been said.
+	 *
+	 * Warned rather than refused: an operator may legitimately keep an entry
+	 * for a pack that is temporarily uninstalled, and taking the endpoint down
+	 * over a stale line would be worse than the line.
+	 *
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function warnAboutSettingsThatMatchNothing(array $aDisabled): void
+	{
+		$aToolsets = MCPHelper::GetEnabledToolsets();
+
+		// The overwhelmingly common case is both empty, and walking the whole
+		// registry to confirm that nothing matches nothing is not worth doing
+		// on every request.
+		if ($aDisabled === [] && $aToolsets === []) {
+			return;
+		}
+
+		$aKnownIdentifiers = [];
+		$aKnownToolsets    = [];
+
+		foreach (self::everyRegisteredElement() as $sIdentifier => $oElement) {
+			$aKnownIdentifiers[$sIdentifier]        = true;
+			$aKnownIdentifiers[get_class($oElement)] = true;
+
+			$sToolset = $oElement->getToolset();
+			if (is_string($sToolset) && $sToolset !== '') {
+				$aKnownToolsets[$sToolset] = true;
+			}
+		}
+
+		$aStale = self::entriesMatchingNothing($aDisabled, $aKnownIdentifiers);
+		if ($aStale !== []) {
+			MCPHelper::LogError(sprintf(
+				"'%s' names %s that no registered element answers to: %s. "
+				.'Nothing is being turned off by those entries. An element renamed by an upgrade is the usual cause - '
+				.'check the CHANGELOG of the extension that used to provide it, or list the current names with tools/list.',
+				MCPHelper::MODULE_SETTING_DISABLED,
+				count($aStale) === 1 ? 'an identifier or class' : 'identifiers or classes',
+				implode(', ', $aStale)
+			));
+		}
+
+		$aStale = self::entriesMatchingNothing($aToolsets, $aKnownToolsets);
+		if ($aStale !== []) {
+			MCPHelper::LogError(sprintf(
+				"'%s' names %s that no registered element declares: %s. "
+				.'Those entries serve nothing rather than everything, so the elements they were meant to enable are absent. '
+				.'Known toolsets on this instance: %s.',
+				MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS,
+				count($aStale) === 1 ? 'a toolset' : 'toolsets',
+				implode(', ', $aStale),
+				$aKnownToolsets === [] ? '(none)' : implode(', ', array_keys($aKnownToolsets))
+			));
+		}
+	}
+
+	/**
+	 * Configured entries that match nothing known, in the order they were
+	 * written and without repeats.
+	 *
+	 * @param array<int, string>     $aConfigured
+	 * @param array<string, true>    $aKnown Keyed by name, for the membership test.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function entriesMatchingNothing(array $aConfigured, array $aKnown): array
+	{
+		$aStale = [];
+
+		foreach ($aConfigured as $sEntry) {
+			if (!isset($aKnown[$sEntry]) && !in_array($sEntry, $aStale, true)) {
+				$aStale[] = $sEntry;
+			}
+		}
+
+		return $aStale;
+	}
+
+	/**
+	 * Every element the registry holds, of every kind.
+	 *
+	 * Read from the registry rather than from what was just registered: an
+	 * element the operator disabled is exactly the one that did not make it
+	 * into the builder, and it is the one whose name has to still count as
+	 * known.
+	 *
+	 * @return iterable<string, object>
+	 */
+	private static function everyRegisteredElement(): iterable
+	{
+		yield from MCPRegistry::GetTools();
+		yield from MCPRegistry::GetResources();
+		yield from MCPRegistry::GetResourceTemplates();
+		yield from MCPRegistry::GetPrompts();
 	}
 
 	/**
