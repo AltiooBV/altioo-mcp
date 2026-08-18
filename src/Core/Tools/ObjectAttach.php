@@ -113,6 +113,10 @@ class ObjectAttach extends AbstractMCPTool
 				'description' => 'The stored document: filename, mimetype, size in bytes, and the uri that reads it back.',
 				'additionalProperties' => true,
 			],
+			'mimetype_note' => [
+				'type'        => 'string',
+				'description' => 'Present only when the stored media type is not the one that was declared, saying what was stored instead and why. The file itself is unchanged.',
+			],
 		]);
 	}
 
@@ -140,7 +144,7 @@ class ObjectAttach extends AbstractMCPTool
 				],
 				'mimetype'       => [
 					'type'        => 'string',
-					'description' => 'Media type of the file, e.g. application/pdf or image/png. Worth naming: an image stored as image/* is one that can be looked at when it is read back, and anything unnamed is stored as application/octet-stream.',
+					'description' => 'Media type of the file, e.g. application/pdf or image/png. Worth naming: an image stored as image/* is one that can be looked at when it is read back. It is checked against the bytes you sent, so a file that turns out to be something else is stored as what it is and the response says so; leave it out and the type is read off the file.',
 				],
 				'att_code'       => [
 					'type'        => 'string',
@@ -158,7 +162,7 @@ class ObjectAttach extends AbstractMCPTool
 	 * @param int         $id             The ID of that object
 	 * @param string      $filename       Name the file is stored under
 	 * @param string      $content_base64 The file, base64-encoded
-	 * @param string|null $mimetype       Media type; application/octet-stream when not given
+	 * @param string|null $mimetype       Media type, verified against the bytes; read off the file when not given
 	 * @param string|null $att_code       Blob attribute to set instead of adding an Attachment
 	 * @param bool        $simulate       When true (default), everything is checked and nothing is stored
 	 * @param string|null $comment        Why the file is being attached, recorded in the object's history
@@ -178,11 +182,11 @@ class ObjectAttach extends AbstractMCPTool
 		?string $comment = null,
 	): mixed {
 		$oTarget = self::target($class, $id);
-		$oDocument = self::document($filename, $content_base64, $mimetype);
+		[$oDocument, $sMimeTypeNote] = self::document($filename, $content_base64, $mimetype);
 
 		return ($att_code === null || $att_code === '')
-			? self::asAttachment($oTarget, $class, $id, $oDocument, $simulate, $comment)
-			: self::asAttribute($oTarget, $class, $id, $att_code, $oDocument, $simulate, $comment);
+			? self::asAttachment($oTarget, $class, $id, $oDocument, $simulate, $comment, $sMimeTypeNote)
+			: self::asAttribute($oTarget, $class, $id, $att_code, $oDocument, $simulate, $comment, $sMimeTypeNote);
 	}
 
 	/**
@@ -239,6 +243,22 @@ class ObjectAttach extends AbstractMCPTool
 	}
 
 	/**
+	 * The one extra key a response carries when the stored media type is not
+	 * the one that was asked for.
+	 *
+	 * Present only when there is something to say, so a caller that declared
+	 * nothing surprising sees the same response shape it always did. The dry
+	 * run reports it too, which is the point of a dry run: the answer to "what
+	 * would this store" has to include the label.
+	 *
+	 * @return array{mimetype_note?: string}
+	 */
+	private static function mimeTypeNote(?string $sNote): array
+	{
+		return $sNote === null ? [] : ['mimetype_note' => $sNote];
+	}
+
+	/**
 	 * The file, decoded and bounded.
 	 *
 	 * The same ceiling as reading, applied to the decoded bytes rather than to
@@ -246,8 +266,11 @@ class ObjectAttach extends AbstractMCPTool
 	 * the limit in the units it sent would still have to do the arithmetic.
 	 *
 	 * @throws ToolCallException
+	 * @return array{0: ormDocument, 1: string|null} The file, and what to tell
+	 *                                                the caller when the type
+	 *                                                it declared was not used.
 	 */
-	private static function document(string $sFilename, string $sBase64, ?string $sMimeType): ormDocument
+	private static function document(string $sFilename, string $sBase64, ?string $sMimeType): array
 	{
 		// basename() and not a rejection: a client that sends a path is a
 		// client that had one, not an attack, and the last element is what it
@@ -276,7 +299,13 @@ class ObjectAttach extends AbstractMCPTool
 			));
 		}
 
-		return new ormDocument($sData, ($sMimeType === null || $sMimeType === '') ? 'application/octet-stream' : $sMimeType, $sFilename);
+		// The declared type is a claim about bytes this endpoint is holding, so
+		// it is checked against them rather than stored on trust. See
+		// DocumentAccess::VerifiedMimeType() for why a disagreement overrides
+		// rather than refuses.
+		[$sVerified, $sNote] = DocumentAccess::VerifiedMimeType($sData, $sMimeType);
+
+		return [new ormDocument($sData, $sVerified, $sFilename), $sNote];
 	}
 
 	/**
@@ -290,7 +319,7 @@ class ObjectAttach extends AbstractMCPTool
 	 *
 	 * @throws ToolCallException
 	 */
-	private static function asAttachment(DBObject $oTarget, string $sClass, int $iId, ormDocument $oDocument, bool $bSimulate, ?string $sComment): mixed
+	private static function asAttachment(DBObject $oTarget, string $sClass, int $iId, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
 		if (!MetaModel::IsValidClass(self::ATTACHMENT_CLASS)) {
 			throw new ToolCallException(
@@ -315,7 +344,7 @@ class ObjectAttach extends AbstractMCPTool
 				'simulated'   => true,
 				'attached_to' => ['class' => $sClass, 'id' => $iId],
 				'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, 0, 'contents'),
-			]);
+			] + self::mimeTypeNote($sMimeTypeNote));
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -332,7 +361,7 @@ class ObjectAttach extends AbstractMCPTool
 			'simulated'   => false,
 			'attached_to' => ['class' => $sClass, 'id' => $iId],
 			'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, $iAttachmentId, 'contents'),
-		]);
+		] + self::mimeTypeNote($sMimeTypeNote));
 	}
 
 	/**
@@ -344,7 +373,7 @@ class ObjectAttach extends AbstractMCPTool
 	 *
 	 * @throws ToolCallException
 	 */
-	private static function asAttribute(DBObject $oTarget, string $sClass, int $iId, string $sAttCode, ormDocument $oDocument, bool $bSimulate, ?string $sComment): mixed
+	private static function asAttribute(DBObject $oTarget, string $sClass, int $iId, string $sAttCode, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
 		if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
 			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
@@ -376,7 +405,7 @@ class ObjectAttach extends AbstractMCPTool
 				'simulated'   => true,
 				'attached_to' => ['class' => $sClass, 'id' => $iId],
 				'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
-			]);
+			] + self::mimeTypeNote($sMimeTypeNote));
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -393,6 +422,6 @@ class ObjectAttach extends AbstractMCPTool
 			'simulated'   => false,
 			'attached_to' => ['class' => $sClass, 'id' => $iId],
 			'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
-		]);
+		] + self::mimeTypeNote($sMimeTypeNote));
 	}
 }

@@ -67,6 +67,30 @@ final class DocumentAccess
 	/** Where the bytes of an image are worth reading rather than only carrying. */
 	private const IMAGE_PREFIX = 'image/';
 
+	/** What a file whose type could not be established is stored as. */
+	public const FALLBACK_MIME_TYPE = 'application/octet-stream';
+
+	/** What libmagic answers for text it has no signature for. */
+	private const PLAIN_TEXT_MIME_TYPE = 'text/plain';
+
+	/**
+	 * Types a caller may declare over a text/plain sniff.
+	 *
+	 * Every one of them is inert - a browser handed any of these renders no
+	 * markup and runs no script - and every one of them is a format libmagic
+	 * has no signature for, so refusing them would mean every CSV upload came
+	 * back labelled text/plain.
+	 */
+	private const INERT_TEXT_TYPES = [
+		'text/csv',
+		'text/tab-separated-values',
+		'text/markdown',
+		'text/yaml',
+		'application/yaml',
+		'application/x-yaml',
+		'text/calendar',
+	];
+
 	/**
 	 * The URI that reads one document, as it appears in the metadata of a read.
 	 *
@@ -107,6 +131,107 @@ final class DocumentAccess
 	 * @throws MCPDocumentException When the document cannot be read, or should not be.
 	 * @since 1.0.0
 	 */
+	/**
+	 * The media type of a file this endpoint was handed, decided by reading it.
+	 *
+	 * What the caller declares is a claim, and on the way *in* it is the one
+	 * piece of the upload that iTop later acts on: the stored type is what
+	 * comes back in the Content-Type when somebody downloads the attachment
+	 * from the console. A caller that sends HTML or SVG and labels it
+	 * image/png has stored a document that a browser will render as markup
+	 * under the instance's own origin.
+	 *
+	 * iTop does send "Content-Security-Policy: sandbox;" on document downloads,
+	 * which defuses exactly this. It is also a config key an operator can turn
+	 * off, and a control that lives entirely in somebody else's file is not one
+	 * this endpoint can claim. So the bytes decide here too.
+	 *
+	 * The sniffed type wins on disagreement rather than the upload being
+	 * refused: an honest caller mislabelling a file is far commoner than a
+	 * hostile one, the file itself is unchanged either way, and the stored
+	 * label is the only thing that was ever in question.
+	 *
+	 * One carve-out, for the case that would otherwise be a daily annoyance:
+	 * libmagic answers text/plain for a whole family of inert text formats it
+	 * has no signature for - CSV, TSV, Markdown, YAML - so a declared type from
+	 * that family is kept when the bytes did sniff as plain text. Anything that
+	 * a browser would execute sniffs as itself (text/html, image/svg+xml,
+	 * application/xml), so nothing in that family can be laundered through
+	 * this.
+	 *
+	 * @param string      $sData     The decoded file.
+	 * @param string|null $sDeclared What the caller said it was, if anything.
+	 *
+	 * @return array{0: string, 1: string|null} The type to store, and what to
+	 *                                          tell the caller when it is not
+	 *                                          what they asked for.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function VerifiedMimeType(string $sData, ?string $sDeclared): array
+	{
+		$sDeclared = is_string($sDeclared) ? strtolower(trim(explode(';', $sDeclared, 2)[0])) : '';
+
+		$sSniffed = self::Sniff($sData);
+
+		if ($sSniffed === null) {
+			// ext/fileinfo is absent, so nothing here can verify anything. The
+			// answer is the type that claims nothing, not the caller's word.
+			return [
+				self::FALLBACK_MIME_TYPE,
+				$sDeclared === '' || $sDeclared === self::FALLBACK_MIME_TYPE
+					? null
+					: sprintf(
+						'Stored as %s: this server has no ext/fileinfo, so the declared type "%s" could not be verified against the file.',
+						self::FALLBACK_MIME_TYPE,
+						$sDeclared
+					),
+			];
+		}
+
+		if ($sDeclared === '' || $sDeclared === $sSniffed) {
+			return [$sSniffed, null];
+		}
+
+		if ($sSniffed === self::PLAIN_TEXT_MIME_TYPE && in_array($sDeclared, self::INERT_TEXT_TYPES, true)) {
+			return [$sDeclared, null];
+		}
+
+		return [
+			$sSniffed,
+			sprintf(
+				'Stored as %s, which is what the file contains; the declared type "%s" was not used.',
+				$sSniffed,
+				$sDeclared
+			),
+		];
+	}
+
+	/**
+	 * What libmagic makes of these bytes, or null when it is not installed.
+	 */
+	private static function Sniff(string $sData): ?string
+	{
+		if (!function_exists('finfo_open')) {
+			return null;
+		}
+
+		$oFinfo = @finfo_open(FILEINFO_MIME_TYPE);
+		if ($oFinfo === false) {
+			return null;
+		}
+
+		// No finfo_close(): the handle is freed when it goes out of scope on
+		// every supported version, and calling it is deprecated as of PHP 8.5.
+		$sType = @finfo_buffer($oFinfo, $sData);
+
+		if (!is_string($sType) || $sType === '') {
+			return null;
+		}
+
+		return strtolower(trim(explode(';', $sType, 2)[0]));
+	}
+
 	public static function Fetch(string $sClass, int $iId, string $sAttCode): ormDocument
 	{
 		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
