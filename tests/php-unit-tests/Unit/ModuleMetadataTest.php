@@ -309,4 +309,48 @@ class ModuleMetadataTest extends TestCase
 		$this->assertStringContainsString($sUrl, self::moduleSource(), 'the module documentation links point elsewhere');
 		$this->assertStringContainsString($sUrl, file_get_contents(self::ROOT.'/README.md'), 'the README does not link the project');
 	}
+
+	/**
+	 * SOURCE_URL is served to remote callers as the AGPL 13 source offer, so
+	 * it is not merely another copy of the project link: it is the one a
+	 * licence obligation is discharged through. A typo here is answered by
+	 * "the offer pointed nowhere", which is the same as no offer.
+	 */
+	public function testTheSourceOfferPointsAtTheProject(): void
+	{
+		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
+
+		$this->assertSame(
+			rtrim((string)$oXml->more_info_url, '/'),
+			rtrim(MCPHelper::SOURCE_URL, '/'),
+			'MCPHelper::SOURCE_URL disagrees with extension.xml more_info_url'
+		);
+	}
+
+	/**
+	 * The licence is stated in composer.json, in the header of every source
+	 * file, and now in a constant a client reads over the wire. The constant
+	 * is the one nobody re-reads, so it is the one that drifts.
+	 */
+	public function testTheAnnouncedLicenceIsTheDeclaredOne(): void
+	{
+		$aComposer = self::composer();
+
+		$this->assertSame($aComposer['license'] ?? '', MCPHelper::LICENSE);
+	}
+
+	/**
+	 * An operator running a modified copy has to be able to redirect the offer
+	 * at their own source. A constant they cannot override is a compliance
+	 * problem they cannot fix, so the parameter has to exist where the setup
+	 * writes the configuration - not only in the code that reads it.
+	 */
+	public function testTheSourceUrlOverrideIsDeclaredWhereAnOperatorCanSetIt(): void
+	{
+		$this->assertObjectHasProperty(
+			MCPHelper::MODULE_SETTING_SOURCE_URL,
+			self::moduleParameters(),
+			MCPHelper::MODULE_SETTING_SOURCE_URL.' is read by the code but absent from the datamodel'
+		);
+	}
 }

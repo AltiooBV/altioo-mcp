@@ -464,6 +464,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_max_document_bytes' => 5242880,
     'mcp_pagination_limit' => 200,
     'mcp_protected_resource_metadata' => '',
+    'mcp_source_url' => '',
     'log_mcp_service' => true,
     'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
     'log_mcp_level' => 'error',
@@ -483,6 +484,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. The SDK defaults to 50 and pages the rest behind a cursor, which a client that ignores `nextCursor` never asks for — the 51st tool then exists, is callable, and is advertised to nobody |
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
+| `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
@@ -1249,6 +1251,18 @@ reading of the licence, not legal advice; your counsel decides for your organisa
   the corresponding source of the combined work, this module included, under §13.
 - **If you distribute your pack** (to a customer, on the Hub), it goes out under AGPL with
   source.
+
+### The source offer is served, not just documented
+
+The `core/version` resource reports the extension's name, version, licence and source URL
+alongside iTop's. That block is the §13 offer in practice: an MCP session has no page to put a
+footer on, so a client that only ever speaks JSON-RPC to one endpoint has nowhere else to find
+out what it is talking to or where to ask for its source.
+
+**If you modify this module and third parties reach it over a network, set `mcp_source_url` to
+where your source is.** The default points upstream, which stops being true the moment you
+change something: §13 entitles those users to the source of the version actually running, and
+sending them to a repository that does not contain your changes answers nobody's question.
 
 If your situation needs something other than AGPL for the pack itself, that is a licensing
 conversation rather than a technical one — see [Custom work](#custom-work).

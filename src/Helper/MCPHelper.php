@@ -51,6 +51,28 @@ class MCPHelper
 	 */
 	const SDK_CONSTRAINT = '^0.7.1';
 
+	/**
+	 * The licence this module is distributed under, and where its source is.
+	 *
+	 * Served to remote callers by the core/version resource, which is what
+	 * makes them AGPL 13's "prominent offer": this module is the network-facing
+	 * surface of the combined work, and the people interacting with it over a
+	 * network are the ones entitled to ask for the corresponding source. An
+	 * offer nobody can find from the running instance is not an offer, and a
+	 * link in a README on GitHub is not reachable from an MCP session.
+	 *
+	 * SOURCE_URL is upstream, which is correct for an unmodified install. An
+	 * operator who modifies this module and lets third parties reach it owes
+	 * *their* source, not ours - `mcp_source_url` overrides this for exactly
+	 * that case. See the README, License.
+	 *
+	 * @since 1.0.0
+	 */
+	const LICENSE = 'AGPL-3.0-or-later';
+	const SOURCE_URL = 'https://github.com/altioo/mcp-server-extension';
+
+	const MODULE_SETTING_SOURCE_URL = 'mcp_source_url';
+
 	const MODULE_SETTING_LOG = 'log_mcp_service';
 	const DEFAULT_LOG_SETTING = true;
 	const MODULE_SETTING_LOG_METHOD = 'log_mcp_method';
@@ -509,6 +531,24 @@ class MCPHelper
 		$sUrl = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, '');
 
 		return is_string($sUrl) && $sUrl !== '' ? $sUrl : null;
+	}
+
+	/**
+	 * Where a caller can obtain the corresponding source of what they are
+	 * talking to.
+	 *
+	 * Defaults to upstream. An operator running a modified copy sets
+	 * `mcp_source_url` to wherever *their* source is: under AGPL 13 the offer
+	 * has to lead to the version actually running, and pointing a user at
+	 * upstream while serving them something else satisfies nobody.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function GetSourceUrl(): string
+	{
+		$sUrl = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_SOURCE_URL, '');
+
+		return is_string($sUrl) && trim($sUrl) !== '' ? trim($sUrl) : self::SOURCE_URL;
 	}
 
 	/**
