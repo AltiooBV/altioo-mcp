@@ -260,7 +260,7 @@ final class MCPController
 			return false;
 		}
 
-		foreach (self::GetAuthorizedProfiles($oUser) as $sProfile) {
+		foreach (self::GetAuthorizedProfiles() as $sProfile) {
 			if (UserRights::HasProfile($sProfile, $oUser)) {
 				return true;
 			}
@@ -269,7 +269,12 @@ final class MCPController
 		return false;
 	}
 
-	private static function GetAuthorizedProfiles(\User $oUser) : array
+	/**
+	 * The profiles this instance lets through, as configured.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function GetAuthorizedProfiles() : array
 	{
 		$aProfiles = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', []);
 		if (is_array($aProfiles)) {
@@ -287,10 +292,45 @@ final class MCPController
 			case LoginWebPage::EXIT_CODE_WRONGCREDENTIALS:
 				return new MCPAuthException('Invalid login', MCPResult::UNAUTHORIZED);
 			case LoginWebPage::EXIT_CODE_NOTAUTHORIZED:
-				return new MCPAuthException('This user is not authorized to use the MCP services. (The profile MCP Services User is required to access the MCP services)', MCPResult::UNAUTHORIZED);
+				return self::createProfileException();
 			default:
 				return new MCPAuthException('Unknown authentication error (retCode='.$iRet.')', MCPResult::UNAUTHORIZED);
 		}
+	}
+
+	/**
+	 * Refuses a caller who authenticated but holds none of the profiles this
+	 * instance lets through.
+	 *
+	 * The message says "by default" because there is no fixed answer: the gate
+	 * is mcp_allowed_profiles, an operator may set it to anything, and naming
+	 * one profile as though it were the rule sends an administrator looking for
+	 * a grant that is not what their instance checks. It names Administrator
+	 * too, which the old wording dropped and which is half of the shipped
+	 * default.
+	 *
+	 * What this instance actually requires goes to the log rather than into the
+	 * response, for the same reason the refused hostname does in
+	 * rejectUnlessHostIsServed(): it is operator configuration, the person who
+	 * needs it can read log/error.log, and a caller collecting 401s cannot.
+	 */
+	private static function createProfileException(): MCPAuthException
+	{
+		$aProfiles = self::GetAuthorizedProfiles();
+
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: '%s' holds none of the profiles in '%s' (%s).",
+			UserRights::GetUser(),
+			'mcp_allowed_profiles',
+			empty($aProfiles) ? 'the list is empty, so nobody can be let through' : implode(', ', $aProfiles)
+		));
+
+		return new MCPAuthException(
+			'This user is not authorized to use the MCP services. '
+			.'(By default, the profile "MCP Services User" or "Administrator" is required; '
+			.'the profiles this instance accepts are set by the mcp_allowed_profiles module parameter.)',
+			MCPResult::UNAUTHORIZED
+		);
 	}
 
 	/**
