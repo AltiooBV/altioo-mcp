@@ -20,6 +20,23 @@ renames would otherwise be a data migration on any later date.
   shared datamodel is a collision waiting for the second extension that wants it, and after
   publication this becomes a table rename on live instances rather than an edit.
 
+### Added
+
+- **The `core/version` resource now reports the extension's own name, version, licence and
+  source URL**, beside iTop's. This is the AGPL §13 source offer made where a caller can
+  actually reach it: an MCP session has no page to carry a footer, so a client that speaks
+  JSON-RPC to one endpoint had no way to learn what it was talking to or where to ask for the
+  corresponding source. Additive — the existing keys are unchanged.
+- **`mcp_source_url`**, for an operator running a modified copy. The offer defaults to
+  upstream, which is wrong the moment the module is changed and reachable by third parties:
+  §13 entitles those users to the source of what is running, not to ours. A constant nobody
+  could override would have been a compliance problem with no fix.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**, with the project's AI-assistance policy — disclosure
+  required, responsibility with the contributor — and a statement of how this extension is
+  itself built.
+- **A declared support period** in [SECURITY.md](SECURITY.md): five years of security fixes
+  from a minor's release, with six months' notice to end one early.
+
 ### Security
 
 - **The endpoint no longer resets the caller's iTop session for a request that presented no

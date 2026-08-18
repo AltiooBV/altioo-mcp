@@ -50,8 +50,8 @@ branch that Combodo has retired is not tested against.
 
 ### Support period
 
-**Five years of security fixes from the release date of a minor version.** For `1.0.x`, the
-clock starts at the `v1.0.0` tag.
+**Five years of security fixes from the release date of a minor version.** `1.0.x` was released on
+**16 August 2026**, so it is supported for security fixes until **16 August 2031**.
 
 Five years is the floor the EU [Cyber Resilience Act](https://eur-lex.europa.eu/eli/reg/2024/2847/oj)
 sets for a product with digital elements, and it is committed to here whether or not this
