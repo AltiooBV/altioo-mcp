@@ -1,9 +1,11 @@
 name: iTop matrix
 
-# The unit suite in ci.yml proves the code is right about itself. This one
-# proves it is right about iTop: that the setup still selects the module, that
-# the compiled datamodel still holds what the controller reads, and that the
-# endpoint still answers over HTTP. Those break without a commit here - they
+# The unit suite proves the code is right about itself - ci.yml runs it across
+# the PHP matrix, and the gate job below repeats it once so that nothing here
+# starts on a tree that fails it. This workflow proves the code is right about
+# iTop: that the setup still selects the module, that the compiled datamodel
+# still holds what the controller reads, and that the endpoint still answers
+# over HTTP. Those break without a commit here - they
 # break when Combodo publishes a patch - which is why this also runs on a
 # schedule and not only on pull requests.
 #
@@ -40,6 +42,35 @@ env:
   ITOP_ADMIN_PWD: Admin*2026!
 
 jobs:
+  # Nothing here needs a database, an iTop or a network hop, and it is what
+  # fails while a change is being written. Running it in ci.yml alone is not
+  # enough: that is a different workflow, so its result cannot gate anything in
+  # this one, and the install jobs would start - MariaDB service, release
+  # download, full setup, per version - on a tree whose unit suite is red.
+  #
+  # One PHP version, not the matrix. The question here is "is this tree worth
+  # installing"; "does it work on 8.3 and 8.4" is ci.yml's question and is
+  # answered in parallel with this whole workflow.
+  unit:
+    name: Unit suite (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Includes the static source checks (imports, file conventions), which
+      # are unit tests here rather than a separate linter step.
+      - name: Unit suite
+        run: composer test:unit
+
   versions:
     name: Resolve the supported versions
     runs-on: ubuntu-latest
@@ -61,15 +92,19 @@ jobs:
           php tools/ci/resolve-itop-versions.php | tee -a "$GITHUB_STEP_SUMMARY"
           echo "matrix=$(php tools/ci/resolve-itop-versions.php --matrix)" >> "$GITHUB_OUTPUT"
 
-  # The first gate, and the cheap one: no database, no schema, nothing to tear
-  # down. It downloads the release, puts the module in extensions/ and asks the
-  # setup to compute what it would install - which is where "this extension is
-  # not selectable on that version" shows up. About a minute, against the
-  # several that a real install costs, and the install jobs do not start until
-  # every version has answered.
+  # The first gate that touches an iTop, and still no database, no schema,
+  # nothing to tear down. It downloads the release, puts the module in
+  # extensions/ and asks the setup to compute what it would install - which is
+  # where "this extension is not selectable on that version" shows up. About a
+  # minute, against the several that a real install costs, and the install jobs
+  # do not start until every version has answered.
+  #
+  # Order, cheapest first: unit suite (no iTop, no database) -> this (an iTop,
+  # no database) -> install (a database) -> the suites that need the instance
+  # the install produced.
   installable:
     name: Installable on iTop ${{ matrix.itop_release }} (no database)
-    needs: versions
+    needs: [unit, versions]
     runs-on: ubuntu-latest
     continue-on-error: ${{ !matrix.stable }}
     strategy:

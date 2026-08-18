@@ -3,6 +3,11 @@ name: CI
 # The claim on the Hub listing is "tested on PHP 8.2, 8.3 and 8.4". This is
 # what makes that claim checkable by someone who is deciding whether to trust
 # the extension with their CMDB.
+#
+# This is where the PHP matrix question is answered. itop-matrix.yml repeats the
+# unit suite once, on one version, as its own gate - a workflow cannot depend on
+# a job in another workflow, and its install jobs are too expensive to start on a
+# tree that fails here. Do not deduplicate the two.
 
 on:
   push:
