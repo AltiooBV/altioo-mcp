@@ -13,7 +13,7 @@ on a schedule, which matters more: nothing in this repository changes when Combo
 
 | Step | What it would catch |
 |---|---|
-| A dry run (`--install=0`) selects `altioo-mcp` | The setup **silently** dropping the extension — an unsatisfiable dependency does not fail a setup, it removes a checkbox. This one runs as its own job, first, with no database at all |
+| A dry run (`--install=0`) selects `altioo-mcp` | The setup **silently** dropping the extension — an unsatisfiable dependency does not fail a setup, it removes a checkbox. This one runs as its own job, before any database exists |
 | iTop's unattended setup completes | A module declaration that no longer parses, an XML delta the compiler rejects |
 | `--check-consistency=1` | A datamodel this module contributes to that compiles but is not coherent |
 | A row in `priv_module_install`, at this version | The setup completing without installing the module, or installing a stale copy left in `extensions/` by an earlier run |
@@ -74,15 +74,32 @@ Combodo* and says so as a warning, not an error, so the install proceeds. A gree
 therefore our claim about this module on that PHP, not Combodo's claim about iTop on it. The
 warning is in the setup log of every such run.
 
-## Two jobs, and why the first one has no database
+## The order of the jobs
 
-`installable` runs first, on every supported version, with no MariaDB service attached. It
-downloads the release, puts the module in `extensions/` and asks the setup to compute what it
-*would* install (`--install=0`). That path opens no database connection — verified by running
-it with credentials pointing at a database that does not exist — and it answers the question
-that actually fails: **would this extension be selected at all**. About a minute, against the
-several that a real install costs, and `install` does not start until every version has
-answered.
+Cheapest and most decisive gate first, so that a failure costs the minutes it deserves:
+
+| Job | What it needs | What it answers |
+|---|---|---|
+| `unit` | PHP | is this tree worth installing |
+| `versions` | PHP, the GitHub API | which iTop releases are we talking about |
+| `installable` | PHP, the iTop archive — **no database** | would the setup select this extension at all |
+| `install` | + MariaDB | does the setup compile and install it, and does it then work |
+
+`unit` repeats the unit suite that `ci.yml` already runs across the PHP matrix, on one PHP
+version. The duplication is deliberate and should not be tidied away: `ci.yml` is a different
+workflow, so its result cannot gate a job in this one, and without the gate every install job
+starts — MariaDB service, release download, full setup, once per supported version — on a tree
+whose unit suite is red. The gate costs under a minute; what it prevents costs several per
+version. `ci.yml` remains the place the *matrix* question is answered, in parallel with all of
+this.
+
+`installable` runs before any database exists, on every supported version, with no MariaDB
+service attached. It downloads the release, puts the module in `extensions/` and asks the setup
+to compute what it *would* install (`--install=0`). That path opens no database connection —
+verified by running it with credentials pointing at a database that does not exist — and it
+answers the question that actually fails: **would this extension be selected at all**. About a
+minute, against the several that a real install costs, and `install` does not start until every
+version has answered.
 
 `install` then does the rest: the real setup, iTop's module validation suite, this module's
 integration suite, the datamodel checks and the HTTP smoke.
