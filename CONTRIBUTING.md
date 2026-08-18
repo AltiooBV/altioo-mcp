@@ -44,10 +44,10 @@ answered with something better than a guess.
 
 ## How this extension is built
 
-Roughly half the commits in this repository carry a `Co-Authored-By: Claude` trailer. The
-architecture, the security model, the review of every change and the decision to merge it are
-human; a substantial share of the code that implements them was written by a model under that
-direction, and the trailer records which commits.
+Every commit in this repository except the first carries a `Co-Authored-By: Claude` trailer.
+The architecture, the security model, the review of every change and the decision to merge it
+are human; the code that implements them was written by a model under that direction, and the
+trailer records it.
 
 It is stated here for two reasons.
 
