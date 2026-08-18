@@ -48,7 +48,7 @@ class TitleDictionaryTest extends TestCase
 			$this->assertArrayHasKey(
 				$sKey,
 				self::entriesOf($sLanguage),
-				sprintf('%s has no "%s" entry for %s in datamodel.altioo-mcp.xml.', $sClass, $sKey, $sLanguage)
+				sprintf('%s has no "%s" entry for %s in %s.', $sClass, $sKey, $sLanguage, self::dictionaryFileOf($sLanguage))
 			);
 		}
 	}
@@ -111,7 +111,20 @@ class TitleDictionaryTest extends TestCase
 	}
 
 	/**
+	 * The file holding one language, named the way the compiler names its own
+	 * output: lowercased, space to hyphen (MFCompiler::CompileDictionaries()).
+	 */
+	private static function dictionaryFileOf(string $sLanguage): string
+	{
+		return sprintf('datamodel.altioo-mcp.dict.%s.xml', str_replace(' ', '-', strtolower(trim($sLanguage))));
+	}
+
+	/**
 	 * The dictionary entries declared for one language.
+	 *
+	 * Each language lives in its own datamodel file; iTop loads every file
+	 * matching /^datamodel(.*)\.xml$/i in the module root and merges them, so
+	 * reading one file here is reading the whole of that language.
 	 *
 	 * @return array<string, string> entry id => label
 	 */
@@ -123,8 +136,11 @@ class TitleDictionaryTest extends TestCase
 			return $aCache[$sLanguage];
 		}
 
-		$oXml = simplexml_load_file(self::MODULE_ROOT.'/datamodel.altioo-mcp.xml');
-		self::assertNotFalse($oXml, 'datamodel.altioo-mcp.xml could not be parsed.');
+		$sFile = self::dictionaryFileOf($sLanguage);
+		self::assertFileExists(self::MODULE_ROOT.'/'.$sFile, sprintf('%s declares no dictionary file.', $sLanguage));
+
+		$oXml = simplexml_load_file(self::MODULE_ROOT.'/'.$sFile);
+		self::assertNotFalse($oXml, sprintf('%s could not be parsed.', $sFile));
 
 		$aEntries = [];
 		foreach ($oXml->dictionaries->dictionary as $oDictionary) {

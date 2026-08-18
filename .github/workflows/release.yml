@@ -101,6 +101,7 @@ jobs:
           cd build/altioo-mcp
           for f in index.php README.md SECURITY.md CHANGELOG.md CONTRIBUTING.md LICENSE \
                    extension.xml module.altioo-mcp.php datamodel.altioo-mcp.xml \
+                   datamodel.altioo-mcp.dict.en-us.xml datamodel.altioo-mcp.dict.fr-fr.xml \
                    doc/clients.md vendor/autoload.php tests/php-unit-tests/bootstrap.php \
                    sbom.cyclonedx.json licenses.json; do
             test -e "$f" || { echo "missing from the package: $f"; exit 1; }

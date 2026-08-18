@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
+  <!--
+    Dictionary for "FR FR". Loaded by the /^datamodel(.*)\.xml$/i glob on the module
+    directory: this file is discovered automatically and MUST NOT be listed in
+    module.altioo-mcp.php. It MUST stay in the module root - MFModule::__construct()
+    does not scan subdirectories.
+  -->
+  <dictionaries>
+    <dictionary id="FR FR">
+      <entries>
+        <entry id="Class:AltiooEventMCPService" _delta="force"><![CDATA[Appel de service MCP]]></entry>
+        <entry id="Class:AltiooEventMCPService+" _delta="force"><![CDATA[Journal d'audit d'une requête MCP entrante]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method" _delta="force"><![CDATA[Méthode MCP]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_method+" _delta="force"><![CDATA[Méthode JSON-RPC portée par la requête, par exemple tools/call]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name" _delta="force"><![CDATA[Outil / ressource]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+" _delta="force"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status" _delta="force"><![CDATA[Statut]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status+" _delta="force"><![CDATA[Résultat de l'appel]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success" _delta="force"><![CDATA[Succès]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+" _delta="force"><![CDATA[La requête s'est terminée sans erreur]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error" _delta="force"><![CDATA[Erreur]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+" _delta="force"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Durée (ms)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Taille de la réponse (octets)]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Référence de log]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Paramètres de la requête]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:main" _delta="force"><![CDATA[Informations générales]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:details" _delta="force"><![CDATA[Détails]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+" _delta="force"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read" _delta="force"><![CDATA[MCP : lecture]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read+" _delta="force"><![CDATA[Autoriser les outils MCP qui ne font que lire]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write" _delta="force"><![CDATA[MCP : écriture]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP : suppression]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP : outils modèle de données]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP : outils objets]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations" _delta="force"><![CDATA[MCP : outils relations]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP : outils documents]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP+" _delta="force"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read" _delta="force"><![CDATA[MCP : lecture]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-read+" _delta="force"><![CDATA[Autoriser les outils MCP qui ne font que lire]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write" _delta="force"><![CDATA[MCP : écriture]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP : suppression]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP : outils modèle de données]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP : outils objets]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et écrivent les objets]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations" _delta="force"><![CDATA[MCP : outils relations]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP : outils documents]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
+        <entry id="MCP:tool:core_class_list:title" _delta="force"><![CDATA[Lister les classes]]></entry>
+        <entry id="MCP:tool:core_class_schema:title" _delta="force"><![CDATA[Obtenir le schéma d'une classe]]></entry>
+        <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Appliquer un stimulus]]></entry>
+        <entry id="MCP:tool:core_object_attach:title" _delta="force"><![CDATA[Joindre un document]]></entry>
+        <entry id="MCP:tool:core_object_bulk_create:title" _delta="force"><![CDATA[Créer des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_bulk_delete:title" _delta="force"><![CDATA[Supprimer des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_bulk_update:title" _delta="force"><![CDATA[Modifier des objets en masse]]></entry>
+        <entry id="MCP:tool:core_object_create:title" _delta="force"><![CDATA[Créer un objet]]></entry>
+        <entry id="MCP:tool:core_object_delete:title" _delta="force"><![CDATA[Supprimer un objet]]></entry>
+        <entry id="MCP:tool:core_object_find_by_name:title" _delta="force"><![CDATA[Rechercher des objets par nom]]></entry>
+        <entry id="MCP:tool:core_object_get:title" _delta="force"><![CDATA[Obtenir un objet]]></entry>
+        <entry id="MCP:tool:core_object_get_document:title" _delta="force"><![CDATA[Obtenir un document]]></entry>
+        <entry id="MCP:tool:core_object_get_related:title" _delta="force"><![CDATA[Obtenir les objets liés]]></entry>
+        <entry id="MCP:tool:core_object_search_by_class:title" _delta="force"><![CDATA[Rechercher des objets par classe]]></entry>
+        <entry id="MCP:tool:core_object_search_by_oql:title" _delta="force"><![CDATA[Rechercher des objets en OQL]]></entry>
+        <entry id="MCP:tool:core_object_update:title" _delta="force"><![CDATA[Modifier un objet]]></entry>
+        <entry id="MCP:resource:core_class_list:title" _delta="force"><![CDATA[Classes iTop]]></entry>
+        <entry id="MCP:resource:core_current_user:title" _delta="force"><![CDATA[Utilisateur courant]]></entry>
+        <entry id="MCP:resource:core_version:title" _delta="force"><![CDATA[Version d'iTop]]></entry>
+        <entry id="MCP:resource_template:core_class_detail:title" _delta="force"><![CDATA[Détail d'une classe iTop]]></entry>
+        <entry id="MCP:resource_template:core_object_document:title" _delta="force"><![CDATA[Document iTop]]></entry>
+        <entry id="MCP:prompt:core_my_open_tickets:title" _delta="force"><![CDATA[Mes tickets ouverts]]></entry>
+      </entries>
+    </dictionary>
+  </dictionaries>
+</itop_design>
