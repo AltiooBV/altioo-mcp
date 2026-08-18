@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -191,7 +192,9 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			// first read. Probing for it beforehand caught nothing.
 			throw new ToolCallException("Invalid filter condition. " . $e->getMessage());
 		} catch (\Exception $e) {
-			throw new ToolCallException("Failed to execute search: " . $e->getMessage());
+			// The OQLException above is the one a caller can act on, and it
+			// keeps its message. Anything else came out of the query layer.
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));
 		}
 	}
 }

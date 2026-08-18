@@ -286,6 +286,70 @@ class MCPHelper
 	}
 
 	/**
+	 * A fresh correlation reference for one failure.
+	 *
+	 * Eight random bytes: short enough that a person can read it out of a
+	 * response and grep for it, long enough that two failures on a busy
+	 * instance do not collide.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function NewErrorReference(): string
+	{
+		return bin2hex(random_bytes(8));
+	}
+
+	/**
+	 * Tells the caller that something failed, and tells the log what.
+	 *
+	 * The rule this implements is provenance, not severity. A message this
+	 * module composed - a CheckToWrite() issue, "Unknown attribute 'x'", a
+	 * validation refusal - is written for whoever is on the other end and is
+	 * exactly what lets a model correct its own call, so it goes back
+	 * unchanged. A message that came out of the ORM is written for whoever
+	 * maintains iTop: it routinely carries SQL, table names, class internals
+	 * and occasionally row values, and a caller cannot act on any of it.
+	 *
+	 * That second kind is what this is for. Everything the ORM said goes to
+	 * log/error.log under a reference, and the caller gets the reference.
+	 *
+	 * Nothing is lost for the model, either: by the time an ORM call throws,
+	 * the pre-write check has already run and refused everything the caller
+	 * could have fixed. What is left is the instance's problem - a deadlock, a
+	 * broken trigger, a column that no longer matches the datamodel - so the
+	 * honest thing to return is "this is not yours to fix" rather than a
+	 * fragment of SQL the model will try to reason about.
+	 *
+	 * @param string    $sWhat A phrase naming the operation, e.g. "Failed to create the object".
+	 * @param Throwable $e     What the ORM threw. Never shown to the caller.
+	 *
+	 * @return string The message to put in front of the caller.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function OpaqueFailure(string $sWhat, Throwable $e): string
+	{
+		$sReference = self::NewErrorReference();
+
+		self::LogError(sprintf(
+			'[%s] %s - %s: %s in %s:%d',
+			$sReference,
+			$sWhat,
+			get_class($e),
+			$e->getMessage(),
+			$e->getFile(),
+			$e->getLine()
+		));
+
+		return sprintf(
+			'%s. The cause is server-side and was not something this call could have avoided; '
+			.'it is recorded in the iTop log under reference %s. Report that reference rather than retrying.',
+			$sWhat,
+			$sReference
+		);
+	}
+
+	/**
 	 * What this instance allows, for everyone.
 	 *
 	 * mcp_read_only is shorthand: turning the whole endpoint read-only is what

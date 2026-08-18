@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -207,7 +208,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 
 			return $aOutcome;
 		} catch (\Exception $e) {
-			$aOutcome['message'] = $e->getMessage();
+			// The ToolCallException branch above carries this module's own
+			// refusals, which are what the caller fixes the row with. This one
+			// carries the ORM's, which it does not.
+			$aOutcome['message'] = MCPHelper::OpaqueFailure("Row {$iRow} could not be created", $e);
 
 			return $aOutcome;
 		}

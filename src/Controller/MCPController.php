@@ -315,7 +315,7 @@ final class MCPController
 			return $oResult;
 		}
 
-		$sReference = bin2hex(random_bytes(8));
+		$sReference = MCPHelper::NewErrorReference();
 		MCPHelper::LogError(sprintf(
 			'[%s] Unhandled %s: %s in %s:%d',
 			$sReference,
@@ -429,7 +429,7 @@ final class MCPController
 			// The dump of the unencodable structure goes to the log, not the wire:
 			// it is arbitrary internal state and may hold whatever the failed call
 			// was carrying.
-			$sReference = bin2hex(random_bytes(8));
+			$sReference = MCPHelper::NewErrorReference();
 			MCPHelper::LogError(sprintf(
 				'[%s] json encoding failed (%s). Response structure (print_r+bin2hex): %s',
 				$sReference,

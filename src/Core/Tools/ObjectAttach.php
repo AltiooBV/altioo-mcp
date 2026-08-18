@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -322,7 +323,7 @@ class ObjectAttach extends AbstractMCPTool
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
 		} catch (\Exception $e) {
-			throw new ToolCallException('Failed to attach the document: '.$e->getMessage());
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
 		}
 
 		return ToolOutput::Structured([
@@ -383,7 +384,7 @@ class ObjectAttach extends AbstractMCPTool
 		try {
 			$oTarget->DBUpdate();
 		} catch (\Exception $e) {
-			throw new ToolCallException('Failed to store the document: '.$e->getMessage());
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
 		}
 
 		return ToolOutput::Structured([

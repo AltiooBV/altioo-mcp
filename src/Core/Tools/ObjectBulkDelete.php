@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use DBObject;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
@@ -136,7 +137,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 				$oPlan = new DeletionPlan();
 				$oObject->DBDelete($oPlan);
 			} catch (\Exception $e) {
-				return self::outcome($iId, false, $e->getMessage());
+				// CheckToDelete() above already reported everything the caller
+				// could act on, with the plan's own wording.
+				return self::outcome($iId, false, MCPHelper::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
 			}
 		}
 

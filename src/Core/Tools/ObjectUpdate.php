@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -278,7 +279,7 @@ class ObjectUpdate extends AbstractMCPTool
 				'changes'   => $aChanges,
 			]);
 		} catch (\Exception $e) {
-			throw new ToolCallException("Failed to update object: " . $e->getMessage());
+			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to update {$class}::{$id}", $e));
 		}
 	}
 }

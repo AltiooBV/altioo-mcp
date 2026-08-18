@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -207,7 +208,11 @@ class ObjectCreate extends AbstractMCPTool
 				'changes'   => $aChanges,
 			]);
 		} catch (\Exception $e) {
-			throw new ToolCallException("Failed to create object: " . $e->getMessage());
+			// WritePlan::Check() ran first and refused everything the caller
+			// could have corrected, so what reaches here is the instance's
+			// problem, described in the instance's vocabulary. MCPHelper
+			// explains the split.
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to create the object', $e));
 		}
 	}
 }

@@ -156,8 +156,10 @@ final class WritePlan
 		try {
 			[$bOk, $aIssues] = $oObject->CheckToWrite();
 		} catch (Throwable $e) {
-			// A check that cannot run is not a check that passed.
-			throw new ToolCallException("Could not validate {$sWhat}: ".$e->getMessage());
+			// A check that cannot run is not a check that passed. What it threw
+			// came from inside CheckToWrite() - a class extension, a query -
+			// and is for the log, not for the caller.
+			throw new ToolCallException(MCPHelper::OpaqueFailure("Could not validate {$sWhat}", $e));
 		}
 
 		if ($bOk) {

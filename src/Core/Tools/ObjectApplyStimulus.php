@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -338,7 +339,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		try {
 			$bApplied = $oObject->ApplyStimulus($stimulus);
 		} catch (\Exception $e) {
-			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}: " . $e->getMessage());
+			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
 		}
 		// ApplyStimulus returns false if the state transition did not happen (e.g. due to a condition on the transition that is not met), but no exception is thrown in this case, so we need to check the return value to provide a helpful error message.
 		if (!$bApplied) {

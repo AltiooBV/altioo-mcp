@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -165,7 +166,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// other thirty-nine; it is reported as its own failure.
 				$aOutcomes[] = self::outcome($iId, false, $e->getMessage());
 			} catch (\Exception $e) {
-				$aOutcomes[] = self::outcome($iId, false, $e->getMessage());
+				$aOutcomes[] = self::outcome($iId, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
 			}
 		}
 
