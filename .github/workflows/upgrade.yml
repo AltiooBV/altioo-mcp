@@ -1,0 +1,257 @@
+name: Upgrade
+
+# The install matrix answers "does this install". This one answers the question
+# a client actually lives with: "what happens to the instance I already have".
+#
+# They are different runs and they fail differently. An install starts from an
+# empty database and cannot lose anything. An upgrade recompiles a datamodel
+# over data - and iTop's compiler drops the column of an attribute that stopped
+# being declared, quietly, at the same moment it reports success. The setup has
+# no way to tell "this attribute was removed on purpose" from "this attribute
+# was removed by accident", so neither does CI unless something was put in the
+# instance first and looked for afterwards.
+#
+# The baseline is an earlier version of *this module*, installed the way a
+# client installed it, and then upgraded to the working copy. Which earlier
+# version:
+#
+#   the oldest release tag  - the skip-version path (§9.7): a client upgrading
+#                             1.0 -> 3.0 calls the installer once, with 1.0, so
+#                             it is the jump nobody tests and everybody makes;
+#   the newest release tag  - the ordinary one-step upgrade;
+#   a ref given by hand     - workflow_dispatch, for trying this before any
+#                             release tag exists.
+#
+# Not on every pull request: it installs twice per baseline and costs what that
+# costs. On main, weekly, and on demand.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Tuesday, a day after the iTop matrix - so that when both break in the same
+    # week, the cheaper one has already said which iTop it broke on.
+    - cron: '43 6 * * 2'
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: 'Git ref to upgrade from (tag, branch or SHA). Empty = the oldest and newest release tags.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DB_HOST: 127.0.0.1
+  DB_PORT: '3306'
+  DB_USER: root
+  DB_PWD: itop
+  DB_NAME: itop_ci
+  ITOP_ADMIN_USER: admin
+  ITOP_ADMIN_PWD: Admin*2026!
+
+jobs:
+  # Which versions to upgrade from, and on which iTop.
+  #
+  # One iTop, not the matrix: what is under test here is this module's own
+  # version-to-version path, and running it on every branch multiplies the cost
+  # without changing the question. The oldest supported branch at its floor PHP
+  # is the instance a client who upgrades extensions but not iTop is actually
+  # running.
+  baselines:
+    name: Resolve the baselines
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      found: ${{ steps.resolve.outputs.found }}
+      itop: ${{ steps.itop.outputs.entry }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags are the input to this job, and a shallow clone has none.
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - id: resolve
+        env:
+          BASELINE_REF: ${{ inputs.baseline_ref }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASELINE_REF:-}" ]; then
+            entries="[{\"ref\":\"${BASELINE_REF}\",\"label\":\"${BASELINE_REF} (given)\"}]"
+          else
+            # Release tags, oldest first. Both ends of the range, deduplicated
+            # when there is only one - upgrading from a version to itself is a
+            # different test (that the setup is re-runnable), and this workflow
+            # does that anyway, further down.
+            tags=()
+            mapfile -t tags < <(git tag --list 'v*' --sort=v:refname)
+            if [ "${#tags[@]}" -eq 0 ]; then
+              echo "found=false" >> "$GITHUB_OUTPUT"
+              echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+              {
+                echo "### No baseline to upgrade from"
+                echo
+                echo "This repository has no \`v*\` tag yet, so there is no released version a"
+                echo "client could be upgrading from. The upgrade jobs are skipped, not passed."
+                echo
+                echo "To exercise the path before the first release, run this workflow manually"
+                echo "with \`baseline_ref\` set to an earlier commit."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            oldest="${tags[0]}"
+            newest="${tags[-1]}"
+            if [ "$oldest" = "$newest" ]; then
+              entries="[{\"ref\":\"$oldest\",\"label\":\"$oldest (only release)\"}]"
+            else
+              entries="[{\"ref\":\"$oldest\",\"label\":\"$oldest (oldest, skip-version)\"},{\"ref\":\"$newest\",\"label\":\"$newest (previous release)\"}]"
+            fi
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":$entries}" >> "$GITHUB_OUTPUT"
+          echo "baselines: $entries" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - id: itop
+        if: steps.resolve.outputs.found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The first stable entry the resolver returns: oldest supported
+          # branch, floor PHP.
+          entry=$(php tools/ci/resolve-itop-versions.php --matrix | php -r '
+            $a = json_decode(stream_get_contents(STDIN), true);
+            foreach ($a["include"] as $e) {
+              if ($e["stable"]) { echo json_encode($e), "\n"; exit(0); }
+            }
+            fwrite(STDERR, "no stable iTop release resolved\n");
+            exit(1);
+          ')
+          echo "entry=$entry" >> "$GITHUB_OUTPUT"
+          echo "upgrading on $(echo "$entry" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo "iTop {$e["itop_release"]} / PHP {$e["php"]}";')" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  upgrade:
+    name: From ${{ matrix.label }}
+    needs: baselines
+    if: needs.baselines.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.baselines.outputs.matrix) }}
+
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: itop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      ITOP_DIR: ${{ runner.temp }}/itop
+
+    steps:
+      - name: This working copy - the version being upgraded *to*
+        uses: actions/checkout@v4
+
+      - name: The baseline - the version being upgraded *from*
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          path: baseline
+          fetch-depth: 0
+
+      - id: itop
+        run: |
+          set -euo pipefail
+          entry='${{ needs.baselines.outputs.itop }}'
+          for k in php zip_url itop_tag itop_release; do
+            v=$(echo "$entry" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo $e[$argv[1]];' "$k")
+            echo "$k=$v" >> "$GITHUB_OUTPUT"
+          done
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ steps.itop.outputs.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - name: Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+
+      # Two vendor trees, both --no-dev: each version is installed as it ships,
+      # not as the other one's dependencies happen to resolve.
+      - name: Build both vendor trees
+        run: |
+          set -euo pipefail
+          composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+          composer install --no-dev --no-interaction --no-progress --optimize-autoloader -d baseline
+
+      # A real install of the old version, by the same script the install matrix
+      # uses, so the starting point is an instance a client could have.
+      - name: Install the baseline on iTop ${{ steps.itop.outputs.itop_release }}
+        env:
+          ITOP_ZIP_URL: ${{ steps.itop.outputs.zip_url }}
+          ITOP_TAG: ${{ steps.itop.outputs.itop_tag }}
+          MODULE_SRC: ${{ github.workspace }}/baseline
+        run: tools/ci/install-itop.sh
+
+      - name: Put data, a token and a tuned setting into the instance
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" seed
+
+      - name: Upgrade to this working copy
+        run: tools/ci/upgrade-module.sh
+
+      - name: Is everything still there
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" verify
+
+      # §9.7: a failing migration aborts the client's setup run, they fix the
+      # cause and re-run, and everything executes again. So everything has to
+      # tolerate executing again - including on an instance already at the new
+      # version.
+      - name: Upgrade again, over itself
+        run: tools/ci/upgrade-module.sh
+
+      - name: Is everything still there, still
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" verify
+
+      # The upgraded instance, not a freshly installed one, is what a client
+      # runs. This is the only place the integration suite meets one.
+      - name: The integration suite against the upgraded instance
+        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          php vendor/bin/phpunit \
+            --no-configuration \
+            --bootstrap unittestautoload.php \
+            --testdox \
+            "${ITOP_DIR}/env-production/altioo-mcp/tests/php-unit-tests/Integration"
+
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          # A ref can contain a slash; an artifact name cannot.
+          name: upgrade-baseline-${{ strategy.job-index }}-logs
+          path: |
+            ${{ runner.temp }}/itop/ci-install.log
+            ${{ runner.temp }}/itop/ci-upgrade.log
+            ${{ runner.temp }}/itop/ci-upgrade-fixture.json
+            ${{ runner.temp }}/itop/log/
+          retention-days: 7
+          if-no-files-found: warn
