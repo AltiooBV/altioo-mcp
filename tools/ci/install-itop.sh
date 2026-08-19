@@ -60,6 +60,12 @@ set -euo pipefail
 ITOP_ZIP_URL="${ITOP_ZIP_URL:?set ITOP_ZIP_URL - tools/ci/resolve-itop-versions.php --zip=3.2 prints one}"
 ITOP_TAG="${ITOP_TAG:-}"
 MODULE_SRC="${MODULE_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+
+# itop_sql(), shared with upgrade-module.sh so that both read iTop's install
+# records through the same path. Sourced here rather than where it is used, so
+# that a missing file fails in the first second of a run and not after an
+# install.
+. "$(dirname "${BASH_SOURCE[0]}")/itop-db.sh"
 ITOP_DIR="${ITOP_DIR:-${RUNNER_TEMP:-/tmp}/itop}"
 
 DB_HOST="${DB_HOST:-127.0.0.1}"
@@ -253,20 +259,6 @@ grep -q '^installed!$' "$ITOP_DIR/ci-install.log" || fail "the setup did not rep
 #    columns have not moved. Asking them is the difference between believing the
 #    setup and checking it.
 #
-#    mysqli rather than a mysql client: PHP is already a hard requirement three
-#    lines up, a client binary is not, and one fewer thing to be installed on the
-#    machine running this is one fewer way for it to fail somewhere that is not
-#    about this extension.
-itop_sql() {
-	DB_QUERY="$1" php -r '
-		$o = @new mysqli(getenv("DB_HOST"), getenv("DB_USER"), getenv("DB_PWD"), getenv("DB_NAME"), (int)getenv("DB_PORT"));
-		if ($o->connect_errno) { fwrite(STDERR, $o->connect_error."\n"); exit(1); }
-		$r = $o->query(getenv("DB_QUERY"));
-		if ($r === false) { fwrite(STDERR, $o->error."\n"); exit(1); }
-		$a = $r->fetch_row();
-		echo $a === null ? "" : (string)$a[0];
-	'
-}
 
 INSTALLED_VERSION=$(itop_sql "SELECT version FROM \`${DB_PREFIX}priv_module_install\`
 	WHERE name = '$MODULE_CODE' AND installed IS NOT NULL ORDER BY installed DESC LIMIT 1") \
