@@ -70,9 +70,12 @@ published archive, not from a build tree:
    while `index.php` is.
 7. Record which iTop patch and which PHP this ran on, in the changelog entry.
 
-**Upgrade path.** Unzip over the previous version, re-run the setup, confirm the endpoint still
-answers and no `AltiooEventMCPService` history was lost. Still manual; see the last section of
-[ci-itop-matrix.md](ci-itop-matrix.md) for what automating it would take.
+**Upgrade path.** Automated: the [Upgrade workflow](../.github/workflows/upgrade.yml) installs the
+previous release, seeds data, upgrades to the working copy and checks nothing was lost — see
+[ci-upgrade.md](ci-upgrade.md). Before a release, run it once from the tag being replaced
+(`workflow_dispatch`, `baseline_ref`) and read its summary. What stays manual is the part that
+needs a browser: log into the upgraded instance and confirm the console still shows the module's
+menu and profile.
 
 **Archive contents.** `vendor/` present and built with `--no-dev`; `README.md`, `SECURITY.md`,
 `CHANGELOG.md`, `LICENSE` and `doc/` present; `tests/` present (iTop's own Extensions testsuite

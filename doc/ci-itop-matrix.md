@@ -203,8 +203,8 @@ that does not install.
   web server's configuration. That `src/` and `vendor/` are unreachable while `index.php`
   answers depends on `.htaccess` and stays a manual step in the
   [release checklist](release-checklist.md).
-- **Upgrades.** Installing over a previous version of this module, and confirming no
-  `AltiooEventMCPService` history is lost, is still done by hand. It is the obvious next job:
-  install the previous release tag, then re-run the setup with the current tree.
+- **Upgrades.** Covered by a separate workflow now — [ci-upgrade.md](ci-upgrade.md). It is
+  separate because it costs two installs per baseline and answers a different question: not
+  "does this install" but "what happens to the instance somebody already has".
 - **A real MCP client.** `tools/list` over curl is not Claude Desktop. The client matrix in
   [clients.md](clients.md) is human work.
