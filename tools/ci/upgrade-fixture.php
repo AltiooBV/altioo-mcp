@@ -3,11 +3,13 @@
  * The data an upgrade must not lose, written before it and checked after it.
  *
  * A module upgrade in iTop is a recompilation: the datamodel is rebuilt and the
- * schema altered to match. Nothing warns when that costs data. Removing an
- * attribute drops its column, renaming a class drops its table, and both happen
- * at compile time with no confirmation and no undo - the setup reports success
- * either way. The only way to know is to put something in the instance first
- * and look for it afterwards.
+ * schema altered to match. Nothing warns when that costs data, and the schema
+ * update being additive is what makes it quiet: an attribute removed from the
+ * model leaves its column in place, holding rows nothing can read any more, and
+ * the setup reports success. A renamed class is the destructive case - its rows
+ * keep the old code in finalclass, which the integrity check reads as belonging
+ * to no known class and plans for deletion. Either way the only way to know is
+ * to put something in the instance first and look for it afterwards.
  *
  * What is seeded is chosen to fail loudly rather than plausibly:
  *
@@ -102,9 +104,9 @@ if ($sAction === 'seed') {
 		echo "  seeded ".FIXTURE_CLASS." #$iId ({$aRow['mcp_method']})\n";
 	}
 
-	// Every attribute the class has today. An upgrade that drops one drops its
-	// column with it, and this is what turns "some data is gone" into "the
-	// duration_ms attribute was removed".
+	// Every attribute the class has today. An upgrade that removes one strands
+	// its column - the rows stay, unreachable - and this is what turns "some
+	// data is gone" into "the duration_ms attribute was removed".
 	$aState['attributes'] = array_keys(MetaModel::ListAttributeDefs(FIXTURE_CLASS));
 	sort($aState['attributes']);
 
@@ -161,7 +163,7 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 	check(
 		'no attribute was removed from '.FIXTURE_CLASS,
 		count($aRemoved) === 0,
-		count($aRemoved) === 0 ? '' : 'dropped: '.implode(', ', $aRemoved).' - each took its column with it'
+		count($aRemoved) === 0 ? '' : 'removed: '.implode(', ', $aRemoved).' - the column and its rows are still there, unreachable'
 	);
 
 	foreach ($aState['events'] as $sId => $aExpected) {
