@@ -48,10 +48,25 @@ answered with something better than a guess.
 
 ## How this extension is built
 
-Every commit in this repository except the first carries a `Co-Authored-By: Claude` trailer.
-The architecture, the security model, the review of every change and the decision to merge it
-are human; the code that implements them was written by a model under that direction, and the
-trailer records it.
+Commits in this repository carry a `Co-Authored-By: Claude` trailer. The architecture, the
+security model, the review of every change and the decision to merge it are human; the code
+that implements them was written by a model under that direction, and the trailer records it.
+
+**The history is not uniformly stamped, and this says so rather than rounding up.** The
+extension is pre-1.0 and still being built. The initial commit predates the convention, and a
+few commits made during the build-out carry their message but not the trailer. The list is not
+reproduced here — a count in prose goes stale the moment the next commit lands, and a claim
+nobody can check is the thing this section is trying not to make. Ask the repository instead:
+
+```bash
+git log --oneline --invert-grep --grep='Co-Authored-By:'
+```
+
+Those commits are not being rebased. Rewriting reviewed history so that an attribution
+sentence comes out true is the same tidying this section exists to refuse, and it would cost
+the more valuable half of the record to protect the cheaper half: what those commits do carry
+is a message saying what changed and why, which is where the human decision actually shows.
+A gap that is visible and explained beats a clean history that was edited to look that way.
 
 It is stated here for two reasons.
 
