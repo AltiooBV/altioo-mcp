@@ -293,6 +293,8 @@ final class MCPController
 				return new MCPAuthException('Invalid login', MCPResult::UNAUTHORIZED);
 			case LoginWebPage::EXIT_CODE_NOTAUTHORIZED:
 				return self::createProfileException();
+			case LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED:
+				return self::createNoConsoleAccessException();
 			default:
 				return new MCPAuthException('Unknown authentication error (retCode='.$iRet.')', MCPResult::UNAUTHORIZED);
 		}
@@ -329,6 +331,39 @@ final class MCPController
 			'This user is not authorized to use the MCP services. '
 			.'(By default, the profile "MCP Services User" or "Administrator" is required; '
 			.'the profiles this instance accepts are set by the mcp_allowed_profiles module parameter.)',
+			MCPResult::UNAUTHORIZED
+		);
+	}
+
+	/**
+	 * Refuses a caller whose credentials are valid but whose profiles give them
+	 * no console.
+	 *
+	 * DoLogin(false, false, ...) asks DoLoginEx() for the 'backoffice' portal,
+	 * so a user who only reaches the end-user portal authenticates and is then
+	 * turned away by ChangeLocation() with EXIT_CODE_PORTALUSERNOTAUTHORIZED.
+	 * That is the intended boundary - this endpoint serves what the console
+	 * serves - but it is reached by an ordinary mistake: granting "MCP Services
+	 * User" to a portal user and issuing them a token. Nothing else about that
+	 * setup looks wrong, and without this case the operator got the default
+	 * branch's "Unknown authentication error (retCode=5)" and no log line.
+	 *
+	 * Same split as everywhere else on this path: the caller is told what to
+	 * change, the log names who it was.
+	 */
+	private static function createNoConsoleAccessException(): MCPAuthException
+	{
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: '%s' authenticated but holds no profile granting access to the "
+			.'console, so there is no interface for this endpoint to serve. A portal-only user cannot '
+			.'use the MCP services whatever their token scopes or MCP profile are.',
+			UserRights::GetUser()
+		));
+
+		return new MCPAuthException(
+			'This user has no access to the iTop console. The MCP services serve what the console '
+			.'serves, so a portal-only user cannot reach them - the account needs a profile granting '
+			.'console access in addition to whatever lets it through the MCP gate.',
 			MCPResult::UNAUTHORIZED
 		);
 	}
