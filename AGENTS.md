@@ -699,7 +699,7 @@ anything that assumes the structural file loads first.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="<target branch>">
   <dictionaries>
     <dictionary id="FR FR">
       <entries>
@@ -1192,8 +1192,9 @@ Every unanswered question becomes a support ticket. MUST cover:
   extension as "gone".
 - SHOULD test against the **next** iTop branch before clients meet it (§12.3) and publish a
   compatibility statement per release.
-- Usual breakage: deprecated APIs. `iApplicationObjectExtension` (dep. 3.1) and `iPageUIExtension`
-  (dep. 3.0) work until the release that removes them.
+- Usual breakage: deprecated APIs. A deprecated extension point keeps working until the release that
+  removes it, which is what makes it easy to still be on one — the per-interface deprecation table is
+  in the branch notes (§3.2).
 
 ### 9.5 Uninstall
 
