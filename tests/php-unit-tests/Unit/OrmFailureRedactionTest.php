@@ -119,7 +119,7 @@ class OrmFailureRedactionTest extends TestCase
 			return;
 		}
 
-		$aOffences = $this->broadCatchesLeakingTheMessage($sPath);
+		$aOffences = $this->broadCatchesLeakingTheMessage(file_get_contents($sPath));
 
 		$this->assertSame(
 			[],
@@ -127,7 +127,9 @@ class OrmFailureRedactionTest extends TestCase
 			sprintf(
 				"%s passes a caught exception's own message on from a broad catch.\n"
 				.'Lines: %s.'."\n"
-				.'Wrap it in MCPHelper::OpaqueFailure(), which logs what was thrown and returns a reference. '
+				.'Wrap it in MCPHelper::OpaqueFailure() for a server-side failure, or '
+				.'MCPHelper::RejectedValue() for a value the caller supplied - both log what was thrown '
+				."and return a reference.\n"
 				.'A narrower catch - ToolCallException, OQLException, MCPDocumentException - keeps its message and belongs in its own clause.',
 				self::relative($sPath),
 				implode(', ', $aOffences)
@@ -136,14 +138,62 @@ class OrmFailureRedactionTest extends TestCase
 	}
 
 	/**
+	 * The scan has to survive an interpolated string, because every message it
+	 * is looking for contains one.
+	 *
+	 * This is the shape it read as clean for as long as the brace matcher
+	 * counted only plain '{' tokens: the '}' closing "{$sAttCode}" balanced the
+	 * one that opened the catch, so the block appeared to end mid-line and the
+	 * getMessage() after it was never reached.
+	 */
+	public function testAnInterpolatedStringDoesNotEndTheCatchBlockEarly(): void
+	{
+		$sSource = <<<'PHP'
+		<?php
+		try {
+			$x = f();
+		} catch (\Exception $e) {
+			$aIssues[$sAttCode] = "Invalid value for attribute '{$sAttCode}': ".$e->getMessage();
+		}
+		PHP;
+
+		$this->assertSame(
+			[5],
+			$this->broadCatchesLeakingTheMessage($sSource),
+			'the scan stops at the first interpolated string and misses what follows it'
+		);
+	}
+
+	/**
+	 * The counterpart: a sink still shields what it wraps, interpolation or not.
+	 */
+	public function testASinkInsideAnInterpolatingCatchIsStillAllowed(): void
+	{
+		$sSource = <<<'PHP'
+		<?php
+		try {
+			$x = f();
+		} catch (\Exception $e) {
+			$aIssues[$sAttCode] = "Invalid value for attribute '{$sAttCode}'.";
+			MCPHelper::LogError('failed: '.$e->getMessage());
+		}
+		PHP;
+
+		$this->assertSame([], $this->broadCatchesLeakingTheMessage($sSource));
+	}
+
+	/**
 	 * Line numbers of every $e->getMessage() that sits inside a broad catch
 	 * and outside an allowed sink.
 	 *
+	 * Takes source rather than a path so that the scan can be held to a known
+	 * snippet, which is the only way to notice it has stopped finding things.
+	 *
 	 * @return array<int, int>
 	 */
-	private function broadCatchesLeakingTheMessage(string $sPath): array
+	private function broadCatchesLeakingTheMessage(string $sSource): array
 	{
-		$aTokens = token_get_all(file_get_contents($sPath));
+		$aTokens = token_get_all($sSource);
 		$aOffences = [];
 
 		foreach ($aTokens as $i => $mToken) {
@@ -257,13 +307,33 @@ class OrmFailureRedactionTest extends TestCase
 		return null;
 	}
 
+	/**
+	 * The index of the delimiter closing the one opened at $iOpen.
+	 *
+	 * Braces are not only punctuation. Inside a double-quoted string, "{$x}"
+	 * opens with T_CURLY_OPEN - an *array* token carrying '{' - and closes with
+	 * a plain '}'. Counting only the plain forms therefore sees one more close
+	 * than open, drops the depth to zero at the first interpolated string, and
+	 * ends the catch block there. Every getMessage() after it goes unread, and
+	 * the test reports no offence: this scan passed on seven of them, in
+	 * messages that all began "Invalid value for attribute '{$sAttCode}': ".
+	 *
+	 * So the interpolation openers count too. Parenthesis matching is
+	 * unaffected and shares this method, which is why the token forms are
+	 * consulted only when looking for a brace.
+	 */
 	private function matching(array $aTokens, int $iOpen, string $sOpen, string $sClose): int
 	{
+		$aAlsoOpens = $sOpen === '{' ? self::interpolationOpeners() : [];
+
 		$iDepth = 0;
 		for ($i = $iOpen; $i < count($aTokens); $i++) {
-			if ($aTokens[$i] === $sOpen) {
+			$mToken = $aTokens[$i];
+
+			if ($mToken === $sOpen
+				|| (is_array($mToken) && in_array($mToken[0], $aAlsoOpens, true))) {
 				$iDepth++;
-			} elseif ($aTokens[$i] === $sClose) {
+			} elseif ($mToken === $sClose) {
 				$iDepth--;
 				if ($iDepth === 0) {
 					return $i;
@@ -272,6 +342,29 @@ class OrmFailureRedactionTest extends TestCase
 		}
 
 		return count($aTokens) - 1;
+	}
+
+	/**
+	 * The token ids that open a brace inside a string literal.
+	 *
+	 * Resolved through defined() because the set has changed across PHP
+	 * versions - T_DOLLAR_OPEN_CURLY_BRACES, the "${x}" form, is deprecated
+	 * and on its way out - and an undefined constant here would be a fatal
+	 * rather than one fewer opener.
+	 *
+	 * @return array<int, int>
+	 */
+	private static function interpolationOpeners(): array
+	{
+		$aIds = [];
+
+		foreach (['T_CURLY_OPEN', 'T_DOLLAR_OPEN_CURLY_BRACES'] as $sConstant) {
+			if (defined($sConstant)) {
+				$aIds[] = constant($sConstant);
+			}
+		}
+
+		return $aIds;
 	}
 
 	/** @return array<string, array{0: string}> */
