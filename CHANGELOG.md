@@ -46,8 +46,31 @@ renames would otherwise be a data migration on any later date.
   itself built.
 - **A declared support period** in [SECURITY.md](SECURITY.md): five years of security fixes
   from a minor's release, with six months' notice to end one early.
+- **`MCPHelper::RejectedValue()`**, on the versioned helper surface beside
+  `OpaqueFailure()`. Same provenance rule and the same log-and-reference shape; what differs is
+  the advice. `OpaqueFailure()` answers a server-side failure and tells the caller not to retry,
+  which is wrong for a value the caller chose — this one names the attribute and leaves another
+  attempt open. A pack validating its own inputs wants this one.
 
 ### Security
+
+- **A refused attribute value no longer comes back with iTop's SQL attached.** Every write tool
+  passes caller-supplied values through `RestUtils::MakeValue()` and then `DBObject::Set()`, and
+  put whatever those threw straight into the response. `MakeValue()` rethrows what it caught as
+  `<attcode>: <message>`, an external key supplied as a string is run as OQL by
+  `FindObjectFromKey()`, and `CoreException` folds its context array into the message it exposes
+  — so a database error on that path arrives carrying the SQL that was issued, the table names
+  in it and the MySQL error beside them. Sending a malformed external key returned the schema.
+  All seven sites now go through `MCPHelper::RejectedValue()`: the caller learns which attribute
+  was refused and gets a log reference, and iTop's own words stay in `log/error.log`.
+
+  The rule was already written down and already tested — `OrmFailureRedactionTest` exists to
+  forbid exactly this. Its brace matcher counted plain `{` and `}` tokens, and a `"{$var}"`
+  interpolation opens with `T_CURLY_OPEN` and closes with a plain `}`, so the scan's depth fell
+  to zero at the first interpolated string in a catch block and read no further. Every message
+  it was hunting began `"Invalid value for attribute '{$sAttCode}': "`, which put the
+  interpolation ahead of the leak in all seven. The scan now counts the interpolation openers,
+  and is held to a known snippet so that it failing to find things is itself a failure.
 
 - **A deletion is now refused when its cascade reaches objects the caller may not read, delete
   or modify.** iTop computes a deletion plan with rights off — deliberately, so the plan is
