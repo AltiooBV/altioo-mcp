@@ -323,6 +323,13 @@ profiles, so grant it alongside a functional profile, never on its own.
 Change the allowed list with the `mcp_allowed_profiles` module parameter (below), or set
 `secure_mcp_services` to `false` to drop the profile check entirely.
 
+Whichever profiles you allow, **the account also needs one that grants access to the console**.
+The MCP services serve what the console serves, so a portal-only user is refused even holding
+`MCP Services User` and a correctly scoped token — the endpoint answers that the user has no
+console access, and `log/error.log` names the account. Neither `mcp_allowed_profiles` nor
+`secure_mcp_services` lifts this: it is iTop's login deciding the user has no interface to be
+sent to, before any of this extension's gates are reached.
+
 **2. A credential iTop accepts.** Authentication is delegated to iTop's login stack
 (`LoginWebPage::DoLogin()`), so any login mode iTop can perform **non-interactively** works
 here, subject to your `allowed_login_types`:
@@ -624,6 +631,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 
 | Symptom | Cause |
 |---|---|
+| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. Since 1.0 the module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
