@@ -262,7 +262,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
 			} catch (\Exception $e) {
-				$aIssues[$sAttCode] = "Invalid value for attribute '{$sAttCode}': " . $e->getMessage();
+				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
@@ -276,7 +276,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			}
 			catch (\Exception $e)
 			{
-				$aIssues[$sAttCode] = "Failed to set  attribute '{$sAttCode}': " . $e->getMessage();
+				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {

@@ -86,6 +86,37 @@ class OrmFailureRedactionTest extends TestCase
 	}
 
 	/**
+	 * The value-rejection twin. Same redaction, different advice: the caller
+	 * chose this value and can choose another, so it must not be told to stop
+	 * retrying - and must still not be told what the database said.
+	 *
+	 * The message used here is the shape RestUtils::MakeValue() actually
+	 * produces on the external-key path, where the caller's string is run as
+	 * OQL and a database error comes back with the SQL folded into it by
+	 * CoreException.
+	 */
+	public function testTheValueRejectionKeepsTheDatabaseOutOfIt(): void
+	{
+		$oOrmFailure = new RuntimeException(
+			'org_id: Failed to issue SQL query: query -> SELECT `id` FROM `priv_organization` '
+			.'WHERE `name` = 0x27, mysql_error -> You have an error in your SQL syntax'
+		);
+
+		$sMessage = MCPHelper::RejectedValue("Invalid value for attribute 'org_id'", $oOrmFailure);
+
+		$this->assertStringNotContainsString('SELECT', $sMessage, 'the ORM message reached the caller');
+		$this->assertStringNotContainsString('priv_organization', $sMessage, 'a table name reached the caller');
+		$this->assertStringNotContainsString('mysql', $sMessage, 'the database error reached the caller');
+		$this->assertStringContainsString("attribute 'org_id'", $sMessage, 'the caller is not told which value was refused');
+		$this->assertMatchesRegularExpression('/\b[0-9a-f]{16}\b/', $sMessage, 'the caller has no reference to quote');
+		$this->assertStringNotContainsString(
+			'rather than retrying',
+			$sMessage,
+			'a value the caller can change must not be answered as unfixable'
+		);
+	}
+
+	/**
 	 * Two failures must not correlate to the same log entry, or the reference
 	 * answers the wrong question.
 	 */

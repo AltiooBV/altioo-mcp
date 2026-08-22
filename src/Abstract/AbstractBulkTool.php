@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use DBObject;
@@ -322,7 +323,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				// branches on stdClass. See RestValue.
 				$aValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
 			} catch (\Exception $e) {
-				$aIssues[] = "Invalid value for attribute '{$sAttCode}': ".$e->getMessage();
+				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}
 

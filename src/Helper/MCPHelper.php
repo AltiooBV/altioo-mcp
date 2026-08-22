@@ -390,6 +390,55 @@ class MCPHelper
 	}
 
 	/**
+	 * Tells the caller iTop refused a value they supplied, and tells the log why.
+	 *
+	 * The sibling of {@see self::OpaqueFailure()} and the same provenance rule;
+	 * what differs is whose problem it is. OpaqueFailure() answers a server-side
+	 * failure nothing the caller does will fix, so it says not to retry. This
+	 * one answers a value the caller chose, so it names the attribute and leaves
+	 * another attempt open - while still keeping iTop's own words out of the
+	 * response.
+	 *
+	 * Those words are the point. RestUtils::MakeValue() catches whatever it hit
+	 * and rethrows it as "<attcode>: <message>", and one of the things it can
+	 * hit is a database error: an external key given as a string is run as OQL
+	 * by RestUtils::FindObjectFromKey(), and CoreException folds its context
+	 * array into the message it exposes - so a MySQLException raised on that
+	 * path arrives carrying 'query' => the SQL that was issued, with the table
+	 * names in it and the MySQL error beside them. Passing that straight back
+	 * hands a caller the schema in exchange for a malformed value.
+	 *
+	 * @param string    $sWhat A phrase naming the value, e.g. "Invalid value for attribute 'org_id'".
+	 * @param Throwable $e     What iTop threw. Never shown to the caller.
+	 *
+	 * @return string The message to put in front of the caller.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RejectedValue(string $sWhat, Throwable $e): string
+	{
+		$sReference = self::NewErrorReference();
+
+		self::LogError(sprintf(
+			'[%s] %s - %s: %s in %s:%d',
+			$sReference,
+			$sWhat,
+			get_class($e),
+			$e->getMessage(),
+			$e->getFile(),
+			$e->getLine()
+		));
+
+		return sprintf(
+			'%s. iTop refused it, and its reason is recorded in the iTop log under reference %s. '
+			.'The attribute schema is what says which values it accepts; quote that reference if the '
+			.'value looks right.',
+			$sWhat,
+			$sReference
+		);
+	}
+
+	/**
 	 * What this instance allows, for everyone.
 	 *
 	 * mcp_read_only is shorthand: turning the whole endpoint read-only is what
