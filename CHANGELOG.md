@@ -89,6 +89,16 @@ renames would otherwise be a data migration on any later date.
 
 ### Fixed
 
+- **A portal-only user is told they have no console, instead of `retCode=5`.** The endpoint
+  authenticates through `DoLogin()` against the backoffice portal, so an account whose profiles
+  reach only the end-user portal passes the credential check and is then refused by iTop with
+  an exit code `createAuthException()` did not name. It fell to the default branch: an opaque
+  message to the caller and nothing in `log/error.log`. The boundary is unchanged — the MCP
+  services serve what the console serves — but reaching it is an ordinary mistake, since
+  granting `MCP Services User` to a portal user and issuing them a token looks correct from
+  every screen involved. [Granting access](README.md#granting-access) now states the
+  requirement.
+
 - **A write no longer reports its identifier twice into the same array key.** The tools spelled
   both `'id' => $iId` and `MetaModel::DBGetKey($class) => $iId`, and `DBGetKey()` returns `id`
   for 173 of the 175 stock classes — so the two collided in one array literal and the duplicate
