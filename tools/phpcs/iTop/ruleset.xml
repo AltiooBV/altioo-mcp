@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+	Combodo's coding standard for iTop, as a PHP_CodeSniffer standard.
+
+	Nothing here is specific to any one extension: no module name, no repository
+	path, no rule this project invented. Point any iTop extension at it -
+
+		phpcs --standard=tools/phpcs/iTop src/
+
+	- or reference it from a repository's own phpcs.xml.dist, which is what
+	names the directories to scan. Copy the directory into another extension and
+	it works there unchanged; that portability is the point, and it is why the
+	only paths named below are ones every iTop module has.
+
+	The standard being enforced is stated in AGENTS.md §4.1-4.4, which restates
+	Combodo's:
+
+	  §4.1 Files        UTF-8 without BOM, LF, a final newline, "<?php" and
+	                    never a closing tag.
+	  §4.2 Indentation  tabs, four wide.
+	  §4.3 Braces       control structures take the brace at the end of the
+	                    line; classes and functions take it on the next one.
+	  §4.4 Naming       explicit visibility, PSR-2 modifier order, spaces
+	                    around binary operators, none around concatenation.
+
+	Nothing from PSR-12 or PER is pulled in as a base. Those disagree with iTop
+	on the two rules that matter most - tabs, and the brace after a class or
+	function declaration - so adopting one and excluding the differences would
+	leave the standard up to whichever sniffs the next PHPCS release adds to it.
+
+	Rules of §4.1-4.4 that no bundled sniff expresses - "English only",
+	Hungarian prefixes, `===` over `==`, never `empty()` for string emptiness -
+	are not silently dropped. They are checked in the unit suite where a test
+	can reach them, and reviewed by hand where nothing can.
+-->
+<ruleset name="iTop">
+	<description>Combodo's coding standard for iTop and its extensions.</description>
+
+	<!--
+		What is never ours to reformat, in any iTop module:
+		  vendor/          third-party code, following its own conventions
+		  model.*.php      written by the compiler on every setup run
+		  env-*/           the compiled tree, a copy of everything above
+	-->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/model.*.php</exclude-pattern>
+	<exclude-pattern>*/env-*/*</exclude-pattern>
+	<exclude-pattern>*/data/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="tab-width" value="4"/>
+
+	<!-- §4.1 Files. -->
+	<rule ref="Generic.Files.ByteOrderMark"/>
+	<rule ref="Generic.Files.LineEndings">
+		<properties>
+			<property name="eolChar" value="\n"/>
+		</properties>
+	</rule>
+	<rule ref="Generic.Files.EndFileNewline"/>
+	<rule ref="Generic.PHP.CharacterBeforePHPOpeningTag"/>
+	<rule ref="Generic.PHP.DisallowShortOpenTag"/>
+	<!-- A closing tag emits whatever whitespace follows it, which is how a
+	     header gets sent before the code meant to send it. -->
+	<rule ref="Zend.Files.ClosingTag"/>
+
+	<!-- §4.2 Indentation: tabs, four wide. -->
+	<rule ref="Generic.WhiteSpace.DisallowSpaceIndent"/>
+	<rule ref="Squiz.WhiteSpace.SuperfluousWhitespace"/>
+
+	<!-- §4.3 Braces. The two halves disagree on purpose. -->
+	<rule ref="PEAR.Classes.ClassDeclaration"/>
+	<rule ref="Generic.Functions.OpeningFunctionBraceBsdAllman"/>
+	<rule ref="Squiz.ControlStructures.ControlSignature"/>
+	<rule ref="Generic.ControlStructures.InlineControlStructure"/>
+
+	<!-- §4.4 Naming and operators. -->
+	<rule ref="Squiz.Scope.MethodScope"/>
+	<rule ref="Squiz.Scope.MemberVarScope"/>
+	<rule ref="PSR2.Methods.MethodDeclaration"/>
+	<!-- "no spaces around concatenation": $a.$b, never $a . $b. A newline is
+	     a wrapped expression rather than a missing space, so it is left alone. -->
+	<rule ref="Squiz.Strings.ConcatenationSpacing">
+		<properties>
+			<property name="spacing" value="0"/>
+			<property name="ignoreNewlines" value="true"/>
+		</properties>
+	</rule>
+	<rule ref="Generic.Functions.FunctionCallArgumentSpacing"/>
+</ruleset>

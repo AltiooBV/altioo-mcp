@@ -41,12 +41,16 @@
     ]
   },
   "scripts": {
+    "lint": "phpcs",
+    "lint:fix": "phpcbf",
     "test": "phpunit",
     "test:unit": "phpunit --testsuite unit",
     "test:integration": "phpunit --testsuite integration",
     "sbom": "php tools/sbom.php"
   },
   "scripts-descriptions": {
+    "lint": "Checks the hand-written PHP against Combodo's coding standard (tools/phpcs/iTop). Needs phpcs on the PATH.",
+    "lint:fix": "Applies the fixable half of what lint reports.",
     "sbom": "Writes a CycloneDX bill of materials for the production dependencies to stdout."
   },
   "config": {

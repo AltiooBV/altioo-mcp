@@ -1,0 +1,55 @@
+# The conventions in AGENTS.md §4.1-4.2, which are Combodo's for iTop: an editor
+# that reads this file writes what the linter (phpcs.xml.dist) then checks.
+#
+# Kept in step with the upstream file in the iTop repository. Where the two
+# differ, upstream wins - this is a copy of somebody else's convention, not a
+# preference of this repository.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.php]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+
+[*.scss]
+indent_style = space
+indent_size = 2
+
+[*.twig]
+indent_style = space
+indent_size = 4
+
+# Datamodel and dictionary XML, and the extension manifest beside them.
+[*.xml]
+indent_style = space
+indent_size = 2
+
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 2
+# A line ending in two spaces is a hard break in Markdown.
+trim_trailing_whitespace = false
+
+# Shell and Python follow their own communities, not iTop's: shell scripts here
+# mix both and are left alone, and PEP 8 asks for four spaces.
+[*.py]
+indent_style = space
+indent_size = 4
+
+# Not ours to reformat.
+[{vendor,composer.lock}/**]
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = unset
+insert_final_newline = unset
