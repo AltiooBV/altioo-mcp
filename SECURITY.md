@@ -41,7 +41,7 @@ scope — that is the property this extension exists to keep.
 
 | Version | Status |
 |---|---|
-| 1.0.x | Supported |
+| 1.0.x | **Not released yet.** Supported from the day it is |
 | < 1.0 | Development snapshots, unsupported |
 
 Fixes are issued on the latest patch of the newest minor. The extension follows iTop's own
@@ -50,8 +50,14 @@ branch that Combodo has retired is not tested against.
 
 ### Support period
 
-**Five years of security fixes from the release date of a minor version.** `1.0.x` was released on
-**16 August 2026**, so it is supported for security fixes until **16 August 2031**.
+**Five years of security fixes from the release date of a minor version.**
+
+`1.0.x` has not been released, so its window has not started and no end date is given here.
+Both dates are written into this section when the tag is pushed —
+[doc/release-checklist.md](doc/release-checklist.md) carries the step. A commitment dated from
+anything other than the day the archive actually became installable is one that runs short by
+however long the release slipped, and the five years below is a floor, not a target: it is not
+a number to spend on a delay in the repository.
 
 Five years is the floor the EU [Cyber Resilience Act](https://eur-lex.europa.eu/eli/reg/2024/2847/oj)
 sets for a product with digital elements, and it is committed to here whether or not this

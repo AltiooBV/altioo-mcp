@@ -12,6 +12,9 @@ Findings from the pre-release review, applied before publication. Nothing here h
 the breaking entry below breaks nothing that exists — it is recorded because the class it
 renames would otherwise be a data migration on any later date.
 
+These are not changes *after* 1.0.0. The version was never bumped, so they ship as part of it:
+at tag time this section folds into [1.0.0](#100--unreleased) under one dated heading.
+
 ### Breaking
 
 - **`EventMCPService` is now `AltiooEventMCPService`**, and its table `priv_event_mcp_service`
@@ -201,9 +204,19 @@ renames would otherwise be a data migration on any later date.
   fails if any of them stops satisfying what this module's dependency graph declares. One
   known divergence (`psr/http-factory`) is recorded with the reason it is survivable.
 
-## [1.0.0] - 2026-08-16
+## [1.0.0] — unreleased
 
-First public release.
+The first public release, once it is tagged — which it has not been. There is no `v1.0.0` tag
+and the repository is not published yet, so this heading carries no date. The body of work
+below was finished on 16 August 2026; that is when it stopped changing, not when anyone could
+install it, and the two are not the same claim.
+
+**Read this section together with [Unreleased] above.** Those entries are pre-release review
+findings against *this* version rather than changes that follow it — the version was never
+bumped, so they will ship inside 1.0.0. At tag time they fold in here under one dated heading,
+and that date is also what starts the support window in [SECURITY.md](SECURITY.md#support-period);
+[doc/release-checklist.md](doc/release-checklist.md) carries the step, and
+[release.yml](.github/workflows/release.yml) refuses a tag whose version has no dated heading.
 
 The notes below are written against the pre-release development series rather than an earlier
 published version: nothing before this was released, so an installation upgrading to 1.0.0 is
