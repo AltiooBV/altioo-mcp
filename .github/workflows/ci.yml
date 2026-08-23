@@ -13,12 +13,66 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Tuesday morning. The audit job below is the one check whose verdict
+    # changes with no commit - an advisory published against a locked version
+    # is news whether or not anybody pushed - so on a quiet repository it has
+    # to be started by something other than a push.
+    - cron: '29 6 * * 2'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  # Stage 1 (AGENTS.md §12.3): the cheapest and most decisive gate, and the
+  # one §4.8 states as a MUST. It fails on the tree as written rather than on
+  # the tree as run, so it goes before the suites and before anything that
+  # needs an iTop.
+  lint:
+    name: Coding standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          # phpcs is deliberately not a composer dependency: composer.lock is
+          # shipped inside the archive and vendor/ is built from it with
+          # --no-dev, so a linter added there is a package an operator can see
+          # in the bill of materials but never runs. It is build tooling, and
+          # it is installed like build tooling.
+          tools: composer:v2, phpcs
+
+      # The standard is tools/phpcs/iTop - Combodo's, carrying no path of this
+      # repository - and phpcs.xml.dist is what points it at this tree. The
+      # full report goes to the log rather than through an annotator, so that
+      # what failed is readable from the job page alone.
+      - name: Combodo's coding standard
+        run: phpcs
+
+  # Every action is pinned to the commit it resolved to, because a tag is
+  # mutable and one of these runs under contents: write. A pin nothing checks
+  # is a pin the next hurried edit drops.
+  pinned-actions:
+    name: Actions are pinned to a commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: No workflow may reference an action by tag
+        run: |
+          set -euo pipefail
+          if grep -rnP '^\s*(-\s*)?uses:\s*[^./].*@(?![0-9a-f]{40}(\s|$))' .github/workflows/; then
+            echo
+            echo "the references above name a mutable tag; pin them to the full commit SHA"
+            echo "and leave the version in a trailing comment:  uses: owner/action@<sha> # v1.2.3"
+            exit 1
+          fi
+          echo "every action is pinned to a 40-character commit SHA"
+
   tests:
     name: Unit suite on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
