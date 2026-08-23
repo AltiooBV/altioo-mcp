@@ -73,6 +73,18 @@ jobs:
       - name: Validate composer.json and composer.lock
         run: composer validate --strict --no-check-publish
 
+      # ci.yml runs this too, on branches and pull requests - refs a tag push
+      # matches neither of. It is also the one check whose verdict changes with
+      # no commit: an advisory published against a locked version is true of a
+      # tree nobody has touched since CI was last green. mcp/sdk is pre-1.0 and
+      # vendored into the archive that operators unzip without ever running
+      # composer, so this is the last moment anything looks.
+      - name: Advisories against the locked versions
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          composer audit --locked
+
       # What store users unzip into extensions/: production dependencies only,
       # nothing from require-dev, and vendor/ present because they will never
       # run composer themselves.
