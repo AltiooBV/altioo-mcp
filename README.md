@@ -715,7 +715,9 @@ own retention on that table as you do for iTop's other event classes.
 ## Security
 
 Full threat model, hardening notes and how to report a vulnerability:
-**[SECURITY.md](SECURITY.md)**.
+**[SECURITY.md](SECURITY.md)**. If what you need is the one page an approver reads — SBOM and
+licences, provenance, vulnerability process, footprint, data processing — that is
+**[doc/security-summary.md](doc/security-summary.md)**.
 
 In short: the endpoint is a public HTTP entry point. Beyond the gates above, follow
 [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security) —

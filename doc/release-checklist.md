@@ -21,6 +21,11 @@ The items marked **pending** are the ones that cannot be closed inside the repos
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an
       `AltiooEventMCPService` list showing calls that were made.
+- [ ] **Name the publishers.** [security-summary.md](security-summary.md) §2 answers "who can
+      publish a release" by mechanism — a `v*` tag push, nothing by hand — and leaves the named
+      list open, because there is no honest answer to give before the repository exists. Fill
+      that row with the accounts that actually hold tag-push rights when it does. An approver
+      asking the question is asking about people, not about a workflow file.
 - [ ] **Tag `v1.0.0`** once the run below is green. The archive, its SHA-256, the SBOM and the
       licence inventory are attached by [release.yml](../.github/workflows/release.yml); nothing
       is uploaded by hand.
@@ -114,3 +119,9 @@ be checked without a zip, and the release workflow checks the zip itself.
 
 **Hub listing.** Update the text from [hub-listing.md](hub-listing.md) — in particular the
 supported-versions line and the "tested on" line, which change per release.
+
+**Audit summary.** Re-read [security-summary.md](security-summary.md) against what the release
+actually changed. It is the page an approver reads instead of the README, and the rows most
+likely to have gone stale are the dependency licences, the footprint, and anything the release
+added to the HTTP surface. It links rather than restates, so in a quiet release there is
+usually nothing to do — confirm that rather than assume it.

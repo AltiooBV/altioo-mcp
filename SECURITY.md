@@ -4,6 +4,11 @@ This extension adds an authenticated HTTP entry point to iTop and lets a languag
 through it. That deserves a page of its own, so that the people who have to approve the
 install can read what it does before it is on their instance.
 
+> **Filling in a security or procurement questionnaire?**
+> [doc/security-summary.md](doc/security-summary.md) answers the standard set — SBOM and
+> licences, provenance, vulnerability process, footprint and least privilege, data processing —
+> on one page, assembled from this file and the README so that you do not have to.
+
 ## Reporting a vulnerability
 
 Report it privately, through either channel:

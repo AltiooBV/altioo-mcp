@@ -86,9 +86,12 @@ a proxy — the `401` will advertise it); no console UI, configuration is module
 
 ## Documentation
 
-- Setup, configuration, security and extension points: README in the repository *(link)*
+- Setup, configuration, operating and troubleshooting: README in the repository *(link)*
+- Writing a tool pack on top of it: `doc/extending.md`, with a working pack in
+  `doc/example-pack/`
 - Client configuration for Claude Code, Claude Desktop, VS Code and Cursor: `doc/clients.md`
 - Threat model and vulnerability reporting: `SECURITY.md`
+- Answers to a security or procurement questionnaire: `doc/security-summary.md`
 
 ## Screenshots to attach
 
