@@ -31,6 +31,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
         <entry id="fieldset:AltiooEventMCPService:main" _delta="force"><![CDATA[General information]]></entry>
         <entry id="fieldset:AltiooEventMCPService:details" _delta="force"><![CDATA[Details]]></entry>
+        <entry id="Profile:MCP Services User" _delta="force"><![CDATA[MCP Services User]]></entry>
+        <entry id="Profile:MCP Services User+" _delta="force"><![CDATA[Only users having this profile are allowed to use the MCP services (unless 'secure_mcp_services' is set to false in the module configuration).]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP+" _delta="force"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-read" _delta="force"><![CDATA[MCP: read]]></entry>
