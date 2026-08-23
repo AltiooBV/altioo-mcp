@@ -1,37 +1,21 @@
 <?xml version="1.0"?>
 <!--
-	This repository's linter run: the standard, plus what to point it at.
+	The standard is tools/phpcs/iTop. This is the half that knows about this
+	repository: which tree to read.
 
-	The standard itself is tools/phpcs/iTop - Combodo's, carrying no repository
-	path and no module name, so that another extension can copy the directory
-	and use it unchanged. Everything specific to this module is here instead.
-
-	AGENTS.md §4.8 makes running a linter before packaging a MUST, and §12.3
-	puts it in stage 1 of the pipeline, beside `composer validate` and the
-	platform check - before the unit suite, because it is cheaper and it fails
-	on the tree as written rather than on the tree as run.
-
-		composer lint        report
-		composer lint:fix    apply what phpcbf can fix
-
-	SourceIntegrityTest overlaps the §4.1-4.2 rules on purpose: those have to
-	keep failing on a checkout where phpcs is not installed.
+	`composer lint`, `composer lint:fix`. SourceIntegrityTest overlaps the
+	§4.1-4.2 rules on purpose - those have to keep failing on a checkout where
+	phpcs is not installed.
 -->
 <ruleset name="altioo-mcp">
 	<description>The iTop coding standard, over this module's hand-written PHP.</description>
 
 	<rule ref="./tools/phpcs/iTop"/>
 
-	<!--
-		The whole tree. Narrowing by exclusion rather than by listing files is
-		what stops a new directory from being linted by nobody.
-	-->
+	<!-- The whole tree, narrowed by exclusion: a directory added later is then
+	     linted by default rather than by nobody. doc/example-pack is held to
+	     the same standard because it is what a pack author copies first. -->
 	<file>.</file>
-
-	<!--
-		doc/example-pack is third-party example material, and it is held to the
-		same standard on purpose: it is the file a pack author copies first.
-	-->
 	<exclude-pattern>*/build/*</exclude-pattern>
 	<exclude-pattern>*/.phpunit.cache/*</exclude-pattern>
 
