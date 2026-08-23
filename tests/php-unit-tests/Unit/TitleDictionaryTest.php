@@ -77,6 +77,84 @@ class TitleDictionaryTest extends TestCase
 	}
 
 	/**
+	 * Every entry of every language, in every other language.
+	 *
+	 * The test above walks the elements and asks the dictionary about each, so
+	 * it reached the 22 title entries and none of the other 56 - the class and
+	 * attribute labels, the fieldsets, the token scopes, the profile. Those
+	 * are the entries nothing walks, so they are the ones a language can quietly
+	 * fall behind on: iTop falls back to the key, which prints as
+	 * "Class:AltiooEventMCPService/Attribute:mcp_method" in a French console
+	 * and looks like a broken screen rather than a missing translation.
+	 *
+	 * Symmetric on purpose. An entry added to FR FR alone is the same defect as
+	 * one added to EN US alone, and only one of the two directions would be
+	 * caught by asking "does every English entry have a French one".
+	 *
+	 * @dataProvider languagePairProvider
+	 */
+	public function testTheLanguagesDeclareTheSameEntries(string $sLanguage, string $sOther): void
+	{
+		$aMissing = array_diff(array_keys(self::entriesOf($sLanguage)), array_keys(self::entriesOf($sOther)));
+		sort($aMissing);
+
+		$this->assertSame(
+			[],
+			$aMissing,
+			sprintf(
+				'%s declares %d entr%s that %s does not: %s',
+				self::dictionaryFileOf($sLanguage),
+				count($aMissing),
+				count($aMissing) === 1 ? 'y' : 'ies',
+				self::dictionaryFileOf($sOther),
+				implode(', ', $aMissing)
+			)
+		);
+	}
+
+	/**
+	 * An entry whose label is the key is an entry somebody pasted and never
+	 * translated; iTop would serve it and nothing would look wrong.
+	 *
+	 * @dataProvider languageProvider
+	 */
+	public function testNoEntryIsItsOwnKey(string $sLanguage): void
+	{
+		$aOffenders = [];
+		foreach (self::entriesOf($sLanguage) as $sKey => $sLabel) {
+			if (trim($sLabel) === '' || $sLabel === $sKey) {
+				$aOffenders[] = $sKey;
+			}
+		}
+
+		$this->assertSame([], $aOffenders, self::dictionaryFileOf($sLanguage).': '.implode(', ', $aOffenders));
+	}
+
+	/** @return array<string, array{0: string, 1: string}> */
+	public static function languagePairProvider(): array
+	{
+		$aCases = [];
+		foreach (self::LANGUAGES as $sLanguage) {
+			foreach (self::LANGUAGES as $sOther) {
+				if ($sLanguage !== $sOther) {
+					$aCases[$sLanguage.' -> '.$sOther] = [$sLanguage, $sOther];
+				}
+			}
+		}
+
+		return $aCases;
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function languageProvider(): array
+	{
+		return array_combine(
+			self::LANGUAGES,
+			array_map(static fn (string $s): array => [$s], self::LANGUAGES)
+		);
+	}
+
+	/**
 	 * Every concrete element under src/Core.
 	 *
 	 * @return array<string, array{0: string}>
