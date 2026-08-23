@@ -172,7 +172,8 @@ jobs:
           # tools/, and nothing here asserted either their presence or their
           # absence. ModuleMetadataTest checks the same rule against the
           # working tree; this checks the zip that was actually built.
-          if grep -rlF 'CC BY-SA' . --include='*.md' --include='*.php' --include='*.xml'; then
+          if grep -rlE 'https?://(www\.)?creativecommons\.org/licenses/' . \
+               --include='*.md' --include='*.php' --include='*.xml'; then
             echo "the files above are not AGPL-only and must not ship; list them in exclude.txt"
             exit 1
           fi

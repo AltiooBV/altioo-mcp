@@ -423,15 +423,17 @@ class ModuleMetadataTest extends TestCase
 	 * differently-licensed file landing on a customer instance inside a
 	 * single-licence package is a provenance claim the package cannot support.
 	 *
-	 * Written as "no file the archive carries names that licence" rather than
-	 * as a list of the two, so that a third one added later is caught here
+	 * Written as "no file the archive carries grants another licence" rather
+	 * than as a list of the two, so that a third one added later is caught here
 	 * instead of by whoever reads the zip.
+	 *
+	 * A grant links to the licence it grants, which is what is looked for: the
+	 * two offenders both carry a creativecommons.org URL. Matching the licence
+	 * *name* instead would fire on this file, and on the changelog entry
+	 * describing the fix - a mention is not a grant.
 	 */
 	public function testNothingCarryingAnotherLicenceReachesThePackage(): void
 	{
-		// Assembled rather than written out, so that this file - which has to
-		// name the licence to explain itself - does not match its own needle.
-		$sNeedle = 'CC BY'.'-SA';
 		$aExcluded = self::excludedFromPackage();
 		$aOffenders = [];
 
@@ -443,18 +445,31 @@ class ModuleMetadataTest extends TestCase
 			if (!in_array(pathinfo($sPath, PATHINFO_EXTENSION), ['md', 'php', 'xml', 'txt'], true)) {
 				continue;
 			}
-			// Directories rsync is told to drop whole, and the vendored tree,
-			// whose licences are inventoried in licenses.json instead.
-			foreach (['vendor/', 'build/', '.git/', 'tools/', '.github/', '.phpunit.cache/'] as $sPrefix) {
-				if (str_starts_with($sPath, $sPrefix)) {
+			// Directories rsync is told to drop whole, and every vendored tree -
+			// the module's own and the example pack's - whose licences are
+			// inventoried in licenses.json instead of being read here. Matched
+			// as path segments: doc/example-pack/vendor/ is a vendor tree too,
+			// and a prefix test walks straight into it.
+			$aSegments = explode('/', $sPath);
+			array_pop($aSegments);
+			foreach (['vendor', 'build', '.git', 'tools', '.github', '.phpunit.cache', 'node_modules'] as $sDirectory) {
+				if (in_array($sDirectory, $aSegments, true)) {
 					continue 2;
 				}
 			}
 			if (in_array($sPath, $aExcluded, true)) {
 				continue;
 			}
-			if (str_contains(file_get_contents($oFile->getPathname()), $sNeedle)) {
-				$aOffenders[] = $sPath;
+			preg_match_all(
+				'#https?://[a-z0-9.-]+/licenses/[a-z0-9./-]*#i',
+				file_get_contents($oFile->getPathname()),
+				$aUrls
+			);
+			foreach ($aUrls[0] as $sUrl) {
+				if (!str_starts_with($sUrl, 'https://www.gnu.org/licenses/agpl-3.0')) {
+					$aOffenders[] = $sPath.' ('.$sUrl.')';
+					continue 2;
+				}
 			}
 		}
 		sort($aOffenders);
@@ -462,7 +477,8 @@ class ModuleMetadataTest extends TestCase
 		$this->assertSame(
 			[],
 			$aOffenders,
-			'these ship in the archive and are not '.MCPHelper::LICENSE.'; list them in exclude.txt: '.implode(', ', $aOffenders)
+			'these ship in the archive and grant a licence other than '.MCPHelper::LICENSE
+			.'; list them in exclude.txt: '.implode(', ', $aOffenders)
 		);
 	}
 
