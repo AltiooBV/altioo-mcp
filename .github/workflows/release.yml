@@ -141,7 +141,15 @@ jobs:
         run: |
           set -euo pipefail
           cd build/altioo-mcp
+          # .htaccess and web.config are this module's entire HTTP guard, and
+          # each says in its own comments to keep it in step with the other.
+          # Neither was in this list. A guard missing from the archive does not
+          # fail closed: the compiled copy in env-<env>/ sits under a
+          # configuration that allows PHP for the whole subtree, so src/ and
+          # vendor/ would be served, quietly, from an instance that installed
+          # cleanly.
           for f in index.php README.md SECURITY.md CHANGELOG.md CONTRIBUTING.md LICENSE \
+                   .htaccess web.config \
                    extension.xml module.altioo-mcp.php datamodel.altioo-mcp.xml \
                    datamodel.altioo-mcp.dict.en-us.xml datamodel.altioo-mcp.dict.fr-fr.xml \
                    doc/clients.md vendor/autoload.php tests/php-unit-tests/bootstrap.php \

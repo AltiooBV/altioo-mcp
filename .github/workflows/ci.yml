@@ -150,10 +150,11 @@ jobs:
         run: |
           set -e
           for f in README.md SECURITY.md CHANGELOG.md LICENSE doc/clients.md \
+                   .htaccess web.config \
                    vendor/autoload.php tests/php-unit-tests/bootstrap.php; do
             test -e "$f" || { echo "missing from the package: $f"; exit 1; }
           done
-          ! grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests)' exclude.txt
+          ! grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests|\.htaccess|web\.config)' exclude.txt
           test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
 
       # Exercised on every change rather than only at a tag: a bill of
