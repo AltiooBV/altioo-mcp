@@ -113,6 +113,39 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   origin. The bytes now decide, the response says so in `mimetype_note`, and inert text formats
   libmagic has no signature for (CSV, Markdown, YAML) are still honoured as declared.
 
+- **`AGENTS.md` and `doc/itop-branch-notes.md` no longer ship in the release archive.** Both are
+  CC BY-SA 4.0, and `rsync --exclude-from=exclude.txt` put them in the zip: `exclude.txt`
+  reasons explicitly about `README.md`, `doc/`, `tests/` and `tools/` and never about them, and
+  the release workflow asserted neither their presence nor their absence. So two
+  differently-licensed files landed on every customer instance inside a package whose `LICENSE`,
+  `composer.json`, `extension.xml` and README all declare AGPL-3.0-or-later with no NOTICE
+  beside them. Checked twice now, and neither check names a file: `ModuleMetadataTest` over the
+  working tree, the release workflow over the assembled archive.
+- **`.htaccess` and `web.config` are asserted to be in the archive.** The archive check
+  enumerates sixteen files and omitted the two that are the module's entire HTTP guard. Each
+  file's own comments say to keep it in step with the other, and nothing read either. The
+  failure would not have been a dead endpoint: the compiled copy in `env-<env>/altioo-mcp/`
+  sits under a configuration whose `FilesMatch` does include `php`, granted for the whole
+  subtree — so a guard missing from the zip fails *open*, on `src/` and `vendor/`, on an
+  instance that installed without a warning.
+- **`composer audit --locked` runs on the tag build.** It lives in `ci.yml`, which triggers on
+  branches and pull requests; the release workflow triggers on tags, which match neither. The
+  one build whose output an operator unzips into a live instance was the one build that never
+  asked whether a locked dependency had gone bad — and it is the only check whose verdict
+  changes with no commit. `ci.yml` also runs on a weekly schedule now, for the same reason.
+- **Every GitHub action is pinned to a commit SHA**, with the version in a trailing comment. A
+  major tag is a mutable pointer, and `softprops/action-gh-release` runs under `contents: write`
+  in the job that publishes what customers download. A CI job fails on any reference that is not
+  a 40-character SHA.
+- **The release archive carries a build provenance attestation.** The published `.sha256` proves
+  the file did not change in transit; it does not prove this repository built it, since anyone
+  can publish a zip and a matching checksum. `actions/attest-build-provenance` signs the archive
+  against the workflow, the commit and the repository, verifiable with `gh attestation verify`.
+- **The `MCP Services User` profile has dictionary entries in both languages.** Its name and
+  description were inline literals in the datamodel, so a French console showed them in English
+  — the one user-facing string the `fr-fr` file did not reach, in the screen where an
+  administrator decides who may reach the endpoint.
+
 ### Fixed
 
 - **A portal-only user is told they have no console, instead of `retCode=5`.** The endpoint
@@ -146,6 +179,33 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   worker (FrankenPHP, RoadRunner) that array would have grown without bound and carried one
   caller's session data into the next request.
 - `LoginWebPage::ResetSession()` no longer gets an argument; it takes none.
+
+- **The `mcp_enabled_toolsets` comment undercounted the toolsets, twice.** It named `datamodel`,
+  `objects` and `relations`; `getToolset()` across `src/Core/` returns `documents` as well, and
+  the dictionaries have shipped `MCP-toolset-documents` entries in both languages throughout. An
+  operator narrowing an instance from that comment dropped the documents toolset and the tools
+  stopped being advertised. It also omitted `core`: the `core/version` and `core/current-user`
+  resources and the `core/my-open-tickets` prompt override nothing, so the abstracts' fallback
+  gives them their namespace as a toolset — a fifth value of the setting, named nowhere and with
+  no matching token scope. Both are documented now, and guarded from the elements themselves.
+- **`SECURITY.md` no longer claims the security address is in `composer.json` under
+  `support.security`.** That field held a URL to `SECURITY.md` on GitHub, which is the field's
+  meaning and is a web page — the one thing the sentence said the address was not. It is in
+  `support.email` now, and the claim says where it actually travels.
+- **Two release-checklist steps that could not pass.** Both told the releaser to confirm the
+  console still shows "the menu and the profile"; the datamodel declares zero `<menu>` elements,
+  and the README says so two sections earlier. Replaced with the three surfaces this module has.
+- **`web.config` hid a `templates/` segment** for a directory this changelog records as deleted.
+  The interesting direction is the other one — a directory added later and hidden by nobody — so
+  the segment list is now checked against the directories the archive ships.
+- **The executable bit on `LICENSE`, `MCPHelper.php`, `MCPLog.php` and `MCPService.php`.** None
+  is a program, all four unzip into a directory a web server is pointed at, and
+  `model.altioo-mcp.php` was `0666` on disk besides.
+- **`doc/example-pack` could not run `composer test`, which is what its own README says to run.**
+  No phpunit configuration, no `autoload-dev` for the namespace its `ContractTest` declares, and
+  the base extension — whose `Testing\ElementContract` that test imports — reachable from
+  nowhere. It is the file a third-party pack author copies first. CI now runs the README's
+  commands verbatim.
 
 ### Changed
 
@@ -203,6 +263,29 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   iTop's copies are the ones that load on the endpoint, and `VendoredDependencyResolutionTest`
   fails if any of them stops satisfying what this module's dependency graph declares. One
   known divergence (`psr/http-factory`) is recorded with the reason it is survivable.
+
+- **A linter, which `AGENTS.md` §4.8 has stated as a MUST since it was written and nothing ran.**
+  There was no `.editorconfig`, no PHP_CodeSniffer or php-cs-fixer configuration, no CI step and
+  no line in the release checklist. `tools/phpcs/iTop` is Combodo's coding standard as a PHPCS
+  standard, carrying no module name and no repository path so another iTop extension can copy the
+  directory and use it unchanged; `phpcs.xml.dist` is the half that knows about this tree. Its
+  first run found thirty concatenations spaced on both sides, five control structures braced
+  Allman-style, eighteen multi-line signatures closing `): mixed {`, and a tools script indenting
+  with spaces.
+- **`src/Service/TokenScopes.php` had no test at all**, on the authentication path, while
+  `AccessPolicyTest` exercised only the consumer of the scope list it produces. The cases pinned
+  are the degraded ones — each is one line away from answering "no restriction" instead of
+  "unknown".
+- **Two guards were checking a fraction of what they named.** `ModuleMetadataTest`'s settings
+  provider was a hand-written list of seven that the module had outgrown to fifteen, so eight
+  operator switches were passed to neither the "declared in `module_parameters`" nor the
+  "documented in the README" check; it is derived from the `GetModuleSetting()` calls now.
+  `TitleDictionaryTest` reached 22 dictionary entries of 78, because it walked the elements and
+  asked about each — leaving the class labels, enum values, fieldsets and token scopes to
+  nobody. The languages are compared entry by entry, in both directions.
+- **`tools/reconcile-since.py`** was called by nothing, named in no document, and its own usage
+  line spelled its filename with an underscore. It is in the release checklist now, with the
+  licence header the rest of `tools/` carries.
 
 ## [1.0.0] — unreleased
 
