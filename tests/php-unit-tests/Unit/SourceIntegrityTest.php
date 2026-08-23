@@ -230,6 +230,29 @@ class SourceIntegrityTest extends TestCase
 	}
 
 	/**
+	 * Nothing under src/ is a program.
+	 *
+	 * LICENSE and three of these shipped 100755 - MCPHelper, MCPLog and
+	 * MCPService - into a directory a web server is pointed at. Nothing
+	 * executes them and no exploit follows from the bit alone; it is a claim
+	 * the file makes about itself that is not true, on a tree whose whole
+	 * .htaccess exists to say what may and may not be reached.
+	 *
+	 * @dataProvider sourceFileProvider
+	 */
+	public function testIsNotExecutable(string $sPath): void
+	{
+		clearstatcache(true, $sPath);
+		$iPerms = fileperms($sPath);
+
+		$this->assertSame(
+			0,
+			$iPerms & 0111,
+			sprintf('%s is mode %o; a library file is not a program.', self::relative($sPath), $iPerms & 0777)
+		);
+	}
+
+	/**
 	 * @dataProvider sourceFileProvider
 	 */
 	public function testIsUtf8WithoutBomAndLfEndings(string $sPath): void
