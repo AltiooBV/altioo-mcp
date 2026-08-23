@@ -116,7 +116,8 @@ class ObjectBulkCreate extends AbstractBulkTool
 		array   $objects,
 		bool    $simulate = true,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		if (empty($objects)) {
 			throw new ToolCallException('No objects given.');
 		}

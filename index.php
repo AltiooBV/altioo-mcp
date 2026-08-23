@@ -25,10 +25,10 @@ use Altioo\iTop\Extension\MCP\Controller\MCPController;
 // it needs - see VendoredDependencyResolutionTest, which fails on any overlap
 // that stops being compatible.
 if (!defined('ALTIOO_MCP_AUTOLOADER')) {
-	require_once __DIR__ . '/vendor/autoload.php';
+	require_once __DIR__.'/vendor/autoload.php';
 	define('ALTIOO_MCP_AUTOLOADER', true);
 }
-require_once dirname(__DIR__, 2) . '/approot.inc.php';
+require_once dirname(__DIR__, 2).'/approot.inc.php';
 
 require_once(APPROOT.'/application/application.inc.php');
 require_once(APPROOT.'/application/loginwebpage.class.inc.php');

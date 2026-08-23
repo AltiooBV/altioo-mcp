@@ -37,13 +37,13 @@ $iEpoch = is_string($sEpoch) && ctype_digit($sEpoch) ? (int)$sEpoch : time();
 // the same lock agree and a changed dependency is visible as a changed serial.
 $sSeed = hash('sha256', $aLock['content-hash'] ?? '');
 $sSerial = sprintf(
-    'urn:uuid:%s-%s-%s-%s-%s',
-    substr($sSeed, 0, 8),
-    substr($sSeed, 8, 4),
-    // Version 5 nibble: this is a name-derived UUID, not a random one.
-    '5'.substr($sSeed, 13, 3),
-    dechex((hexdec(substr($sSeed, 16, 1)) & 0x3) | 0x8).substr($sSeed, 17, 3),
-    substr($sSeed, 20, 12)
+	'urn:uuid:%s-%s-%s-%s-%s',
+	substr($sSeed, 0, 8),
+	substr($sSeed, 8, 4),
+	// Version 5 nibble: this is a name-derived UUID, not a random one.
+	'5'.substr($sSeed, 13, 3),
+	dechex((hexdec(substr($sSeed, 16, 1)) & 0x3) | 0x8).substr($sSeed, 17, 3),
+	substr($sSeed, 20, 12)
 );
 
 /**
@@ -55,74 +55,74 @@ $sSerial = sprintf(
  */
 function component(array $aPackage): array
 {
-    $aParts = explode('/', $aPackage['name'], 2);
-    $sGroup = count($aParts) === 2 ? $aParts[0] : '';
-    $sName = $aParts[count($aParts) - 1];
-    $sVersion = $aPackage['version'];
+	$aParts = explode('/', $aPackage['name'], 2);
+	$sGroup = count($aParts) === 2 ? $aParts[0] : '';
+	$sName = $aParts[count($aParts) - 1];
+	$sVersion = $aPackage['version'];
 
-    $aComponent = [
-        'type'    => 'library',
-        'name'    => $sName,
-        'version' => $sVersion,
-        'purl'    => 'pkg:composer/'.$aPackage['name'].'@'.rawurlencode($sVersion),
-    ];
+	$aComponent = [
+		'type'    => 'library',
+		'name'    => $sName,
+		'version' => $sVersion,
+		'purl'    => 'pkg:composer/'.$aPackage['name'].'@'.rawurlencode($sVersion),
+	];
 
-    if ($sGroup !== '') {
-        $aComponent['group'] = $sGroup;
-    }
+	if ($sGroup !== '') {
+		$aComponent['group'] = $sGroup;
+	}
 
-    if (isset($aPackage['description'])) {
-        $aComponent['description'] = $aPackage['description'];
-    }
+	if (isset($aPackage['description'])) {
+		$aComponent['description'] = $aPackage['description'];
+	}
 
-    // SPDX ids as Composer records them. An expression like "MIT OR GPL-2.0"
-    // is not an id, so it goes in the field CycloneDX has for expressions.
-    $aLicenses = [];
-    foreach ((array)($aPackage['license'] ?? []) as $sLicense) {
-        $aLicenses[] = preg_match('/\s(OR|AND)\s/', $sLicense) === 1
-            ? ['expression' => $sLicense]
-            : ['license' => ['id' => $sLicense]];
-    }
-    if ($aLicenses !== []) {
-        $aComponent['licenses'] = $aLicenses;
-    }
+	// SPDX ids as Composer records them. An expression like "MIT OR GPL-2.0"
+	// is not an id, so it goes in the field CycloneDX has for expressions.
+	$aLicenses = [];
+	foreach ((array)($aPackage['license'] ?? []) as $sLicense) {
+		$aLicenses[] = preg_match('/\s(OR|AND)\s/', $sLicense) === 1
+			? ['expression' => $sLicense]
+			: ['license' => ['id' => $sLicense]];
+	}
+	if ($aLicenses !== []) {
+		$aComponent['licenses'] = $aLicenses;
+	}
 
-    // The dist reference is the commit or archive Composer resolved, which is
-    // what makes "version 1.8.2" checkable rather than merely stated.
-    if (isset($aPackage['dist']['reference'])) {
-        $aComponent['externalReferences'] = [[
-            'type'    => 'distribution',
-            'url'     => $aPackage['dist']['url'] ?? '',
-            'comment' => 'reference '.$aPackage['dist']['reference'],
-        ]];
-    }
+	// The dist reference is the commit or archive Composer resolved, which is
+	// what makes "version 1.8.2" checkable rather than merely stated.
+	if (isset($aPackage['dist']['reference'])) {
+		$aComponent['externalReferences'] = [[
+			'type'    => 'distribution',
+			'url'     => $aPackage['dist']['url'] ?? '',
+			'comment' => 'reference '.$aPackage['dist']['reference'],
+		]];
+	}
 
-    return $aComponent;
+	return $aComponent;
 }
 
 $aComponents = array_map('component', $aLock['packages'] ?? []);
 usort($aComponents, static fn (array $a, array $b): int => strcmp(
-    ($a['group'] ?? '').'/'.$a['name'],
-    ($b['group'] ?? '').'/'.$b['name']
+	($a['group'] ?? '').'/'.$a['name'],
+	($b['group'] ?? '').'/'.$b['name']
 ));
 
 $aBom = [
-    'bomFormat'    => 'CycloneDX',
-    'specVersion'  => '1.5',
-    'serialNumber' => $sSerial,
-    'version'      => 1,
-    'metadata'     => [
-        'timestamp' => gmdate('Y-m-d\TH:i:s\Z', $iEpoch),
-        'tools'     => [['vendor' => 'Altioo', 'name' => 'tools/sbom.php']],
-        'component' => [
-            'type'    => 'application',
-            'name'    => $aRoot['name'],
-            'version' => moduleVersion($sRoot),
-            'purl'    => 'pkg:composer/'.$aRoot['name'],
-            'licenses' => [['expression' => $aRoot['license']]],
-        ],
-    ],
-    'components' => $aComponents,
+	'bomFormat'    => 'CycloneDX',
+	'specVersion'  => '1.5',
+	'serialNumber' => $sSerial,
+	'version'      => 1,
+	'metadata'     => [
+		'timestamp' => gmdate('Y-m-d\TH:i:s\Z', $iEpoch),
+		'tools'     => [['vendor' => 'Altioo', 'name' => 'tools/sbom.php']],
+		'component' => [
+			'type'    => 'application',
+			'name'    => $aRoot['name'],
+			'version' => moduleVersion($sRoot),
+			'purl'    => 'pkg:composer/'.$aRoot['name'],
+			'licenses' => [['expression' => $aRoot['license']]],
+		],
+	],
+	'components' => $aComponents,
 ];
 
 /**
@@ -130,9 +130,9 @@ $aBom = [
  */
 function moduleVersion(string $sRoot): string
 {
-    $sXml = file_get_contents($sRoot.'/extension.xml');
+	$sXml = file_get_contents($sRoot.'/extension.xml');
 
-    return preg_match('#<version>([^<]+)</version>#', $sXml, $aMatch) === 1 ? trim($aMatch[1]) : '0.0.0';
+	return preg_match('#<version>([^<]+)</version>#', $sXml, $aMatch) === 1 ? trim($aMatch[1]) : '0.0.0';
 }
 
 echo json_encode($aBom, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), "\n";

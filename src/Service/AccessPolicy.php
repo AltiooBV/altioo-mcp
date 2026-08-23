@@ -63,7 +63,8 @@ final class AccessPolicy
 	private function __construct(
 		private readonly array $aCapabilities,
 		private readonly array $aToolsets,
-	) {
+	)
+	{
 	}
 
 	/** Everything, which is what an instance that configures nothing gets. */

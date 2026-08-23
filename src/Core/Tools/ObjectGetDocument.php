@@ -102,7 +102,8 @@ class ObjectGetDocument extends AbstractMCPTool
 		string $class,
 		int    $id,
 		string $att_code,
-	): mixed {
+	): mixed
+	{
 		try {
 			$oDocument = DocumentAccess::Fetch($class, $id, $att_code);
 		} catch (MCPDocumentException $e) {

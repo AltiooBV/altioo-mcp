@@ -95,7 +95,8 @@ class TicketSearchMine extends AbstractObjectSearch
 		string $order_by = '',
 		string $order_direction = self::DEFAULT_SORT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
-	): mixed {
+	): mixed
+	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
 			throw new ToolCallException('Invalid limit. Specify between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
 		}

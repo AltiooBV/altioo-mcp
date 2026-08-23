@@ -147,7 +147,8 @@ class TicketAddLogEntry extends AbstractMCPTool
 		int    $id,
 		string $message,
 		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
-	): mixed {
+	): mixed
+	{
 		if (trim($message) === '') {
 			throw new ToolCallException('The message is empty.');
 		}

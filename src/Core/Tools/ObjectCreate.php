@@ -107,7 +107,8 @@ class ObjectCreate extends AbstractMCPTool
 		array   $fields = [],
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
 		}
@@ -157,22 +158,19 @@ class ObjectCreate extends AbstractMCPTool
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to create due to fields : " . implode(', ', $aIssues));
+			throw new ToolCallException("Failed to create due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
-			try
-			{
+			try {
 				$oObject->Set($sAttCode, $realValue);
-			}
-			catch (\Exception $e)
-			{
+			} catch (\Exception $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to create due to setting fields : " . implode(', ', $aIssues));
+			throw new ToolCallException("Failed to create due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// iTop's own pre-write check: mandatory attributes, DoCheckToWrite() on

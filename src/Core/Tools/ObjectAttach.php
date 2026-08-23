@@ -180,7 +180,8 @@ class ObjectAttach extends AbstractMCPTool
 		?string $att_code = null,
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		$oTarget = self::target($class, $id);
 		[$oDocument, $sMimeTypeNote] = self::document($filename, $content_base64, $mimetype);
 

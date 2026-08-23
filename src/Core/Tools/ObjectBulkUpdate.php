@@ -106,7 +106,8 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		array   $fields,
 		bool    $simulate = true,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		if (empty($fields)) {
 			throw new ToolCallException('No fields provided for update.');
 		}

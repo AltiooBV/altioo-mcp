@@ -115,7 +115,8 @@ class ObjectDelete extends AbstractMCPTool
 		int     $id,
 		bool    $simulate = true,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
 		}
@@ -196,8 +197,7 @@ class ObjectDelete extends AbstractMCPTool
 		// WritePlan::CheckDeletionRights().
 		WritePlan::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
 
-		if (!$simulate)
-		{
+		if (!$simulate) {
 			// Said before the write: a deletion also updates the objects that
 			// pointed at this one, and the reason belongs in their history too.
 			ChangeTracking::Explain($comment);

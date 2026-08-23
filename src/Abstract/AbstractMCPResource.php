@@ -103,9 +103,9 @@ abstract class AbstractMCPResource
 	 */
 	final public function getUri(): string
 	{
-		return self::URI_SCHEME . '://'
-			. $this->getResourceNamespace() . '/'
-			. $this->getResourcePath();
+		return self::URI_SCHEME.'://'
+			.$this->getResourceNamespace().'/'
+			.$this->getResourcePath();
 	}
 
 	/**

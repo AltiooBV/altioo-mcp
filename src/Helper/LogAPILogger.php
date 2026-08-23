@@ -177,7 +177,7 @@ class LogAPILogger extends AbstractLogger
 		$replace = [];
 		foreach ($context as $key => $value) {
 			if (is_null($value) || is_scalar($value) || (is_object($value) && method_exists($value, '__toString'))) {
-				$replace['{' . $key . '}'] = (string) $value;
+				$replace['{'.$key.'}'] = (string) $value;
 			}
 		}
 

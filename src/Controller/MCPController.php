@@ -428,7 +428,6 @@ final class MCPController
 		}
 		$sBody = (string)$body;
 
-
 		// Inspect before emitting — no double decode
 		$oResult = self::buildResultFromBody($response, $sBody);
 		$oResult->responseBytes = strlen($sBody);

@@ -140,7 +140,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		array   $fields = [],
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		// Validate input parameters
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -270,17 +271,14 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
-			try
-			{
+			try {
 				$oObject->Set($sAttCode, $realValue);
-			}
-			catch (\Exception $e)
-			{
+			} catch (\Exception $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to apply stimulus due to setting fields : " .implode(', ', $aIssues));
+			throw new ToolCallException("Failed to apply stimulus due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// Check for missing mandatory attributes before applying the stimulus, to provide a more helpful error message in this common case
@@ -297,8 +295,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$aMissingFillable = [];
 		$aMissingBlocked  = [];
 
-		foreach($aExpectedAttributes as $sAttCode => $iExpectCode)
-		{
+		foreach ($aExpectedAttributes as $sAttCode => $iExpectCode) {
 			// Soft comparison on purpose: Get() returns mixed (string, int, ormLinkSet,
 			// AttributeDate...) depending on the attribute, so neither === '' nor
 			// utils::IsNullOrEmptyString() (typed ?string) can stand in here.

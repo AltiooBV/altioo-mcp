@@ -125,8 +125,9 @@ class ObjectGetRelated extends AbstractMCPTool
 		string $direction = self::DIRECTION_DOWN,
 		int    $depth = self::DEFAULT_DEPTH,
 		bool   $redundancy = true,
-	): mixed {
-		if($id < 1) {
+	): mixed
+	{
+		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
 		}
 
@@ -143,7 +144,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
-			throw new ToolCallException("Invalid depth. Please specify a depth between " . self::MIN_DEPTH . " and " . self::MAX_DEPTH . ".");
+			throw new ToolCallException("Invalid depth. Please specify a depth between ".self::MIN_DEPTH." and ".self::MAX_DEPTH.".");
 		}
 		$iMaxRecursionDepth = MetaModel::GetConfig()->Get('relations_max_depth');
 		if ($depth > $iMaxRecursionDepth) {
@@ -304,7 +305,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			foreach ($aArrayTest as $sClass => $aKeys) {
 				$oSearch = ObjectQuery::ByIds($sClass, $aKeys);
 				$aListId = $oSearch->SelectAttributeToArray('id');
-				foreach($aListId as $aItem ) {
+				foreach ($aListId as $aItem) {
 					unset($aArrayTest[$sClass][$aItem['id']]);
 				}
 			}

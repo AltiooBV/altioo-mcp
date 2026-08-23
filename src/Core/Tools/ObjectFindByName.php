@@ -143,7 +143,8 @@ class ObjectFindByName extends AbstractMCPTool
 		string $class = '',
 		int    $limit = self::DEFAULT_LIMIT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
-	): mixed {
+	): mixed
+	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
 			throw new ToolCallException('Invalid limit. Please specify a limit between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
 		}

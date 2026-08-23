@@ -79,9 +79,10 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		string $order_by = '',
 		string $order_direction = self::DEFAULT_SORT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
-	): mixed {
+	): mixed
+	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException("Invalid limit. Please specify a limit between " . self::MIN_LIMIT . " and " . self::MAX_LIMIT . ".");
+			throw new ToolCallException("Invalid limit. Please specify a limit between ".self::MIN_LIMIT." and ".self::MAX_LIMIT.".");
 		}
 		if ($offset < self::MIN_OFFSET) {
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
@@ -147,7 +148,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			// Building a DBObjectSet runs no query - it assigns and returns -
 			// so a malformed filter can only surface here, where the set is
 			// first read. Probing for it beforehand caught nothing.
-			throw new ToolCallException("Invalid filter condition. " . $e->getMessage());
+			throw new ToolCallException("Invalid filter condition. ".$e->getMessage());
 		} catch (\Exception $e) {
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.

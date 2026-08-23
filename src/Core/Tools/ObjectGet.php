@@ -91,7 +91,8 @@ class ObjectGet extends AbstractMCPTool
 		string $class,
 		int    $id,
 		string $output_fields = ObjectSerializer::ALL_FIELDS,
-	): mixed {
+	): mixed
+	{
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID '{$id}'.");
 		}

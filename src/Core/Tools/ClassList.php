@@ -90,7 +90,8 @@ class ClassList extends AbstractMCPTool
 	public static function execute(
 		string $category = '',
 		string $filter = '',
-	): mixed {
+	): mixed
+	{
 		$sCategory = trim($category);
 		$sFilter = trim($filter);
 

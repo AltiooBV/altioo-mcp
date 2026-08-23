@@ -94,7 +94,8 @@ class ObjectBulkDelete extends AbstractBulkTool
 		array   $ids,
 		bool    $simulate = true,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_DELETE, UR_ACTION_DELETE, 'delete');
 

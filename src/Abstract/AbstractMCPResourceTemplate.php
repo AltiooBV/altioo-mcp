@@ -98,9 +98,9 @@ abstract class AbstractMCPResourceTemplate
 	 */
 	final public function getUriTemplate(): string
 	{
-		return self::URI_SCHEME . '://'
-			. $this->getResourceNamespace() . '/'
-			. $this->getResourcePath();
+		return self::URI_SCHEME.'://'
+			.$this->getResourceNamespace().'/'
+			.$this->getResourcePath();
 	}
 
 	/**

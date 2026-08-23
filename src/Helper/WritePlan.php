@@ -286,7 +286,8 @@ final class WritePlan
 		string $sWhatWouldHappen,
 		array &$aRefused,
 		bool &$bUnreadable
-	): void {
+	): void
+	{
 		if (empty($aObjects)) {
 			return;
 		}

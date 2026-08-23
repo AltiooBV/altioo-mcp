@@ -113,7 +113,8 @@ class ObjectUpdate extends AbstractMCPTool
 		array   $fields,
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
-	): mixed {
+	): mixed
+	{
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
 		}
@@ -228,17 +229,14 @@ class ObjectUpdate extends AbstractMCPTool
 
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
-			try
-			{
+			try {
 				$oObject->Set($sAttCode, $realValue);
-			}
-			catch (\Exception $e)
-			{
+			} catch (\Exception $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to update due to setting fields : " .implode(', ', $aIssues));
+			throw new ToolCallException("Failed to update due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// iTop's own pre-write check, run before anything is written rather

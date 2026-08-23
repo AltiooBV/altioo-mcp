@@ -83,7 +83,8 @@ class ClassSchema extends AbstractMCPTool
 	 */
 	public static function execute(
 		string $class,
-	): mixed {
+	): mixed
+	{
 		if ($class === '') {
 			throw new ToolCallException("Missing class argument.");
 		}
