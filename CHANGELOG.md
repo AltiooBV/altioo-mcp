@@ -4,7 +4,7 @@ All notable changes to this extension are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versioning is
 [semver](https://semver.org/) over the surface a tool pack can touch: the abstracts under
 `Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
-`Helper/` and the checker under `Testing/`. See the README, [Extending](README.md#extending).
+`Helper/` and the checker under `Testing/`. See [doc/extending.md](doc/extending.md).
 
 ## [Unreleased]
 
@@ -413,7 +413,7 @@ first call, and that a tool is graded read / write / delete by the annotations i
   another route, which adds the why. The origin stays `custom-extension`: an `mcp` value on
   that enum would read better in a filter and would cost an `ALTER TABLE` on `priv_change` at
   every setup. Packs spell the parameter with `ChangeTracking::CommentSchemaProperty()` and
-  record it with `ChangeTracking::Explain()` — see the README, [Extending](README.md#extending).
+  record it with `ChangeTracking::Explain()` — see [doc/extending.md](doc/extending.md).
 - **`core_object_find_by_name`**, the console's global search as a tool. Every other reading
   tool needs the class before it can do anything, and a question rarely arrives with one. It
   is iTop's own search — the same needle splitting and quoted phrase, the same

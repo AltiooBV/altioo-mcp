@@ -3,8 +3,8 @@
 A complete, minimal iTop extension that adds two tools and a prompt to the MCP
 endpoint provided by `altioo-mcp`. It is here to be copied, not installed.
 
-Everything in the base extension's [Extending](../../README.md#extending) section is
-applied here once, in the order you would meet it.
+Everything in the base extension's [Extending](../extending.md) guide is applied here once,
+in the order you would meet it.
 
 ## What is in it
 
