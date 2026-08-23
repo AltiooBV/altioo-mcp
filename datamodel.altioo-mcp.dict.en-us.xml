@@ -49,6 +49,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP: documents toolset]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restrict this token to the tools that read and store files]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-server" _delta="force"><![CDATA[MCP: server toolset]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-server+" _delta="force"><![CDATA[Restrict this token to the resources that describe the instance and the caller]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP+" _delta="force"><![CDATA[Allow this token to call the MCP endpoint, with no restriction]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-read" _delta="force"><![CDATA[MCP: read]]></entry>
@@ -65,6 +67,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restrict this token to the tools that walk the relation graph]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP: documents toolset]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restrict this token to the tools that read and store files]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-server" _delta="force"><![CDATA[MCP: server toolset]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-server+" _delta="force"><![CDATA[Restrict this token to the resources that describe the instance and the caller]]></entry>
         <entry id="MCP:tool:core_class_list:title" _delta="force"><![CDATA[List Classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title" _delta="force"><![CDATA[Get Class Schema]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Apply Stimulus]]></entry>

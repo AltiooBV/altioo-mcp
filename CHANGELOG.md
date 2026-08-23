@@ -184,10 +184,14 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   `objects` and `relations`; `getToolset()` across `src/Core/` returns `documents` as well, and
   the dictionaries have shipped `MCP-toolset-documents` entries in both languages throughout. An
   operator narrowing an instance from that comment dropped the documents toolset and the tools
-  stopped being advertised. It also omitted `core`: the `core/version` and `core/current-user`
-  resources and the `core/my-open-tickets` prompt override nothing, so the abstracts' fallback
-  gives them their namespace as a toolset — a fifth value of the setting, named nowhere and with
-  no matching token scope. Both are documented now, and guarded from the elements themselves.
+  stopped being advertised. It also omitted `core`, and that one was not a documentation bug: the
+  `core/version` and `core/current-user` resources and the `core/my-open-tickets` prompt
+  overrode nothing, so the abstracts' fallback handed them their *namespace* as a toolset — a
+  fifth value of the setting, named nowhere, with no matching token scope, and meaning "who
+  wrote it" rather than "what it does". The first two now declare a **`server`** toolset, with
+  an `MCP-toolset-server` scope on both token classes and dictionary entries in both languages;
+  the prompt declares `objects`, which is what it searches. Every value the setting can take is
+  now a functional group with a scope behind it, guarded from the elements themselves.
 - **`SECURITY.md` no longer claims the security address is in `composer.json` under
   `support.security`.** That field held a URL to `SECURITY.md` on GitHub, which is the field's
   meaning and is a web page — the one thing the sentence said the address was not. It is in

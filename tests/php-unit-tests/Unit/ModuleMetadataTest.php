@@ -209,6 +209,12 @@ class ModuleMetadataTest extends TestCase
 	 * documents toolset without meaning to, and the tools would simply not have
 	 * been advertised.
 	 *
+	 * There is no exemption for an element that declares nothing. The fallback
+	 * in the abstracts hands such an element its namespace, which is a name for
+	 * who wrote it rather than for what it does, and three core elements were
+	 * being narrowed by it. They declare "server" and "objects" now, so every
+	 * value this setting can take is a functional group with a scope behind it.
+	 *
 	 * Read out of the elements rather than listed here, so the count cannot
 	 * fall behind again.
 	 *
@@ -227,13 +233,11 @@ class ModuleMetadataTest extends TestCase
 			"the README does not name the {$sToolset} toolset"
 		);
 
-		// core is the namespace every base element carries, reached by the
-		// fallback in the abstracts rather than declared by anyone. It is a
-		// value of mcp_enabled_toolsets all the same, so it has to be
-		// documented - but it is not a functional group and has no scope.
-		if (in_array($sToolset, self::coreNamespaces(), true)) {
-			return;
-		}
+		$this->assertNotContains(
+			$sToolset,
+			self::coreNamespaces(),
+			"the {$sToolset} toolset is a namespace reached by the fallback, not something an element declares"
+		);
 
 		$sScope = MCPContext::SCOPE_TOOLSET_PREFIX.$sToolset;
 		$this->assertStringContainsString(

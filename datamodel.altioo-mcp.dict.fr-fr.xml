@@ -49,6 +49,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP : outils documents]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-server" _delta="force"><![CDATA[MCP : outils serveur]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-server+" _delta="force"><![CDATA[Restreindre ce jeton aux ressources qui décrivent l'instance et l'appelant]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP+" _delta="force"><![CDATA[Autoriser ce jeton à appeler le point d'entrée MCP, sans restriction]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-read" _delta="force"><![CDATA[MCP : lecture]]></entry>
@@ -65,6 +67,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-relations+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui parcourent le graphe de relations]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents" _delta="force"><![CDATA[MCP : outils documents]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-documents+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui lisent et enregistrent des fichiers]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-server" _delta="force"><![CDATA[MCP : outils serveur]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-server+" _delta="force"><![CDATA[Restreindre ce jeton aux ressources qui décrivent l'instance et l'appelant]]></entry>
         <entry id="MCP:tool:core_class_list:title" _delta="force"><![CDATA[Lister les classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title" _delta="force"><![CDATA[Obtenir le schéma d'une classe]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Appliquer un stimulus]]></entry>

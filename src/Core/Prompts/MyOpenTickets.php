@@ -58,6 +58,12 @@ class MyOpenTickets extends AbstractMCPPrompt
 		return 'core';
 	}
 
+	/** It searches tickets, which is what the objects tools do. */
+	public function getToolset(): string
+	{
+		return 'objects';
+	}
+
 	protected function defaultTitle(): string
 	{
 		return 'My Open Tickets';

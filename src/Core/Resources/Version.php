@@ -38,6 +38,12 @@ class Version extends AbstractMCPResource
 		return 'core';
 	}
 
+	/** What is running, rather than what is in it. */
+	public function getToolset(): string
+	{
+		return 'server';
+	}
+
 	protected function getResourcePath(): string
 	{
 		return 'version';

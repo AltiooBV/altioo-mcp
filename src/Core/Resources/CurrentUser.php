@@ -36,6 +36,12 @@ class CurrentUser extends AbstractMCPResource
 		return 'core';
 	}
 
+	/** Who is calling, rather than what they can reach. */
+	public function getToolset(): string
+	{
+		return 'server';
+	}
+
 	protected function getResourcePath(): string
 	{
 		return 'current-user';
