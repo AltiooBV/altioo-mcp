@@ -6,6 +6,17 @@
 # tests/ ships too - iTop's own Extensions testsuite scans env-production/.
 # tools/ does not: it is maintenance tooling for this repository, and it reads
 # git history, which no installed copy has.
+#
+# AGENTS.md and doc/itop-branch-notes.md are the exception to the rule above,
+# and not for size: they are CC BY-SA 4.0, while LICENSE, composer.json,
+# extension.xml and the README all declare the package AGPL-3.0-or-later with
+# no NOTICE beside it. Two differently-licensed files landing on a customer
+# instance is a provenance claim the package cannot support. They also describe
+# how this repository is worked on, which is not something an installed copy
+# has any use for. phpcs.xml.dist goes with them: it points at tools/, which
+# is not in the archive. This file excludes itself for the same reason: it
+# describes how the archive was built, which is a question about the build and
+# not about the instance.
 
 .DS_Store
 ._*
@@ -17,6 +28,10 @@
 .vscode
 composer.phar
 phpunit.xml
+AGENTS.md
+doc/itop-branch-notes.md
+phpcs.xml.dist
+exclude.txt
 .phpunit.result.cache
 .phpunit.cache
 tools

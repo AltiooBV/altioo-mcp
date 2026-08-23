@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use SimpleXMLElement;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -272,6 +274,57 @@ class ModuleMetadataTest extends TestCase
 		foreach (['README.md', 'SECURITY.md', 'CHANGELOG.md', 'LICENSE', 'doc', 'tests'] as $sPath) {
 			$this->assertNotContains($sPath, $aExcluded, "exclude.txt keeps {$sPath} out of the release archive");
 		}
+	}
+
+	/**
+	 * The package declares one licence, in LICENSE, composer.json,
+	 * extension.xml and the README. AGENTS.md and doc/itop-branch-notes.md are
+	 * Creative Commons, and they shipped by omission: exclude.txt reasoned
+	 * about README.md, doc/, tests/ and tools/ and never about them. A
+	 * differently-licensed file landing on a customer instance inside a
+	 * single-licence package is a provenance claim the package cannot support.
+	 *
+	 * Written as "no file the archive carries names that licence" rather than
+	 * as a list of the two, so that a third one added later is caught here
+	 * instead of by whoever reads the zip.
+	 */
+	public function testNothingCarryingAnotherLicenceReachesThePackage(): void
+	{
+		// Assembled rather than written out, so that this file - which has to
+		// name the licence to explain itself - does not match its own needle.
+		$sNeedle = 'CC BY'.'-SA';
+		$aExcluded = self::excludedFromPackage();
+		$aOffenders = [];
+
+		$oIt = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator(realpath(self::ROOT), RecursiveDirectoryIterator::SKIP_DOTS)
+		);
+		foreach ($oIt as $oFile) {
+			$sPath = ltrim(str_replace(realpath(self::ROOT), '', $oFile->getPathname()), '/');
+			if (!in_array(pathinfo($sPath, PATHINFO_EXTENSION), ['md', 'php', 'xml', 'txt'], true)) {
+				continue;
+			}
+			// Directories rsync is told to drop whole, and the vendored tree,
+			// whose licences are inventoried in licenses.json instead.
+			foreach (['vendor/', 'build/', '.git/', 'tools/', '.github/', '.phpunit.cache/'] as $sPrefix) {
+				if (str_starts_with($sPath, $sPrefix)) {
+					continue 2;
+				}
+			}
+			if (in_array($sPath, $aExcluded, true)) {
+				continue;
+			}
+			if (str_contains(file_get_contents($oFile->getPathname()), $sNeedle)) {
+				$aOffenders[] = $sPath;
+			}
+		}
+		sort($aOffenders);
+
+		$this->assertSame(
+			[],
+			$aOffenders,
+			'these ship in the archive and are not '.MCPHelper::LICENSE.'; list them in exclude.txt: '.implode(', ', $aOffenders)
+		);
 	}
 
 	/**

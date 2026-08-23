@@ -160,6 +160,17 @@ jobs:
           test ! -e .git || { echo ".git leaked into the package"; exit 1; }
           test ! -d tools || { echo "tools/ leaked into the package"; exit 1; }
 
+          # The package declares one licence. AGENTS.md and
+          # doc/itop-branch-notes.md are Creative Commons and shipped by
+          # omission - exclude.txt reasoned about README.md, doc/, tests/ and
+          # tools/, and nothing here asserted either their presence or their
+          # absence. ModuleMetadataTest checks the same rule against the
+          # working tree; this checks the zip that was actually built.
+          if grep -rlF 'CC BY-SA' . --include='*.md' --include='*.php' --include='*.xml'; then
+            echo "the files above are not AGPL-only and must not ship; list them in exclude.txt"
+            exit 1
+          fi
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ steps.archive.outputs.name }}
