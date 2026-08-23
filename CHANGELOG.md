@@ -66,6 +66,19 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   the advice. `OpaqueFailure()` answers a server-side failure and tells the caller not to retry,
   which is wrong for a value the caller chose — this one names the attribute and leaves another
   attempt open. A pack validating its own inputs wants this one.
+- **`@api` on the 26 classes a tool pack may depend on**, beside the `@since` they already
+  carried. The surface semver applies to had been written out in three documents and marked
+  nowhere in the source; it is defined by the tags now, and `grep -rl '@api' src/` answers it in
+  whatever copy you have. Nothing about the promise changed — the tags were placed to match the
+  claim the documents already made.
+- **[doc/extending.md](doc/extending.md)**, the tool-pack guide, split out of the README so
+  that each document answers one person's questions. Same content, one level of headings up,
+  next to the example pack it keeps referring to.
+- **[doc/security-summary.md](doc/security-summary.md)**, one page answering what a security or
+  procurement questionnaire asks — SBOM and licences, provenance, vulnerability process,
+  footprint and least privilege, data processing — assembled from the files that own each
+  answer rather than restating them. It also states the provenance and publisher facts that
+  existed only as comments inside the release workflow.
 
 ### Security
 
@@ -272,6 +285,26 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   post-install checks including the `MCP Services User` profile.
 - SECURITY.md carries a real disclosure channel and response commitment; the README support
   block states plainly that there is no SLA on the free extension.
+- **The supported iTop branches and PHP range are stated once.** The same claim was written in
+  the README's Requirements table, again as a per-patch matrix below it, again in the Hub
+  listing, and again inside `extension.xml`'s `<description>` — which the setup shows to
+  whoever installs the module. `.github/itop-support.json` and `composer.json` own the answer;
+  the three remaining copies are delimited and checked against them. The per-patch matrix is
+  gone rather than moved: it restated an upstream fact that expires on Combodo's schedule, and
+  what replaces it is the mechanism, which does not — iTop's setup refuses a PHP it has not
+  validated.
+- **README: after an iTop core upgrade, the extension must be recompiled.** The upgrade
+  paragraph covered upgrading the extension and not the core underneath it. Until setup is
+  re-run the compiled datamodel has no MCP module in it, so the endpoint 404s, the profile is
+  missing from the console, and a client reports the server as gone — with nothing lost and
+  nothing to reinstall.
+- **The hardening links are version-pinned** (`3_2_0:` / `3_3_0:`) rather than pointing at the
+  wiki's `latest:` namespace, which tracks the development branch. `doc/itop-branch-notes.md`
+  already recorded two things `latest:` recommends that do not exist on 3.2 — and then named a
+  pinned namespace that 404s. Both real ones were checked.
+- **CONTRIBUTING.md names `AGENTS.md`**, and carries the branch and pull-request flow and the
+  commit discipline it was supposed to hold. A contributor reading the file the project points
+  them at had no signpost to the ruleset their change would be reviewed against.
 
 ### Internal
 
@@ -302,6 +335,14 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
 - **`tools/reconcile-since.py`** was called by nothing, named in no document, and its own usage
   line spelled its filename with an underscore. It is in the release checklist now, with the
   licence header the rest of `tools/` carries.
+- **Two facts that were stated in several documents and read from none now fail a test.**
+  `PublicSurfaceTest` holds the `@api` surface as policy and fails from both ends — a surface
+  class that loses its tag, an internal class that gains one, an `@api` with no `@since`, and a
+  document that goes back to presenting a list as the definition.
+  `ModuleMetadataTest::testProseAgreesWithTheDeclaredSupport` reads the branch and PHP claim out
+  of the README, the Hub listing and `extension.xml` and compares all three against
+  `.github/itop-support.json` and `composer.json`. Both were checked by mutation rather than by
+  being green on a tree that already agreed.
 
 ## [1.0.0] — unreleased
 
