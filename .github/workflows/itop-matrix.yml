@@ -55,9 +55,9 @@ jobs:
     name: Unit suite (gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.2'
           coverage: none
@@ -77,9 +77,9 @@ jobs:
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.2'
           coverage: none
@@ -112,9 +112,9 @@ jobs:
       matrix: ${{ fromJson(needs.versions.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
@@ -135,7 +135,7 @@ jobs:
 
       - name: Keep the log of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dryrun-${{ matrix.itop_release }}-php${{ matrix.php }}
           path: ${{ runner.temp }}/itop/ci-dryrun.log
@@ -171,9 +171,9 @@ jobs:
       ITOP_DIR: ${{ runner.temp }}/itop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
@@ -231,7 +231,7 @@ jobs:
       # it is on a machine that is about to be deleted.
       - name: Keep the logs of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: itop-${{ matrix.itop_release }}-php${{ matrix.php }}-logs
           path: |

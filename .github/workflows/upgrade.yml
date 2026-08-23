@@ -67,12 +67,12 @@ jobs:
       found: ${{ steps.resolve.outputs.found }}
       itop: ${{ steps.itop.outputs.entry }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Tags are the input to this job, and a shallow clone has none.
           fetch-depth: 0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.2'
           coverage: none
@@ -164,10 +164,10 @@ jobs:
 
     steps:
       - name: This working copy - the version being upgraded *to*
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: The baseline - the version being upgraded *from*
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ matrix.ref }}
           path: baseline
@@ -182,7 +182,7 @@ jobs:
             echo "$k=$v" >> "$GITHUB_OUTPUT"
           done
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: ${{ steps.itop.outputs.php }}
           extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
@@ -244,7 +244,7 @@ jobs:
 
       - name: Keep the logs of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           # A ref can contain a slash; an artifact name cannot.
           name: upgrade-baseline-${{ strategy.job-index }}-logs
