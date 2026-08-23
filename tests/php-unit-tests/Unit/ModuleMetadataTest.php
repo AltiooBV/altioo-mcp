@@ -132,20 +132,69 @@ class ModuleMetadataTest extends TestCase
 		);
 	}
 
-	/** @return array<string, array{0: string}> */
+	/**
+	 * Every setting the module actually reads, taken from the calls that read
+	 * them.
+	 *
+	 * This was a hand-written list of seven, and the module had grown to
+	 * fifteen: mcp_read_only, mcp_allowed_hosts, mcp_capabilities,
+	 * mcp_enabled_toolsets, mcp_max_document_bytes, mcp_pagination_limit,
+	 * mcp_protected_resource_metadata and mcp_source_url were declared and
+	 * documented, and both guards above walked straight past them. A list
+	 * maintained by hand guards whatever it happened to contain when it was
+	 * last edited, which is not the same set as "what the code reads".
+	 *
+	 * @return array<string, array{0: string}>
+	 */
 	public static function settingProvider(): array
 	{
-		$aSettings = [
-			'secure_mcp_services',
-			'mcp_allowed_profiles',
-			MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS,
-			MCPHelper::MODULE_SETTING_DISABLED,
-			MCPHelper::MODULE_SETTING_LOG,
-			MCPHelper::MODULE_SETTING_LOG_METHOD,
-			MCPHelper::MODULE_SETTING_LOG_LEVEL,
-		];
+		$aConstants = [];
+		$aSettings = [];
 
-		return array_combine($aSettings, array_map(static fn (string $s): array => [$s], $aSettings));
+		foreach (self::sourceFiles() as $sPath) {
+			$sSource = file_get_contents($sPath);
+			preg_match_all('/const\s+(\w+)\s*=\s*\'([^\']+)\'/', $sSource, $aConst, PREG_SET_ORDER);
+			foreach ($aConst as $aMatch) {
+				$aConstants[$aMatch[1]] = $aMatch[2];
+			}
+		}
+
+		foreach (self::sourceFiles() as $sPath) {
+			$sSource = file_get_contents($sPath);
+			preg_match_all('/GetModuleSetting\(\s*[^,]+,\s*([^,)]+)/', $sSource, $aCall, PREG_SET_ORDER);
+			foreach ($aCall as $aMatch) {
+				$sArgument = trim($aMatch[1]);
+				if (preg_match('/^\'([^\']+)\'$/', $sArgument, $aLiteral)) {
+					$aSettings[$aLiteral[1]] = true;
+					continue;
+				}
+				if (preg_match('/::(\w+)$/', $sArgument, $aConstant) && isset($aConstants[$aConstant[1]])) {
+					$aSettings[$aConstants[$aConstant[1]]] = true;
+				}
+			}
+		}
+
+		$aNames = array_keys($aSettings);
+		sort($aNames);
+
+		self::assertGreaterThan(10, count($aNames), 'no settings were found in the source; the scan above has stopped working');
+
+		return array_combine($aNames, array_map(static fn (string $s): array => [$s], $aNames));
+	}
+
+	/** @return array<int, string> */
+	private static function sourceFiles(): array
+	{
+		$aPaths = [];
+		$oIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::ROOT.'/src'));
+		foreach ($oIt as $oFile) {
+			if ($oFile->getExtension() === 'php') {
+				$aPaths[] = $oFile->getPathname();
+			}
+		}
+		sort($aPaths);
+
+		return $aPaths;
 	}
 
 	/**
