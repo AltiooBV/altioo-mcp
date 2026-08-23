@@ -128,6 +128,37 @@ jobs:
       - name: composer audit
         run: composer audit --locked
 
+  # The pack's README says `composer test`, and that is the first thing a pack
+  # author does. It could not work: no phpunit configuration, no autoload-dev
+  # for the namespace its own test declares, and the base extension - whose
+  # ElementContract the test imports - reachable from nowhere. Running it here
+  # is what stops the instructions and the files from drifting apart again.
+  example-pack:
+    name: The example pack runs as documented
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      # The pack finds the base beside it under extensions/, or through
+      # ALTIOO_MCP_ROOT. In a checkout it is the directory two levels up, which
+      # its bootstrap tries second - but the base's vendor/ has to exist for
+      # either to work.
+      - name: Build the base extension the pack resolves against
+        run: composer install --no-dev --no-interaction --no-progress
+
+      - name: The three commands the pack's README gives
+        working-directory: doc/example-pack
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          composer test
+
   package:
     name: Release archive builds
     runs-on: ubuntu-latest

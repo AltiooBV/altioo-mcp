@@ -38,6 +38,25 @@
     }
   },
 
+  "_comment_autoload_dev": [
+    "ContractTest declares this namespace, and without it here `composer test`",
+    "finds the file and cannot autoload the class. autoload-dev never reaches",
+    "the production dump, so it costs an installed instance nothing.",
+    "",
+    "The base extension is deliberately NOT a dependency. Its ElementContract",
+    "is what the suite imports, and it is resolved the way everything else",
+    "from the base is resolved at runtime - through the autoloader that is",
+    "already registered. tests/php-unit-tests/bootstrap.php requires it from",
+    "beside this module under extensions/. Requiring the base here instead",
+    "would vendor a second copy of it, and of mcp/sdk with it, which is the",
+    "one thing the comment above is about."
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "Acme\\iTop\\Extension\\ServiceDesk\\Test\\": "tests/php-unit-tests"
+    }
+  },
+
   "_comment_autoload": [
     "Both settings are load-bearing, and neither is the composer default.",
     "iTop's InterfaceDiscovery enumerates candidate classes by reading",

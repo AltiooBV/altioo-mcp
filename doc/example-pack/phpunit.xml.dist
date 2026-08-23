@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit 9, matching the version iTop pins and the one the base extension uses.
+
+  Tests live under tests/php-unit-tests/ so that iTop's own "Extensions"
+  testsuite finds them: it scans env-production/<module>/tests/php-unit-tests.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+         bootstrap="tests/php-unit-tests/bootstrap.php"
+         colors="true"
+         columns="120"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true"
+         verbose="true">
+  <testsuites>
+    <!-- ElementContract reads what the elements declare about themselves, so
+         this needs neither iTop nor a database. -->
+    <testsuite name="unit">
+      <directory>tests/php-unit-tests/Unit</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

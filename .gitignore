@@ -12,6 +12,16 @@ vendor/*
 !vendor/.gitkeep
 composer.phar
 
+# The example pack resolves its own dependencies when somebody follows its
+# README. A pattern with a slash in it is anchored to this file's directory, so
+# the rule above does not reach here. Its lock is deliberately not committed:
+# the pack is a template, and a lock in doc/ would pin the versions a reader
+# gets to whatever was current when it was last touched.
+/doc/example-pack/vendor/
+/doc/example-pack/composer.lock
+/doc/example-pack/.phpunit.result.cache
+/doc/example-pack/.phpunit.cache/
+
 # PHPStorm / IDEs
 .idea/
 *.iml
