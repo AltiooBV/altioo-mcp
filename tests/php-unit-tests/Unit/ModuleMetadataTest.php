@@ -503,6 +503,40 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/**
+	 * SECURITY.md commits to a single point of contact and says it travels
+	 * inside the package. It said that address was in composer.json under
+	 * support.security; that field held a URL to SECURITY.md on GitHub, which
+	 * is what the field means and is a web page - the one thing the sentence
+	 * said it was not.
+	 *
+	 * The address is not written here. Whatever SECURITY.md commits to is what
+	 * the other two have to carry, which is the direction that cannot go stale.
+	 */
+	public function testTheSecurityAddressTravelsWithThePackage(): void
+	{
+		$sSecurity = file_get_contents(self::ROOT.'/SECURITY.md');
+
+		$this->assertSame(
+			1,
+			preg_match('/<([^@\s>]+@[^@\s>]+\.[a-z]{2,})>/', $sSecurity, $aMatch),
+			'SECURITY.md names no contact address'
+		);
+		$sAddress = $aMatch[1];
+
+		$this->assertSame(
+			$sAddress,
+			self::composer()['support']['email'] ?? null,
+			'composer.json support.email is not the address SECURITY.md commits to'
+		);
+		$this->assertStringContainsString(
+			$sAddress,
+			file_get_contents(self::ROOT.'/README.md'),
+			'the README does not carry the address SECURITY.md commits to'
+		);
+		$this->assertNotContains('SECURITY.md', self::excludedFromPackage(), 'SECURITY.md does not ship');
+	}
+
+	/**
 	 * SOURCE_URL is served to remote callers as the AGPL 13 source offer, so
 	 * it is not merely another copy of the project link: it is the one a
 	 * licence obligation is discharged through. A typo here is answered by

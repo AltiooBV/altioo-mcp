@@ -16,7 +16,8 @@
     "issues": "https://github.com/altioo/mcp-server-extension/issues",
     "source": "https://github.com/altioo/mcp-server-extension",
     "docs": "https://github.com/altioo/mcp-server-extension/blob/main/README.md",
-    "security": "https://github.com/altioo/mcp-server-extension/blob/main/SECURITY.md"
+    "security": "https://github.com/altioo/mcp-server-extension/blob/main/SECURITY.md",
+    "email": "security@altioo.com"
   },
   "require": {
     "php": ">=8.2 <8.5",

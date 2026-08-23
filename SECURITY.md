@@ -71,8 +71,10 @@ GitHub releases **six months** ahead. It will not happen quietly.
 ### Single point of contact
 
 <security@altioo.com>, alongside the GitHub advisory channel above. The same address is in the
-README and in `composer.json` under `support.security`, so it travels inside the package
-instead of living only on a web page — which is the point of the requirement.
+README, in this file, and in `composer.json` under `support.email` — and all three ship inside
+the release archive, so it travels with the extension instead of living only on a web page,
+which is the point of the requirement. (`support.security` is a URL to this file on GitHub,
+which is the field's meaning and is not a contact address.)
 
 Where the CRA's 24-hour and 72-hour reporting duties for an *actively exploited* vulnerability
 apply, they are met from that address, and they run in parallel with the timetable above rather
