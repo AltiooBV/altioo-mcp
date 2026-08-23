@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -195,6 +196,95 @@ class ModuleMetadataTest extends TestCase
 		sort($aPaths);
 
 		return $aPaths;
+	}
+
+	/**
+	 * Every toolset a core element declares is selectable on a token, and named
+	 * where an operator reads about them.
+	 *
+	 * The comment on mcp_enabled_toolsets listed three toolsets - datamodel,
+	 * objects and relations - after documents had been added and shipped with
+	 * its own MCP-toolset-documents scope and its own dictionary entries. An
+	 * operator narrowing an instance from that comment would have dropped the
+	 * documents toolset without meaning to, and the tools would simply not have
+	 * been advertised.
+	 *
+	 * Read out of the elements rather than listed here, so the count cannot
+	 * fall behind again.
+	 *
+	 * @dataProvider toolsetProvider
+	 */
+	public function testEveryToolsetIsDeclaredAndDocumented(string $sToolset): void
+	{
+		$this->assertStringContainsString(
+			'"'.$sToolset.'"',
+			self::enabledToolsetsComment(),
+			"the mcp_enabled_toolsets comment does not name the {$sToolset} toolset an operator would have to list"
+		);
+		$this->assertStringContainsString(
+			'`'.$sToolset.'`',
+			file_get_contents(self::ROOT.'/README.md'),
+			"the README does not name the {$sToolset} toolset"
+		);
+
+		// core is the namespace every base element carries, reached by the
+		// fallback in the abstracts rather than declared by anyone. It is a
+		// value of mcp_enabled_toolsets all the same, so it has to be
+		// documented - but it is not a functional group and has no scope.
+		if (in_array($sToolset, self::coreNamespaces(), true)) {
+			return;
+		}
+
+		$sScope = MCPContext::SCOPE_TOOLSET_PREFIX.$sToolset;
+		$this->assertStringContainsString(
+			'<code>'.$sScope.'</code>',
+			file_get_contents(self::ROOT.'/datamodel.altioo-mcp.xml'),
+			"the {$sToolset} toolset has no {$sScope} token scope, so no token can be narrowed to it"
+		);
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function toolsetProvider(): array
+	{
+		$aToolsets = [];
+		foreach (TitleDictionaryTest::coreElementProvider() as $aCase) {
+			$aToolsets[(new $aCase[0]())->getToolset()] = true;
+		}
+		$aNames = array_keys($aToolsets);
+		sort($aNames);
+
+		self::assertNotEmpty($aNames, 'no core element declared a toolset');
+
+		return array_combine($aNames, array_map(static fn (string $s): array => [$s], $aNames));
+	}
+
+	/**
+	 * The namespaces the base's own elements declare - what getToolset() falls
+	 * back to when an element does not override it.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function coreNamespaces(): array
+	{
+		$aNamespaces = [];
+		foreach (TitleDictionaryTest::coreElementProvider() as $aCase) {
+			$aNamespaces[(new $aCase[0]())->getNamespace()] = true;
+		}
+
+		return array_keys($aNamespaces);
+	}
+
+	/** The text of the comment sitting above <mcp_enabled_toolsets>. */
+	private static function enabledToolsetsComment(): string
+	{
+		$sXml = file_get_contents(self::ROOT.'/datamodel.altioo-mcp.xml');
+		$iEnd = strpos($sXml, '<'.MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS);
+		self::assertNotFalse($iEnd, 'the datamodel does not declare '.MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS);
+
+		$iStart = strrpos(substr($sXml, 0, $iEnd), '<!--');
+		self::assertNotFalse($iStart, MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS.' has no comment above it');
+
+		return substr($sXml, $iStart, $iEnd - $iStart);
 	}
 
 	/**

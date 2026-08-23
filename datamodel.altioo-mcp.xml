@@ -296,9 +296,15 @@
       <mcp_disabled_tools type="array"/>
       <!--
         Toolsets this instance serves. A toolset is the functional group an
-        element declares - the base extension ships "datamodel", "objects" and
-        "relations", and a pack declares its own. Empty means every toolset,
+        element declares - the base extension ships "datamodel", "objects",
+        "relations" and "documents", each with a matching MCP-toolset-<name>
+        token scope, and a pack declares its own. Empty means every toolset,
         which is what an instance that has not been asked to narrow wants.
+        An element that declares no toolset falls back to its namespace, so
+        the base's core/version and core/current-user resources and its
+        core/my-open-tickets prompt answer to "core". Name it too if you narrow
+        this list and want them served; there is no MCP-toolset-core scope,
+        because a namespace is not a functional group.
         Listing them is the positive counterpart to mcp_disabled_tools: a tool
         an update adds to a pack is then off until someone says otherwise.
       -->
