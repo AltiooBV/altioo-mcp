@@ -14,6 +14,12 @@ on:
 
 permissions:
   contents: write
+  # What attest-build-provenance signs with. The checksum answers "is this the
+  # file I downloaded", which is a question about the wire; provenance answers
+  # "did this repository's CI build it", which is the question an operator
+  # unzipping into a privileged directory of a live instance actually has.
+  id-token: write
+  attestations: write
 
 jobs:
   archive:
@@ -179,6 +185,17 @@ jobs:
             ${{ steps.archive.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
+
+      # The checksum proves the file did not change in transit. It does not
+      # prove this repository built it - anyone can publish a zip and a
+      # matching .sha256. This signs the archive against the workflow, the
+      # commit and the repository that produced it, verifiable with
+      # `gh attestation verify <archive>.zip --repo <owner>/<repo>`.
+      - name: Attest that this repository's CI built the archive
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.archive.outputs.name }}.zip
 
       # The checksum is published beside the archive so that "the file I
       # downloaded is the file CI built" is a question with an answer.
