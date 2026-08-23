@@ -302,6 +302,15 @@ profile disappears with the datamodel; users who held it keep their other profil
 and re-run the setup. Read [CHANGELOG.md](CHANGELOG.md) first: a major version means an
 identifier or a default that clients and tool packs depend on has changed.
 
+**After an iTop core upgrade, recompile.** Upgrading iTop itself does not touch this
+extension's files, but it does rewrite the compiled datamodel — and until the setup is re-run,
+the compiled copy iTop serves has no MCP module in it. The endpoint returns iTop's own
+not-found page, the profile is missing from the console, and a client reports the server as
+gone. Nothing is lost and nothing needs reinstalling: run the setup once more ("Update an
+existing instance"), leave the extension ticked, and it comes back. This is the most common
+"the extension disappeared" report, and it is why the module lives in `extensions/` rather
+than in `datamodels/`, which a core upgrade overwrites outright.
+
 **Downgrading is not supported.** There is no path back to an earlier version of this
 extension, and unzipping an older archive over a newer install is not one: the setup compiles
 forward, an older datamodel does not describe the schema the newer one applied, and no attempt
@@ -1124,7 +1133,7 @@ Full threat model, hardening notes and how to report a vulnerability:
 **[SECURITY.md](SECURITY.md)**.
 
 In short: the endpoint is a public HTTP entry point. Beyond the gates above, follow
-[iTop's security guidance](https://www.itophub.io/wiki/page?id=latest:install:security) —
+[iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security) —
 in particular serve iTop over HTTPS with HSTS, and set `session.cookie_secure`,
 `session.cookie_httponly` and `zend.exception_ignore_args` in PHP.
 

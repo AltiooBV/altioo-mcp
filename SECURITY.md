@@ -148,8 +148,13 @@ you grant.
 
 ## Hardening the deployment
 
-Follow [iTop's security guidance](https://www.itophub.io/wiki/page?id=latest:install:security).
-In particular, and specifically relevant here:
+Follow [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security)
+— the version-pinned page for the current LTS, deliberately rather than the wiki's `latest:`
+namespace, which tracks the development branch and has been observed recommending parameters
+and files that do not exist on 3.2 ([doc/itop-branch-notes.md](doc/itop-branch-notes.md) §1
+records two). If you run 3.3, read
+[the 3.3 page](https://www.itophub.io/wiki/page?id=3_3_0:install:security) instead. In
+particular, and specifically relevant here:
 
 - Serve iTop over **HTTPS with HSTS**. A bearer token on a plaintext connection is a shared secret.
 - Set `session.cookie_secure` and `session.cookie_httponly` in PHP.

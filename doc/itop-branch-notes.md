@@ -50,8 +50,10 @@ claimed otherwise:
   parameter does not exist anywhere in 3.2.2.
 - `latest:` refers to an `exec.php` at the web root. There is none in 3.2.2.
 
-Use the version-pinned namespace (`3.2:install:security`) rather than `latest:` wherever the answer
-is load-bearing.
+Use the version-pinned namespace rather than `latest:` wherever the answer is load-bearing. The
+namespace is the branch with underscores and a trailing zero, not the branch as written anywhere
+else: `3_2_0:install:security` and `3_3_0:install:security` both resolve; `3.2:install:security`
+is a 404. Verified August 2026.
 
 ---
 
