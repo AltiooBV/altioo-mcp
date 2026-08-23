@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Contract;
 
 /**
+ * @api
  * @since 1.0.0
  */
 interface iMCPServiceProvider

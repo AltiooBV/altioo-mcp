@@ -15,6 +15,7 @@ use LogAPI;
 use Throwable;
 
 /**
+ * @api
  * @since 1.0.0
  */
 final class MCPExtensionCollector

@@ -36,6 +36,7 @@ use JsonException;
  * other half of why both surfaces return an encoded string rather than the
  * array itself.
  *
+ * @api
  * @since 1.0.0
  */
 final class JsonPayload

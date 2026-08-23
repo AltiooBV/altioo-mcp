@@ -59,6 +59,7 @@ use Throwable;
  *    refuse it - an unannotated tool is legal, and is merely graded at the
  *    harshest grade - so it is reported here instead.
  *
+ * @api
  * @since 1.0.0
  */
 final class ElementContract

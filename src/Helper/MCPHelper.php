@@ -13,6 +13,7 @@ use Throwable;
 use utils;
 
 /**
+ * @api
  * @since 1.0.0
  */
 class MCPHelper

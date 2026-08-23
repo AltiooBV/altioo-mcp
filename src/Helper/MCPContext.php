@@ -7,6 +7,7 @@
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 /**
+ * @api
  * @since 1.0.0
  */
 class MCPContext

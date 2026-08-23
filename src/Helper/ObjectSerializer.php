@@ -47,6 +47,7 @@ use iAttributeNoGroupBy;
  * read it in full; the ceilings are there so that a broad read cannot spend a
  * context window nobody asked it to spend.
  *
+ * @api
  * @since 1.0.0
  */
 final class ObjectSerializer

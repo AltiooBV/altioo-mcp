@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
+ * @api
  * @since 1.0.0
  */
 abstract class AbstractMCPPrompt

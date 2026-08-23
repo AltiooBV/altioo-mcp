@@ -66,12 +66,29 @@ compile against is what will be loaded. The types that are part of the contract 
 are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`
 and `Mcp\Exception\ResourceReadException`.
 
-**Versioning.** The extension follows semver, and the surface it applies to is what you touch
-from a pack: the abstracts under `Abstract/` — the four element bases plus `AbstractObjectSearch`
-and `AbstractBulkTool` — `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the
-helpers under `Helper/` and the checker under `Testing/`. A breaking change there is a major
-bump; a new optional hook with a default implementation is a minor one. The running version is
-`MCPHelper::VERSION` — the same string the server sends to clients in `serverInfo`.
+**Versioning, and what it applies to.** The extension follows semver over the surface a pack
+touches — and that surface is defined in the source rather than in this paragraph. **A class
+you may depend on carries `@api` on its class docblock**, with an `@since` saying which version
+it first appeared in. Everything else under `src/` is internal and may change in a patch.
+
+```bash
+grep -rl '@api' src/          # the definitive list, in the copy you have
+```
+
+In shape it is the element base classes you extend, the registry and the collector, the
+provider interface, the helpers, and the contract checker — but read the tags rather than that
+sentence, because the tags are what a test enforces and the sentence is not.
+
+A breaking change to a tagged class is a major bump. A new optional hook with a default
+implementation is a minor one. Removal comes at least one minor after a documented
+`@deprecated` naming the replacement, and it appears in [the changelog](../CHANGELOG.md).
+**Tool, resource and prompt identifiers are part of the same surface**: a client
+configuration that allow-lists a tool by name, and any `mcp_disabled_tools` entry, breaks when
+a name changes, so a rename is a major bump too.
+
+The running version is `MCPHelper::VERSION` — the same string the server sends to clients in
+`serverInfo`, and the same string in `extension.xml` and the module declaration. Guard against
+an older base with `MCPHelper::RequireVersion()` or `MCPHelper::AtLeast()`, above.
 
 ## 2. Write a tool
 

@@ -32,6 +32,7 @@ use Mcp\Schema\Result\CallToolResult;
  * A pack may keep returning arrays; nothing breaks. This is the cheaper way,
  * and what every core tool does.
  *
+ * @api
  * @since 1.0.0
  */
 final class ToolOutput

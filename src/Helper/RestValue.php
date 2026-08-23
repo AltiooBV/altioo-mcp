@@ -25,6 +25,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  * flag restores the distinction JSON already carried: objects become
  * `stdClass`, lists stay PHP arrays - which is what link sets
  * ({@see \AttributeLinkedSet}) and tag sets require.
+ * @api
  * @since 1.0.0
  */
 final class RestValue

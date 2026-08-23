@@ -14,6 +14,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  * Carries no iTop dependency on purpose: it runs before DoLogin() and is
  * exercised by a unit test that never boots the application.
  *
+ * @api
  * @since 1.0.0
  */
 final class MCPHttp

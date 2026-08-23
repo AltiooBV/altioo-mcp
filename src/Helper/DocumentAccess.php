@@ -43,6 +43,7 @@ use UserRights;
  * to read and one place to change: the rights, the ceiling, and the decision
  * between an image a model can actually look at and a blob it can only hand on.
  *
+ * @api
  * @since 1.0.0
  */
 final class DocumentAccess

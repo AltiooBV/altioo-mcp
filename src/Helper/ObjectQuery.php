@@ -20,6 +20,7 @@ use MetaModel;
  * about the class - which is the check that stops a caller learning an object
  * exists by being refused it.
  *
+ * @api
  * @since 1.0.0
  */
 final class ObjectQuery

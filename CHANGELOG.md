@@ -2,9 +2,21 @@
 
 All notable changes to this extension are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versioning is
-[semver](https://semver.org/) over the surface a tool pack can touch: the abstracts under
-`Abstract/`, `MCPRegistry`, `MCPExtensionCollector`, `iMCPServiceProvider`, the helpers under
-`Helper/` and the checker under `Testing/`. See [doc/extending.md](doc/extending.md).
+[semver](https://semver.org/).
+
+**What this project treats as breaking**, and therefore as a major version:
+
+- a change to a class marked `@api` in `src/` — the surface a tool pack builds on, defined by
+  the tags themselves rather than by a list written here, and described in
+  [doc/extending.md](doc/extending.md);
+- a change to a tool, resource or prompt **identifier**, because client configurations and
+  `mcp_disabled_tools` entries name them;
+- a change to the **default** of a module parameter, which alters behaviour on every instance
+  that never set it.
+
+Removal of anything on that surface comes at least one minor release after a `@deprecated`
+naming its replacement. Migration steps an administrator has to take are called out in the
+entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 

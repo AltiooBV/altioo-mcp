@@ -29,6 +29,7 @@ use Mcp\Exception\ResourceReadException;
  * avoid. A string is passed through as the resource's own content, under the
  * mime type the element declares.
  *
+ * @api
  * @since 1.0.0
  */
 final class ResourceOutput

@@ -50,6 +50,7 @@ use UserRights;
  * one table in an old instance with tens of millions of rows. The channel is in
  * the text instead, which is free, and which is the field the console shows.
  *
+ * @api
  * @since 1.0.0
  */
 final class ChangeTracking

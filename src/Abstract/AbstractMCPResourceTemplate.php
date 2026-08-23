@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Schema\Annotations;
 
 /**
+ * @api
  * @since 1.0.0
  */
 abstract class AbstractMCPResourceTemplate

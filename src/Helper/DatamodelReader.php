@@ -30,6 +30,7 @@ use UserRights;
  * itop://core/class/{class} reports cannot drift apart, and the access checks
  * are written once rather than per surface.
  *
+ * @api
  * @since 1.0.0
  */
 final class DatamodelReader

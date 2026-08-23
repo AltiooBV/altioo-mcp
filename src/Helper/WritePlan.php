@@ -37,6 +37,7 @@ use UserRights;
  * without the write is exactly what makes a dry run worth anything: it answers
  * "would this work", not just "is this well formed".
  *
+ * @api
  * @since 1.0.0
  */
 final class WritePlan

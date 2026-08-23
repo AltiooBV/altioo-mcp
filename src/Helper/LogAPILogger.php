@@ -50,6 +50,7 @@ use LogAPI;
  * through to LogAPI as-is so they appear in file logs and EventIssue data.
  *
  * @see https://www.php-fig.org/psr/psr-3/
+ * @api
  * @since 1.0.0
  */
 class LogAPILogger extends AbstractLogger

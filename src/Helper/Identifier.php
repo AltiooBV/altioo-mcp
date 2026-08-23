@@ -20,6 +20,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  * Deriving it from the class name rather than asking for it keeps one name in
  * one place: a pack writes a PHP class, and the identifier follows.
  *
+ * @api
  * @since 1.0.0
  */
 final class Identifier

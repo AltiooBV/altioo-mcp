@@ -37,6 +37,7 @@ use ReflectionNamedType;
  * a client that asks for it gets nothing, instead of silently getting the
  * other vendor's implementation behind the description it was shown.
  *
+ * @api
  * @since 1.0.0
  */
 final class MCPRegistry
