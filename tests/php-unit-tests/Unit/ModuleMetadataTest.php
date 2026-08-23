@@ -467,6 +467,44 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/**
+	 * web.config hides every directory the archive ships, and no others.
+	 *
+	 * It hid a templates/ segment for some time after the directory was
+	 * deleted - harmless, and the reason the list is worth checking is the
+	 * other direction: a directory added later and not listed here is one IIS
+	 * serves. Both files say in their own comments to keep in step with the
+	 * other and with the tree, and nothing was reading either.
+	 */
+	public function testWebConfigHidesExactlyTheDirectoriesThatShip(): void
+	{
+		$oXml = simplexml_load_file(self::ROOT.'/web.config');
+		$this->assertNotFalse($oXml, 'web.config is not well-formed XML');
+
+		$aHidden = [];
+		foreach ($oXml->{'system.webServer'}->security->requestFiltering->hiddenSegments->add as $oAdd) {
+			$aHidden[] = (string)$oAdd['segment'];
+		}
+		sort($aHidden);
+
+		$aExcluded = self::excludedFromPackage();
+		$aShipped = [];
+		foreach (glob(self::ROOT.'/*', GLOB_ONLYDIR) as $sDirectory) {
+			$sName = basename($sDirectory);
+			if (str_starts_with($sName, '.') || in_array($sName, $aExcluded, true)) {
+				continue;
+			}
+			$aShipped[] = $sName;
+		}
+		sort($aShipped);
+
+		$this->assertSame(
+			$aShipped,
+			$aHidden,
+			'web.config hiddenSegments and the directories the archive ships have drifted apart'
+		);
+	}
+
+	/**
 	 * A version that says 1.0.0 while the changelog says everything is
 	 * unreleased reads as "not released yet", whatever the version claims.
 	 */

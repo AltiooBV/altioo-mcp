@@ -106,5 +106,6 @@ instance where this module is not installed at all — both are the same mistake
   instance with 200 000 tickets and eleven other extensions is a different upgrade.
 - **Downgrade.** Unsupported, stated as such in the README. Nothing tests it because the
   answer is "restore the backup".
-- **The browser.** That the console still shows the menu and the profile after an upgrade is a
-  step in the [release checklist](release-checklist.md), not a job here.
+- **The browser.** That the console still shows the profile, the module's parameters and the
+  audit rows after an upgrade is a step in the [release checklist](release-checklist.md), not a
+  job here. There is no menu to look for: this module declares none.

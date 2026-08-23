@@ -91,7 +91,9 @@ previous release, seeds data, upgrades to the working copy and checks nothing wa
 [ci-upgrade.md](ci-upgrade.md). Before a release, run it once from the tag being replaced
 (`workflow_dispatch`, `baseline_ref`) and read its summary. What stays manual is the part that
 needs a browser: log into the upgraded instance and confirm the console still shows the module's
-menu and profile.
+three surfaces — the **MCP Services User** profile under *Administration → User Management →
+Profiles*, the module's parameters in the configuration editor, and the **MCP Service Call**
+audit rows. This module declares no menu; there is nothing to look for in the sidebar.
 
 **Archive contents.** `vendor/` present and built with `--no-dev`; `README.md`, `SECURITY.md`,
 `CHANGELOG.md`, `LICENSE` and `doc/` present; `tests/` present (iTop's own Extensions testsuite
