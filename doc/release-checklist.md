@@ -47,8 +47,19 @@ written ahead of a release that had not happened:
 Write both from the tag's own date. A date guessed in advance is wrong by however long the
 release then slips, and nothing downstream will notice.
 
-**Green CI.** Unit suite on PHP 8.2, 8.3 and 8.4; `composer validate --strict`;
-`composer check-platform-reqs`; `composer audit --locked`.
+**`@since` tags.** [`tools/reconcile-since.py`](../tools/reconcile-since.py) rewrites every
+`@since` in `src/` to the version the symbol actually first appeared in, deriving the answer
+from git rather than from the previous run, so it converges however the tags have been edited
+in between. Nothing calls it — it rewrites source, so a person runs it and reads the diff:
+
+```bash
+tools/reconcile-since.py . v1.0.0 1.0.0 1.1.0
+```
+
+**Green CI.** The linter (`composer lint`, Combodo's standard); the unit suite on PHP 8.2, 8.3
+and 8.4; `composer validate --strict`; `composer check-platform-reqs`; `composer audit
+--locked` — which [release.yml](../.github/workflows/release.yml) also runs on the tag build,
+since a tag ref matches neither of ci.yml's triggers.
 
 **Green iTop matrix.** [itop-matrix.yml](../.github/workflows/itop-matrix.yml) installs the
 module with iTop's unattended setup on the newest patch of every branch in

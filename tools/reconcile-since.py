@@ -10,7 +10,19 @@ the declaration, allowing #[Attribute] lines in between. Without that rule a
 method with no docblock of its own walks up into the class docblock, and the two
 then fight over a single tag on every run.
 
-Usage: reconcile_since.py <module-root> <baseline-rev> <released> <next>
+Usage: tools/reconcile-since.py <module-root> <baseline-rev> <released> <next>
+
+  <module-root>   the module directory, i.e. "." from the repository root
+  <baseline-rev>  the git revision the released version was cut at, e.g. v0.9.0
+  <released>      the version already published, written on anything present at
+                  <baseline-rev>
+  <next>          the version being prepared, written on anything newer
+
+Called by nothing: it rewrites source, so it is run by a person who then reads
+the diff. Named in doc/release-checklist.md, under "@since tags".
+
+@copyright   Copyright (C) 2026 Altioo
+@license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 """
 import re, subprocess, sys, os
 

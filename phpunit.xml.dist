@@ -33,6 +33,13 @@
       <directory>tests/php-unit-tests/Integration</directory>
     </testsuite>
   </testsuites>
+  <!--
+    The filter, and deliberately no report element: where a report goes is
+    the caller's decision, made with a coverage option on a run that has a
+    driver. Every setup-php step in CI passes coverage:none, so nothing there
+    can ask; this is for whoever runs it locally with Xdebug or pcov, and it is
+    what keeps such a run from reporting on vendor/.
+  -->
   <coverage>
     <include>
       <directory suffix=".php">src</directory>
