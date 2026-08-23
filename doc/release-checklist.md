@@ -31,6 +31,22 @@ The items marked **pending** are the ones that cannot be closed inside the repos
 `module.altioo-mcp.php` — `ModuleMetadataTest` fails if they drift — with a
 [CHANGELOG.md](../CHANGELOG.md) entry under a dated heading, not under `[Unreleased]`.
 
+**Dates, on the day of the tag and not before.** Two files carry one, and both were once
+written ahead of a release that had not happened:
+
+1. **[CHANGELOG.md](../CHANGELOG.md)** — fold everything under `[Unreleased]` into the version
+   heading and date it `## [x.y.z] - YYYY-MM-DD`. Anything left under `[Unreleased]` ships in
+   the tag without appearing in its notes, which is how a reader ends up unable to tell what a
+   version contains. [release.yml](../.github/workflows/release.yml) refuses the tag on either
+   count, so this is checked rather than remembered.
+2. **[SECURITY.md](../SECURITY.md)** — set the release date and the five-year end date in
+   *Support period*, and the row in *Supported versions*. This is the one date with an outside
+   commitment attached: dated early it promises less than five years, and five years is the
+   Cyber Resilience Act's floor rather than a target.
+
+Write both from the tag's own date. A date guessed in advance is wrong by however long the
+release then slips, and nothing downstream will notice.
+
 **Green CI.** Unit suite on PHP 8.2, 8.3 and 8.4; `composer validate --strict`;
 `composer check-platform-reqs`; `composer audit --locked`.
 
