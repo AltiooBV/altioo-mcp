@@ -23,33 +23,47 @@ down to individual attributes and lifecycle stimuli.
 
 ## Requirements
 
+<!-- supported-versions:begin — the two rows below are checked against .github/itop-support.json
+     and composer.json by ModuleMetadataTest. Edit those, not this. -->
+
 | | |
 |---|---|
-| iTop | **3.2 (current LTS)** or **3.3** |
-| PHP | **8.2 – 8.4** |
+| iTop | **3.2** (current LTS) or **3.3** |
+| PHP | **8.2** to **8.4** |
+
+<!-- supported-versions:end -->
+
+| | |
+|---|---|
 | Database | Whatever your iTop runs on — this module adds one table and no dialect-specific SQL |
 | iTop modules | `authent-token` 2.2.1 or later, and `itop-structure` 3.2.0 or later (both ship with iTop) |
 | Web server | Apache or IIS; the module ships the `.htaccess` / `web.config` that expose its single entry point |
 
-Which PHP goes with which iTop is decided by iTop, not by this module:
+Those two rows are a claim about what CI actually installs and tests, and the claim is declared
+once, in
+[`.github/itop-support.json`](https://github.com/altioo/mcp-server-extension/blob/main/.github/itop-support.json)
+for the branches and in `composer.json` for the PHP range. The CI matrix is computed from that
+file, the Hub listing is filled from it, and a test fails if the rows above stop agreeing with
+it — so there is one place to change when a branch is added or retired, and nothing that can
+quietly disagree with it. iTop 3.1 and earlier are not supported at all: the setup refuses to
+install, through the `itop-structure/3.2.0` dependency.
 
-| iTop | PHP | This extension |
-|---|---|---|
-| 3.0, 3.1 and earlier | — | **Not supported.** The setup refuses to install (the `itop-structure/3.2.0` dependency) |
-| 3.2.0 – 3.2.2 | 8.2 – 8.3 (8.4 has known issues in iTop) | Supported |
-| 3.2.3-1 and later 3.2.x | 8.2 – 8.4 | Supported |
-| 3.3.x | 8.2 – 8.4 | Supported |
-
-The declared range `>=8.2 <8.5` is the intersection: floor 8.2 because iTop 3.3 requires it,
-ceiling below 8.5 because no iTop branch validates 8.5 yet.
+**Which PHP goes with which iTop is iTop's decision, not this module's**, and it moves within a
+branch: 3.2 gained 8.4 at 3.2.3-1, having had known issues with it before. You cannot get this
+combination wrong silently — iTop's own setup refuses a PHP it has not validated, and the
+version it refuses at is `PHP_NOT_VALIDATED_VERSION` in `setup/setuputils.class.inc.php` on the
+branch you are installing. For the per-patch answer, read
+[iTop's requirements](https://www.itophub.io/wiki/page?id=3_2_0:install:requirements) for the
+patch you run. The declared range `>=8.2 <8.5` is the intersection of the branches above: floor
+8.2 because iTop 3.3 requires it, no ceiling at 8.5 because no iTop branch validates it yet.
 
 **What a release is tested against.** No version is published until the unit suite has passed in
-CI on PHP 8.2, 8.3 and 8.4, and the archive has been unzipped, installed through the iTop setup
-and connected to from a real MCP client on at least one iTop 3.2 instance — the gate is written
-down in [doc/release-checklist.md](doc/release-checklist.md), and the run for the current version
-is recorded in [CHANGELOG.md](CHANGELOG.md). Combinations outside that are expected to work from
-the ranges above rather than observed; if one of them is the one you run, say so and it can be
-added to the gate.
+CI across the declared PHP range, and the archive has been unzipped, installed through the iTop
+setup and connected to from a real MCP client on at least one iTop 3.2 instance — the gate is
+written down in [doc/release-checklist.md](doc/release-checklist.md), and the run for the current
+version is recorded in [CHANGELOG.md](CHANGELOG.md). Combinations outside that are expected to
+work from the ranges above rather than observed; if one of them is the one you run, say so and it
+can be added to the gate.
 
 ## What it exposes
 

@@ -368,7 +368,10 @@ class ModuleMetadataTest extends TestCase
 		$sDescription = (string)$oXml->description;
 
 		$this->assertGreaterThan(200, strlen($sDescription), 'the Hub description is too short to decide anything from');
-		$this->assertStringContainsString('iTop 3.2', $sDescription, 'the description does not state which iTop it runs on');
+		// Which iTop it runs on is stated there too, and checked against
+		// .github/itop-support.json rather than against a branch written here:
+		// see testProseAgreesWithTheDeclaredSupport.
+		$this->assertStringContainsString('Requires iTop ', $sDescription, 'the description does not state which iTop it runs on');
 	}
 
 	/**
@@ -636,5 +639,153 @@ class ModuleMetadataTest extends TestCase
 			self::moduleParameters(),
 			MCPHelper::MODULE_SETTING_SOURCE_URL.' is read by the code but absent from the datamodel'
 		);
+	}
+
+	/**
+	 * .github/itop-support.json declares itself the single source of truth for
+	 * the branches this extension claims, and composer.json declares the PHP
+	 * range. Both are machine-readable, and CI computes its matrix from the
+	 * first - but four prose copies of the same claim were maintained by hand:
+	 * two tables in the README, the Hub listing's compatibility block, and a
+	 * sentence inside extension.xml's description, which the setup shows to
+	 * every administrator who installs the module.
+	 *
+	 * They had already drifted in shape. iTop patch releases move the PHP
+	 * ceiling within a branch, so this is the fact most likely to become false,
+	 * and three of the four copies had nobody assigned to notice.
+	 *
+	 * A link is the right answer where one is possible, and it is not here:
+	 * .github/ does not ship in the archive, the Hub listing is text somebody
+	 * pastes into a web form, and extension.xml is read by a parser. So the
+	 * copies stay and are derived instead - each one delimited, each one
+	 * checked against the two files that own the answer.
+	 *
+	 * @dataProvider supportedVersionsProvider
+	 */
+	public function testProseAgreesWithTheDeclaredSupport(string $sFile, string $sBranches, string $sPhp): void
+	{
+		$this->assertSame(
+			implode(', ', self::supportedBranches()),
+			$sBranches,
+			$sFile.' names iTop branches that .github/itop-support.json does not declare, or omits one it does'
+		);
+		$this->assertSame(
+			implode(', ', self::supportedPhpRange()),
+			$sPhp,
+			$sFile.' names a PHP floor or ceiling that composer.json does not declare'
+		);
+	}
+
+	/**
+	 * The three prose copies, reduced to the versions each one states.
+	 *
+	 * The markdown files carry an explicit region, because the surrounding
+	 * pages are full of other version numbers - a dependency floor, an SDK
+	 * pin, an iTop release nobody supports - and a check that scanned the
+	 * whole file would either miss the claim or fire on everything else.
+	 * extension.xml has no room for a marker, so the sentence itself is
+	 * matched: "Requires iTop A or B and PHP X-Y".
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: string}>
+	 */
+	public static function supportedVersionsProvider(): array
+	{
+		$aCases = [];
+
+		foreach (['README.md', 'doc/hub-listing.md'] as $sFile) {
+			$sRegion = self::delimitedRegion($sFile, 'supported-versions');
+			self::assertSame(
+				1,
+				preg_match('/^\|\s*iTop\s*\|([^|]*)\|/m', $sRegion, $aItop),
+				$sFile.' has no iTop row inside its supported-versions region'
+			);
+			self::assertSame(
+				1,
+				preg_match('/^\|\s*PHP\s*\|([^|]*)\|/m', $sRegion, $aPhp),
+				$sFile.' has no PHP row inside its supported-versions region'
+			);
+			$aCases[$sFile] = [$sFile, self::versionsIn($aItop[1]), self::versionsIn($aPhp[1])];
+		}
+
+		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
+		self::assertNotFalse($oXml, 'extension.xml is not well-formed XML');
+		self::assertSame(
+			1,
+			preg_match('/Requires iTop ([0-9. or]+?) and PHP ([0-9.-]+)\./', (string)$oXml->description, $aClaim),
+			'extension.xml\'s description does not state "Requires iTop <branches> and PHP <floor>-<ceiling>."'
+			.' The setup shows that text to whoever installs the module, so it is a claim like any other'
+		);
+		$aCases['extension.xml'] = ['extension.xml', self::versionsIn($aClaim[1]), self::versionsIn($aClaim[2])];
+
+		return $aCases;
+	}
+
+	/**
+	 * The branches .github/itop-support.json declares, in its own order.
+	 *
+	 * The file does not ship in the release archive, so the unit suite run
+	 * from an unpacked instance skips this rather than failing on it - the
+	 * same shape as the integration suite skipping without iTop.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function supportedBranches(): array
+	{
+		$sPath = self::ROOT.'/.github/itop-support.json';
+		if (!is_readable($sPath)) {
+			self::markTestSkipped('.github/itop-support.json is not present; this is a repository check, not a package one');
+		}
+
+		$aJson = json_decode(file_get_contents($sPath), true);
+		self::assertIsArray($aJson['branches'] ?? null, '.github/itop-support.json declares no branches');
+
+		$aBranches = array_column($aJson['branches'], 'branch');
+		self::assertNotEmpty($aBranches);
+
+		return $aBranches;
+	}
+
+	/**
+	 * The floor and the ceiling composer.json allows, as the two versions a
+	 * reader is shown. ">=8.2 <8.5" means 8.2 to 8.4: the constraint names the
+	 * first version that is out, and no prose anywhere says "8.5".
+	 *
+	 * @return array<int, string>
+	 */
+	private static function supportedPhpRange(): array
+	{
+		$sConstraint = self::composer()['require']['php'] ?? '';
+
+		self::assertSame(
+			1,
+			preg_match('/^>=([0-9]+)\.([0-9]+) <([0-9]+)\.([0-9]+)$/', $sConstraint, $aMatch),
+			'composer.json\'s php constraint is not the ">=x.y <a.b" this check knows how to read: '.$sConstraint
+		);
+		self::assertGreaterThan(0, (int)$aMatch[4], 'a ">=x.y <a.0" constraint has no ceiling minor to name');
+
+		return [$aMatch[1].'.'.$aMatch[2], $aMatch[3].'.'.((int)$aMatch[4] - 1)];
+	}
+
+	/** Every x.y in a fragment of prose, in the order they are written. */
+	private static function versionsIn(string $sText): string
+	{
+		preg_match_all('/[0-9]+\.[0-9]+/', $sText, $aVersions);
+
+		return implode(', ', $aVersions[0]);
+	}
+
+	/** The text between <!-- <name>:begin ... --> and <!-- <name>:end -->. */
+	private static function delimitedRegion(string $sFile, string $sName): string
+	{
+		$sContent = file_get_contents(self::ROOT.'/'.$sFile);
+		self::assertNotFalse($sContent, $sFile.' cannot be read');
+
+		self::assertSame(
+			1,
+			preg_match('/<!--\s*'.preg_quote($sName, '/').':begin.*?-->(.*?)<!--\s*'.preg_quote($sName, '/').':end\s*-->/s', $sContent, $aMatch),
+			$sFile.' has no single '.$sName.' region; the check that keeps it honest cannot find what to read'
+		);
+
+		return $aMatch[1];
 	}
 }

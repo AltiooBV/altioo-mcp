@@ -2,7 +2,8 @@
 
 Ready to paste into the iTop Hub submission. The Hub page, not the archive, is where the
 install decision is made, so everything an evaluator needs is here rather than one click away.
-Keep it in step with `extension.xml` and the README at every release.
+Keep it in step with `extension.xml` and the README at every release. The supported-versions
+rows are checked automatically; everything else here is prose somebody has to re-read.
 
 ---
 
@@ -21,14 +22,30 @@ Application management / Integration
 
 ## Compatibility
 
+<!-- supported-versions:begin — the two rows below are checked against .github/itop-support.json
+     and composer.json by ModuleMetadataTest. Edit those, not this. -->
+
 | | |
 |---|---|
-| iTop | 3.2 (LTS) and 3.3. **Not** 3.1 or earlier — the setup refuses |
-| PHP | 8.2 – 8.4 (on iTop 3.2.0–3.2.2, 8.2 or 8.3: those patches have known issues with 8.4) |
+| iTop | **3.2** (LTS) and **3.3** |
+| PHP | **8.2** to **8.4** |
+
+<!-- supported-versions:end -->
+
+| | |
+|---|---|
+| Not supported | iTop 3.1 or earlier — the setup refuses |
 | Prerequisites | `authent-token` ≥ 2.2.1 and `itop-structure` ≥ 3.2.0 — both ship with iTop |
 | Licence | AGPL-3.0-or-later, same as iTop |
 | Price | Free |
 | Tested on | *(per release — fill from the changelog entry)* |
+
+The two version rows come from
+[`.github/itop-support.json`](../.github/itop-support.json) and `composer.json`, and a test
+fails if this file stops agreeing with them. Do not edit them here to match a release; edit
+them there and the Hub copy follows. Which PHP an evaluator can actually use on their own patch
+is iTop's answer, not ours — the setup refuses a PHP it has not validated, so the combination
+cannot be got wrong silently, and this listing does not try to reproduce iTop's per-patch table.
 
 ## Long description
 
