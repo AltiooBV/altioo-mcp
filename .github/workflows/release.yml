@@ -40,6 +40,36 @@ jobs:
           test "$tag" = "$declared" \
             || { echo "tag $GITHUB_REF_NAME does not match extension.xml ($declared)"; exit 1; }
 
+      # The changelog is the other declaration of a version, and the only
+      # record of what that version contains. It had no gate, and 1.0.0 sat
+      # for a week under a dated heading with no tag behind it while the
+      # entries that would actually ship in it accumulated under
+      # [Unreleased] - so the file asserted a release that had not happened
+      # and described a version that was no longer what it said.
+      #
+      # Both halves are checked because either one alone still misleads: a
+      # dated heading over a half-empty section names a release whose
+      # contents are listed somewhere else, and entries left under
+      # [Unreleased] ship inside the tag without appearing in its notes.
+      #
+      # The date this enforces is also what starts the support window in
+      # SECURITY.md - see doc/release-checklist.md, "Dates".
+      - name: The changelog must carry a dated heading for this version, and nothing left over
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          esc="${tag//./\\.}"
+
+          grep -qE "^## \[${esc}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md \
+            || { echo "CHANGELOG.md has no '## [$tag] - YYYY-MM-DD' heading"; exit 1; }
+
+          if sed -n '/^## \[Unreleased\]/,/^## \[/{ /^## \[/d; p; }' CHANGELOG.md \
+             | grep -qE '^[[:space:]]*[-*] '; then
+            echo "CHANGELOG.md still lists entries under [Unreleased]; fold them into [$tag]"
+            exit 1
+          fi
+
       - name: Validate composer.json and composer.lock
         run: composer validate --strict --no-check-publish
 
