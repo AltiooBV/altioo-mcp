@@ -49,8 +49,8 @@ scope — that is the property this extension exists to keep.
 | 1.0.x | **Not released yet.** Supported from the day it is |
 | < 1.0 | Development snapshots, unsupported |
 
-Fixes are issued on the latest patch of the newest minor. The extension follows iTop's own
-branch policy: a version supported here runs on the iTop branches named in the README, and a
+Fixes are issued as a new patch of every minor still inside its support period below, not only
+of the newest one. The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
 branch that Combodo has retired is not tested against.
 
 ### Support period
