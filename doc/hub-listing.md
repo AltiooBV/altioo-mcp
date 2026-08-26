@@ -83,10 +83,11 @@ has been making it nightly for a month. A change made here reads
 `Jane Doe (MCP: core_object_update)`, with an optional comment for the reason, in the object's
 own History tab. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds every one of them.
 
-**Three gates before any of that.** A dedicated `MCP Services User` profile; a credential iTop
+**Four gates before any of that.** A dedicated `MCP Services User` profile; a credential iTop
 accepts, with `MCP` token scopes that are distinct from the REST and Export scopes and can make
 one credential weaker than its owner (`MCP-read`, `MCP-write`, `MCP-delete`,
-`MCP-toolset-<name>`); and an instance-wide read-only switch. An operator narrows the surface
+`MCP-toolset-<name>`); an instance-wide read-only switch; and iTop's own `UserRights`, checked
+per class, per object, per attribute and per stimulus inside every tool. An operator narrows the surface
 further without touching code: `mcp_enabled_toolsets` serves only the groups an instance uses,
 and `mcp_disabled_tools` withdraws individual tools, prompts or resources whichever extension
 registered them. Every call is recorded as an **MCP Service Call** object, visible in the

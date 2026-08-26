@@ -335,8 +335,8 @@ This is why the backup is listed first rather than as an afterthought.
 
 ## Granting access
 
-Access is gated by a profile, by a credential, and by iTop's own permissions. Every gate that
-applies must pass.
+Access is gated by a profile, by a credential, by the instance's capability grading, and by
+iTop's own permissions. Four gates, and every one that applies must pass.
 
 **1. A profile.** By default only users holding **Administrator** or **MCP Services User**
 may reach the endpoint. `MCP Services User` is created by this extension; like iTop's own
@@ -375,11 +375,17 @@ Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint �
 client has no way to follow a redirect to an identity provider — and neither can a session
 cookie, since the endpoint resets the session on every request.
 
-**3. iTop's own permissions.** Every operation goes through `UserRights` — class rights,
+**3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
+shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits
+which toolsets are served at all. This gate applies whatever credential is used, so it holds
+even for an Administrator on Basic authentication, where no token scope exists to narrow
+anything. See [Start read-only](#start-read-only).
+
+**4. iTop's own permissions.** Every operation goes through `UserRights` — class rights,
 object-level rights, per-attribute read and write rights, and stimulus rights. Sensitive
 attributes (those whose type implements `iAttributeNoGroupBy`) are masked in output.
 
-On top of those three, `mcp_disabled_tools` lets you turn individual tools, prompts and
+On top of those four, `mcp_disabled_tools` lets you turn individual tools, prompts and
 resources off outright, by name or by class, whichever extension registered them.
 
 ### Grading a token
