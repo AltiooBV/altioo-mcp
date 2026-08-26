@@ -1,7 +1,7 @@
 # Release checklist
 
 What has to be true before an archive is published, and what the release run has to prove.
-The items marked **pending** are the ones that cannot be closed inside the repository.
+The unchecked items below are the ones that cannot be closed inside the repository.
 
 ## Still open before the first publication
 
