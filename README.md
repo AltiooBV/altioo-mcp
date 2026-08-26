@@ -671,7 +671,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 |---|---|
 | `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
-| A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. Since 1.0 the module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
+| A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
 | Only the first 50 tools appear in a client | That client ignores `nextCursor`. Raise `mcp_pagination_limit` — it defaults to 200 for this reason |
 | "The MCP request could not be completed. Server log reference: `a1b2c3…`" | An internal failure, answered generically on purpose. Grep `log/error.log` for that reference; the audit row carries it too, in **Log reference** |
