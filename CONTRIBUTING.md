@@ -17,7 +17,8 @@ the release gate. Most review comments here are a pointer into one of its sectio
 
 Two things about it are worth knowing up front:
 
-- **It has no shelf life on purpose.** No branch number, no version, no date. Everything
+- **It has no shelf life on purpose.** No branch number, no version, no date in the guidance
+  itself — only the copyright notice at the foot carries a year. Everything
   perishable — which PHP goes with which iTop patch, which extension points are deprecated on
   which branch, where a constant lives in the core source — is in
   [doc/itop-branch-notes.md](https://github.com/altioo/mcp-server-extension/blob/main/doc/itop-branch-notes.md),

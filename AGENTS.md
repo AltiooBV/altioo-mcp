@@ -271,7 +271,7 @@ SetupWebPage::AddModule(
 	[
 		'label' => 'SLA Dashboard',
 		'category' => 'business',
-		'dependencies' => ['itop-config-mgmt/3.0.0'],
+		'dependencies' => ['itop-config-mgmt/<version>'],
 		'mandatory' => false,
 		'visible' => true,
 		'datamodel' => ['main.mycompany-sla-dashboard.php'],
@@ -283,6 +283,8 @@ SetupWebPage::AddModule(
 ```
 
 - `dependencies` MUST list only what is used — it also determines **compile/load order** (§3.7).
+  Each entry is `'<module>/<version>'`, where the version is a floor; take the floor for a Combodo
+  module from the branch you target, not from this example (§12.5).
 - **`datamodel` lists PHP files, NEVER XML.** Each entry is compiled into a
   `MetaModel::IncludeModule()` call — a runtime `require_once`
   (`compiler.class.inc.php`, `GetFilesToInclude('business')`). Datamodel XML files are found by the
@@ -1506,9 +1508,10 @@ on the branch you target.
 
 ### 12.5 Keep this guide honest
 
-This file is written to have **no shelf life**: no branch number, no version, no date. Everything
-perishable is in [`doc/itop-branch-notes.md`](doc/itop-branch-notes.md), which carries its own
-verified-on date.
+This file is written to have **no shelf life**: no branch number, no version, no date anywhere in
+the guidance — the licence notice at the foot is the one exception, and carries a year because a
+copyright notice must. Everything perishable is in
+[`doc/itop-branch-notes.md`](doc/itop-branch-notes.md), which carries its own verified-on date.
 
 - At the start of each project: re-verify the branch notes against the branch you target, and update
   the date — an unverified date is worse than none.
