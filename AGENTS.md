@@ -44,7 +44,7 @@ against the branch you target. If you find a branch number here, it is a bug in 
    end (§4.9 lists the commit points). Stage **explicit pathspecs only**, so a commit never contains
    more than its message describes. Before reporting a task finished, run `git status` and either
    leave nothing of yours outstanding or say what you left and why.
-8. **When this guide is wrong, fix it in the same change** (§12.5).
+8. **When this guide is wrong, fix it in the same pull request** (§12.5).
 
 ### Review procedure — persona passes
 
@@ -1515,8 +1515,9 @@ verified-on date.
 - **If you must state a version to make a rule clear, the rule belongs here and the version belongs
   in the branch notes.** A branch number appearing in this file is a defect; fix it rather than
   work around it.
-- When either file is wrong, fix it in the same commit as the work that revealed it. A quietly wrong
-  guide costs more than no guide.
+- When either file is wrong, fix it in the same pull request as the work that revealed it — the
+  wording `CONTRIBUTING.md` uses, and the unit that is actually reviewed. A quietly wrong guide
+  costs more than no guide.
 - Corrections are welcome as pull requests — see `CONTRIBUTING.md` if the repository has one.
 
 ---
