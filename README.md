@@ -520,10 +520,24 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
 
+### Start read-only
+
+The recommended opening position is an instance that cannot write and
+tokens that cannot either:
+
+```php
+'mcp_capabilities' => array('read'),
+```
+
+with clients issued `MCP-read` tokens. Widen one grade at a time, and only once you have
+watched the audit trail for what the assistant actually does. `mcp_capabilities` is the
+instance-wide floor and the token scope narrows further within it, so the two together let
+one credential be weaker than the instance without a second user account.
+
 ### Settings outside this module that matter here
 
-Two of them, both in the main body of `config-itop.php` rather than in the `altioo-mcp`
-block, and both worth setting before the first client connects.
+One of them, in the main body of `config-itop.php` rather than in the `altioo-mcp`
+block, and worth setting before the first client connects.
 
 **Disable the configuration editor.** The console's built-in editor executes the PHP you
 save into it — that is what it is for, and it is documented behaviour. It is also a code
@@ -538,19 +552,10 @@ arbitrary PHP on the server.
 ```
 
 Treat this as mandatory wherever the MCP endpoint is enabled. Edit the file directly when
-you need to change configuration; the editor buys nothing an SSH session does not.
-
-**Start read-only.** The recommended opening position is an instance that cannot write and
-tokens that cannot either:
-
-```php
-'mcp_capabilities' => array('read'),
-```
-
-with clients issued `MCP-read` tokens. Widen one grade at a time, and only once you have
-watched the audit trail for what the assistant actually does. `mcp_capabilities` is the
-instance-wide floor and the token scope narrows further within it, so the two together let
-one credential be weaker than the instance without a second user account.
+you need to change configuration; the editor buys nothing an SSH session does not. The
+other half of the opening position — an instance that cannot write — is
+[`mcp_capabilities`](#start-read-only), which is a module setting and belongs in the
+`altioo-mcp` block above.
 
 ### Audit trail
 
