@@ -145,7 +145,8 @@ or a token-driven agent made it nightly for a month.
 |---|---|
 | Threat model, hardening, disclosure, support period | [SECURITY.md](../SECURITY.md) |
 | Install footprint, configuration, data flow, troubleshooting | [README.md](../README.md) |
-| Supported iTop branches and PHP versions | [`.github/itop-support.json`](../.github/itop-support.json) |
+| Supported iTop branches | [`.github/itop-support.json`](../.github/itop-support.json) |
+| Supported PHP range | `composer.json` (`require.php`); `itop-support.json` names the versions CI installs on |
 | What each version changed, and what this project treats as breaking | [CHANGELOG.md](../CHANGELOG.md) |
 | Dependency versions and licences | `composer.lock`, `sbom.cyclonedx.json`, `licenses.json` |
 | How the archive is built and signed | [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
