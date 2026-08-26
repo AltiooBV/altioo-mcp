@@ -111,5 +111,7 @@ curl -sS -X POST https://<your-itop>/extensions/altioo-mcp/index.php \
 - **Fewer tools than you expect** — the token is scoped, `mcp_capabilities` or
   `mcp_read_only` is set, `mcp_enabled_toolsets` is narrowed, or a pack's tools declare no
   annotations and are therefore graded `delete`.
-- **Nothing in the audit trail** — `log_mcp_level` defaults to `error`, so successful calls
-  are not recorded. Set it to `info` while you are testing.
+- **Nothing in the audit trail** — `log_mcp_level` defaults to `error`, so successful *tool
+  calls* are not recorded. Set it to `info` while you are testing. The `initialize` row is the
+  exception: it is written at every log level, so its absence means the request never reached
+  the module rather than that logging is quiet.
