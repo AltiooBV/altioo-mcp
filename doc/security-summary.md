@@ -93,7 +93,7 @@ the [README](../README.md#what-the-install-changes):
 
 - one table, `AltiooEventMCPService`, the audit trail;
 - one profile, `MCP Services User`, which grants no data rights of its own;
-- seven `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken`, through
+- nine `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken`, through
   `_delta="if_exists"` — no core class is redefined;
 - one URL, `extensions/altioo-mcp/index.php`;
 - one `module_settings` block in `conf/<env>/config-itop.php`.
