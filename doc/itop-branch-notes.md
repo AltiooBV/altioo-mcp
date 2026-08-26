@@ -33,7 +33,7 @@ copy a branch or PHP value from here into a claim about this extension.
 
 | Branch | Track | Upstream status |
 |---|---|---|
-| **3.2.x** | **LTS** | current LTS, latest 3.2.3 (Apr 2026) |
+| **3.2.x** | **LTS** | current LTS, latest 3.2.3-2 (Apr 2026) |
 | 3.3.x | STS | next STS |
 | 3.1.x | — | unmaintained (last 3.1.3, Apr 2025) |
 | 3.0.x | — | unmaintained (last 3.0.4, Jan 2024) |
