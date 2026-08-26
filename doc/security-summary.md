@@ -5,7 +5,7 @@ procurement. It answers the questions every vendor questionnaire asks, in the or
 usually asked, and links to the file that owns each answer rather than repeating it — so that
 when one of them changes there is exactly one place it changes.
 
-It is written to be read instead of the 800-line [README](../README.md), not as well as it.
+It is written to be read instead of the full [README](../README.md), not as well as it.
 Nothing here is a commitment that is not also made in [SECURITY.md](../SECURITY.md).
 
 ```
