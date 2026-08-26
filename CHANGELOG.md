@@ -246,7 +246,7 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   intersection. A schema like that describes neither response: nothing validating it could
   catch a create that came back without an id, and a model reading it as prose cannot tell
   which fields to expect when. Whatever a tool declares, it now reports on every call; it is the
-  *values* that vary, not the keys. Across tools the shapes still differ, and should: the four
+  *values* that vary, not the keys. Across tools the shapes still differ, and should: the five
   single-object write tools share `class`, `id`, `simulated` and `valid` and each adds its own
   (`changes` for create and update; `stimulus`, `state`, `would_move_to` and `changes` for
   apply stimulus; `deletionPlan` for delete; `attached_to`, `document` and `mimetype_note` for
