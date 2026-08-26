@@ -14,10 +14,12 @@ how much you want that client to be able to do:
 |---|---|
 | `MCP-read` | An assistant that answers questions about tickets and CIs |
 | `MCP-write` | One that also opens and updates them, but must never delete |
+| `MCP-delete` | One whose job is deletion, and only the tools that declare it |
 | `MCP` | Everything its owner can do |
 
-Add `MCP-toolset-objects` (or `-datamodel`, `-relations`) to keep it to part of the surface.
-See the README, [Grading a token](../README.md#grading-a-token).
+Add a toolset scope — `MCP-toolset-objects`, or any of the five the base extension ships — to
+keep a token to part of the surface. [Grading a token](../README.md#grading-a-token) in the
+README has the full set and how they combine.
 
 > The token is as strong as the user it belongs to. Grade the token *and* pair the user with a
 > functional profile that has no more rights than the job needs — the profile is the real blast
