@@ -1538,7 +1538,7 @@ Terse verification pass. Each line is checkable; the § pointer holds the rule.
       nothing invented §2.3
 - [ ] Module id `<company>-<name>`, not `itop-*`/`combodo-*` §2.1
 - [ ] Class codes, tables, menu ids, PHP namespaces prefixed §3.6
-- [ ] `dependencies` minimal; `datamodel`/`dictionary` list every shipped file §2.2
+- [ ] `dependencies` minimal; `datamodel` lists PHP files only (never XML), `dictionary` empty §2.2
 - [ ] Datamodel schema version matches target branch; core extended not forked; no foreign
       `_delta="force"`/`"delete"` without a README note §3.1
 
