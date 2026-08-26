@@ -405,7 +405,8 @@ user's own profiles — it never widens either.
 
 A tool is graded by the annotations it already declares: `readOnlyHint` is read,
 `destructiveHint` is delete, anything else is write. **A tool that declares no annotations at
-all is graded `delete`**, so it is withheld from every scoped token. That is deliberate — the
+all is graded `delete`**, so it is withheld from any token scoped `MCP-read` or `MCP-write`.
+That is deliberate — the
 alternative is a pack update quietly handing a read-only credential something that writes —
 but it means a pack that skips `getAnnotations()` will appear to be missing tools. See
 [doc/extending.md](doc/extending.md).
@@ -814,7 +815,7 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`
-  appears to be missing tools for every scoped token. That is the safe direction of failure,
+  appears to be missing tools for any token scoped `MCP-read` or `MCP-write`. That is the safe direction of failure,
   but it is a failure people meet — `ElementContract` reports it, which is the reason it
   reports warnings at all and not only refusals.
 - **No middleware around tool execution.** A pack can replace a named tool through `overrides()`
