@@ -781,20 +781,22 @@ The extension follows [semver](https://semver.org/). The running version is
 `MCPHelper::VERSION` — the same string the server sends clients in `serverInfo`, and the same
 string in `extension.xml` and the module declaration.
 
-**What a major version means for you.** Two things this extension promises to keep stable
-across minor releases, either of which changing is a major bump and an entry in
+**What a major version means for you.** Three things this extension promises to keep stable
+across minor releases, any of which changing is a major bump and an entry in
 [CHANGELOG.md](CHANGELOG.md):
 
 - **Tool, resource and prompt identifiers.** A client configuration that allow-lists tools by
   name, and any `mcp_disabled_tools` entry, breaks if a name changes.
 - **The classes a tool pack builds on**, marked `@api` in the source — so a pack you have
-  installed keeps working across a minor upgrade of this extension. The rule and the definitive
-  list are in [doc/extending.md](doc/extending.md); an operator does not need either, only that
-  the promise exists.
+  installed keeps working across a minor upgrade of this extension. The rule is in
+  [doc/extending.md](doc/extending.md), which points at the tags in the copy you have rather
+  than repeating a list that could fall behind them; an operator needs neither, only that the
+  promise exists.
+- **The default of a module parameter.** Changing one alters behaviour on every instance that
+  never set it, which is breaking even though nothing in the API moved.
 
 Read the changelog before a major upgrade. That is where a removed identifier or a changed
-default is called out, and a changed default is treated as breaking even though nothing in the
-API moved — it changes behaviour on every instance that never set it.
+default is called out.
 
 **On `mcp/sdk`.** The MCP SDK this module vendors is pinned `^0.7.1`: a pre-1.0 package, whose
 API can change between minor versions. The module pins the minor it was tested against, ships
