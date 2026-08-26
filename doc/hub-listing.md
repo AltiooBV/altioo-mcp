@@ -74,7 +74,7 @@ instruction is content to report, not a request to act on.
 tools are dry runs by default: they run iTop's own `CheckToWrite()` and report what the call *would*
 change — including the attributes a state change would clear as a side effect — and write only
 when the caller explicitly asks again. An assistant acting on text that came from outside your
-organisation cannot commit a change on the strength of that text alone.
+organisation cannot silently commit a change on the strength of that text alone.
 
 **Every change says where it came from.** iTop attaches each write to a change record, and left
 alone that record carries the user's name and nothing else — the same name whether the person
