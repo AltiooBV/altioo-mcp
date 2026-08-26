@@ -70,8 +70,12 @@ since a tag ref matches neither of ci.yml's triggers.
 module with iTop's unattended setup on the newest patch of every branch in
 [.github/itop-support.json](../.github/itop-support.json), runs the integration suite there and
 calls the endpoint over HTTP. Check the run resolved the versions you mean to claim — it prints
-them in the job summary — and that the packaged-archive job ran, which it does not do on pull
-requests. [ci-itop-matrix.md](ci-itop-matrix.md) explains what each check is for.
+them in the job summary — and that its `installable` and `install` jobs are green for every
+branch you mean to claim.
+
+Read the prerelease jobs individually rather than trusting the overall colour: `allow_prerelease`
+entries run `continue-on-error`, so a branch resolving to a beta or rc reports green whether it
+passed or not. [ci-itop-matrix.md](ci-itop-matrix.md) explains what each check is for.
 
 **The archive is built by CI, not by hand.** Pushing a `v*` tag runs
 [release.yml](../.github/workflows/release.yml), which refuses a tag that disagrees with
