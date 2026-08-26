@@ -121,8 +121,8 @@ replayed against it. Four gates apply, and all of them must pass:
 A token scope can only ever make a credential **narrower** than the user's own profiles. It
 never widens anything.
 
-**No tool writes on a first call.** Create, update, delete, apply-stimulus and the three bulk
-tools all default to `simulate: true` and return what the call *would* change, having run
+**No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
+bulk tools all default to `simulate: true` and return what the call *would* change, having run
 iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is the mitigation
 that matters most against prompt injection: a model acting on text that came from outside the
 organisation cannot silently commit a change on the strength of that text alone.

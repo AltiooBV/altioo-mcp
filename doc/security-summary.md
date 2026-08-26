@@ -113,8 +113,8 @@ scope can only ever make a credential *narrower* than its owner, never wider; th
 capability grading (`mcp_capabilities` / `mcp_read_only`) and the toolset filter; and iTop's own
 `UserRights`, checked per class, per object, per attribute and per stimulus inside every tool.
 
-**Writes are dry runs by default.** Create, update, delete, apply-stimulus and the bulk tools
-return what the call *would* change, having run iTop's `CheckToWrite()`, and write only when the
+**Writes are dry runs by default.** Create, update, delete, attach, apply-stimulus and the bulk
+tools return what the call *would* change, having run iTop's `CheckToWrite()`, and write only when the
 caller asks a second time with `simulate=false`. This is a guardrail against a model acting on
 text that came from outside the organisation — not a permission boundary; the boundary is
 `UserRights`.

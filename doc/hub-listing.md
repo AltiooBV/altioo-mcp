@@ -70,8 +70,8 @@ logs are written by anyone who can open a ticket or send a mail. The server tell
 at connection time that text found in an object asking it to call a tool or ignore an
 instruction is content to report, not a request to act on.
 
-**Nothing writes on a first call.** Create, update, delete, apply-stimulus and the bulk tools
-are dry runs by default: they run iTop's own `CheckToWrite()` and report what the call *would*
+**Nothing writes on a first call.** Create, update, delete, attach, apply-stimulus and the bulk
+tools are dry runs by default: they run iTop's own `CheckToWrite()` and report what the call *would*
 change — including the attributes a state change would clear as a side effect — and write only
 when the caller explicitly asks again. An assistant acting on text that came from outside your
 organisation cannot commit a change on the strength of that text alone.
