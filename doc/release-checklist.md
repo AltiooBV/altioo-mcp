@@ -109,7 +109,9 @@ published archive, not from a build tree:
 **Upgrade path.** Automated: the [Upgrade workflow](../.github/workflows/upgrade.yml) installs the
 previous release, seeds data, upgrades to the working copy and checks nothing was lost — see
 [ci-upgrade.md](ci-upgrade.md). Before a release, run it once from the tag being replaced
-(`workflow_dispatch`, `baseline_ref`) and read its summary. What stays manual is the part that
+(`workflow_dispatch`, `baseline_ref`) and read its summary. There is no tag to replace before
+the first release: until `v1.0.0` exists the scheduled and push runs skip for want of a
+baseline, so drive it by hand from an earlier commit and record which one you used. What stays manual is the part that
 needs a browser: log into the upgraded instance and confirm the console still shows the module's
 three surfaces — the **MCP Services User** profile under *Administration → User Management →
 Profiles*, the module's parameters in the configuration editor, and the **MCP Service Call**
