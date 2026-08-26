@@ -19,6 +19,8 @@ in the order you would meet it.
 | `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free |
 | `src/Prompts/TriageMyQueue.php` | A prompt, and `isAvailable()` keeping it off instances where it would fail |
 | `tests/php-unit-tests/Unit/ContractTest.php` | The whole contract suite, needing neither iTop nor a database |
+| `phpunit.xml.dist` | PHPUnit 9, matching what iTop pins. Points the suite at `tests/php-unit-tests/`, which is where iTop's own Extensions testsuite looks |
+| `tests/php-unit-tests/bootstrap.php` | The test bootstrap `phpunit.xml.dist` names — the autoloader, without iTop |
 
 ## Using it
 
