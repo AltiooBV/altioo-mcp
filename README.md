@@ -300,7 +300,7 @@ again afterwards:
 | **Enum values** | Nine `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken` (`_delta="if_exists"`, so no core class is redefined) |
 | **One URL** | `extensions/altioo-mcp/index.php`. The module's `.htaccess` / `web.config` re-grant web access to that one file and leave iTop's deny over the rest of `extensions/` alone |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
-| **Nothing else** | No core class is modified, no core menu, no cron task, no scheduled job, no outbound connection |
+| **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no cron task, no scheduled job, no outbound connection |
 
 **Removing it.** Back up first, for the same reason as installing: this is another setup run.
 Untick the extension in the setup (or delete `<itop>/extensions/altioo-mcp/`) and run the setup
@@ -309,7 +309,7 @@ survive on purpose and have to be removed by hand:
 
 | What survives | Where | What to do |
 |---|---|---|
-| The audit history | Table **`priv_altioo_event_mcp_service`** (class `AltiooEventMCPService`) | iTop leaves the table behind for any removed module, so the trail outlives the extension. Export it if you need to keep it, then `DROP TABLE priv_altioo_event_mcp_service;` |
+| The audit history | Class `AltiooEventMCPService`, stored across **`priv_event`** and **`priv_altioo_event_mcp_service`** | iTop leaves both behind for any removed module, so the trail outlives the extension. Do this *before* removing the module, while iTop can still read the class: export `SELECT AltiooEventMCPService` if you want to keep it, then delete the rows from the console. `AltiooEventMCPService` inherits `Event`, so the date, the user and the message live in `priv_event` and only the MCP columns are in the module's own table — an export of that one table is missing half of each row, and dropping it alone leaves the other half behind |
 | The module settings | The **`'altioo-mcp' => array(...)`** block under `module_settings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
 
 Tokens keep their `MCP*` scope values as stored strings; those scopes simply stop meaning
@@ -717,8 +717,12 @@ What an operator needs to know about packs is short:
   list, and `mcp_disabled_tools` withdraws individual tools, prompts or resources whichever
   extension registered them — see [Configuration](#configuration). A tool arriving in a pack
   update is off until you say otherwise.
-- **Identifiers are namespaced.** A pack cannot register into `core`, so a name you have
-  allow-listed in a client configuration cannot be taken over by something you installed later.
+- **Identifiers are namespaced.** A pack registers under its own namespace and cannot land in
+  `core` by accident: two packs claiming one name withdraw it from both rather than one
+  silently winning. Taking over an existing name is possible, but only deliberately — a pack
+  says so through `overrides()`, which is how a core tool is meant to be replaced — so a name
+  you have allow-listed in a client configuration changes hands only when something you
+  installed asked for it by name.
 
 Review the pairing of a pack with the profiles you grant, exactly as you would for the core
 tools — see [Security](#security).
@@ -850,9 +854,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
   or subclass it, but there is no hook that applies to *every* call — no place to put redaction,
   a rate limit, an extra audit field or per-tenant filtering once. Cross-cutting behaviour of
   that kind currently means touching this module.
-- **A tool result is read into a context window.** Reads narrow by default and long values are
-  clipped; a deliberately wide `output_fields => *` over thousands of objects is still your
-  cost to pay.
+- **A tool result is read into a context window.** Searches narrow by default and long values
+  are clipped, but `core_object_get` returns every readable attribute unless `output_fields`
+  says otherwise; a deliberately wide `output_fields => *` over thousands of objects is still
+  your cost to pay.
 - **The audit trail grows.** One `AltiooEventMCPService` row per audited call, with no built-in purge
   — set retention as you do for iTop's other event classes.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.
@@ -865,11 +870,18 @@ composer test:unit
 ```
 
 The unit suite needs neither iTop nor a database. The integration suite additionally needs a
-live iTop with the module installed, and skips itself otherwise:
+live iTop with the module installed **and iTop's own test harness present**, and skips itself
+otherwise:
 
 ```bash
 ITOP_ROOT=/path/to/itop/web composer test:integration
 ```
+
+The harness is `ItopDataTestCase`, which ships in `tests/php-unit-tests/` of iTop's *source*
+tree and not in the packaged releases — point `ITOP_ROOT` at a checkout, or use
+`tools/ci/install-itop.sh`, which adds the harness of the matching tag to a packaged release
+the way CI does. Against a release without it the suite reports as skipped rather than failing,
+which is easy to read as green.
 
 Build a release archive with `composer install --no-dev`; `exclude.txt` lists what is kept
 out of the package.
@@ -882,7 +894,9 @@ not offer the example as something to install.
 ## License
 
 [AGPL-3.0-or-later](LICENSE), matching iTop itself. The same identifier is in `composer.json`
-and in every source file header.
+and at the head of every file under `src/`, which `SourceIntegrityTest` checks on every run.
+`model.altioo-mcp.php` is the exception: it is iTop's own template, carrying its warning not to
+edit it.
 
 **Why AGPL and not something permissive.** An iTop extension is not a separate program that
 talks to iTop: it is loaded into the same PHP process, subclasses core classes, calls
