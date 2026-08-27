@@ -62,7 +62,6 @@ use UserRights;
  *
  * @api
  * @since 1.0.0
- * @since 1.0.0 Moved here from Core\Tools and covered by the versioning policy.
  */
 abstract class AbstractBulkTool extends AbstractMCPTool
 {

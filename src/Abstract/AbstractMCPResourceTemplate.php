@@ -42,11 +42,11 @@ abstract class AbstractMCPResourceTemplate
 	 * and {@see \Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool::getTitle()}
 	 * for why the two are treated differently.
 	 *
-	 * Override {@see defaultTitle()} rather than this method to keep the
-	 * lookup; overriding this one is still supported and simply opts out.
+	 * The title is resolved through the dictionary. Override
+	 * {@see defaultTitle()} rather than this method to keep that lookup;
+	 * overriding this one is still supported and simply opts out.
 	 *
 	 * @since 1.0.0
-	 * @since 1.0.0 Resolved through the dictionary; was abstract.
 	 */
 	public function getTitle(): ?string
 	{

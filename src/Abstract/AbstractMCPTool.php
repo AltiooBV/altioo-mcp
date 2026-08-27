@@ -100,11 +100,11 @@ abstract class AbstractMCPTool
 	 * description that changes with the caller's language changes what the
 	 * model does. See the README, Extending.
 	 *
-	 * Override {@see defaultTitle()} rather than this method to keep the
-	 * lookup; overriding this one is still supported and simply opts out.
+	 * The title is resolved through the dictionary. Override
+	 * {@see defaultTitle()} rather than this method to keep that lookup;
+	 * overriding this one is still supported and simply opts out.
 	 *
 	 * @since 1.0.0
-	 * @since 1.0.0 Resolved through the dictionary.
 	 */
 	public function getTitle(): ?string
 	{

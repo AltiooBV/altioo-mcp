@@ -3,7 +3,8 @@
  * Global-namespace test doubles for iTop's logging API.
  *
  * These classes must carry their exact iTop names in the global namespace, so
- * they cannot be PSR-4 autoloaded; tests/bootstrap.php requires this file.
+ * they cannot be PSR-4 autoloaded; tests/php-unit-tests/bootstrap.php requires
+ * this file.
  *
  * LogAPI itself is only declared when the real one is absent (i.e. when the
  * tests run without a reachable iTop). TestIssueLog extends whichever LogAPI is

@@ -6,8 +6,8 @@
  * iTop ships ItopDataTestCase in tests/php-unit-tests/ of its *source* tree
  * only; the packaged release archives (the ones an extension is developed
  * against) do not contain it. Rather than let the integration suite fatal on a
- * missing parent class, tests/bootstrap.php aliases it to this, which skips
- * every test with an explanation.
+ * missing parent class, tests/php-unit-tests/bootstrap.php aliases it to this,
+ * which skips every test with an explanation.
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
