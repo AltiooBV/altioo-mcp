@@ -228,21 +228,20 @@ class ModuleMetadataTest extends TestCase
 	 * Every toolset a core element declares is selectable on a token, and named
 	 * where an operator reads about them.
 	 *
-	 * The comment on mcp_enabled_toolsets listed three toolsets - datamodel,
-	 * objects and relations - after documents had been added and shipped with
-	 * its own MCP-toolset-documents scope and its own dictionary entries. An
-	 * operator narrowing an instance from that comment would have dropped the
-	 * documents toolset without meaning to, and the tools would simply not have
-	 * been advertised.
+	 * An operator narrows an instance from the comment on mcp_enabled_toolsets,
+	 * so a toolset the comment omits is one they drop without meaning to and
+	 * whose tools are then simply not advertised - documents, say, which
+	 * carries its own MCP-toolset-documents scope and its own dictionary
+	 * entries.
 	 *
 	 * There is no exemption for an element that declares nothing. The fallback
 	 * in the abstracts hands such an element its namespace, which is a name for
-	 * who wrote it rather than for what it does, and three core elements were
-	 * being narrowed by it. They declare "server" and "objects" now, so every
-	 * value this setting can take is a functional group with a scope behind it.
+	 * who wrote it rather than for what it does, so every core element declares
+	 * a functional group instead and every value this setting can take has a
+	 * scope behind it.
 	 *
 	 * Read out of the elements rather than listed here, so the count cannot
-	 * fall behind again.
+	 * fall behind.
 	 *
 	 * @dataProvider toolsetProvider
 	 */

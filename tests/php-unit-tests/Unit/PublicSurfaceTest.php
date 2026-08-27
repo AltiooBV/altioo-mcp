@@ -17,16 +17,18 @@ require_once dirname(__DIR__).'/bootstrap.php';
 /**
  * What semver applies to, held in one place that can fail.
  *
- * The surface a tool pack may depend on was enumerated in prose, three times:
- * the changelog's header, the README's versioning section, and a paragraph
- * inside the extending guide. Three lists of the same class names, none of
- * them read by anything, and the first class added to the surface would have
- * had to be remembered into all three - which is the drift AGENTS.md §12.1
+ * The surface a tool pack may depend on is defined in the source: a class on
+ * the surface carries @api on its class docblock (§4.6, §11.2), and the prose
+ * - the changelog's header, the README's versioning section, a paragraph
+ * inside the extending guide - says "the classes marked @api" rather than
+ * naming them.
+ *
+ * Enumerated in prose instead, that would be three lists of the same class
+ * names, none of them read by anything, with the first class added to the
+ * surface having to be remembered into all three - the drift AGENTS.md §12.1
  * describes for version numbers, applied to a contract.
  *
- * The list lives in the source now: a class on the surface carries @api on its
- * class docblock (§4.6, §11.2), and the prose says "the classes marked @api"
- * rather than naming them. This test is what makes the tag mean something,
+ * This test is what makes the tag mean something,
  * from both ends - a surface class that lost its tag, and an internal class
  * that gained one.
  */
@@ -101,9 +103,9 @@ class PublicSurfaceTest extends TestCase
 	}
 
 	/**
-	 * The prose describes the surface; it no longer lists it. A file that goes
-	 * back to naming classes is a fourth copy in the making, and it would be
-	 * one nothing reads.
+	 * The prose describes the surface rather than listing it. A file that names
+	 * the classes instead is a fourth copy in the making, and one nothing
+	 * reads.
 	 *
 	 * Written as "points at the tag" rather than "does not name a class",
 	 * because a document is allowed to mention MCPRegistry in a sentence about

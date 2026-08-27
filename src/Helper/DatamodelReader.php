@@ -164,10 +164,11 @@ final class DatamodelReader
 	 * for, how many classes came back, and the classes themselves.
 	 *
 	 * The envelope is here rather than in the tool because the resource serves
-	 * the same answer and used to serve a bare array instead - so a client
-	 * reading itop://core/classes got no count, could not tell a complete list
-	 * from a clipped one, and saw a different shape from the one
-	 * core_class_list documents for the identical data.
+	 * the same answer, and both surfaces have to carry the count and the
+	 * echoed narrowings. A bare array on either side leaves a client reading
+	 * itop://core/classes with no count, unable to tell a complete list from a
+	 * clipped one, and looking at a different shape from the one
+	 * core_class_list documents for identical data.
 	 *
 	 * category and filter are echoed back even when empty, which is what makes
 	 * the two surfaces the same shape: the resource takes no arguments, so its
