@@ -128,8 +128,12 @@ iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is 
 that matters most against prompt injection: a model acting on text that came from outside the
 organisation cannot silently commit a change on the strength of that text alone.
 
-**Every call is audited** as an `AltiooEventMCPService` object, with the method, the element invoked,
-the outcome, the duration and the calling user.
+**Calls are audited** as `AltiooEventMCPService` objects, with the method, the element invoked,
+the outcome, the duration and the calling user. What earns a row depends on `log_mcp_level`:
+at the default `error` that is every failure and every client connection, and successful calls
+are left out deliberately, since a busy instance would otherwise write a row per read. Set it
+to `info` to record those too — the section below explains why `error` is nonetheless the
+recommended operating level.
 
 **Errors do not leak internals.** Only `ToolCallException` and `ResourceReadException` messages
 reach the client; anything else is answered generically and correlated to `log/error.log` by a
@@ -201,6 +205,10 @@ The other one worth knowing about is **`nyholm/psr7`**, the PSR-17 implementatio
 and response is built through. No line of this module names it: it is located at runtime by
 `php-http/discovery`, which makes it look unused to a reader and to anything that prunes
 dependencies. `Psr17AvailabilityTest` fails if it goes missing. Nyholm rather than Guzzle
-deliberately — iTop ships `guzzlehttp/psr7` itself, and this module's autoloader is registered
-before iTop's, so vendoring a second copy of that namespace would shadow iTop's own for the
-whole request.
+deliberately — iTop ships `guzzlehttp/psr7` itself, and of two Composer autoloaders in one
+process the one registered *last* answers first, which is iTop's. A second copy of that
+namespace vendored here would therefore be the copy that loses: every request would run on
+whatever version iTop ships, which is not the same across the branches this module supports. A
+namespace iTop does not ship cannot be resolved that way. `index.php` explains the ordering,
+and `VendoredDependencyResolutionTest` checks that what actually resolves still satisfies what
+`composer.json` asks for.
