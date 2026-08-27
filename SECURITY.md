@@ -109,8 +109,9 @@ other host on behalf of this extension. Traffic is inbound only: an MCP client c
 that client is what talks to a model. See *Data flow* in the README.
 
 **Every request is authenticated by iTop itself** (`LoginWebPage::DoLogin()`), on its own — the
-endpoint is stateless and resets the session on every request, so a browser cookie cannot be
-replayed against it. Four gates apply, and all of them must pass:
+endpoint is stateless, and a request that carries no credential of its own is refused before the
+session is consulted, while one that carries a credential resets the session before logging in,
+so a browser cookie cannot be replayed against it. Four gates apply, and all of them must pass:
 
 1. the profile gate (`secure_mcp_services` / `mcp_allowed_profiles`),
 2. the credential, with an `MCP*` token scope where a token is used,

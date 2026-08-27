@@ -375,7 +375,9 @@ here, subject to your `allowed_login_types`:
 
 Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint — a headless MCP
 client has no way to follow a redirect to an identity provider — and neither can a session
-cookie, since the endpoint resets the session on every request.
+cookie: a request that brings no credential of its own is refused `401` before the session is
+even looked at, and one that brings a credential has its session reset before the login runs.
+Either way the cookie decides nothing.
 
 **3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
 shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits
@@ -835,7 +837,8 @@ Known and deliberate, so that none of them is a discovery made after installing:
   a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
   proxy's discovery document.
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
-  nor can a session cookie, since the endpoint resets the session per request.
+  nor can a session cookie, since a request carrying no credential of its own is refused before
+  the session is consulted, and one carrying a credential resets the session before logging in.
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`

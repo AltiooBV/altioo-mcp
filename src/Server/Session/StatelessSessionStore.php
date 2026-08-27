@@ -13,9 +13,11 @@ use Symfony\Component\Uid\Uuid;
  * A session store for a server that has no sessions.
  *
  * This endpoint is stateless by design: every request carries its own
- * credential, is authenticated on its own, and resets iTop's PHP session
- * before doing anything. Nothing is meant to be carried from one request to
- * the next.
+ * credential and is authenticated on its own. A request that carries none is
+ * refused before iTop's PHP session is touched, and one that carries a
+ * credential resets that session before the login runs - so nothing is
+ * carried from one request to the next, and nothing already in the browser
+ * decides anything here.
  *
  * The SDK does not currently offer a stateless mode, so it is given a store
  * that satisfies the interface and stores nothing. write() accepts and
