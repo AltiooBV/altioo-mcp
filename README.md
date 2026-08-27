@@ -317,9 +317,11 @@ Tokens keep their `MCP*` scope values as stored strings; those scopes simply sto
 anything, and no token gains access to anything else as a result. The `MCP Services User`
 profile disappears with the datamodel; users who held it keep their other profiles untouched.
 
-**Upgrading.** Back up, take a maintenance window, unzip the new version over the old directory
-and re-run the setup. Read [CHANGELOG.md](CHANGELOG.md) first: a major version means an
-identifier or a default that clients and tool packs depend on has changed.
+**Upgrading to a later version of this extension.** 1.0.0 is the first release, so nothing
+installed today is an upgrade. From the next version on: back up, take a maintenance window,
+unzip the new version over the old directory and re-run the setup, and read
+[CHANGELOG.md](CHANGELOG.md) first — a major version means an identifier or a default that
+clients and tool packs depend on has changed.
 
 **After an iTop core upgrade, recompile.** Upgrading iTop itself does not touch this
 extension's files, but it does rewrite the compiled datamodel — and until the setup is re-run,
@@ -330,12 +332,9 @@ existing instance"), leave the extension ticked, and it comes back. This is the 
 "the extension disappeared" report, and it is why the module lives in `extensions/` rather
 than in `datamodels/`, which a core upgrade overwrites outright.
 
-**Downgrading is not supported.** There is no path back to an earlier version of this
-extension, and unzipping an older archive over a newer install is not one: the setup compiles
-forward, an older datamodel does not describe the schema the newer one applied, and no attempt
-is made to reverse a migration. If a release has to be undone, the rollback *is* the backup you
-took before installing it — restore the database and `conf/`, then put the old archive back.
-This is why the backup is listed first rather than as an afterthought.
+**Downgrading is not supported**, and unzipping an older archive over a newer install is not
+a downgrade: the setup compiles forward and reverses nothing. The rollback *is* the backup you
+took before installing — which is why the backup is listed first rather than as an afterthought.
 
 ## Granting access
 
@@ -689,7 +688,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 |---|---|
 | `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
-| A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
+| A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
 | A client lists only some of the tools, and always the same number of them | That client ignores `nextCursor`, so it never asks for the second page. The page size is `mcp_pagination_limit`, which this module sets on every request — it defaults to 200, so the SDK's own 50 is never what you are seeing. Raise it if the instance registers more elements than that, and check nobody lowered it |
 | "The MCP request could not be completed. Server log reference: `a1b2c3…`" | An internal failure, answered generically on purpose. Grep `log/error.log` for that reference; the audit row carries it too, in **Log reference** |
@@ -819,8 +818,8 @@ across minor releases, any of which changing is a major bump and an entry in
 - **The default of a module parameter.** Changing one alters behaviour on every instance that
   never set it, which is breaking even though nothing in the API moved.
 
-Read the changelog before a major upgrade. That is where a removed identifier or a changed
-default is called out.
+When a later version changes one of those, the changelog entry for it is where the removed
+identifier or the changed default is named, along with what an administrator has to do about it.
 
 **On `mcp/sdk`.** The MCP SDK this module vendors is pinned `^0.7.1`: a pre-1.0 package, whose
 API can change between minor versions. The module pins the minor it was tested against, ships
