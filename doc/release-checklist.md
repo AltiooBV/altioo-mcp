@@ -10,7 +10,11 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
       module declaration, and of the link line at the top of the README. One dead link is the
       first thing an evaluator clicks. If the final URL differs, change it in those five
-      places — `ModuleMetadataTest` asserts they agree.
+      places — `ModuleMetadataTest` asserts they agree. Once the URL resolves, add the
+      `[Unreleased]` and `[x.y.z]` link-reference definitions to the foot of
+      [CHANGELOG.md](../CHANGELOG.md); until then the headings render their brackets literally,
+      which is preferable to shipping compare links that 404. The brackets themselves are not
+      optional — [release.yml](../.github/workflows/release.yml) matches on them.
 - [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
       [SECURITY.md](../SECURITY.md) already points at
       `/security/advisories/new` and commits to 5 working days to acknowledge and 90 days to a
