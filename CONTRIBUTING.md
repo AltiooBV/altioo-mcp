@@ -153,10 +153,11 @@ security model, the review of every change and the decision to merge it are huma
 that implements them was written by a model under that direction, and the trailer records it.
 
 **The history is not uniformly stamped, and this says so rather than rounding up.** The
-extension is pre-1.0 and still being built. The initial commit predates the convention, and a
-few commits made during the build-out carry their message but not the trailer. The list is not
-reproduced here — a count in prose goes stale the moment the next commit lands, and a claim
-nobody can check is the thing this section is trying not to make. Ask the repository instead:
+extension has not been released yet and is still being built. The initial commit predates the
+convention, and a few commits made during the build-out carry their message but not the
+trailer. The list is not reproduced here — a count in prose goes stale the moment the next
+commit lands, and a claim nobody can check is the thing this section is trying not to make.
+Ask the repository instead:
 
 ```bash
 git log --oneline --invert-grep --grep='Co-Authored-By:'
