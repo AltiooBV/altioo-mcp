@@ -57,6 +57,16 @@ release then slips, and nothing downstream will notice.
 from git rather than from the previous run, so it converges however the tags have been edited
 in between. Nothing calls it — it rewrites source, so a person runs it and reads the diff:
 
+For 1.0.0 there is no baseline revision to compare against — `v1.0.0` is what this release
+creates — and the answer is known anyway: every symbol first appeared in it. Pass the commit
+being tagged as the baseline, so everything present is written `1.0.0` and nothing is newer:
+
+```bash
+tools/reconcile-since.py . HEAD 1.0.0 1.1.0
+```
+
+From 1.1.0 on, the baseline is the tag being replaced:
+
 ```bash
 tools/reconcile-since.py . v1.0.0 1.0.0 1.1.0
 ```
