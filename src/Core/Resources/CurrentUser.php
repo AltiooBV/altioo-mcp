@@ -57,8 +57,6 @@ class CurrentUser extends AbstractMCPResource
 
 	public function read(): mixed
 	{
-		$oUser = UserRights::GetUserObject();
-
 		return ResourceOutput::Json([
 			'current_contact_friendlyname' => UserRights::GetContactFriendlyname(),
 			'current_contact_id' => UserRights::GetContactId(),

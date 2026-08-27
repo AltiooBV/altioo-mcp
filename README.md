@@ -78,7 +78,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle |
-| `core_object_find_by_name` | Find objects by free text across every readable class, as the console's global search does |
+| `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria |
 | `core_object_get` | Retrieve a single object by class and ID |
@@ -182,13 +182,14 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 | URI | Content |
 |---|---|
 | `itop://core/version` | iTop version and edition |
-| `itop://core/current-user` | The authenticated user and their profiles |
+| `itop://core/current-user` | Who the request authenticated as: contact, user id, language, and whether archive mode is on |
 | `itop://core/classes` | The list of classes in the datamodel |
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle |
 | `itop://core/document/{class}/{id}/{att_code}` | One document, by the URI a read reported |
 
-The last two are deliberately served twice — as resources, and as the `core_class_list` /
-`core_class_schema` tools over the same code. Plenty of clients never fetch resources at all,
+`itop://core/classes` and `itop://core/class/{class}` are deliberately served twice — as
+resources, and as the `core_class_list` / `core_class_schema` tools over the same code (the
+document template is doubled the same way, by `core_object_get_document`). Plenty of clients never fetch resources at all,
 and support for resource *templates* is thinner still; a model that cannot reach the schema
 falls back to guessing attribute codes, and every other tool here is the poorer for it. The
 tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
