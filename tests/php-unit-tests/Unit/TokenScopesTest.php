@@ -23,8 +23,8 @@ require_once __DIR__.'/../bootstrap.php';
  * What the endpoint believes about the credential it was shown.
  *
  * AccessPolicyTest covers the consumer of a scope list - what a policy built
- * from one serves - and never the producer. This is the producer, it sits on
- * the authentication path (MCPController, MCPService), and it had no test.
+ * from one serves - and never the producer. This is the producer, and it sits
+ * on the authentication path (MCPController, MCPService).
  *
  * Two of the three methods are asked their question when something has already
  * gone wrong: an iTop that is not there, an authent-token that is not

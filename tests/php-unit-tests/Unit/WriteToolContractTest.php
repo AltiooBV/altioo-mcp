@@ -25,10 +25,10 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * An MCP client is driven by a model acting on instructions that may have come
  * from outside the organisation, so "create it, then tell me" is the wrong
- * default for every write, not only for the destructive one. The rule
- * core_object_delete followed alone now holds for all of them, and the test
- * discovers the tools from the registry rather than listing them, so a write
- * tool added later is covered by the same rule the day it is registered.
+ * default for every write, not only for the destructive one. The rule holds
+ * for every write tool, and the test discovers them from the registry rather
+ * than listing them, so a write tool added later is covered by the same rule
+ * the day it is registered.
  */
 class WriteToolContractTest extends TestCase
 {

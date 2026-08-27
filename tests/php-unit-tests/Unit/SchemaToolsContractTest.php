@@ -27,7 +27,7 @@ require_once __DIR__.'/../bootstrap.php';
  * client can still discover attribute codes instead of inventing them - which
  * only holds if the narrowing arguments are ones a client may actually send:
  * a property missing from the input schema is a parameter stuck at its default
- * forever, the same defect ObjectDelete's `simulate` once had.
+ * forever.
  *
  * Reading a schema, a signature and a pure filter needs no iTop, which is what
  * makes this a unit test rather than an integration one.

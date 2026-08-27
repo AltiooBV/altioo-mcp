@@ -47,11 +47,10 @@ jobs:
             || { echo "tag $GITHUB_REF_NAME does not match extension.xml ($declared)"; exit 1; }
 
       # The changelog is the other declaration of a version, and the only
-      # record of what that version contains. It had no gate, and 1.0.0 sat
-      # for a week under a dated heading with no tag behind it while the
-      # entries that would actually ship in it accumulated under
-      # [Unreleased] - so the file asserted a release that had not happened
-      # and described a version that was no longer what it said.
+      # record of what that version contains. Without a gate it drifts both
+      # ways at once: a dated heading with no tag behind it asserts a release
+      # that has not happened, while the entries that will actually ship keep
+      # accumulating under [Unreleased].
       #
       # Both halves are checked because either one alone still misleads: a
       # dated heading over a half-empty section names a release whose

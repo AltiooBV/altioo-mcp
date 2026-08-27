@@ -119,10 +119,9 @@ class StimulusMandatoryAttributesTest extends TestCase
 	}
 
 	/**
-	 * The read-only half of the check. It used to ask the write right and
-	 * nothing else, so a mandatory attribute the datamodel declares unwritable
-	 * was reported as one the caller should fill in - advice it could follow
-	 * for ever.
+	 * The read-only half of the check. Asking the write right and nothing else
+	 * would report a mandatory attribute the datamodel declares unwritable as
+	 * one the caller should fill in - advice it could follow for ever.
 	 */
 	public function testTheDatamodelReadOnlyCaseIsCheckedAtAll(): void
 	{

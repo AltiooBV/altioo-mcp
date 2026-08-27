@@ -29,14 +29,13 @@ require_once __DIR__.'/../bootstrap.php';
  * source ever names - the kind of dependency that looks unused to anyone
  * reading the code, and that composer remove will happily take out.
  *
- * It was in fact absent: only psr/http-factory (the interfaces) and
- * php-http/discovery were required, and the endpoint worked in production
- * solely because iTop happens to ship guzzlehttp/psr7 and index.php loads
- * iTop's autoloader too. That made a working endpoint contingent on another
- * project's dependency list, and made which implementation got used depend on
- * load order.
+ * Requiring only psr/http-factory (the interfaces) and php-http/discovery
+ * would leave the endpoint working solely because iTop happens to ship
+ * guzzlehttp/psr7 and index.php loads iTop's autoloader too - a working
+ * endpoint contingent on another project's dependency list, with which
+ * implementation gets used decided by load order.
  *
- * nyholm/psr7 is now required explicitly. Nyholm rather than Guzzle on
+ * So nyholm/psr7 is required explicitly. Nyholm rather than Guzzle on
  * purpose: a Composer loader prepends itself, so of the two in this process
  * the one registered last - iTop's - answers first. A second copy of
  * GuzzleHttp\Psr7 vendored here would be the one that loses, leaving every

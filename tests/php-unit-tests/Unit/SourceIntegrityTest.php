@@ -22,9 +22,9 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * These catch the class of defect that a unit test exercising behaviour cannot:
  * a class referenced without an import inside a namespaced file resolves to the
- * *current* namespace, so it only explodes when that particular line runs. Six
- * such references shipped undetected because they sat on error paths - or, in
- * three of the tools, on a path no test ever reached.
+ * *current* namespace, so it only explodes when that particular line runs. On
+ * an error path, or on a path no test reaches, that can be never - until a
+ * caller finds it.
  *
  * Scope is the module's hand-written code only: vendor/ follows its own
  * conventions and is excluded (see the house guide, "Review scope").

@@ -20,10 +20,10 @@ require_once __DIR__.'/../bootstrap.php';
 /**
  * The dry-run semantics of the one destructive core tool.
  *
- * `simulate` defaults to true and was, for a while, absent from the input
- * schema - which the SDK reads to decide what a client may send. A parameter a
- * client cannot set is a parameter stuck at its default: the tool could not
- * delete anything at all.
+ * `simulate` defaults to true, and it is declared in the input schema - which
+ * the SDK reads to decide what a client may send. A parameter missing from
+ * that schema is a parameter stuck at its default: were `simulate` left out,
+ * the tool could not delete anything at all.
  *
  * Reading the schema and the signature needs no iTop, which is what makes this
  * a unit test rather than an integration one.

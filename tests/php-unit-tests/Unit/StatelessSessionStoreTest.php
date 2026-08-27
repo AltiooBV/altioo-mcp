@@ -93,9 +93,9 @@ class StatelessSessionStoreTest extends TestCase
 	}
 
 	/**
-	 * Two instances cannot share what neither of them holds. The store used to
-	 * back onto a private static array, which made this test about sharing;
-	 * it is now about there being nothing to share.
+	 * Two instances cannot share what neither of them holds. Backed onto a
+	 * private static array this would be a test about sharing; it is a test
+	 * about there being nothing to share.
 	 */
 	public function testASecondInstanceSeesNothingEither(): void
 	{
@@ -156,10 +156,9 @@ class StatelessSessionStoreTest extends TestCase
 	}
 
 	/**
-	 * What a second request sees, which is nothing - and now for a reason that
-	 * does not depend on the SAPI. The store used to rely on a new PHP process
-	 * clearing a static, which is not what a persistent worker (FrankenPHP,
-	 * RoadRunner) does.
+	 * What a second request sees, which is nothing - for a reason that does not
+	 * depend on the SAPI. Relying on a new PHP process to clear a static is not
+	 * a reason that holds under a persistent worker (FrankenPHP, RoadRunner).
 	 */
 	public function testNothingSurvivesIntoTheNextRequestWhateverTheSapi(): void
 	{

@@ -25,8 +25,8 @@ require_once __DIR__.'/../bootstrap.php';
  * exit codes are reachable: the credential was wrong, the user holds none of
  * the configured MCP profiles, or the user has no console at all. The last one
  * is the trap - it is what a portal-only account gets, granting "MCP Services
- * User" to one is an ordinary mistake, and it used to land in the default
- * branch as "Unknown authentication error (retCode=5)" with nothing in the log.
+ * User" to one is an ordinary mistake, and left to the default branch it would
+ * land as "Unknown authentication error (retCode=5)" with nothing in the log.
  *
  * A source scan rather than a behavioural test for the same reason as
  * RequestPipelineOrderTest: createAuthException() is private, its cases are
