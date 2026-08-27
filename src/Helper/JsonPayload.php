@@ -13,18 +13,16 @@ use JsonException;
 /**
  * How this module turns a payload into JSON, in one place.
  *
- * Every surface encodes the same way or the surfaces disagree, and they had:
- * a tool went through {@see ToolOutput::Json()} with four flags and an
- * exception on failure, while a resource called json_encode() bare. The
- * difference was not cosmetic. Default json_encode() escapes slashes and
- * non-ASCII, so the same class label came back as "équipement" from
- * itop://core/classes and as "équipement" from core_class_list - and on
+ * Every surface encodes the same way or the surfaces disagree, and the
+ * disagreement would not be cosmetic. Default json_encode() escapes slashes
+ * and non-ASCII, so the same class label would come back as "équipement"
+ * from itop://core/classes and as "équipement" from core_class_list - and on
  * malformed UTF-8, which a hand-edited datamodel or a legacy dictionary
- * produces, it returned false rather than raising anything, so the resource
- * handed a boolean to the SDK and the caller got "unhandled type: boolean"
- * from inside the transport.
+ * produces, it returns false rather than raising anything, so a surface
+ * calling it bare would hand a boolean to the SDK and the caller would get
+ * "unhandled type: boolean" from inside the transport.
  *
- * The flags are the ones {@see ToolOutput} documented and now shares:
+ * The flags are the ones {@see ToolOutput} documents:
  * unescaped slashes and unicode because a model reads this and URLs and
  * accented text should survive as themselves; substitution rather than failure
  * on invalid UTF-8; and an exception rather than a false return, so a caller

@@ -467,10 +467,9 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	/**
 	 * One entry, with every key it is going to have.
 	 *
-	 * The message is emitted even when empty. It used to be added only when
-	 * there was one, which meant a successful real write answered with a
-	 * different set of keys from a successful dry run - the same
-	 * shape-by-parameter problem the single-object tools had, one level down.
+	 * The message is emitted even when empty, so a real write and a dry run
+	 * answer with the same set of keys. Adding it only when there is one is the
+	 * shape-by-parameter problem the single-object tools avoid, one level down.
 	 *
 	 * @param int|null $iId  Null when the object has no identifier yet, or never got one.
 	 * @param int      $iRow Zero-based position in the list that was sent.

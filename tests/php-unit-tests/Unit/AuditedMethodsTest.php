@@ -19,11 +19,12 @@ require_once __DIR__.'/../bootstrap.php';
 /**
  * What the audit trail records when nobody has configured it.
  *
- * The setting used to fall back to an empty list, and an empty list reads as
- * "audit nothing": a fresh install had log_mcp_service defaulting to true, an
- * AltiooEventMCPService class in the console, and a trail that stayed empty for ever.
- * Nothing failed, which is what made it worth pinning here rather than leaving
- * to the first operator who went looking for a call they remembered making.
+ * An empty list reads as "audit nothing", and a fresh install has
+ * log_mcp_service defaulting to true and an AltiooEventMCPService class in the
+ * console - so an empty default would leave that trail empty for ever without
+ * anything failing. That silence is what makes it worth pinning here rather
+ * than leaving to the first operator who goes looking for a call they
+ * remember making.
  */
 class AuditedMethodsTest extends TestCase
 {

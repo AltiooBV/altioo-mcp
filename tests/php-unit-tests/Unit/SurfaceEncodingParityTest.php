@@ -22,14 +22,14 @@ require_once dirname(__DIR__).'/bootstrap.php';
  *
  * Both surfaces serve the datamodel - core_class_list and itop://core/classes
  * are the same list, core_class_schema and itop://core/class/{class} the same
- * description - and they used to encode it differently: the tool through
- * ToolOutput with four flags, the resource through a bare json_encode(). A
- * caller comparing the two saw escaped slashes on one side and not the other,
- * and a model told to prefer whichever surface its client supports would get
- * two different-looking answers to the same question.
+ * description - so they must encode it identically. Were one to go through
+ * ToolOutput with four flags and the other through a bare json_encode(), a
+ * caller comparing the two would see escaped slashes on one side and not the
+ * other, and a model told to prefer whichever surface its client supports
+ * would get two different-looking answers to the same question.
  *
  * Guarding the parity here rather than in each element, because the thing that
- * must not drift is the encoder, and there is now only one.
+ * must not drift is the encoder, and there is only one.
  */
 class SurfaceEncodingParityTest extends TestCase
 {

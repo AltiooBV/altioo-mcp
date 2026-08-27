@@ -19,7 +19,7 @@ use UserRights;
 /**
  * What a write would do, established before it does it.
  *
- * Two things every writing tool needs and only the delete tool had.
+ * Two things every writing tool needs.
  *
  * The first is CheckToWrite(). It is where iTop decides whether an object may
  * be written - mandatory attributes, DoCheckToWrite() on the class and on
@@ -31,9 +31,9 @@ use UserRights;
  * memory.
  *
  * The second is the dry run. A model acting on an instruction from outside the
- * organisation should not create or modify anything on a first call, and the
- * same two-step the delete tool already required - simulate, show the user,
- * call again - is what makes that true of every write. Running the check
+ * organisation should not create or modify anything on a first call, and a
+ * two-step - simulate, show the user, call again - is what makes that true of
+ * every write. Running the check
  * without the write is exactly what makes a dry run worth anything: it answers
  * "would this work", not just "is this well formed".
  *
@@ -73,19 +73,18 @@ final class WritePlan
 	 * with a handful of scalars whose shape never varies, so both objections
 	 * fall away - see {@see ToolOutput::Structured()}.
 	 *
-	 * One shape, whatever `simulate` was. That is the correction: these tools
-	 * used to answer with one set of keys on a dry run and a different set on a
-	 * real write - `valid` on the first only, `id` on the second only - and
-	 * declare the union of the two as their schema, with `required` narrowed to
-	 * the intersection. A schema like that describes neither response. Nothing
-	 * validating it could catch a create that came back without an id, and the
-	 * consumer that actually matters here reads the schema as prose and cannot
-	 * tell which fields to expect when.
+ * One shape, whatever `simulate` was. Every property is always present and
+	 * always required, and it is the *values* that vary: `id` is null until there
+	 * is one, `simulated` says which call this was, `changes` is empty rather than
+	 * absent. A field that appears and disappears is a second interface hiding
+	 * inside the first.
 	 *
-	 * So every property is always present and always required, and it is the
-	 * *values* that vary: `id` is null until there is one, `simulated` says
-	 * which call this was, `changes` is empty rather than absent. A field that
-	 * appears and disappears is a second interface hiding inside the first.
+	 * The alternative - `valid` on a dry run only, `id` on a real write only, and
+	 * a schema declaring the union of the two with `required` narrowed to their
+	 * intersection - describes neither response. Nothing validating it could catch
+	 * a create that came back without an id, and the consumer that actually
+	 * matters here reads the schema as prose and cannot tell which fields to
+	 * expect when.
 	 *
 	 * `changes` is not in the core set, and that is not a relapse: a tool
 	 * declares it through {@see ChangesSchemaProperty()} and then always
@@ -393,10 +392,9 @@ final class WritePlan
 	 * What a deletion would take with it, as the two lists both delete tools
 	 * report.
 	 *
-	 * One implementation rather than the copy each tool used to carry: this is
-	 * read straight after {@see CheckDeletionRights()}, and a rights rule
-	 * applied to one copy and not the other is the bug that arrangement
-	 * invites.
+	 * One implementation, read straight after {@see CheckDeletionRights()}: a
+	 * rights rule applied to one copy of this and not the other is the bug a
+	 * per-tool copy invites.
 	 *
 	 * Nothing here filters. It does not have to: by the time a plan is
 	 * serialised, CheckDeletionRights() has refused every plan holding an
@@ -438,10 +436,9 @@ final class WritePlan
 	 *
 	 * 'id' always, plus the class's own key attribute when that is not simply
 	 * 'id'. Two of the classes a stock iTop declares use 'link_id'; the other
-	 * 173 use 'id', and spelling both unconditionally - which is what the tools
-	 * used to do - wrote the same key twice into one array literal, so the
-	 * duplicate the schema described only ever existed for a link class. This
-	 * emits it exactly when it says something.
+	 * 173 use 'id', so spelling both unconditionally would write the same key
+	 * twice into one array literal for all but those two. The key attribute is
+	 * emitted exactly when it says something.
 	 *
 	 * @param int|null $iId Null before a creation has happened.
 	 *

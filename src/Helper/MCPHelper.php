@@ -182,10 +182,10 @@ class MCPHelper
 	/**
 	 * The methods audited when the operator has not said otherwise.
 	 *
-	 * The setting used to fall back to an empty list, which read as "audit
-	 * nothing" - so a fresh install had log_mcp_service defaulting to true and
-	 * an audit trail that stayed empty for ever. The default is now the list
-	 * the README has always documented, plus initialize.
+	 * An empty default would read as "audit nothing", leaving an instance with
+	 * log_mcp_service on - which is its default - with an audit trail that
+	 * stays empty for ever. So the default is the documented list, plus
+	 * initialize.
 	 *
 	 * @var array<int, string>
 	 *

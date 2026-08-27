@@ -152,8 +152,8 @@ class OutputSchemaContractTest extends TestCase
 	/**
 	 * One tool, one shape - whatever `simulate` was.
 	 *
-	 * These tools used to answer with one set of keys on a dry run and another
-	 * on a real write, and declare the union as their schema with `required`
+	 * A tool answering with one set of keys on a dry run and another on a real
+	 * write would have to declare the union as its schema, with `required`
 	 * narrowed to the intersection. A schema like that describes neither
 	 * response: nothing validating it can catch a create that came back with no
 	 * id, and the consumer that actually matters reads it as prose and cannot
