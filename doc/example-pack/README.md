@@ -11,7 +11,7 @@ in the order you would meet it.
 | File | Why it exists |
 |---|---|
 | `module.acme-servicedesk.php.tpl` | The iTop module declaration. **Ships with a `.tpl` suffix on purpose** — see below |
-| `composer.json` | The autoloader settings that make discovery work, and the `mcp/sdk` question answered in a comment |
+| `composer.json` | The autoloader settings that make discovery work, the `package` script that produces the dump an installed pack needs, and the `mcp/sdk` question answered in a comment |
 | `register.php` | One line, declaring the provider. Listed in the module's `datamodel` array |
 | `datamodel.acme-servicedesk.xml` | The `MCP-toolset-acme-servicedesk` token scope, and the title dictionary |
 | `src/AcmeServiceDeskExtensions.php` | The provider: the version guard, the registrations, the server instructions |
@@ -28,8 +28,15 @@ in the order you would meet it.
 cp -r doc/example-pack /path/to/itop/web/extensions/acme-servicedesk
 cd /path/to/itop/web/extensions/acme-servicedesk
 mv module.acme-servicedesk.php.tpl module.acme-servicedesk.php
-composer install
+composer package
 ```
+
+`composer package` is `install --no-dev`, and it is the dump an installed pack
+has to have. Plain `composer install` pulls in `mcp/sdk` — a `require-dev`
+entry for the reason under point 4 below — and `classmap-authoritative` writes
+every class it finds into `autoload_classmap.php`, so an instance set up from
+that dump is running the second copy this pack is built not to ship. Use it
+for the tests, then re-run `composer package` before the setup.
 
 Then rename `acme` to your own vendor name throughout — the namespace, the
 toolset, the dictionary keys and the scope value — and run the iTop setup.
@@ -75,7 +82,9 @@ fatals on a missing include. Pin the same constraint the base vendors,
 ## Testing it
 
 ```bash
+composer install   # the dev dump: phpunit, and mcp/sdk to compile against
 composer test
+composer package   # back to the production dump before any setup run
 ```
 
 `ElementContract` runs the same checks the registry runs at boot, and returns
