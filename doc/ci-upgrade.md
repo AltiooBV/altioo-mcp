@@ -32,6 +32,10 @@ That is all the fixture is.
 The third is not a separate job: every baseline runs `upgrade-module.sh` twice and verifies the
 fixture after each.
 
+Only the third is exercisable today. The first two need a release tag and there is none yet, so
+until `v1.0.0` exists the table describes what these runs will do rather than what they do —
+see [Running it](#running-it) below for the hand-driven form.
+
 ## What is seeded, and what each thing catches
 
 [`upgrade-fixture.php`](../tools/ci/upgrade-fixture.php), before the upgrade:
