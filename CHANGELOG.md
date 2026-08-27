@@ -170,8 +170,31 @@ at tag time this section folds into [1.0.0](#100--unreleased) under one dated he
   description were inline literals in the datamodel, so a French console showed them in English
   — the one user-facing string the `fr-fr` file did not reach, in the screen where an
   administrator decides who may reach the endpoint.
+- **A capability or toolset list that narrows to nothing now grants nothing.** `AccessPolicy`
+  read an empty list as "all of them", which is right for a side that named nothing and wrong
+  for two sides that named things and agreed on none: a read-only instance plus a token scoped
+  `MCP-delete` served read, write *and* delete — wider than either side alone — and an instance
+  serving `objects` narrowed by `MCP-toolset-datamodel` served `relations`, which neither had
+  named. `mcp_read_only` had it from the other direction, intersecting itself with
+  `mcp_capabilities` inside `MCPHelper::GetCapabilities()`, so read-only plus `array('write')`
+  came out unrestricted. The two answers are different values now, and the read-only shorthand
+  is combined by the same `narrowedBy()` as everything else. This gate is the instance-wide
+  configuration; `UserRights` is a separate layer and was never affected.
 
 ### Fixed
+
+- **A missing `'altioo-mcp'` configuration block no longer locks out every caller.**
+  `mcp_allowed_profiles` was the one setting whose compiled-in fallback was not what the
+  datamodel ships — `array()` rather than `Administrator` and `MCP Services User` — and
+  `secure_mcp_services` independently falls back to `true`, so an instance whose block went
+  missing refused everybody, administrators included, for a reason no message names. The
+  fallback is the shipped list now, pinned to the datamodel by a test. An operator who writes
+  an explicit `array()` still means nobody.
+- **The CORS preflight no longer advertises `GET`.** It answered `POST, GET, DELETE, OPTIONS`
+  and allowed `Last-Event-ID`, both of which belong to the resumable stream this endpoint does
+  not serve: the SDK's transport matches `OPTIONS`, `POST` and `DELETE` and answers everything
+  else `405`. A browser was being told a method was available that the next request would be
+  refused.
 
 - **A portal-only user is told they have no console, instead of `retCode=5`.** The endpoint
   authenticates through `DoLogin()` against the backoffice portal, so an account whose profiles
