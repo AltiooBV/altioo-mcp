@@ -110,7 +110,9 @@ published archive, not from a build tree:
 5. Check that an `AltiooEventMCPService` row was recorded for those calls.
 6. Confirm `<itop>/extensions/altioo-mcp/src/` and `/vendor/` are **not** reachable over HTTP
    while `index.php` is.
-7. Record which iTop patch and which PHP this ran on, in the changelog entry.
+7. Record which iTop patch and which PHP this ran on, in the **Tested on** line of the
+   changelog entry for this version. That line is the single home for the answer: the README
+   points at it and the Hub listing is copied from it.
 
 **Upgrade path.** Automated: the [Upgrade workflow](../.github/workflows/upgrade.yml) installs the
 previous release, seeds data, upgrades to the working copy and checks nothing was lost — see

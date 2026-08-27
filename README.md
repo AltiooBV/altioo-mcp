@@ -60,10 +60,11 @@ patch you run. The declared range `>=8.2 <8.5` is the intersection of the branch
 **What a release is tested against.** No version is published until the unit suite has passed in
 CI across the declared PHP range, and the archive has been unzipped, installed through the iTop
 setup and connected to from a real MCP client on at least one iTop 3.2 instance — the gate is
-written down in [doc/release-checklist.md](doc/release-checklist.md), and the run for the current
-version is recorded in [CHANGELOG.md](CHANGELOG.md). Combinations outside that are expected to
-work from the ranges above rather than observed; if one of them is the one you run, say so and it
-can be added to the gate.
+written down in [doc/release-checklist.md](doc/release-checklist.md), and each release records
+the iTop patch and the PHP version its own run used under **Tested on** in
+[CHANGELOG.md](CHANGELOG.md). 1.0.0 has not been released, so that line names nothing yet.
+Combinations outside that are expected to work from the ranges above rather than
+observed; if one of them is the one you run, say so and it can be added to the gate.
 
 ## What it exposes
 

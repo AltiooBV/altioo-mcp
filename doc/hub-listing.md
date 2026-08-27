@@ -38,7 +38,7 @@ Application management / Integration
 | Prerequisites | `authent-token` ≥ 2.2.1 and `itop-structure` ≥ 3.2.0 — both ship with iTop |
 | Licence | AGPL-3.0-or-later, same as iTop |
 | Price | Free |
-| Tested on | *(per release — fill from the changelog entry)* |
+| Tested on | *(per release — copy the **Tested on** line from that version's [CHANGELOG.md](../CHANGELOG.md) entry)* |
 
 The two version rows come from
 [`.github/itop-support.json`](../.github/itop-support.json) and `composer.json`, and a test
