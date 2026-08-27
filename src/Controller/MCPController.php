@@ -569,13 +569,18 @@ final class MCPController
 			// Anything but Origin-independent: a cache that missed this would
 			// serve one origin's response to another.
 			'Vary'                        => 'Origin',
-			// Streamable HTTP is POST for calls, GET for a stream and DELETE to
-			// end a session; the SDK answers all three.
-			'Access-Control-Allow-Methods'  => 'POST, GET, DELETE, OPTIONS',
+			// Streamable HTTP also defines GET, for opening a stream the
+			// client can resume. The SDK does not answer it - it matches
+			// OPTIONS, POST and DELETE and refuses everything else with 405
+			// and 'Allow: POST, DELETE, OPTIONS' - so advertising GET here
+			// would promise a browser something the transport refuses.
+			'Access-Control-Allow-Methods'  => 'POST, DELETE, OPTIONS',
 			// Authorization and Auth-Token carry the credential, Mcp-Session-Id
 			// and MCP-Protocol-Version are set by the client on every call, and
 			// a browser sends none of them without being told they are allowed.
-			'Access-Control-Allow-Headers'  => 'Content-Type, Accept, Authorization, Auth-Token, Mcp-Session-Id, MCP-Protocol-Version, Last-Event-ID',
+			// Last-Event-ID belongs to stream resumption, which is the GET
+			// above, so it is not among them.
+			'Access-Control-Allow-Headers'  => 'Content-Type, Accept, Authorization, Auth-Token, Mcp-Session-Id, MCP-Protocol-Version',
 			// Headers are invisible to fetch() unless exposed, and a client that
 			// cannot read Mcp-Session-Id cannot make a second call.
 			'Access-Control-Expose-Headers' => 'Mcp-Session-Id, WWW-Authenticate',
