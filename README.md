@@ -594,10 +594,17 @@ string on a record iTop was going to write anyway.
 
 ## Troubleshooting
 
-Everything below is diagnosed from one file. Whatever the endpoint answered, the reason is in
-**`<itop>/log/error.log`** — the module writes every refusal, every unhandled failure and every
-configuration complaint there, deliberately, because the response is kept vague on purpose and
-the log is not.
+Everything below is diagnosed from one file. When the endpoint answers something that does not
+say why, the reason is in **`<itop>/log/error.log`**: the module writes there every refusal
+whose reason is deliberately kept out of the response — a host that is not served, a caller
+holding none of the allowed profiles, an account with no console — along with every unhandled
+failure and every configuration complaint, because those responses are vague on purpose and the
+log is not.
+
+The refusals that log nothing are the ones that already said everything in the response: the
+415 on a body that is not JSON, the 401 on a request that brought no credential, and the 401 on
+credentials iTop rejected. There is nothing the log could usefully add about a request that
+never named anyone.
 
 **Turn the detail up.** `log_mcp_level` decides how much the *audit trail* keeps, not the error
 log, and it is worth raising while you are looking:
@@ -614,9 +621,16 @@ Put it back to `'error'` afterwards. `'debug'` stores whatever the caller sent, 
 include data your users would not expect to find in an audit log.
 
 **Is the call arriving at all?** Look for an `AltiooEventMCPService` row with the method
-`initialize`. That row is written whenever a client connects, at every log level. No row means
-the request never reached the module — a web server rule, a proxy, or a wrong URL — and nothing
-in this module's configuration will change that.
+`initialize`. That row is written whenever a client connects, at every log level. Then look for
+one with the method `exceptions`: every refusal that lands before the login — the 403 on the
+host, the 415 on the media type, the 401 on a request that brought no credential — is caught at
+the entry point and audited under that method, so such a row means the request did arrive and
+was turned away, and case 2 below is fixed with a module parameter.
+
+No row at all is not yet proof that nothing arrived. `log_mcp_service => false` writes no rows
+whatsoever, and a `log_mcp_method` list that does not name a method suppresses that method's
+rows while requests keep arriving normally — check both before concluding the request never
+reached the module, which is then a web server rule, a proxy, or a wrong URL.
 
 ### The three that account for most of it
 
@@ -673,9 +687,9 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — an element renamed by a release is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
-| Only the first 50 tools appear in a client | That client ignores `nextCursor`. Raise `mcp_pagination_limit` — it defaults to 200 for this reason |
+| A client lists only some of the tools, and always the same number of them | That client ignores `nextCursor`, so it never asks for the second page. The page size is `mcp_pagination_limit`, which this module sets on every request — it defaults to 200, so the SDK's own 50 is never what you are seeing. Raise it if the instance registers more elements than that, and check nobody lowered it |
 | "The MCP request could not be completed. Server log reference: `a1b2c3…`" | An internal failure, answered generically on purpose. Grep `log/error.log` for that reference; the audit row carries it too, in **Log reference** |
-| A stored file comes back as a different media type than declared | Deliberate. The declared type is checked against the bytes, and the bytes win — the response says so in `mimetype_note` |
+| A stored file comes back as a different media type than declared | Deliberate, and settled when the file was attached rather than when it was read. `core_object_attach` checks the declared type against the bytes, the bytes win, and it reports the disagreement in `mimetype_note`. Reading sniffs nothing — it returns what was stored, which is the corrected type |
 
 ## Extending
 
