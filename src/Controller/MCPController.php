@@ -282,11 +282,11 @@ final class MCPController
 	 *
 	 * The fallback is the list the datamodel ships rather than an empty one,
 	 * and the difference is the whole behaviour of an instance whose
-	 * configuration block is not there. Every other setting falls back to what
-	 * was shipped; this one fell back to nobody, and since secure_mcp_services
-	 * independently falls back to true, the endpoint then refused every
-	 * caller - an Administrator included - for a reason no message names. That
-	 * is a config file a hand edit went wrong in, not a decision anyone made.
+	 * configuration block is not there. Falling back to nobody, combined with
+	 * secure_mcp_services independently falling back to true, refuses every
+	 * caller - an Administrator included - for a reason no message names. A
+	 * missing block is a config file a hand edit went wrong in, not a decision
+	 * anyone made.
 	 *
 	 * An operator who writes an empty list is still obeyed: an explicit
 	 * array() is what GetModuleSetting() returns, and it means what it has
@@ -328,8 +328,7 @@ final class MCPController
 	 * is mcp_allowed_profiles, an operator may set it to anything, and naming
 	 * one profile as though it were the rule sends an administrator looking for
 	 * a grant that is not what their instance checks. It names Administrator
-	 * too, which the old wording dropped and which is half of the shipped
-	 * default.
+	 * too, which is half of the shipped default.
 	 *
 	 * What this instance actually requires goes to the log rather than into the
 	 * response, for the same reason the refused hostname does in

@@ -260,12 +260,12 @@ final class ObjectSerializer
 	/**
 	 * Masks the sensitive attributes of every row of a link set.
 	 *
-	 * A sensitive attribute is masked on the object that carries it, and was
-	 * not masked on a link pointing at it. So an attribute the datamodel marks
-	 * sensitive on a link class - and the ones reached through it - came back
-	 * in clear to anyone who read the object on the other side of the link.
-	 * iTop's REST API masks these (SanitizeTrait in
-	 * core/restservices.class.inc.php) and this had no equivalent.
+	 * A sensitive attribute is masked on the object that carries it. Left
+	 * unmasked on a link pointing at it, an attribute the datamodel marks
+	 * sensitive on a link class - and the ones reached through it - would come
+	 * back in clear to anyone who read the object on the other side of the
+	 * link. iTop's REST API masks these too (SanitizeTrait in
+	 * core/restservices.class.inc.php).
 	 *
 	 * Each row is attcode => value on the linked class, so the same
 	 * IsSensitive() that decides a top-level attribute decides these - which is

@@ -22,8 +22,9 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * UserRights::IsActionAllowedOnAttribute() returns UR_ALLOWED_NO (0),
  * UR_ALLOWED_YES (1) or UR_ALLOWED_DEPENDS (2). Used as a boolean, DEPENDS is
- * truthy - so an addon answering "ask me again, with the object" was read as
- * "yes", and every attribute it grades per object was served to everyone. The
+ * truthy - so an addon answering "ask me again, with the object" would be read
+ * as "yes", and every attribute it grades per object would be served to
+ * everyone. The
  * shipped addon never answers DEPENDS for attributes, which is exactly why the
  * mistake is invisible on a stock install and stays invisible until the one
  * deployment that grades per object.

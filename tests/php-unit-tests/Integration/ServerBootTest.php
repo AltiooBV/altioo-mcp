@@ -29,13 +29,10 @@ require_once __DIR__.'/../bootstrap.php';
  * Every other test here exercises one class. This one is the only thing that
  * assembles the whole server - the registry, the access policy, every tool's
  * annotations and input schema - and asks it the questions a real client asks
- * first.
- *
- * It exists because that assembly broke twice without a single test noticing:
- * a bool passed where an array was declared, and a one-argument call to a
- * two-argument method. Both were TypeErrors on every request, both were
- * swallowed into a generic 500 by the controller's catch-all, and neither could
- * fail anything, because nothing ever built the server.
+ * first. Nothing else builds it, so a bool passed where an array is declared,
+ * or a one-argument call to a two-argument method, is a TypeError on every
+ * request that only this test can fail on - the controller's catch-all
+ * swallows it into a generic 500.
  *
  * The request is built here rather than from $_SERVER, which is the one thing
  * MCPService::run() does differently - there is no php://input under CLI. The

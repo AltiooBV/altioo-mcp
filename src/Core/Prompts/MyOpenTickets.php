@@ -16,12 +16,12 @@ use UserRights;
  * The current user's open tickets, asked for in whatever terms this instance
  * actually uses.
  *
- * Written out once, this prompt named UserRequest and two status codes, and was
- * wrong on three counts at once. It was wrong on an instance with no ticketing
- * module, where the class does not exist. It was wrong for a CMDB manager, who
- * is offered a prompt about tickets they may not read. And it was wrong on any
- * instance whose XML delta renamed or removed the attributes it named, which is
- * the ordinary state of a customised iTop rather than an edge case.
+ * Naming UserRequest and two status codes outright would be wrong on three
+ * counts at once. Wrong on an instance with no ticketing module, where the
+ * class does not exist. Wrong for a CMDB manager, who would be offered a
+ * prompt about tickets they may not read. And wrong on any instance whose XML
+ * delta renamed or removed the attributes named, which is the ordinary state
+ * of a customised iTop rather than an edge case.
  *
  * So nothing here is written down that the datamodel can answer instead. The
  * class is Ticket - abstract, and the parent of whatever ticket classes this

@@ -62,7 +62,7 @@ final class ObjectQuery
 	 *
 	 * The IN list is bound as a list, which OQL takes directly - see
 	 * cmdbabstract.class.inc.php, which binds ":triggers" the same way. Built
-	 * by hand it was an implode() into the query text, which is the one shape
+	 * by hand this is an implode() into the query text, which is the one shape
 	 * where an unexpected value in the list turns into query syntax.
 	 *
 	 * @param array<int|string, int|string> $aIds Keys are ignored; the values are the identifiers.

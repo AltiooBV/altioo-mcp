@@ -31,9 +31,8 @@ use UserRights;
  * rows multiplies that by fifty. And it cannot be taken back: once the bytes are
  * in the conversation they stay there.
  *
- * What was wrong was not the ceiling but that there was no door at all. The
- * ceiling says bytes never arrive *unasked*, in a result that fans out. It never
- * said the file may not be read. So the metadata now carries a `uri`, and asking
+ * The ceiling says bytes never arrive *unasked*, in a result that fans out. It
+ * does not say the file may not be read. So the metadata carries a `uri`, and asking
  * for that URI - through the resource template or through core_object_get_document,
  * because plenty of clients read neither resources nor templates - returns the
  * one file. One document, named explicitly, per call. That is the shape the

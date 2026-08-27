@@ -26,10 +26,6 @@ require_once __DIR__.'/../bootstrap.php';
  * "unknown tool", and the model works around it by guessing attribute codes -
  * which is the failure this whole surface exists to prevent.
  *
- * Six descriptions shipped pointing at itop://iTop/..., a namespace that was
- * renamed to core, and one pointed at "itop_object_search", a tool that never
- * existed under that name.
- *
  * Registration only reads metadata, so this needs no iTop.
  */
 class ElementDescriptionContractTest extends TestCase
