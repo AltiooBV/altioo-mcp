@@ -32,6 +32,14 @@ use MetaModel;
  */
 final class MCPController
 {
+	/**
+	 * The profiles the datamodel ships in mcp_allowed_profiles, repeated here
+	 * as the fallback for an instance whose configuration block is missing.
+	 * Kept in step with datamodel.altioo-mcp.xml, which is what a normal
+	 * install actually reads.
+	 */
+	private const DEFAULT_ALLOWED_PROFILES = ['Administrator', 'MCP Services User'];
+
 	public static function handleRequest(): void
 	{
 		new MCPHelper();
@@ -272,11 +280,23 @@ final class MCPController
 	/**
 	 * The profiles this instance lets through, as configured.
 	 *
+	 * The fallback is the list the datamodel ships rather than an empty one,
+	 * and the difference is the whole behaviour of an instance whose
+	 * configuration block is not there. Every other setting falls back to what
+	 * was shipped; this one fell back to nobody, and since secure_mcp_services
+	 * independently falls back to true, the endpoint then refused every
+	 * caller - an Administrator included - for a reason no message names. That
+	 * is a config file a hand edit went wrong in, not a decision anyone made.
+	 *
+	 * An operator who writes an empty list is still obeyed: an explicit
+	 * array() is what GetModuleSetting() returns, and it means what it has
+	 * always meant, which is nobody.
+	 *
 	 * @return array<int, string>
 	 */
 	private static function GetAuthorizedProfiles() : array
 	{
-		$aProfiles = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', []);
+		$aProfiles = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', self::DEFAULT_ALLOWED_PROFILES);
 		if (is_array($aProfiles)) {
 			return $aProfiles;
 		}

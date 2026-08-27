@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionClassConstant;
 use SimpleXMLElement;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -116,6 +118,30 @@ class ModuleMetadataTest extends TestCase
 		}
 
 		$this->assertSame(MCPHelper::DEFAULT_LOG_LEVEL, $sDefault);
+	}
+
+	/**
+	 * The one setting whose compiled-in fallback is not the same value as the
+	 * shipped one would lock the endpoint against everybody, Administrator
+	 * included, on an instance whose configuration block went missing - and
+	 * with secure_mcp_services independently defaulting to true, nothing would
+	 * say why. The two copies are a comment away from each other in the
+	 * source, which is exactly the kind of pair that drifts.
+	 */
+	public function testTheProfileFallbackIsWhatTheDatamodelShips(): void
+	{
+		$aShipped = [];
+		foreach (self::moduleParameters()->mcp_allowed_profiles->item as $oItem) {
+			$aShipped[] = (string)$oItem;
+		}
+
+		$oConstant = new ReflectionClassConstant(MCPController::class, 'DEFAULT_ALLOWED_PROFILES');
+
+		$this->assertSame(
+			$aShipped,
+			$oConstant->getValue(),
+			'MCPController::DEFAULT_ALLOWED_PROFILES no longer matches mcp_allowed_profiles in the datamodel'
+		);
 	}
 
 	/**
