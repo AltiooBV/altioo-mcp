@@ -390,6 +390,14 @@ final class MCPService
 	{
 		$oConfigured = AccessPolicy::Of(MCPHelper::GetCapabilities(), MCPHelper::GetEnabledToolsets());
 
+		if (MCPHelper::IsReadOnly()) {
+			// mcp_read_only is narrowing, not overriding: an instance that
+			// also names grades gets whichever of the two is smaller, and an
+			// instance that names grades read-only cannot honour - write, say
+			// - is left serving nothing rather than everything.
+			$oConfigured = $oConfigured->narrowedBy(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
+		}
+
 		if (!TokenScopes::RequestCarriesAToken()) {
 			// Basic authentication or a reverse proxy: no token, no scopes,
 			// and nothing to narrow with.

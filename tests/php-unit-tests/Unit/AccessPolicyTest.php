@@ -117,8 +117,8 @@ class AccessPolicyTest extends TestCase
 	{
 		$oPolicy = AccessPolicy::FromScopes(['REST/JSON', 'Export']);
 
-		$this->assertSame([], $oPolicy->capabilities());
-		$this->assertSame([], $oPolicy->toolsets());
+		$this->assertNull($oPolicy->capabilities(), 'a scope of another endpoint was read as a grade');
+		$this->assertNull($oPolicy->toolsets(), 'a scope of another endpoint was read as a toolset');
 	}
 
 	public function testTheReadScopeWithholdsWritesAndDeletes(): void
@@ -163,7 +163,7 @@ class AccessPolicyTest extends TestCase
 		$oPolicy = AccessPolicy::FromScopes(['MCP-toolset-write']);
 
 		$this->assertTrue($oPolicy->allowsToolset('write'));
-		$this->assertSame([], $oPolicy->capabilities(), 'a toolset name was read as a capability');
+		$this->assertNull($oPolicy->capabilities(), 'a toolset name was read as a capability');
 	}
 
 	public function testAGradeAndAToolsetCompose(): void
@@ -223,6 +223,48 @@ class AccessPolicyTest extends TestCase
 		$this->assertTrue($oEffective->allowsToolset('objects'));
 		$this->assertFalse($oEffective->allowsToolset('datamodel'));
 		$this->assertTrue($oEffective->allowsCapability(AccessPolicy::CAPABILITY_DELETE));
+	}
+
+	/**
+	 * The other half of the rule above, and the one that is easy to get
+	 * backwards: two sides that both name something and agree on nothing have
+	 * granted nothing. Reading that empty intersection as "nothing named"
+	 * would serve everything, so a read-only instance handed a delete-scoped
+	 * token would come out wider than either side alone.
+	 */
+	public function testTwoNamedListsThatAgreeOnNothingGrantNothing(): void
+	{
+		$oEffective = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], [])
+			->narrowedBy(AccessPolicy::FromScopes(['MCP-delete']));
+
+		$this->assertFalse($oEffective->allowsCapability(AccessPolicy::CAPABILITY_DELETE), 'a delete-scoped token reached past a read-only instance');
+		$this->assertFalse($oEffective->allowsCapability(AccessPolicy::CAPABILITY_READ), 'a grade neither side named was served');
+		$this->assertFalse($oEffective->allowsCapability(AccessPolicy::CAPABILITY_WRITE), 'a grade neither side named was served');
+		$this->assertFalse($oEffective->allowsTool(true, false), 'a search survived a policy that grants nothing');
+	}
+
+	/** The same defect from the toolset side. */
+	public function testTwoNamedToolsetListsThatAgreeOnNothingServeNothing(): void
+	{
+		$oEffective = AccessPolicy::Of([], ['objects'])
+			->narrowedBy(AccessPolicy::FromScopes(['MCP-toolset-datamodel']));
+
+		$this->assertFalse($oEffective->allowsToolset('objects'));
+		$this->assertFalse($oEffective->allowsToolset('datamodel'));
+		$this->assertFalse($oEffective->allowsToolset('relations'), 'a toolset neither side named was served');
+	}
+
+	/**
+	 * A grade nobody here has heard of cannot be honoured, and an endpoint
+	 * that serves everything because a line was misspelt is the wrong way to
+	 * fail.
+	 */
+	public function testACapabilityListThatNamesNothingKnownGrantsNothing(): void
+	{
+		$oPolicy = AccessPolicy::Of(['sudo'], []);
+
+		$this->assertSame([], $oPolicy->capabilities());
+		$this->assertFalse($oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ));
 	}
 
 	public function testTwoNamedListsIntersect(): void

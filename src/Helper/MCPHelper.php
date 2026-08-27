@@ -7,7 +7,6 @@
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Dict;
 use Throwable;
 use utils;
@@ -440,12 +439,17 @@ class MCPHelper
 	}
 
 	/**
-	 * What this instance allows, for everyone.
+	 * What mcp_capabilities names, on its own.
 	 *
-	 * mcp_read_only is shorthand: turning the whole endpoint read-only is what
-	 * an operator wants to do in one line and without looking anything up, and
-	 * spelling it as a list of grades is not that. It narrows rather than
-	 * overrides, so setting both cannot come out wider than either.
+	 * mcp_read_only is the other half of the answer and is deliberately not
+	 * applied here. It is shorthand - turning the whole endpoint read-only is
+	 * what an operator wants to do in one line and without looking anything
+	 * up, and spelling it as a list of grades is not that - and it narrows
+	 * rather than overrides, so setting both cannot come out wider than
+	 * either. Narrowing two lists correctly means telling "named nothing" from
+	 * "agreed on nothing", which a list of grades cannot say and AccessPolicy
+	 * can, so the two are combined there: see
+	 * MCPService::AccessPolicyOfCurrentRequest().
 	 *
 	 * @return array<int, string> Granted grades, or an empty list for all of them.
 	 * @since 1.0.0
@@ -459,15 +463,7 @@ class MCPHelper
 			$aCapabilities = [];
 		}
 
-		$aCapabilities = array_values(array_filter($aCapabilities, 'is_string'));
-
-		if (self::IsReadOnly()) {
-			$aCapabilities = empty($aCapabilities)
-				? [AccessPolicy::CAPABILITY_READ]
-				: array_values(array_intersect($aCapabilities, [AccessPolicy::CAPABILITY_READ]));
-		}
-
-		return $aCapabilities;
+		return array_values(array_filter($aCapabilities, 'is_string'));
 	}
 
 	/**

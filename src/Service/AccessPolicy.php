@@ -31,6 +31,14 @@ use Altioo\iTop\Extension\MCP\Helper\MCPContext;
  * The two combine by keeping whichever is narrower, so a token can restrict
  * itself further than the instance but never reach past it.
  *
+ * Naming nothing and being left with nothing are different answers, and the
+ * difference is the whole of the guarantee above. A side that names no grade
+ * has no opinion, so it serves all of them; two sides that name grades and
+ * agree on none serve none. Collapsing the two - reading "nothing left" as
+ * "nothing named" - is what would let a read-only instance plus a
+ * delete-scoped token come out wider than either, so the lists are held as
+ * null for "nothing named" and an empty array for "nothing left".
+ *
  * Per-token grading is the part that is hard to get any other way. Everything
  * else in iTop's permission model hangs off the user, so the usual way to hold
  * "the assistant may not delete" is a second user account with its own
@@ -57,12 +65,12 @@ final class AccessPolicy
 	public const CAPABILITIES = [self::CAPABILITY_READ, self::CAPABILITY_WRITE, self::CAPABILITY_DELETE];
 
 	/**
-	 * @param array<int, string> $aCapabilities Granted grades; empty means all of them.
-	 * @param array<int, string> $aToolsets     Toolsets served; empty means all of them.
+	 * @param array<int, string>|null $aCapabilities Granted grades; null names none, which serves all of them.
+	 * @param array<int, string>|null $aToolsets     Toolsets served; null names none, which serves all of them.
 	 */
 	private function __construct(
-		private readonly array $aCapabilities,
-		private readonly array $aToolsets,
+		private readonly ?array $aCapabilities,
+		private readonly ?array $aToolsets,
 	)
 	{
 	}
@@ -70,18 +78,28 @@ final class AccessPolicy
 	/** Everything, which is what an instance that configures nothing gets. */
 	public static function Unrestricted(): self
 	{
-		return new self([], []);
+		return new self(null, null);
 	}
 
 	/**
+	 * What an operator wrote, which is a list or nothing at all.
+	 *
+	 * An empty list is a setting nobody filled in, so it names nothing and
+	 * serves everything. A list that names only grades this endpoint has never
+	 * heard of is a different thing: something was meant, none of it can be
+	 * honoured, and serving everything because a line was misspelt is the
+	 * failure mode worth avoiding - so that one serves nothing.
+	 *
 	 * @param array<int, string> $aCapabilities Empty for all of them.
 	 * @param array<int, string> $aToolsets     Empty for all of them.
 	 */
 	public static function Of(array $aCapabilities, array $aToolsets): self
 	{
 		return new self(
-			array_values(array_unique(array_intersect($aCapabilities, self::CAPABILITIES))),
-			array_values(array_unique($aToolsets))
+			empty($aCapabilities)
+				? null
+				: array_values(array_unique(array_intersect($aCapabilities, self::CAPABILITIES))),
+			empty($aToolsets) ? null : array_values(array_unique($aToolsets))
 		);
 	}
 
@@ -138,18 +156,22 @@ final class AccessPolicy
 			$aCapabilities[] = self::CAPABILITY_READ;
 		}
 
+		if ($bEverything) {
+			return self::Unrestricted();
+		}
+
 		return new self(
-			$bEverything ? [] : array_values(array_unique($aCapabilities)),
-			$bEverything ? [] : $aToolsets
+			empty($aCapabilities) ? null : array_values(array_unique($aCapabilities)),
+			empty($aToolsets) ? null : $aToolsets
 		);
 	}
 
 	/**
 	 * The narrower of the two, rule by rule.
 	 *
-	 * Both lists intersect - except that an empty list means "all of them"
-	 * rather than "none of them", so an empty side contributes nothing rather
-	 * than emptying the result.
+	 * Both lists intersect - except that a side naming nothing means "all of
+	 * them" rather than "none of them", so it contributes nothing rather than
+	 * emptying the result.
 	 */
 	public function narrowedBy(self $oOther): self
 	{
@@ -160,17 +182,21 @@ final class AccessPolicy
 	}
 
 	/**
-	 * @param array<int, string> $aOne
-	 * @param array<int, string> $aOther
+	 * Null on either side names nothing and drops out; two named lists
+	 * intersect, and an intersection that comes out empty stays empty - the
+	 * two sides agreed on nothing, which grants nothing.
 	 *
-	 * @return array<int, string>
+	 * @param array<int, string>|null $aOne
+	 * @param array<int, string>|null $aOther
+	 *
+	 * @return array<int, string>|null
 	 */
-	private static function narrowList(array $aOne, array $aOther): array
+	private static function narrowList(?array $aOne, ?array $aOther): ?array
 	{
-		if (empty($aOne)) {
+		if ($aOne === null) {
 			return $aOther;
 		}
-		if (empty($aOther)) {
+		if ($aOther === null) {
 			return $aOne;
 		}
 
@@ -179,12 +205,12 @@ final class AccessPolicy
 
 	public function allowsCapability(string $sCapability): bool
 	{
-		return empty($this->aCapabilities) || in_array($sCapability, $this->aCapabilities, true);
+		return $this->aCapabilities === null || in_array($sCapability, $this->aCapabilities, true);
 	}
 
 	public function allowsToolset(string $sToolset): bool
 	{
-		return empty($this->aToolsets) || in_array($sToolset, $this->aToolsets, true);
+		return $this->aToolsets === null || in_array($sToolset, $this->aToolsets, true);
 	}
 
 	/**
@@ -225,14 +251,14 @@ final class AccessPolicy
 		return $bDestructiveHint === true ? self::CAPABILITY_DELETE : self::CAPABILITY_WRITE;
 	}
 
-	/** @return array<int, string> */
-	public function capabilities(): array
+	/** @return array<int, string>|null Null when nothing is named, which serves all of them. */
+	public function capabilities(): ?array
 	{
 		return $this->aCapabilities;
 	}
 
-	/** @return array<int, string> */
-	public function toolsets(): array
+	/** @return array<int, string>|null Null when nothing is named, which serves all of them. */
+	public function toolsets(): ?array
 	{
 		return $this->aToolsets;
 	}
