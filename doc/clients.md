@@ -100,20 +100,44 @@ a URL and a header will work. Two things to know:
 
 ## Checking it works
 
+It takes two calls, not one. Every method other than `initialize` is answered `400` — *"A
+valid session id is REQUIRED for non-initialize requests"* — before any handler runs, so the
+first call has to be the handshake, and the second has to carry back the `Mcp-Session-Id` the
+first one returned.
+
 ```bash
-curl -sS -X POST https://<your-itop>/extensions/altioo-mcp/index.php \
-  -H "Authorization: Bearer <your-itop-token>" \
+ENDPOINT=https://<your-itop>/extensions/altioo-mcp/index.php
+TOKEN=<your-itop-token>
+
+# 1. initialize — -D - prints the response headers, which is where the session id is
+curl -sS -D - -X POST "$ENDPOINT" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+
+# 2. tools/list — with the mcp-session-id the first call answered with
+curl -sS -X POST "$ENDPOINT" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -H "Mcp-Session-Id: <the id from step 1>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
-- **`401`** — the credential did not get through. Check the token's scope, check that the user
-  holds `MCP Services User` or `Administrator`, and check that `Authorization` reaches PHP.
+The same handshake, with the id read out of the headers for you, is `tools/ci/http-smoke.sh` in
+the source repository — it is not in this archive, since nothing under `tools/` is packaged.
+
+- **`401` on step 1** — the credential did not get through. Check the token's scope, check that
+  the user holds `MCP Services User` or `Administrator`, and check that `Authorization` reaches
+  PHP.
+- **`400` on step 2** — the session id was not sent, or not the one step 1 returned.
 - **Fewer tools than you expect** — the token is scoped, `mcp_capabilities` or
   `mcp_read_only` is set, `mcp_enabled_toolsets` is narrowed, or a pack's tools declare no
   annotations and are therefore graded `delete`.
 - **Nothing in the audit trail** — `log_mcp_level` defaults to `error`, so successful *tool
   calls* are not recorded. Set it to `info` while you are testing. The `initialize` row is the
-  exception: it is written at every log level, so its absence means the request never reached
-  the module rather than that logging is quiet.
+  exception: it is written at every log level, so it is there whenever step 1 arrived — unless
+  `log_mcp_service` is off, or `log_mcp_method` no longer names the method. Either one silences
+  the row while requests keep arriving normally.
