@@ -20,11 +20,27 @@
 #                            deny below, every file under src/ and vendor/
 #                            would be served from the compiled tree.
 #
+# The deny is inside a FilesMatch, and that is the load-bearing part rather
+# than a style choice. Apache applies <Files>/<FilesMatch> sections after the
+# plain directory-context directives of every .htaccess in the path, so a bare
+# "Require all denied" here loses to the env root's FilesMatch grant on .php -
+# for every file it matches, which is all of src/ and all of vendor/. Stating
+# the deny in file context puts it at the same precedence as that grant, and
+# this file, being the child, is applied last and wins. Observed on Apache
+# 2.4.68: with the deny at directory level, src/Helper/MCPHelper.php was
+# served 200 from the compiled tree while composer.json - which the root's
+# FilesMatch does not match - was correctly refused.
+#
+# Order matters below: both sections are file context, so the grant for
+# index.php must come after the deny.
+#
 # Keep this in step with web.config, which does the same job on IIS.
 
 <IfModule mod_authz_core.c>
 	# Apache 2.4
-	Require all denied
+	<FilesMatch ".">
+		Require all denied
+	</FilesMatch>
 	<Files "index.php">
 		Require all granted
 	</Files>
@@ -32,8 +48,10 @@
 
 <IfModule !mod_authz_core.c>
 	# Apache 2.2
-	Deny from all
-	Satisfy All
+	<FilesMatch ".">
+		Deny from all
+		Satisfy All
+	</FilesMatch>
 	<Files "index.php">
 		Order Allow,Deny
 		Allow from all
