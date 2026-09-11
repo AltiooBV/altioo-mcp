@@ -299,7 +299,7 @@ again afterwards:
 | **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
 | **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
 | **Enum values** | Nine `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken` (`_delta="if_exists"`, so no core class is redefined) |
-| **One URL** | `extensions/altioo-mcp/index.php`. The module's `.htaccess` / `web.config` re-grant web access to that one file and leave iTop's deny over the rest of `extensions/` alone |
+| **One URL** | `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file; the copy left under `extensions/` stays covered by iTop's own deny over that directory |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
 | **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no cron task, no scheduled job, no outbound connection |
 
@@ -428,7 +428,7 @@ shorthand for `array('read')`.
 ## Endpoint
 
 ```
-https://<your-itop>/extensions/altioo-mcp/index.php
+https://<your-itop>/env-production/altioo-mcp/index.php
 ```
 
 Point your MCP client at that URL and authenticate with the token above. Copy-paste
@@ -440,7 +440,7 @@ does not connect, are in [doc/clients.md](doc/clients.md).
   "mcpServers": {
     "itop": {
       "type": "http",
-      "url": "https://<your-itop>/extensions/altioo-mcp/index.php",
+      "url": "https://<your-itop>/env-production/altioo-mcp/index.php",
       "headers": { "Authorization": "Bearer <your-itop-token>" }
     }
   }
@@ -457,7 +457,7 @@ makes PHP see `Authorization` on every request it covers, and the rest of iTop h
 for that header — a narrower blast radius costs one block:
 
 ```apache
-<Directory /path/to/itop/extensions/altioo-mcp>
+<Directory /path/to/itop/env-production/altioo-mcp>
     <Files "index.php">
         CGIPassAuth On
     </Files>

@@ -3,10 +3,14 @@
 Every client below talks to the same endpoint:
 
 ```
-https://<your-itop>/extensions/altioo-mcp/index.php
+https://<your-itop>/env-production/altioo-mcp/index.php
 ```
 
-and authenticates the same way — a Personal or User token with an MCP scope, sent as a bearer
+`env-production` is iTop's default environment name; substitute `env-<env>` if your instance
+runs another. The endpoint is served from the **compiled** environment, not from `extensions/`,
+which is only where the archive is unzipped.
+
+They all authenticate the same way — a Personal or User token with an MCP scope, sent as a bearer
 credential. Create one under **My Account → Personal Tokens**, and pick the scope that matches
 how much you want that client to be able to do:
 
@@ -28,7 +32,7 @@ README has the full set and how they combine.
 ## Claude Code
 
 ```bash
-claude mcp add --transport http itop https://<your-itop>/extensions/altioo-mcp/index.php --header "Authorization: Bearer <your-itop-token>"
+claude mcp add --transport http itop https://<your-itop>/env-production/altioo-mcp/index.php --header "Authorization: Bearer <your-itop-token>"
 ```
 
 Check it with `/mcp`, which lists the server and its tools.
@@ -42,7 +46,7 @@ Check it with `/mcp`, which lists the server and its tools.
   "mcpServers": {
     "itop": {
       "type": "http",
-      "url": "https://<your-itop>/extensions/altioo-mcp/index.php",
+      "url": "https://<your-itop>/env-production/altioo-mcp/index.php",
       "headers": { "Authorization": "Bearer <your-itop-token>" }
     }
   }
@@ -63,7 +67,7 @@ Restart the app after editing.
   "servers": {
     "itop": {
       "type": "http",
-      "url": "https://<your-itop>/extensions/altioo-mcp/index.php",
+      "url": "https://<your-itop>/env-production/altioo-mcp/index.php",
       "headers": { "Authorization": "Bearer ${input:itop-token}" }
     }
   }
@@ -78,7 +82,7 @@ Restart the app after editing.
 {
   "mcpServers": {
     "itop": {
-      "url": "https://<your-itop>/extensions/altioo-mcp/index.php",
+      "url": "https://<your-itop>/env-production/altioo-mcp/index.php",
       "headers": { "Authorization": "Bearer <your-itop-token>" }
     }
   }
@@ -106,7 +110,7 @@ first call has to be the handshake, and the second has to carry back the `Mcp-Se
 first one returned.
 
 ```bash
-ENDPOINT=https://<your-itop>/extensions/altioo-mcp/index.php
+ENDPOINT=https://<your-itop>/env-production/altioo-mcp/index.php
 TOKEN=<your-itop-token>
 
 # 1. initialize — -D - prints the response headers, which is where the session id is
