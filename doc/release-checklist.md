@@ -122,8 +122,10 @@ published archive, not from a build tree:
    [clients.md](clients.md)); list tools; read one object; run one write with `simulate` left
    at its default and confirm nothing was written.
 5. Check that an `AltiooEventMCPService` row was recorded for those calls.
-6. Confirm `<itop>/extensions/altioo-mcp/src/` and `/vendor/` are **not** reachable over HTTP
-   while `index.php` is.
+6. Confirm `<itop>/env-production/altioo-mcp/src/` and `/vendor/` are **not** reachable over
+   HTTP while `index.php` is. Check the compiled tree first: the environment root grants PHP for
+   its whole subtree, so that is where this fails. Then repeat it under
+   `<itop>/extensions/altioo-mcp/`, which holds the same files.
 7. Record which iTop patch and which PHP this ran on, in the **Tested on** line of the
    changelog entry for this version. That line is the single home for the answer: the README
    points at it and the Hub listing is copied from it.

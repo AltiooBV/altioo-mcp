@@ -284,10 +284,12 @@ Four checks. Each one fails in a way that is much harder to diagnose later than 
    `'altioo-mcp' => array(...)` block under `module_settings`, carrying the defaults in
    [Configuration](#configuration). If it is missing, the module is installed but every setting
    falls back to its compiled-in default, and editing the file is how you change them.
-4. **Only `index.php` is reachable.** `<itop-url>/extensions/altioo-mcp/index.php` should answer
-   (a `401` is the correct answer at this point); `<itop-url>/extensions/altioo-mcp/composer.json`
+4. **Only `index.php` is reachable.** `<itop-url>/env-production/altioo-mcp/index.php` should
+   answer (a `401` is the correct answer at this point); `<itop-url>/env-production/altioo-mcp/composer.json`
    and `.../src/Controller/MCPController.php` should not. If they are served, the `.htaccess` or
-   `web.config` is not being honoured and the source tree is public.
+   `web.config` is not being honoured and the source tree is public. Check the compiled tree
+   before the one under `extensions/`: the environment root grants PHP for its whole subtree, so
+   the module's own deny is the only thing standing between a caller and `src/`.
 
 ### What the install changes
 
@@ -464,14 +466,18 @@ for that header — a narrower blast radius costs one block:
 </Directory>
 ```
 
-iTop ships an `extensions/.htaccess` (and an `extensions/web.config` for IIS) that denies
-every request under `extensions/` except a short list of static file types, PHP not among
-them — which is the right default for a directory full of module sources, and would otherwise
-answer this endpoint `403`. The module carries its own `.htaccess` and `web.config` granting
-access to `index.php` and to nothing else beside it, so the URL above works on a stock Apache
-or IIS install. If your web server ignores per-directory configuration (`AllowOverride None`,
-or nginx, which has no `.htaccess` at all), the rule does not apply to you in either
-direction: nothing denies the endpoint and nothing has to grant it.
+The setup compiles the module into `env-<env>/altioo-mcp/`, and that is the copy the URL above
+serves. The environment root carries an `.htaccess` written by the compiler whose `FilesMatch`
+**does** include PHP, granted for the whole subtree — so the module's own `.htaccess` and
+`web.config`, copied in beside it, are the only thing denying everything under it and granting
+back `index.php` alone. Confirm they arrived: without them the compiled tree serves its own
+`src/` and `vendor/`. The copy that stays under `extensions/altioo-mcp/` is covered separately
+by iTop's `extensions/.htaccess`, which denies that subtree except a short list of static file
+types, PHP not among them.
+
+If your web server ignores per-directory configuration (`AllowOverride None`, or nginx, which
+has no `.htaccess` at all), **neither deny applies to you** and both have to be expressed in the
+server configuration instead — the compiled tree is public until you do.
 
 MCP clients that offer only a "Connect" button, with no field for a credential, expect the
 server to advertise OAuth discovery (RFC 9728). This extension implements no OAuth, by design
