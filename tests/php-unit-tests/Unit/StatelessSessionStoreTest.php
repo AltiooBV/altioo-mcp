@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionProperty;
 use Symfony\Component\Uid\Uuid;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -49,20 +50,35 @@ class StatelessSessionStoreTest extends TestCase
 	}
 
 	/**
-	 * The one fact this class exists to guarantee. Not "writes are discarded
-	 * eventually" but "a write is not observable at all", which is what lets
-	 * exists() accept any id without that being a way to reach somebody else's
-	 * state.
+	 * The regression that made the endpoint unusable. The SDK saves the queued
+	 * response through the store and reads it back through a second Session
+	 * object whose data cache is empty, so a store that discards writes loses
+	 * every response: the transport answers 202 with no body and no
+	 * Mcp-Session-Id, and the client waits for a reply that was generated and
+	 * then thrown away.
 	 */
-	public function testAWriteIsNotObservable(): void
+	public function testAWriteIsReadableBackWithinTheRequest(): void
 	{
 		$oId = $this->uuid();
 
 		$this->assertTrue($this->oStore->write($oId, 'payload'));
-		$this->assertFalse(
+		$this->assertSame(
+			'payload',
 			$this->oStore->read($oId),
-			'the store kept a write: while exists() accepts any id, keeping anything makes a guessed id worth something'
+			'the store dropped a write: the SDK reads the queued response back through it, so discarding a write discards the response'
 		);
+	}
+
+	/**
+	 * Reading is by id and by nothing else. One request may see more than one
+	 * session id - an id a caller invented is one of them - and holding what
+	 * this request wrote must not turn into answering for an id it did not.
+	 */
+	public function testAWriteIsNotReadableUnderAnotherId(): void
+	{
+		$this->oStore->write($this->uuid(), 'payload');
+
+		$this->assertFalse($this->oStore->read($this->uuid()));
 	}
 
 	/**
@@ -76,11 +92,15 @@ class StatelessSessionStoreTest extends TestCase
 		$this->assertTrue($this->oStore->write($this->uuid(), ''));
 	}
 
-	public function testDestroyIsIdempotentBecauseThereIsNothingToDestroy(): void
+	public function testDestroyRemovesTheEntryAndIsIdempotent(): void
 	{
 		$oId = $this->uuid();
+		$this->oStore->write($oId, 'payload');
 
 		$this->assertTrue($this->oStore->destroy($oId));
+		$this->assertFalse($this->oStore->read($oId));
+
+		// Destroying what is already gone is not a failure.
 		$this->assertTrue($this->oStore->destroy($oId));
 		$this->assertFalse($this->oStore->read($oId));
 	}
@@ -93,9 +113,10 @@ class StatelessSessionStoreTest extends TestCase
 	}
 
 	/**
-	 * Two instances cannot share what neither of them holds. Backed onto a
-	 * private static array this would be a test about sharing; it is a test
-	 * about there being nothing to share.
+	 * One store holds what its own request wrote and nothing reaches across to
+	 * another. Backed onto a private static array the two would share, which is
+	 * what makes a second instance - the next request's store - the thing worth
+	 * asserting about.
 	 */
 	public function testASecondInstanceSeesNothingEither(): void
 	{
@@ -108,29 +129,37 @@ class StatelessSessionStoreTest extends TestCase
 	// ------------------------------------------------------------------
 	// Why exists() saying yes to everything is not an authentication bypass
 	//
-	// It is safe for one reason and one reason only: nothing is stored, so an
-	// id a caller invents matches no state belonging to anybody, and the
-	// request is authenticated on its own regardless. The day this becomes a
-	// real store - a file, a table, iTop's PHP session - that same exists()
-	// hands the caller whatever sits under an id they guessed.
+	// It is safe for one reason and one reason only: nothing outlives the
+	// request that wrote it, so an id a caller invents matches no state
+	// belonging to anybody, and the request is authenticated on its own
+	// regardless. The day this becomes a real store - a file, a table, iTop's
+	// PHP session, or an array shared across requests by a persistent worker -
+	// that same exists() hands the caller whatever sits under an id they
+	// guessed.
 	//
 	// These tests hold the invariant, not the behaviour, so that whoever makes
 	// that change is stopped by a red suite rather than by a reviewer noticing.
 	// ------------------------------------------------------------------
 
 	/**
-	 * The class holds no state of any kind. A property added here - an array,
-	 * a path, a PDO handle, a session key - is the change this is watching
-	 * for, whether or not it survives the request.
+	 * The class may hold what this request wrote, and nothing wider than that.
+	 * A static property - or any other backing shared between requests: a
+	 * path, a PDO handle, a session key - is the change this is watching for.
+	 * Under a persistent worker it survives into the next request, and
+	 * exists() accepting any id then turns a guessed session id into somebody
+	 * else's state.
 	 */
-	public function testTheStoreKeepsNothingAtAll(): void
+	public function testTheStoreKeepsNothingStatic(): void
 	{
-		$aProperties = (new ReflectionClass(StatelessSessionStore::class))->getProperties();
+		$aStatic = array_filter(
+			(new ReflectionClass(StatelessSessionStore::class))->getProperties(),
+			static fn(ReflectionProperty $oProperty): bool => $oProperty->isStatic()
+		);
 
 		$this->assertSame(
 			[],
-			$aProperties,
-			'StatelessSessionStore grew a property: if anything is now kept, exists() accepting any id is an authentication bypass'
+			$aStatic,
+			'StatelessSessionStore grew a static property: it outlives the request under a persistent worker, and exists() accepting any id is then an authentication bypass'
 		);
 	}
 
