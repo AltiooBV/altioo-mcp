@@ -52,9 +52,8 @@ final class TokenScopes
 					continue;
 				}
 
-				$aValues = MetaModel::GetAttributeDef($sClass, 'scope')->GetAllowedValues();
-				foreach (array_keys(is_array($aValues) ? $aValues : []) as $sValue) {
-					if (is_string($sValue) && str_starts_with($sValue, MCPContext::SCOPE_MCP)) {
+				foreach (self::PossibleScopeValues(MetaModel::GetAttributeDef($sClass, 'scope')) as $sValue) {
+					if (str_starts_with($sValue, MCPContext::SCOPE_MCP)) {
 						$aTags[] = $sValue;
 					}
 				}
@@ -64,6 +63,47 @@ final class TokenScopes
 		}
 
 		return array_values(array_unique($aTags));
+	}
+
+	/**
+	 * The values a scope attribute may hold, whichever way this iTop exposes
+	 * them.
+	 *
+	 * scope is an AttributeEnumSet, and GetAllowedValues() - the accessor a
+	 * plain enum answers - returns null for it. Asking only that one is what
+	 * reduced this list to the base scope on every instance, silently: the
+	 * null became an empty array one line later, no tag was pushed for any
+	 * MCP-read, MCP-write or MCP-toolset-* scope, and every token holding one
+	 * was refused by iTop with "Scope not authorized" - which reaches the
+	 * caller as "Invalid login", and reaches log/error.log as nothing at all.
+	 *
+	 * Both accessors are asked, and both array shapes accepted: a code => label
+	 * map, whose keys are the codes, or a plain list of codes. This module
+	 * supports two iTop branches and the shape is not part of any contract
+	 * between them - and a label is never mistaken for a code, because the keys
+	 * win wherever there are string keys to win with.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function PossibleScopeValues(object $oAttDef): array
+	{
+		$aValues = [];
+
+		foreach (['GetPossibleValues', 'GetAllowedValues'] as $sMethod) {
+			if (!method_exists($oAttDef, $sMethod)) {
+				continue;
+			}
+
+			$mDeclared = $oAttDef->$sMethod();
+			if (!is_array($mDeclared)) {
+				continue;
+			}
+
+			$aCodes = array_filter(array_keys($mDeclared), 'is_string');
+			$aValues = array_merge($aValues, $aCodes !== [] ? $aCodes : array_filter($mDeclared, 'is_string'));
+		}
+
+		return array_values($aValues);
 	}
 
 	/** Whether this request authenticated with a token at all. */
