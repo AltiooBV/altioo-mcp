@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -163,17 +164,71 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * scope is an AttributeEnumSet, and GetAllowedValues() - what this test
+	 * used to call - returns null for one. array_keys(null) is a TypeError, so
+	 * this assertion could never have run against a real iTop; the same wrong
+	 * accessor in TokenScopes silently pushed no tag for any scope but the
+	 * base one, and every token scoped MCP-read was refused.
+	 *
 	 * @dataProvider tokenClassProvider
 	 */
-	public function testTokenScopeOffersMcp(string $sClass): void
+	public function testTokenScopeIsReadableAndNotEmpty(string $sClass): void
 	{
 		if (!MetaModel::IsValidClass($sClass)) {
 			$this->markTestSkipped("{$sClass} is not present; the authent-token module is not installed.");
 		}
 
-		$aValues = array_keys(MetaModel::GetAttributeDef($sClass, 'scope')->GetAllowedValues());
+		$mValues = MetaModel::GetAttributeDef($sClass, 'scope')->GetPossibleValues();
 
-		$this->assertContains('MCP', $aValues);
+		$this->assertIsArray($mValues, "the scope values of {$sClass} could not be read");
+		$this->assertNotEmpty($mValues);
+	}
+
+	/**
+	 * What actually reaches the ContextTag stack before DoLogin() runs. iTop
+	 * honours a token scope only when a tag of the same name was pushed, so a
+	 * value this module's datamodel declares and this list omits is a token
+	 * nobody can authenticate with - which was the state of all but one of
+	 * them, on every instance, until the accessor was fixed.
+	 *
+	 * The expectation is read out of the datamodel rather than written here, so
+	 * a scope added to the XML and not pushed fails this test rather than
+	 * needing to be remembered.
+	 */
+	public function testEveryDeclaredScopeIsPushedAsAContextTag(): void
+	{
+		$aDeclared = self::declaredScopeValues();
+		$this->assertGreaterThan(1, count($aDeclared), 'the datamodel declares no MCP scope beyond the base one');
+
+		$aTags = TokenScopes::DeclaredContextTags();
+
+		foreach ($aDeclared as $sScope) {
+			$this->assertContains(
+				$sScope,
+				$aTags,
+				"{$sScope} is declared in the datamodel but never pushed as a context tag, so no token holding it can log in"
+			);
+		}
+	}
+
+	/**
+	 * The MCP scope values this module's own datamodel adds to PersonalToken.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function declaredScopeValues(): array
+	{
+		$oXml = simplexml_load_file(__DIR__.'/../../../datamodel.altioo-mcp.xml');
+		if ($oXml === false) {
+			return [];
+		}
+
+		$aValues = [];
+		foreach ($oXml->xpath('//class[@id="PersonalToken"]//field[@id="scope"]/values/value') ?: [] as $oValue) {
+			$aValues[] = (string)$oValue['id'];
+		}
+
+		return $aValues;
 	}
 
 	/** @return array<string, array{0: string}> */
