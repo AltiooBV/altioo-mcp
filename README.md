@@ -603,17 +603,24 @@ string on a record iTop was going to write anyway.
 
 ## Troubleshooting
 
-Everything below is diagnosed from one file. When the endpoint answers something that does not
-say why, the reason is in **`<itop>/log/error.log`**: the module writes there every refusal
+Most of what follows is diagnosed from one file. When the endpoint answers something that does
+not say why, the reason is in **`<itop>/log/error.log`**: the module writes there every refusal
 whose reason is deliberately kept out of the response — a host that is not served, a caller
 holding none of the allowed profiles, an account with no console — along with every unhandled
 failure and every configuration complaint, because those responses are vague on purpose and the
 log is not.
 
-The refusals that log nothing are the ones that already said everything in the response: the
-415 on a body that is not JSON, the 401 on a request that brought no credential, and the 401 on
-credentials iTop rejected. There is nothing the log could usefully add about a request that
-never named anyone.
+**The one refusal that file cannot explain is the credential itself.** `LoginWebPage::DoLogin()`
+answers this module with a single code and no reason, so a token iTop found and then refused on
+its scope is indistinguishable here from a password that was wrong — both are answered `Invalid
+login`, and the module has nothing truer to write. The reason is recorded by `authent-token`
+instead, under the **`TokenAuthLog`** channel and at `Error` level, so it is already there
+without turning anything up. Grep for `TokenAuthLog` under `<itop>/log/`; case 3 below is the
+line you are most likely to find.
+
+The refusals that log nothing anywhere are the ones that already said everything in the
+response: the 415 on a body that is not JSON, and the 401 on a request that brought no
+credential. There is nothing a log could usefully add about a request that never named anyone.
 
 **Turn the detail up.** `log_mcp_level` decides how much the *audit trail* keeps, not the error
 log, and it is worth raising while you are looking:
@@ -683,6 +690,21 @@ A token needs a scope this module declares — `MCP`, or one of the `MCP-*` scop
 created for the REST API has none of them. iTop honours a token scope only when the module has
 pushed a context tag of the same name, so a token scoped for something else does not partially
 work here; it does not authenticate at all.
+
+The response cannot tell you this. It says `Invalid login`, which is also what a token that does
+not exist gets, and what a wrong password gets. `TokenAuthLog` separates them:
+
+```
+authent-token: Scope not authorized code: 400
+OnConnected: Scope not authorized
+```
+
+That pair means the token *was* found and matched, and was refused on its scope alone — so
+nothing is wrong with its value, its expiry, or the account behind it, and there is no point
+reissuing it. `authent-token` also carries a longer message naming both sides of the comparison
+— *"Current context (…) does not match current Token allowed scopes: …"* — which lists the
+context tags this endpoint actually pushed; raise the `TokenAuthLog` channel in
+`config-itop.php` if it is not already showing.
 
 Open the token in the console and confirm at least one `MCP*` scope is ticked. Scopes cannot be
 added to an existing personal token in every iTop version — if the field is read-only, issue a
