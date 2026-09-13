@@ -20,7 +20,21 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-Nothing yet. Everything written so far ships in 1.0.0.
+### Fixed
+
+- **The endpoint answered `202` with an empty body, so no client could connect.** The stateless
+  session store accepted every write and answered every read with "no such session". The SDK
+  queues a response into the session, saves it through the store, and then reads it back through
+  a *second* `Session` object whose data cache is empty and which therefore goes to the store —
+  so the reply the server had already generated was gone by the time the transport looked for
+  it, and the transport answered `202` with no body and no `Mcp-Session-Id`. Clients waited for
+  a result that never came, until they timed out. `initialize` was affected like everything
+  else, so nothing could connect at all. The store now serves back what the current request
+  wrote and still keeps nothing across requests: the array is an instance property, one store is
+  built per request, and nothing survives into the next one under a persistent worker either.
+
+Everything else written so far ships in 1.0.0. Nothing above has shipped — 1.0.0 is untagged, so
+this entry folds into it at release rather than describing a change anyone has seen.
 
 ## [1.0.0] — unreleased
 
