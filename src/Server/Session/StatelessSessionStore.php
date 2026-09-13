@@ -10,7 +10,7 @@ use Mcp\Server\Session\SessionStoreInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A session store for a server that has no sessions.
+ * A session store that remembers nothing beyond the request it was built for.
  *
  * This endpoint is stateless by design: every request carries its own
  * credential and is authenticated on its own. A request that carries none is
@@ -19,33 +19,46 @@ use Symfony\Component\Uid\Uuid;
  * carried from one request to the next, and nothing already in the browser
  * decides anything here.
  *
- * The SDK does not currently offer a stateless mode, so it is given a store
- * that satisfies the interface and stores nothing. write() accepts and
- * discards, read() always answers "no such session", and exists() accepts any
- * id because there is nothing to look up. A client that keeps sending an
- * Mcp-Session-Id back is therefore never contradicted, which is the point - it
- * is also never remembered.
+ * The SDK does not offer a stateless mode, so it is given a store that serves
+ * back what this request wrote and forgets it when the request ends. Serving
+ * it back is not optional. The SDK queues a response into the session
+ * (Protocol::queueOutgoing()), saves it through the store, and then reads it
+ * back through a *different* Session object, built by
+ * SessionManager::createWithId() inside Protocol::consumeOutgoingMessages().
+ * That second object starts with an empty data cache, so it goes to the store
+ * rather than to memory. A store that discards writes therefore loses every
+ * response: the transport finds an empty queue, answers 202 with no body and
+ * no Mcp-Session-Id, and the client waits for a reply that was generated and
+ * thrown away.
  *
- * Discarding rather than keeping a per-process array costs nothing, and that
- * is worth saying because the array looks useful. The SDK builds exactly one
- * Session per request and caches its data in the object for the life of that
- * request (see Mcp\Server\Session\Session::readData()); the store is read once,
- * before anything has been written, and written once, after everything has
- * been read. So the only reader an entry could ever have is a later request -
- * and a later request either runs in a fresh PHP context, where the array is
- * empty anyway, or in a persistent worker (FrankenPHP, RoadRunner), where
- * keeping it would be an unbounded leak that also hands one caller's session
- * data to whoever guesses the id. Neither is a thing to keep state for.
+ * What makes this safe is the lifetime, not the emptiness. One store is
+ * constructed per request in MCPService::run(), and the array below is an
+ * instance property rather than a static one, so it dies with the request
+ * under mod_php and FPM and under a persistent worker (FrankenPHP, RoadRunner)
+ * alike. Nothing here may become static, and nothing may be backed by a file,
+ * a table or iTop's PHP session: exists() accepts any id a caller invents, and
+ * the only reason that is not a way into somebody else's state is that no
+ * state outlives the request that made it.
  *
  * This is a workaround, not a design: it stands in until the PHP SDK supports
  * stateless operation directly, at which point this class goes away rather
- * than being improved. Nothing here is a place to start keeping state.
+ * than being improved.
  *
  * @see https://modelcontextprotocol.io/specification/basic/transports Streamable HTTP without a session
  * @since 1.0.0
  */
 class StatelessSessionStore implements SessionStoreInterface
 {
+	/**
+	 * What this request wrote, keyed by session id.
+	 *
+	 * Instance state, never static - see the class docblock for why that
+	 * distinction is the whole safety argument.
+	 *
+	 * @var array<string, string>
+	 */
+	private array $aSessionData = [];
+
 	public function exists(Uuid $id): bool
 	{
 		return true; // accept any ID
@@ -53,24 +66,27 @@ class StatelessSessionStore implements SessionStoreInterface
 
 	public function read(Uuid $id): string|false
 	{
-		return false; // there is never anything to read back
+		return $this->aSessionData[$id->toRfc4122()] ?? false;
 	}
 
 	public function write(Uuid $id, string $data): bool
 	{
-		// Accepted and discarded. Returning false would make the SDK log a
-		// failed save on every single request; there is nothing failing here,
-		// there is simply nowhere for it to go.
+		$this->aSessionData[$id->toRfc4122()] = $data;
+
 		return true;
 	}
 
 	public function destroy(Uuid $id): bool
 	{
-		return true; // nothing was stored, so it is already gone
+		unset($this->aSessionData[$id->toRfc4122()]);
+
+		return true;
 	}
 
 	public function gc(): array
 	{
+		// Nothing outlives the request, so there is never anything expired to
+		// collect: the array is gone before a collection could run.
 		return [];
 	}
 }
