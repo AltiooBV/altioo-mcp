@@ -33,6 +33,17 @@ entry itself, not left to be inferred from it.
   wrote and still keeps nothing across requests: the array is an instance property, one store is
   built per request, and nothing survives into the next one under a persistent worker either.
 
+- **Only the bare `MCP` scope could authenticate; the other eight were refused.** `scope` is an
+  `AttributeEnumSet`, and the enumeration behind it was read with `GetAllowedValues()`, which
+  returns `null` for a set — one line later that null became an empty list, so no context tag was
+  ever pushed for `MCP-read`, `MCP-write`, `MCP-delete` or any `MCP-toolset-*` value. iTop honours
+  a token scope only when a tag of the same name is on the stack, so every token scoped to
+  anything narrower than `MCP` was refused: `authent-token` recorded `Scope not authorized` under
+  `TokenAuthLog`, and the caller saw `Invalid login` — the same answer a wrong password gets. A
+  tool pack adding its own `MCP-*` scope to the token classes was never honoured either, for the
+  same reason. The enumeration is now read with `GetPossibleValues()`, and an integration test
+  asserts that every scope the datamodel declares reaches the context tag stack.
+
 Everything else written so far ships in 1.0.0. Nothing above has shipped — 1.0.0 is untagged, so
 this entry folds into it at release rather than describing a change anyone has seen.
 
