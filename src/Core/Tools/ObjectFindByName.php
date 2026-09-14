@@ -149,8 +149,9 @@ class ObjectFindByName extends AbstractMCPTool
 			throw new ToolCallException('Invalid limit. Please specify a limit between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
 		}
 
-		$aNeedles = self::needles($name);
-		$aClasses = self::searchableClasses(trim($class));
+		$aNeedles   = self::needles($name);
+		$aSearchable = self::searchableClasses(trim($class));
+		$aClasses   = $aSearchable['classes'];
 
 		$aResults   = [];
 		$iScanned   = 0;
@@ -190,6 +191,11 @@ class ObjectFindByName extends AbstractMCPTool
 			'truncated'        => $bTruncated,
 			'classes_searched' => $iScanned,
 			'classes_total'    => count($aClasses),
+			// Classes dropped for want of the bulk read right, not for want of
+			// a match. Zero results with a non-zero count here means the caller
+			// was not allowed to look, which is a different answer from "no
+			// such object" and the caller has to be able to tell them apart.
+			'classes_withheld' => $aSearchable['withheld'],
 			'objects'          => $aResults,
 		]);
 	}
@@ -249,9 +255,11 @@ class ObjectFindByName extends AbstractMCPTool
 	 * every one of their instances is an instance of a leaf that is in the list
 	 * anyway.
 	 *
-	 * @return array<int, string>
+	 * @return array{classes: array<int, string>, withheld: int} The classes to scan,
+	 *         and how many were dropped for want of the bulk read right.
 	 *
-	 * @throws ToolCallException When the named class is unknown, or not this caller's to see.
+	 * @throws ToolCallException When the named class is unknown, not this caller's to
+	 *         see, or readable one object at a time but not searchable.
 	 */
 	private static function searchableClasses(string $sClass): array
 	{
@@ -268,7 +276,8 @@ class ObjectFindByName extends AbstractMCPTool
 			$aCandidates = MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL);
 		}
 
-		$aClasses = [];
+		$aClasses  = [];
+		$iWithheld = 0;
 		foreach ($aCandidates as $sCandidate) {
 			if (MetaModel::IsAbstract($sCandidate)) {
 				continue;
@@ -279,6 +288,7 @@ class ObjectFindByName extends AbstractMCPTool
 			// This reads many objects of the class at once, which is the right
 			// iTop has a separate action for.
 			if (!UserRights::IsActionAllowed($sCandidate, UR_ACTION_BULK_READ)) {
+				$iWithheld++;
 				continue;
 			}
 
@@ -287,7 +297,17 @@ class ObjectFindByName extends AbstractMCPTool
 
 		sort($aClasses);
 
-		return $aClasses;
+		// A caller who named a class, and passed the read check on it, is owed
+		// the reason its search came back empty - core_object_search_by_class
+		// answers the same refusal in the same words. This discloses the
+		// caller's own right on a class it has already been told exists, never
+		// whether any object is there, so it is not the oracle that the
+		// "unknown class" wording above exists to close.
+		if ($sClass !== '' && $aClasses === [] && $iWithheld > 0) {
+			throw new ToolCallException("Bulk read access denied to class '{$sClass}'.");
+		}
+
+		return ['classes' => $aClasses, 'withheld' => $iWithheld];
 	}
 
 	/**
