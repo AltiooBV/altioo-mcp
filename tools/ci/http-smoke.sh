@@ -6,8 +6,9 @@
 # it is right against a real MetaModel. Neither one goes through a web server,
 # and every incident this extension has had in the field started there: a
 # request that never reached the controller, or an answer the client could not
-# read. Three calls are enough to know the wire is intact - refused without a
-# credential, accepted with one, and answering a real MCP method.
+# read. What is checked is that the wire is intact - both URLs refuse a call
+# without a credential, one accepts a call with one, and answers a real MCP
+# method.
 #
 # Usage: ITOP_DIR=... ITOP_TOKEN=... tools/ci/http-smoke.sh
 #
@@ -22,14 +23,32 @@ set -euo pipefail
 HOST="${SMOKE_HOST:-127.0.0.1}"
 PORT="${SMOKE_PORT:-8080}"
 BASE="http://${HOST}:${PORT}"
-ENDPOINT="${BASE}/extensions/altioo-mcp/index.php"
+ITOP_ENV="${ITOP_ENV:-production}"
 PROTOCOL_VERSION="${MCP_PROTOCOL_VERSION:-2025-06-18}"
+
+# Two URLs serve the same file, and both are reachable: the module's .htaccess
+# grants index.php in whichever tree it is copied into. Only the first is
+# published to clients, so the token flow runs there.
+#
+# The second gets an unauthenticated call of its own because it is the one with
+# a failure mode the first cannot have. index.php used to require
+# __DIR__.'/vendor/autoload.php' before booting iTop; served from the compiled
+# tree that is the same absolute file iTop's startup requires, and served from
+# extensions/ it is not, so the package was loaded twice, PHP fatalled on the
+# redeclared autoloader class, and every call to that URL was a 500. From the
+# wire that bug is a status code, which is all this step reads.
+ENDPOINT="${BASE}/env-${ITOP_ENV}/altioo-mcp/index.php"
+ALT_ENDPOINT="${BASE}/extensions/altioo-mcp/index.php"
+
+INITIALIZE='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"$PROTOCOL_VERSION"'","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
 
 # PHP's built-in server, not Apache: this checks the application, and pulling
 # in a web server would mean checking its configuration instead. The .htaccess
 # rules that hide src/ and vendor/ are Apache's job and are verified in the
 # release checklist against a real one - php -S ignores them, so no conclusion
-# about them is drawn here.
+# about them is drawn here. Note that this cuts both ways for the two URLs
+# above: php -S serves them both because it ignores the deny, and on Apache
+# they are both reachable because the module's own .htaccess grants them back.
 PHP_CLI_SERVER_WORKERS=4 php -S "${HOST}:${PORT}" -t "$ITOP_DIR" >"$ITOP_DIR/ci-httpd.log" 2>&1 &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
@@ -45,14 +64,18 @@ echo "1. the console answers"
 curl -fsS -o /dev/null -w '   HTTP %{http_code}\n' "${BASE}/index.php" \
   || fail "iTop itself did not answer over HTTP"
 
-echo "2. the endpoint refuses an unauthenticated call"
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
-  -X POST "$ENDPOINT" \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"$PROTOCOL_VERSION"'","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}')
-echo "   HTTP $STATUS"
-[ "$STATUS" = "401" ] || fail "an unauthenticated call was answered $STATUS, expected 401"
+echo "2. every endpoint refuses an unauthenticated call"
+for URL in "$ENDPOINT" "$ALT_ENDPOINT"; do
+  PATH_ONLY="${URL#"$BASE"}"
+  STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST "$URL" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d "$INITIALIZE")
+  echo "   HTTP $STATUS   $PATH_ONLY"
+  [ "$STATUS" = "401" ] \
+    || fail "an unauthenticated call to $PATH_ONLY was answered $STATUS, expected 401"
+done
 
 echo "3. initialize, with a token"
 HEADERS=$(mktemp); BODY=$(mktemp)
@@ -61,7 +84,7 @@ curl -s -D "$HEADERS" -o "$BODY" \
   -H "Authorization: Bearer ${ITOP_TOKEN}" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"$PROTOCOL_VERSION"'","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
+  -d "$INITIALIZE"
 
 grep -q '"protocolVersion"' "$BODY" || { echo "--- response ---"; cat "$BODY"; fail "initialize did not return a protocol version"; }
 echo "   server: $(grep -o '"serverInfo":{[^}]*}' "$BODY" || echo 'no serverInfo')"
@@ -93,4 +116,4 @@ COUNT=$(php -r '$a=json_decode(file_get_contents($argv[1]),true); echo count($a[
 echo "   $COUNT tools advertised"
 [ "$COUNT" -gt 0 ] || { echo "--- response ---"; cat "$BODY"; fail "tools/list advertised no tools"; }
 
-echo "the endpoint is reachable, refuses anonymous callers and serves tools"
+echo "both endpoints are reachable, refuse anonymous callers, and the published one serves tools"

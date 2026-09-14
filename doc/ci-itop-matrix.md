@@ -22,7 +22,7 @@ on a schedule, which matters more: nothing in this repository changes when Combo
 | iTop's `ModuleIntegration` suite | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
 | The module's own `Integration` suite | Everything that needs a live `MetaModel`, `UserRights` and a database |
 | `itop-smoke.php` | Module settings, the audit class, the token scopes and the profile — the pieces the security model is made of, checked in the instance rather than in a fixture |
-| `http-smoke.sh` | The endpoint over the wire: refused without a credential, `initialize` and `tools/list` with one |
+| `http-smoke.sh` | The endpoint over the wire: refused without a credential — asked of both the compiled URL and the one under `extensions/`, since a boot that fatals answers `500` there and `401` nowhere — then `initialize` and `tools/list` with a credential |
 
 Everything after the first two rows exists because **"the setup succeeded" and "the module was
 installed" are different statements**. A setup that cannot select an extension logs one line
