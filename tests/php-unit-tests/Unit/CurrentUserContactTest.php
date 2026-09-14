@@ -19,88 +19,109 @@ use ReflectionMethod;
 require_once __DIR__.'/../bootstrap.php';
 
 /**
- * The one resource that says who the caller is must survive a contact it
- * cannot read.
+ * The caller's own contact is resolved as its own, not as somebody else's.
  *
- * UserRights::GetContactFriendlyname() resolves through User::GetContactObject(),
- * which tries Person with $bMustBeFound false and then falls back to
- * MetaModel::GetObject('Contact', ...) with that flag left at its default. So a
- * contact that is deleted, archived, or simply outside the caller's silo raises
- * CoreException rather than answering null. Unguarded, that took the whole
- * resource down: the SDK's ReadResourceHandler catches the stray Throwable and
- * returns "Error while reading resource", which tells the caller nothing and
- * loses the user id and language that had resolved perfectly well.
+ * UserRights::GetContactFriendlyname() reads the contact under the caller's
+ * silo, and a contact outside it is not merely hidden: the Person lookup
+ * answers null, the Contact fallback runs with $bMustBeFound at its default,
+ * and the resulting CoreException took the whole resource down - the SDK's
+ * ReadResourceHandler catches the stray throwable and returns "Error while
+ * reading resource", losing the user id and language that had resolved fine.
  *
- * An API identity whose own contact sits outside its silo is exactly the caller
- * most likely to read this, so this is the common case, not the edge.
+ * Catching that would have been the wrong fix. An identity is not something a
+ * caller has to hold a right on to be told, and iTop settles the point itself:
+ * FindUser() loads the user's own account with AllowAllData(). So the contact
+ * is fetched the same way, and the assertions below are mostly about the one
+ * thing that keeps this from being a contact reader - the id is taken from the
+ * caller's own user record and can never come from the caller.
  *
  * A source scan rather than a behavioural test for the same reason as
- * AuthRefusalCoverageTest: CoreException and UserRights do not exist without
- * iTop, and a unit suite that boots neither can still hold the guard in place.
+ * AuthRefusalCoverageTest: MetaModel and UserRights do not exist without iTop,
+ * and a unit suite that boots neither can still hold the invariant in place.
  */
 class CurrentUserContactTest extends TestCase
 {
 	/**
-	 * read() must not reach the throwing call itself.
-	 *
-	 * If it ever calls GetContactFriendlyname() directly again, the guard below
-	 * can still be present and still be dead code.
+	 * read() must not reach the silo-scoped accessor.
 	 */
-	public function testReadDoesNotCallTheThrowingAccessorDirectly(): void
+	public function testReadDoesNotUseTheSiloScopedAccessor(): void
 	{
 		$this->assertStringNotContainsString(
 			'UserRights::GetContactFriendlyname()',
 			$this->methodBody('read'),
-			'read() must resolve the contact through the guarded helper, otherwise a'
-			.' contact outside the caller\'s silo fails the whole resource again.'
+			'GetContactFriendlyname() reads the contact under the caller\'s silo and'
+			.' raises CoreException when it falls outside it, which fails the whole'
+			.' resource. The caller\'s own contact is not read that way.'
 		);
 	}
 
 	/**
-	 * The guard catches the type iTop actually raises.
+	 * The lookup is the caller's own, and only ever the caller's own.
 	 *
-	 * ArchivedObjectException extends CoreException, so the one catch covers
-	 * both the missing contact and the archived one.
+	 * This is the assertion that matters. Fetching with $bAllowAllData bypasses
+	 * the silo, so what makes it safe is entirely that the id is read from the
+	 * caller's own user record. An id arriving from anywhere else - a URI
+	 * variable, an argument, a filter - turns this into a reader for every
+	 * contact in the database.
 	 */
-	public function testTheContactLookupCatchesCoreException(): void
+	public function testTheContactIdComesFromTheCallersOwnUserRecord(): void
 	{
-		$sBody = $this->methodBody('ContactFriendlyname');
+		$sBody = str_replace(' ', '', $this->methodBody('ContactFriendlyname'));
 
 		$this->assertStringContainsString(
-			'UserRights::GetContactFriendlyname()',
+			'UserRights::GetContactId()',
 			$sBody,
-			'The helper is what calls the accessor.'
+			'The id must come from the caller\'s own user record.'
 		);
 		$this->assertStringContainsString(
-			'catch(CoreException',
-			str_replace(' ', '', $sBody),
-			'MetaModel::GetObject() raises CoreException when the contact is not the'
-			.' caller\'s to read; catching anything narrower lets it escape.'
+			"MetaModel::GetObject('Contact',\$iContactId,false,true)",
+			$sBody,
+			'The contact is fetched by that id alone, with $bMustBeFound false so a'
+			.' dangling contactid answers null, and $bAllowAllData true because the'
+			.' caller\'s own identity is not something it holds a right on.'
 		);
 	}
 
 	/**
-	 * A degraded answer, not a silent one: the operator gets the reason.
+	 * Nothing the caller sent can reach the lookup.
+	 *
+	 * The helper takes no parameters, so there is no route from a request into
+	 * the id it resolves. Adding one is the single change that would make the
+	 * AllowAllData fetch dangerous, so it fails here.
 	 */
-	public function testTheRefusalIsLoggedAndTheResourceStillAnswers(): void
+	public function testTheLookupTakesNothingFromTheCaller(): void
+	{
+		$oMethod = new ReflectionMethod(CurrentUser::class, 'ContactFriendlyname');
+
+		$this->assertSame(
+			0,
+			$oMethod->getNumberOfParameters(),
+			'ContactFriendlyname() must resolve the caller\'s own contact and nothing'
+			.' else; a parameter is how a caller-supplied id would get in.'
+		);
+		$this->assertTrue(
+			$oMethod->isPrivate(),
+			'Nothing outside this resource has a reason to call an AllowAllData lookup.'
+		);
+	}
+
+	/**
+	 * A missing contact is an answer, not a failure.
+	 */
+	public function testAnUnresolvableContactDegradesToNull(): void
 	{
 		$sBody = $this->methodBody('ContactFriendlyname');
 
-		$this->assertStringContainsString(
-			'MCPHelper::LogError',
-			$sBody,
-			'A contact that cannot be resolved is a configuration fact the operator'
-			.' has to be able to find in the log.'
-		);
 		$this->assertStringContainsString(
 			'return null;',
 			$sBody,
-			'The name is what is lost; the identity in the rest of the payload is not.'
+			'A user with no contact linked answers null.'
 		);
 		$this->assertStringNotContainsString(
 			'throw',
 			$sBody,
-			'Rethrowing puts the caller back at "Error while reading resource".'
+			'Throwing puts the caller back at "Error while reading resource" and'
+			.' loses the identity the rest of the payload carries.'
 		);
 	}
 
