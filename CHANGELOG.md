@@ -45,16 +45,24 @@ entry itself, not left to be inferred from it.
   asserts that every scope the datamodel declares reaches the context tag stack.
 
 - **`itop://core/current-user` failed outright for the identities most likely to read it.**
-  `UserRights::GetContactFriendlyname()` resolves through `User::GetContactObject()`, which tries
-  `Person` with `$bMustBeFound` false and then falls back to `MetaModel::GetObject('Contact', ...)`
-  with that flag left at its default — so a contact that is deleted, archived, or simply outside
-  the caller's silo raises `CoreException` rather than answering `null`. Nothing caught it, the
-  SDK's `ReadResourceHandler` turned the stray throwable into `-32603 "Error while reading
-  resource"`, and the caller lost the user id, language and archive mode that had all resolved
-  correctly. An API identity whose own contact sits outside its silo is exactly the caller most
-  likely to ask who it is, so this was the common case rather than the edge. The contact lookup
-  is now guarded: the name comes back `null`, the reason goes to the log with the user id, and
-  the rest of the payload answers as before.
+  The resource answered `-32603 "Error while reading resource"` and nothing else.
+  `UserRights::GetContactFriendlyname()` resolves through `User::GetContactObject()`, which reads
+  the contact under the caller's own silo: the `Person` lookup answers `null`, and the `Contact`
+  fallback then runs with `$bMustBeFound` left at its default, so a contact outside that silo
+  raises `CoreException` rather than being merely hidden. The SDK's `ReadResourceHandler` turned
+  the stray throwable into a generic internal error, and the user id, language and archive mode
+  that had all resolved correctly were lost with it.
+
+  Reading it under the silo was the wrong question. The contact is the *caller's own*, named by
+  its own user record, and an identity is not something a caller has to hold a right on to be
+  told — the same reason a user may change their own password without holding any right over
+  anyone else's. iTop settles the principle one method away: `FindUser()` loads the user's own
+  account with `AllowAllData()`, because an account outside its holder's silo still has to be
+  able to log in. The contact is now fetched the same way, by the id on the caller's own user
+  record and with `$bMustBeFound` false, so a `contactid` left dangling by a deleted contact
+  answers `null` instead of throwing. The id can only ever come from `UserRights::GetContactId()`,
+  never from the caller, and a unit test holds that invariant: it is the whole reason the
+  `AllowAllData` fetch is not a reader for every contact in the database.
 
 - **`core_object_find_by_name` reported "no match" when it had in fact searched nothing.** Every
   candidate class the caller lacks `UR_ACTION_BULK_READ` on is dropped before the scan; dropped
