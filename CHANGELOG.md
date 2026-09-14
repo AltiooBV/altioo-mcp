@@ -44,6 +44,28 @@ entry itself, not left to be inferred from it.
   same reason. The enumeration is now read with `GetPossibleValues()`, and an integration test
   asserts that every scope the datamodel declares reaches the context tag stack.
 
+- **`itop://core/current-user` failed outright for the identities most likely to read it.**
+  `UserRights::GetContactFriendlyname()` resolves through `User::GetContactObject()`, which tries
+  `Person` with `$bMustBeFound` false and then falls back to `MetaModel::GetObject('Contact', ...)`
+  with that flag left at its default — so a contact that is deleted, archived, or simply outside
+  the caller's silo raises `CoreException` rather than answering `null`. Nothing caught it, the
+  SDK's `ReadResourceHandler` turned the stray throwable into `-32603 "Error while reading
+  resource"`, and the caller lost the user id, language and archive mode that had all resolved
+  correctly. An API identity whose own contact sits outside its silo is exactly the caller most
+  likely to ask who it is, so this was the common case rather than the edge. The contact lookup
+  is now guarded: the name comes back `null`, the reason goes to the log with the user id, and
+  the rest of the payload answers as before.
+
+- **`core_object_find_by_name` reported "no match" when it had in fact searched nothing.** Every
+  candidate class the caller lacks `UR_ACTION_BULK_READ` on is dropped before the scan; dropped
+  silently, a caller with no bulk read anywhere got `total: 0` with no error, which a model reads
+  as "there is no such object" and passes to the user as fact. The envelope now carries
+  `classes_withheld`, and naming a class that is readable one object at a time but not searchable
+  is refused with `Bulk read access denied to class '<class>'` — the same wording
+  `core_object_search_by_class` already uses for the same condition. This reports the caller's own
+  rights on a class, never whether an object exists: naming a class the caller may not read stays
+  indistinguishable from naming one that does not exist, and a unit test holds that apart.
+
 Everything else written so far ships in 1.0.0. Nothing above has shipped — 1.0.0 is untagged, so
 this entry folds into it at release rather than describing a change anyone has seen.
 
