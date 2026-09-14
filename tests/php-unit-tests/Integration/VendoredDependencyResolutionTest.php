@@ -24,22 +24,35 @@ require_once __DIR__.'/../bootstrap.php';
  * the one registered *last* answers first, and the loser's copy is never
  * loaded at all.
  *
- * On the MCP endpoint the module's autoloader is required by index.php before
- * approot.inc.php, and iTop's is therefore registered afterwards - which means
- * iTop's is prepended last and iTop's copies win. Every overlapping package
- * runs at the version iTop ships, not the version composer.lock records.
+ * The module's loader is registered by module.altioo-mcp.php, which names
+ * vendor/autoload.php as a datamodel file - so iTop loads it during startup,
+ * after its own, on every request to the environment. Registered last, it is
+ * prepended last, and this module's copies are the ones that answer. That is
+ * true of the console, the portal, cron, and now of the MCP endpoint as well.
  *
- * That is not fixable by reordering. Prepending the module's loader again
- * after startup would shadow iTop's own libraries for the rest of the request,
- * inside core code that was written against them; and the versions cannot be
- * pinned to iTop's either, because this module supports two iTop branches that
- * do not ship the same ones.
+ * It was not always true of the MCP endpoint. index.php used to require
+ * __DIR__.'/vendor/autoload.php' before approot.inc.php, which put the
+ * module's loader first and iTop's second, and iTop's copies won there and
+ * nowhere else. That require was removed because served from extensions/ it
+ * resolved to a different absolute path than startup's, redeclared the
+ * autoloader class and fatalled - see EntryPointAutoloaderTest. The endpoint
+ * now resolves overlaps the way the rest of the application always has.
  *
- * So the arrangement stands and is checked instead: whatever executes has to
- * satisfy what this module's dependency graph declares it needs. Six of the
- * seven do. The seventh is recorded below with the reason it is survivable,
- * so that it is a known state rather than a silent one - and so that any
- * *eighth* fails this test.
+ * The versions cannot be pinned to iTop's, because this module supports two
+ * iTop branches that do not ship the same ones. So the overlap stands and is
+ * checked instead. Six of the seven satisfy what this module declares; the
+ * seventh is recorded below with the reason it is survivable, so that it is a
+ * known state rather than a silent one - and so that any *eighth* fails this
+ * test.
+ *
+ * KNOWN GAP, needs a decision. The assertions below still measure the
+ * direction that stopped happening: they ask whether iTop's version satisfies
+ * this module's constraints. It is a real compatibility check and it passes,
+ * but it is now stricter than anything that runs. The question this file
+ * should be asking after the change above is the reverse one - whether this
+ * module's copies satisfy what *iTop's* installed.json declares - because
+ * those are the copies that shadow iTop's libraries inside iTop's own code.
+ * That check does not exist anywhere yet.
  */
 class VendoredDependencyResolutionTest extends TestCase
 {
@@ -145,10 +158,11 @@ class VendoredDependencyResolutionTest extends TestCase
 		$this->assertSame(
 			[],
 			array_values($aUnexpected),
-			"A double-shipped package runs at a version this module does not declare support for.\n"
-			.'iTop\'s copy is the one that loads on the MCP endpoint, so composer.lock is describing code that '
-			.'does not execute. Either widen what depends on it, drop the package from this module\'s tree, or - '
-			.'if it is survivable - record it in ACCEPTED_DIVERGENCES with the reason.'
+			"A double-shipped package is carried at a version iTop's copy does not satisfy.\n"
+			.'This module\'s copy is the one that loads, so the constraint is met at runtime; what this reports '
+			.'is that the two trees have drifted far enough apart that iTop\'s own code is now being handed a '
+			.'version its branch never shipped. Either widen what depends on it, drop the package from this '
+			.'module\'s tree, or - if it is survivable - record it in ACCEPTED_DIVERGENCES with the reason.'
 		);
 	}
 
