@@ -9,7 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
+use CoreException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 use UserRights;
@@ -58,11 +60,40 @@ class CurrentUser extends AbstractMCPResource
 	public function read(): mixed
 	{
 		return ResourceOutput::Json([
-			'current_contact_friendlyname' => UserRights::GetContactFriendlyname(),
+			'current_contact_friendlyname' => self::ContactFriendlyname(),
 			'current_contact_id' => UserRights::GetContactId(),
 			'current_id' => UserRights::GetUserId(),
 			'current_user_language' => UserRights::GetUserLanguage(),
 			'archive_mode' => utils::IsArchiveMode() ? 'archive' : 'active',
 		]);
+	}
+
+	/**
+	 * The caller's contact name, or null when it cannot be resolved.
+	 *
+	 * UserRights::GetContactFriendlyname() resolves through User::GetContactObject(),
+	 * which tries Person with $bMustBeFound false and then falls back to
+	 * MetaModel::GetObject('Contact', ...) with that flag left at its default. A
+	 * contact the caller may not read - deleted, archived, or outside its silo -
+	 * therefore raises CoreException instead of answering null, and an API identity
+	 * whose own contact sits outside its silo is exactly the caller most likely to
+	 * read this resource. Losing the name is worth an answer; losing the identity
+	 * the rest of this payload carries is not.
+	 *
+	 * @since 1.0.0
+	 */
+	private static function ContactFriendlyname(): ?string
+	{
+		try {
+			return UserRights::GetContactFriendlyname();
+		} catch (CoreException $e) {
+			MCPHelper::LogError(sprintf(
+				'itop://core/current-user: contact of user %s could not be resolved: %s',
+				(string) UserRights::GetUserId(),
+				$e->getMessage()
+			));
+
+			return null;
+		}
 	}
 }
