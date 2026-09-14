@@ -301,7 +301,7 @@ again afterwards:
 | **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
 | **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
 | **Enum values** | Nine `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken` (`_delta="if_exists"`, so no core class is redefined) |
-| **One URL** | `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file; the copy left under `extensions/` stays covered by iTop's own deny over that directory |
+| **One file** | `index.php`. Clients are given it as `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file — and the same pair ships under `extensions/`, where it re-grants that directory's `index.php` through iTop's deny. So the file answers at both paths, on identical terms: same code, same authentication, one of the two published |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
 | **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no cron task, no scheduled job, no outbound connection |
 

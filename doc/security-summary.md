@@ -95,7 +95,8 @@ the [README](../README.md#what-the-install-changes):
 - one profile, `MCP Services User`, which grants no data rights of its own;
 - nine `MCP*` values added to the `scope` field of `PersonalToken` and `UserToken`, through
   `_delta="if_exists"` — no core class is redefined;
-- one URL, `env-production/altioo-mcp/index.php`, in the compiled environment;
+- one file, `index.php`, published as `env-production/altioo-mcp/index.php` in the compiled
+  environment and answering on the same terms at the `extensions/` path it was unpacked to;
 - one `module_settings` block in `conf/<env>/config-itop.php`.
 
 | Question | Answer |
