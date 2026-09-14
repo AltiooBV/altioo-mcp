@@ -22,6 +22,27 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **Every request to `extensions/altioo-mcp/index.php` was a fatal error.** The entry point
+  required `__DIR__.'/vendor/autoload.php'` before booting iTop, and `module.altioo-mcp.php`
+  names `vendor/autoload.php` as its first datamodel file, which iTop resolves against the
+  *compiled* tree during startup. In the compiled copy both requires land on the same absolute
+  path and `require_once` dedupes them; under `extensions/` they do not, nothing dedupes, and the
+  second declaration of `ComposerAutoloaderInitAltiooMcpExtension` ended the request. The
+  autoloader suffix is pinned in `composer.json`, so the two copies collided by construction
+  rather than by coincidence of names, and the URL answered `500` rather than the `401` an
+  unauthenticated caller should get. The early require is removed — nothing above the boot needs
+  a class from this module, and the controller resolves through the same datamodel entry. A unit
+  test now holds both halves of that contract (the entry point requires no loader, the manifest
+  still names one), and the HTTP smoke step asks this URL for a refusal too, since from the wire
+  the bug was only ever a status code.
+
+  One consequence is worth naming, because a comment in the entry point asserted the opposite:
+  the module's loader now registers during startup, *after* iTop's, so it is prepended last and
+  this module's copies of the overlapping packages (`psr/*`, `webmozart/assert`) are the ones
+  that answer. That is not new behaviour — it is how every other entry point in the application
+  already resolved them, because that datamodel entry loads on every request to the environment.
+  This endpoint simply stopped being the exception.
+
 - **The endpoint answered `202` with an empty body, so no client could connect.** The stateless
   session store accepted every write and answered every read with "no such session". The SDK
   queues a response into the session, saves it through the store, and then reads it back through
