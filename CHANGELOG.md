@@ -117,6 +117,16 @@ published archive was installed and exercised on into this line; the README and
 
 ### Added
 
+- **`core_current_user`, the identity as a tool.** `itop://core/current-user` already answered
+  who the session is authenticated as, and a client that never fetches resources never asked:
+  a model looks for a tool, finds none, and concludes the server cannot say — then either puts
+  the question to the user or answers "my tickets" with somebody else's. The protocol puts a
+  fact the model needs mid-task on the tool side of its own split, and the resource stays for
+  clients that do browse. Both read through `Helper\CurrentUserReader`, so the two surfaces
+  cannot drift and the `AllowAllData` contact lookup is written once, still taking nothing from
+  the caller. This is the same reasoning that already doubles the class list and the class
+  schema; the identity had been left out of it.
+
 - **No tool writes unless it is called with `simulate=false`.** `core_object_create`,
   `core_object_update`, `core_object_apply_stimulus`, `core_object_delete`,
   `core_object_attach` and the three bulk tools all default to a dry run and answer with a
