@@ -241,6 +241,8 @@ class ObjectGetRelated extends AbstractMCPTool
 			$aStats[$sClass] = ($aStats[$sClass] ?? 0) + 1;
 		}
 
+		self::assertBulkReadWhereTheGraphReadsInBulk($aStats);
+
 		/** @var \RelationEdge $oEdge */
 		foreach ($oGraph->GetEdges() as $oEdge) {
 			$oSource = $oEdge->GetSourceNode();
@@ -277,6 +279,42 @@ class ObjectGetRelated extends AbstractMCPTool
 			'relations' => $aRelations,
 			'summary'   => implode(', ', $aSummaryParts),
 		];
+	}
+
+	/**
+	 * A walk that returns two or more objects of a class has read that class in
+	 * bulk, whatever the tool is called.
+	 *
+	 * The search tools ask for UR_ACTION_BULK_READ before they hand back a set,
+	 * and a relation walk that did not would be the way around a credential
+	 * deliberately issued without the bulk right: one reachable object, a
+	 * relation and a depth, and the caller has the set it was refused. iTop's
+	 * own console gates impact analysis on UR_ACTION_READ alone, so this is
+	 * stricter than the console on purpose - the console is a person clicking
+	 * one screen, and this is a credential handed to something that can walk
+	 * every relation on every object it can reach.
+	 *
+	 * Per class, and only past the first object. One related object of a class
+	 * is a single read and stays one, which is what keeps the ordinary "what
+	 * does this depend on" answer working for a caller holding nothing but
+	 * UR_ACTION_READ.
+	 *
+	 * Refused rather than trimmed. Dropping the surplus would leave the edges
+	 * pointing at objects no longer in the payload, and would hand back a graph
+	 * that reads as complete - the failure FindByNameRightsTest exists to keep
+	 * out of the search tools, rebuilt here.
+	 *
+	 * @param array<string, int> $aStats Objects returned, counted per class.
+	 *
+	 * @throws ToolCallException
+	 */
+	private static function assertBulkReadWhereTheGraphReadsInBulk(array $aStats): void
+	{
+		foreach ($aStats as $sRelatedClass => $iCount) {
+			if ($iCount > 1 && !UserRights::IsActionAllowed($sRelatedClass, UR_ACTION_BULK_READ)) {
+				throw new ToolCallException("Bulk read access denied to class '{$sRelatedClass}'.");
+			}
+		}
 	}
 
 	/**
