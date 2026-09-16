@@ -322,7 +322,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}

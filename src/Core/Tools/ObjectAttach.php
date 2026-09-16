@@ -357,7 +357,7 @@ class ObjectAttach extends AbstractMCPTool
 
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
 		}
 
@@ -422,7 +422,7 @@ class ObjectAttach extends AbstractMCPTool
 
 		try {
 			$oTarget->DBUpdate();
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
 		}
 

@@ -149,7 +149,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			// so a malformed filter can only surface here, where the set is
 			// first read. Probing for it beforehand caught nothing.
 			throw new ToolCallException("Invalid filter condition. ".$e->getMessage());
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));

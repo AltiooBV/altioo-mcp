@@ -166,7 +166,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// One object that cannot take the change does not cancel the
 				// other thirty-nine; it is reported as its own failure.
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $e->getMessage());
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
 			}
 		}

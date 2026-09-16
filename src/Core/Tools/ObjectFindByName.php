@@ -388,7 +388,7 @@ class ObjectFindByName extends AbstractMCPTool
 			}
 
 			return $aMatches;
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			// One class that cannot be searched - a broken attribute, a table
 			// out of step with the datamodel - is not a reason to answer
 			// nothing for the other three hundred.

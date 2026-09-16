@@ -262,7 +262,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -273,7 +273,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
 			try {
 				$oObject->Set($sAttCode, $realValue);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -347,7 +347,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$bApplied = false;
 		try {
 			$bApplied = $oObject->ApplyStimulus($stimulus);
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
 		}
 		// ApplyStimulus returns false if the state transition did not happen (e.g. due to a condition on the transition that is not met), but no exception is thrown in this case, so we need to check the return value to provide a helpful error message.

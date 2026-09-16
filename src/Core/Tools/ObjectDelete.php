@@ -205,7 +205,7 @@ class ObjectDelete extends AbstractMCPTool
 			try {
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
 			}
 		}

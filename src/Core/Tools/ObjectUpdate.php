@@ -219,7 +219,7 @@ class ObjectUpdate extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -231,7 +231,7 @@ class ObjectUpdate extends AbstractMCPTool
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
 			try {
 				$oObject->Set($sAttCode, $realValue);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -272,7 +272,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'valid'     => true,
 					'changes'   => $aChanges,
 				]);
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to update {$class}::{$id}", $e));
 		}
 	}

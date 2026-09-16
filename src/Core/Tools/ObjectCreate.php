@@ -153,7 +153,7 @@ class ObjectCreate extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -165,7 +165,7 @@ class ObjectCreate extends AbstractMCPTool
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
 			try {
 				$oObject->Set($sAttCode, $realValue);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
@@ -205,12 +205,66 @@ class ObjectCreate extends AbstractMCPTool
 					'valid'     => true,
 					'changes'   => $aChanges,
 				]);
-		} catch (\Exception $e) {
-			// WritePlan::Check() ran first and refused everything the caller
-			// could have corrected, so what reaches here is the instance's
-			// problem, described in the instance's vocabulary. MCPHelper
-			// explains the split.
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to create the object', $e));
+		} catch (\Throwable $e) {
+			// A throw here does not mean nothing was written. DBInsert()
+			// commits in DBInsertNoReload() and only then walks the loaded
+			// attributes calling ReadExternalValues(), so the row can exist by
+			// the time this runs - and the object carries its key from the
+			// moment it does.
+			//
+			// Answering "failed" with the row committed is the worst thing
+			// this tool can do: creating is not idempotent, nothing in the
+			// protocol tells a model that a failed write may have written, and
+			// the reasonable next move on an error is to try again. That is a
+			// second ticket. So a committed id is reported as the success it
+			// is, with the failure attached rather than substituted for it.
+			$iCommittedId = self::committedId($oObject);
+			if ($iCommittedId === null) {
+				// WritePlan::Check() ran first and refused everything the
+				// caller could have corrected, so what reaches here is the
+				// instance's problem, described in the instance's vocabulary.
+				// MCPHelper explains the split.
+				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to create the object', $e));
+			}
+
+			return ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $iCommittedId)
+				+ [
+					'simulated' => false,
+					'valid'     => true,
+					'changes'   => $aChanges,
+					'warning'   => MCPHelper::OpaqueFailure(
+						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
+						$e
+					),
+				]);
 		}
+	}
+
+	/**
+	 * The id of an object that reached the database, or null if it did not.
+	 *
+	 * iTop gives an unsaved object a temporary key, and makes it negative
+	 * precisely so it cannot be mistaken for a real one (DBObject::
+	 * GetNextTempId()). The insert overwrites it with the autonumber - as a
+	 * string, which is why this casts rather than compares types.
+	 *
+	 * Guarded, because it runs on the failure path: an object left in a state
+	 * where even reading its key throws must not replace the failure being
+	 * reported with one from the reporting.
+	 */
+	private static function committedId(\DBObject $oObject): ?int
+	{
+		try {
+			$mKey = $oObject->GetKey();
+		} catch (\Throwable $e) {
+			return null;
+		}
+
+		if (!is_numeric($mKey) || (int) $mKey <= 0) {
+			return null;
+		}
+
+		return (int) $mKey;
 	}
 }

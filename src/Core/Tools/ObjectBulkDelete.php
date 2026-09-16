@@ -150,7 +150,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 			try {
 				$oPlan = new DeletionPlan();
 				$oObject->DBDelete($oPlan);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				// CheckToDelete() above already reported everything the caller
 				// could act on, with the plan's own wording.
 				return self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));

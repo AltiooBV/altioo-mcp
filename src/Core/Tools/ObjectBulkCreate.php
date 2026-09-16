@@ -199,7 +199,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
 			return self::outcome(null, $iRow, false, $e->getMessage());
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			// The ToolCallException branch above carries this module's own
 			// refusals, which are what the caller fixes the row with. This one
 			// carries the ORM's, which it does not.
