@@ -145,12 +145,50 @@ class ServerInstructionsTest extends TestCase
 	 */
 	public function testTheDateBulletSaysWhatTheFormatIsAndNotOnlyWhatItIsNot(): void
 	{
-		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
+		$sText = ServerInstructions::Text(self::objectReader(), 'Y-m-d H:i:s', 'Y-m-d');
 
-		$sText = ServerInstructions::Text($oPolicy, 'Y-m-d H:i:s');
-
-		$this->assertStringContainsString('2026-09-16 14:30:00', $sText);
+		$this->assertStringContainsString('a date-time is 2026-09-16 14:30:00', $sText);
+		$this->assertStringContainsString('a date is 2026-09-16', $sText);
 		$this->assertStringNotContainsString('core_class_schema', $sText);
+	}
+
+	/**
+	 * A date is its own promise. AttributeDate overrides GetInternalFormat, so
+	 * an instance can move one and not the other, and a date example derived
+	 * by cutting the time off a date-time would be wrong in exactly the case
+	 * nobody tests by hand.
+	 */
+	public function testTheDateFormatIsReadRatherThanDerivedFromTheDateTimeOne(): void
+	{
+		$sText = ServerInstructions::Text(self::objectReader(), 'd/m/Y H:i:s', 'Y-m-d');
+
+		$this->assertStringContainsString('a date-time is 16/09/2026 14:30:00', $sText);
+		$this->assertStringContainsString('a date is 2026-09-16', $sText);
+	}
+
+	/**
+	 * An AttributeDate that did not override the accessor answers with the
+	 * date-time format, which would print a clock inside the date example.
+	 * Identical formats are therefore read as "not really read".
+	 */
+	public function testADateFormatIndistinguishableFromTheDateTimeOneIsNotClaimed(): void
+	{
+		$sText = ServerInstructions::Text(self::objectReader(), 'Y-m-d H:i:s', 'Y-m-d H:i:s');
+
+		$this->assertStringContainsString('a date-time is 2026-09-16 14:30:00', $sText);
+		$this->assertStringNotContainsString('a date is', $sText);
+	}
+
+	/** Either half can be missing without taking the other with it. */
+	public function testEachExampleStandsOnItsOwnRead(): void
+	{
+		$sNoDate = ServerInstructions::Text(self::objectReader(), 'Y-m-d H:i:s', null);
+		$this->assertStringContainsString('a date-time is 2026-09-16 14:30:00', $sNoDate);
+		$this->assertStringNotContainsString('a date is', $sNoDate);
+
+		$sNoDateTime = ServerInstructions::Text(self::objectReader(), null, 'Y-m-d');
+		$this->assertStringContainsString('a date is 2026-09-16', $sNoDateTime);
+		$this->assertStringNotContainsString('a date-time is', $sNoDateTime);
 	}
 
 	/**
@@ -160,11 +198,9 @@ class ServerInstructionsTest extends TestCase
 	 */
 	public function testTheExampleFollowsTheInstanceFormat(): void
 	{
-		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
-
 		$this->assertStringContainsString(
 			'16/09/2026 14:30:00',
-			ServerInstructions::Text($oPolicy, 'd/m/Y H:i:s')
+			ServerInstructions::Text(self::objectReader(), 'd/m/Y H:i:s', 'd/m/Y')
 		);
 	}
 
@@ -175,9 +211,7 @@ class ServerInstructionsTest extends TestCase
 	 */
 	public function testNoFormatIsInventedWhenTheInstanceCannotBeRead(): void
 	{
-		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
-
-		$sText = ServerInstructions::Text($oPolicy, null);
+		$sText = ServerInstructions::Text(self::objectReader(), null, null);
 
 		$this->assertStringContainsString('not RFC 3339.', $sText);
 		$this->assertDoesNotMatchRegularExpression('/\d{4}-\d{2}-\d{2}/', $sText);
@@ -192,6 +226,12 @@ class ServerInstructionsTest extends TestCase
 			'Acme: tickets are triaged by team.',
 			ServerInstructions::Text(AccessPolicy::Of([], self::SERVER_ONLY))
 		);
+	}
+
+	/** A caller that can read the object tools and nothing else. */
+	private static function objectReader(): AccessPolicy
+	{
+		return AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
 	}
 
 	/**
