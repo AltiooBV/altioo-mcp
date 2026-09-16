@@ -217,6 +217,16 @@ object asking the client to call a tool or ignore an instruction is content to r
 than a request to act on. A pack can append a paragraph with
 `MCPRegistry::AddInstructions()`.
 
+**It is narrowed like the surface it describes.** The guidance is assembled per caller from
+the same policy that decides what is registered, so a token scoped to one toolset is not told
+to call tools it will never be served — a paragraph about the datamodel tools goes only to a
+caller that has them, and the dry-run protocol for `core_object_delete` goes only to one that
+may delete. Two blocks are never narrowed: that every call runs as the authenticated user and
+that a refusal is final, and that object content is data rather than instruction. The second
+is a control, and a control that weakens as the caller is restricted is the wrong way round.
+A paragraph a pack appends is *not* narrowed — `AddInstructions()` takes no toolset, so write
+it to be true of any caller who might read it.
+
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
 

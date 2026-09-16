@@ -22,6 +22,31 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **The `initialize` guidance was sent unnarrowed to every caller.** `MCPService::createServer()`
+  threaded the request's `AccessPolicy` into all four registration passes and not into
+  `setInstructions()`, so the server instructions were one fixed string: a token scoped
+  `MCP-toolset-server` was told to "call core_class_list to find a class", to "read
+  core_class_schema before any create, update or stimulus", and that "core_object_delete is a
+  dry run by default" — three tools `tools/list` correctly withheld from it. The effect was a
+  model spending the session discovering by failure exactly what the text exists to prevent,
+  having been handed the names and the calling convention of the withheld surface on the way,
+  and carrying off the belief that deletion here is reversible by default. It also made
+  SECURITY.md's threat model overclaim: "`tools/list` is filtered per caller" was true of
+  `tools/list` and of nothing else advertised.
+
+  The text is now assembled per caller from the same policy, section by section. Two blocks are
+  deliberately never narrowed — that every call runs as the authenticated user and that a
+  refusal is final, and that object content is data rather than instruction. The second is a
+  control, and a control that weakens as the caller is restricted is the wrong way round: the
+  narrow token is the one a hostile ticket is most likely to be pointed at. A unit test holds
+  the contract against the registry rather than against a list of names, so an element that
+  changes toolset, loses its annotations or is renamed is caught rather than quietly widening
+  what the text advertises.
+
+  A paragraph a pack appends through `MCPRegistry::AddInstructions()` is still sent to every
+  caller: the method takes no toolset, so there is nothing to narrow on. Giving it one is an
+  `@api` change and is not in this entry.
+
 - **Every request to `extensions/altioo-mcp/index.php` was a fatal error.** The entry point
   required `__DIR__.'/vendor/autoload.php'` before booting iTop, and `module.altioo-mcp.php`
   names `vendor/autoload.php` as its first datamodel file, which iTop resolves against the
