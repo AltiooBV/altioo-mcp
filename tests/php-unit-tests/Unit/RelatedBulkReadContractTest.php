@@ -9,7 +9,6 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
-use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -25,14 +24,16 @@ require_once __DIR__.'/../bootstrap.php';
  * The search tools refuse a class the caller lacks UR_ACTION_BULK_READ on.
  * core_object_get_related returns a set too - one reachable object, a relation
  * and a depth - so gating it on UR_ACTION_READ alone left "this assistant may
- * not sweep the CMDB" meaning nothing: the objects the search refused come back
+ * not sweep the CMDB" meaning nothing: the objects search refused come back
  * through the graph instead.
  *
- * The rule is per class and starts at the second object, so the ordinary "what
- * does this depend on" answer still works for a caller holding only
- * UR_ACTION_READ. That boundary is the part worth pinning: moved to zero it
- * breaks impact analysis for every non-bulk caller, and removed it reopens the
- * hole.
+ * The class is withheld rather than the call refused, because a walk spans
+ * classes the caller is graded differently on and the rest of the answer is
+ * still owed. Three properties make that safe, and each is pinned below: the
+ * boundary is the second object of a class, the caller is *told* what was
+ * withheld, and the edges touching a withheld object go with it. Silence is
+ * the one outcome ruled out - a graph quietly missing a class reads as a
+ * complete one, which is the failure FindByNameRightsTest describes for search.
  */
 class RelatedBulkReadContractTest extends TestCase
 {
@@ -51,70 +52,105 @@ class RelatedBulkReadContractTest extends TestCase
 	 */
 	public function testTheCheckIsMadePerClass(): void
 	{
-		$sBody = $this->gateBody();
-
 		$this->assertMatchesRegularExpression(
 			'/foreach\s*\(\s*\$aStats\s+as\s+\$\w+\s*=>\s*\$\w+\s*\)/',
-			$sBody,
+			$this->gateBody(),
 			'The per-class tally is what the check has to walk.'
 		);
 	}
 
 	/**
-	 * One related object of a class is a single read and stays one.
+	 * One related object of a class is a single read and stays one. Moved to
+	 * zero, impact analysis dies for every caller holding only read.
 	 */
 	public function testASingleObjectOfAClassIsStillASingleRead(): void
 	{
 		$this->assertMatchesRegularExpression(
 			'/\$\w+\s*>\s*1\s*&&/',
 			$this->gateBody(),
-			'The gate must start at the second object of a class, or impact analysis dies for every non-bulk caller.'
+			'The gate must start at the second object of a class.'
 		);
 	}
 
 	/**
-	 * Refused, not trimmed. A trimmed graph keeps edges pointing at objects it
-	 * no longer carries, and reads as complete.
+	 * The withheld classes leave the payload. Counted but still returned would
+	 * be a gate that reports itself and does nothing.
 	 */
-	public function testTheCallIsRefusedRatherThanTrimmed(): void
+	public function testWithheldClassesAreRemovedFromTheObjects(): void
 	{
 		$this->assertStringContainsString(
-			'throw new ToolCallException',
-			$this->gateBody(),
-			'Dropping the surplus would hand back a graph that reads as complete.'
+			'array_filter',
+			$this->serializeBody(),
+			'The objects of a withheld class have to leave the payload, not merely be noted.'
 		);
 	}
 
 	/**
-	 * The same wording the search tools use. A caller that hits the ceiling
-	 * through the graph and through a search should not have to learn that
-	 * these are the same refusal.
+	 * An edge to an object the payload no longer carries is how a partial
+	 * graph reads as a complete one.
 	 */
-	public function testTheRefusalIsWordedAsTheSearchToolsWordIt(): void
+	public function testEdgesTouchingAWithheldObjectAreDropped(): void
 	{
-		$this->assertStringContainsString(
-			"Bulk read access denied to class '{",
-			$this->gateBody()
+		$this->assertMatchesRegularExpression(
+			'/if\s*\(!isset\(\$aObjects\[\$sFrom\]\)\s*\|\|\s*!isset\(\$aObjects\[\$sTo\]\)\)/',
+			$this->serializeBody(),
+			'Both ends of a returned edge must still be in the payload.'
 		);
-		$this->assertStringContainsString(
-			"Bulk read access denied to class '{",
-			$this->methodBody(ObjectSearchByClass::class, 'execute')
-		);
+	}
+
+	/**
+	 * The caller is told. This is the whole difference between withholding and
+	 * losing data silently.
+	 */
+	public function testTheCallerIsToldWhatWasWithheld(): void
+	{
+		$sBody = $this->serializeBody();
+
+		$this->assertStringContainsString("\$aPayload['withheld']", $sBody, 'Silence is the outcome ruled out.');
+		$this->assertStringContainsString("'classes' => \$aWithheld", $sBody, 'The classes are named.');
+	}
+
+	/**
+	 * Named, never counted. The names describe this account's rights on classes
+	 * it already holds read on; a count would be the datum the bulk right is
+	 * withholding.
+	 */
+	public function testWhatIsWithheldIsNamedAndNotCounted(): void
+	{
+		$sWithheldBlock = $this->withheldBlock();
+
+		$this->assertStringNotContainsString('count(', $sWithheldBlock);
+		$this->assertStringNotContainsString('$iCount', $sWithheldBlock);
 	}
 
 	/** The gate is reached from the code that assembles the payload. */
 	public function testTheGateIsActuallyCalled(): void
 	{
 		$this->assertStringContainsString(
-			'assertBulkReadWhereTheGraphReadsInBulk',
-			$this->methodBody(ObjectGetRelated::class, 'serializeGraph'),
+			'classesReadInBulkWithoutTheRight',
+			$this->serializeBody(),
 			'An uncalled gate is not a gate.'
 		);
 	}
 
 	private function gateBody(): string
 	{
-		return $this->methodBody(ObjectGetRelated::class, 'assertBulkReadWhereTheGraphReadsInBulk');
+		return $this->methodBody(ObjectGetRelated::class, 'classesReadInBulkWithoutTheRight');
+	}
+
+	private function serializeBody(): string
+	{
+		return $this->methodBody(ObjectGetRelated::class, 'serializeGraph');
+	}
+
+	/** Just the block that builds the withheld report. */
+	private function withheldBlock(): string
+	{
+		$sBody = $this->serializeBody();
+		$iStart = strpos($sBody, "\$aWithheld !== []");
+		$this->assertNotFalse($iStart, 'The withheld report must exist to be checked.');
+
+		return substr($sBody, $iStart);
 	}
 
 	private function methodBody(string $sClass, string $sMethod): string
