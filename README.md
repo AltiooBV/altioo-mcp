@@ -167,6 +167,16 @@ the call. The change origin stays `custom-extension`, the value iTop reserves fo
 own history, and it is not the same thing as the endpoint audit trail below — that one records
 the calls, including the ones that read and the ones that failed.
 
+**The read tools that return a set** — `core_object_search_by_class`,
+`core_object_search_by_oql`, `core_object_find_by_name` — check `UR_ACTION_BULK_READ` on the
+class before returning anything, so a credential issued without the bulk right cannot sweep a
+class. `core_object_get_related` applies the same rule to the graph it walks, per class and
+from the second object onward: one related object of a class is a single read and is served on
+`UR_ACTION_READ` alone, so ordinary impact analysis still works, but a walk that would hand
+back two or more of a class is refused exactly as the search would have been. That is stricter
+than iTop's own console, which gates impact analysis on read alone — the console is a person on
+one screen, and this is a credential that can walk every relation from every object it reaches.
+
 **The bulk tools** check `UR_ACTION_BULK_MODIFY` / `UR_ACTION_BULK_DELETE` first — a profile
 can be allowed to edit one object and not a thousand — and then take every object one at a
 time: the rights question is asked with that object in hand, and the write goes through

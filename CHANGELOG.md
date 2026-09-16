@@ -33,6 +33,29 @@ entry itself, not left to be inferred from it.
   is the one that matters most to the caller holding the smallest surface — which is exactly
   the caller most likely to be holding it because of something an operator has since changed.
 
+### Changed
+
+- **`core_object_get_related` now requires `UR_ACTION_BULK_READ` for any class it returns more
+  than one object of.** It checked `UR_ACTION_READ` and nothing else, while returning a set —
+  so a credential deliberately issued without the bulk right got, through one reachable object
+  plus a relation and a depth, the objects `core_object_search_by_class` had just refused it.
+  "This assistant may not sweep the CMDB" did not survive contact with the relation graph.
+
+  The rule is per class and starts at the second object. One related object of a class is a
+  single read and stays one, so the ordinary "what does this depend on" answer still works for
+  a caller holding only `UR_ACTION_READ`; a walk that would return two or more of a class is
+  refused with the same wording the search tools use. It is stricter than iTop's own console,
+  which gates impact analysis on read alone, and deliberately so: the console is a person
+  clicking one screen, this is a credential that can walk every relation on every object it can
+  reach.
+
+  Refused rather than trimmed — dropping the surplus would leave the returned edges pointing at
+  objects no longer in the payload and hand back a graph that reads as complete, which is the
+  failure the find-by-name rights tests exist to keep out of the search tools.
+
+  **Operators:** a token whose profile has read but not bulk read on a class loses multi-object
+  relation walks over it. Grant bulk read on that class, or accept single-object results.
+
 ### Fixed
 
 - **The `initialize` guidance was sent unnarrowed to every caller.** `MCPService::createServer()`
