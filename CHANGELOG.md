@@ -97,6 +97,22 @@ entry itself, not left to be inferred from it.
   reference, but not yet the commit check — detecting "did this one write" differs per operation
   and is not guessed here.
 
+  **The failure itself was a type error of this module's own making**, found once the widened
+  catch let the log record it: `WritePlan::Identity()` declared `?int` for the id, and
+  `DBObject::DBInsert()` returns the key that `DBInsertSingleTable()` assigns as `"$iNewKey"` —
+  a string. Under `strict_types` that is a `TypeError`, thrown after the row is committed. So
+  every create wrote its object and then failed to describe it. `core_object_attach` and
+  `core_object_bulk_create` pass the same value and had the same defect, unfired only because
+  nobody had called them.
+
+  `Identity()` now takes the id as iTop reports it, and `WritePlan::AsId()` is the single place
+  deciding what counts as one: a positive number, whether it arrives as an int or a string.
+  Anything else is null — which is what an unsaved object's deliberately negative temporary key
+  should mean, and what `ObjectCreate` now asks to tell a committed write from a failed one, so
+  the rule has one definition rather than two. The redundant casts at `Identity()`'s other call
+  sites are gone, and a test rejects new ones: a cast per call site is the fix the next create
+  tool would be written without.
+
 - **The `initialize` guidance was sent unnarrowed to every caller.** `MCPService::createServer()`
   threaded the request's `AccessPolicy` into all four registration passes and not into
   `setInstructions()`, so the server instructions were one fixed string: a token scoped
