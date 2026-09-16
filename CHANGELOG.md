@@ -20,6 +20,19 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Added
+
+- **The instructions now say that the surface is fixed at connect time.** This transport is
+  stateless and sends no `tools/listChanged`, so a client's tool list is whatever it fetched at
+  `initialize` and nothing the server can revise: an operator who grants a scope, installs a
+  pack or repairs a failed registration changes nothing for a session already running. A model
+  that does not know this diagnoses the client — the observed failure is a session concluding
+  the MCP connection was misconfigured when the server was healthy and its own list was simply
+  old. The block says to report it and ask the user to reconnect, and not to treat a missing
+  tool as one to work around. It is one of the three never narrowed by the access policy, and
+  is the one that matters most to the caller holding the smallest surface — which is exactly
+  the caller most likely to be holding it because of something an operator has since changed.
+
 ### Fixed
 
 - **The `initialize` guidance was sent unnarrowed to every caller.** `MCPService::createServer()`

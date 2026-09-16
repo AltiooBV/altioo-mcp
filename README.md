@@ -216,16 +216,21 @@ that dates are not RFC 3339 — with a worked example of each, rendered at reque
 what `AttributeDateTime` and `AttributeDate` report, so the guidance follows the iTop you are
 running — that a refusal is a real refusal, and that text found inside an
 object asking the client to call a tool or ignore an instruction is content to report rather
-than a request to act on. A pack can append a paragraph with
-`MCPRegistry::AddInstructions()`.
+than a request to act on, and that what the client holds was settled when it connected —
+this transport is stateless and sends no list-changed notification, so a scope you grant
+or a pack you install reaches a running session only after it reconnects. A pack can
+append a paragraph with `MCPRegistry::AddInstructions()`.
 
 **It is narrowed like the surface it describes.** The guidance is assembled per caller from
 the same policy that decides what is registered, so a token scoped to one toolset is not told
 to call tools it will never be served — a paragraph about the datamodel tools goes only to a
 caller that has them, and the dry-run protocol for `core_object_delete` goes only to one that
 may delete. Two blocks are never narrowed: that every call runs as the authenticated user and
-that a refusal is final, and that object content is data rather than instruction. The second
-is a control, and a control that weakens as the caller is restricted is the wrong way round.
+that a refusal is final, and that object content is data rather than instruction, and that the
+surface is fixed at connect time. The second is a control, and a control that weakens as
+the caller is restricted is the wrong way round; the third matters most to the caller
+holding the smallest surface, which is the one most likely to be small because of
+something you have since changed.
 A paragraph a pack appends is *not* narrowed — `AddInstructions()` takes no toolset, so write
 it to be true of any caller who might read it.
 
