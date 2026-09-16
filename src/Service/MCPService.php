@@ -100,7 +100,7 @@ final class MCPService
 	{
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
-			->setInstructions(ServerInstructions::Text($oPolicy))
+			->setInstructions(ServerInstructions::Text($oPolicy, self::internalDateFormat()))
 			->setPaginationLimit(MCPHelper::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
@@ -115,6 +115,38 @@ final class MCPService
 		self::warnAboutSettingsThatMatchNothing($aDisabled);
 
 		return $builder->build();
+	}
+
+	/**
+	 * iTop's internal date format, for the worked example in the instructions.
+	 *
+	 * Read rather than hardcoded, for the reason DatamodelReader gives about
+	 * the JSON Schema pattern: an instance that changes the internal format
+	 * stays correctly described, and a format stated wrongly is worse than one
+	 * not stated at all - the model sends a value iTop then refuses.
+	 *
+	 * Guarded rather than called outright. This runs while the server is being
+	 * built, before any tool has been dispatched, so an AttributeDateTime that
+	 * is not loaded or an iTop that renamed the accessor would take down every
+	 * request to the endpoint - which is the shape of the entry-point fatal
+	 * this module has already shipped once. The instructions lose one sentence
+	 * instead.
+	 */
+	private static function internalDateFormat(): ?string
+	{
+		if (!class_exists(\AttributeDateTime::class) || !method_exists(\AttributeDateTime::class, 'GetInternalFormat')) {
+			return null;
+		}
+
+		try {
+			$sFormat = \AttributeDateTime::GetInternalFormat();
+		} catch (\Throwable $oException) {
+			MCPHelper::LogError('Could not read the internal date format for the server instructions: '.$oException->getMessage());
+
+			return null;
+		}
+
+		return is_string($sFormat) && $sFormat !== '' ? $sFormat : null;
 	}
 
 	/**

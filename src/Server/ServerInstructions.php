@@ -55,16 +55,25 @@ final class ServerInstructions
 	private const TOOLSET_OBJECTS = 'objects';
 
 	/**
-	 * @param AccessPolicy $oPolicy What this caller is served, as decided for the request.
+	 * The instant the worked example is rendered at. Arbitrary, fixed, and
+	 * chosen so every field differs from every other - a 01/02/03 would read
+	 * the same whichever order the format puts them in, which is the one thing
+	 * the example exists to settle.
+	 */
+	private const EXAMPLE_INSTANT = 1789569000; // 2026-09-16 14:30:00 UTC
+
+	/**
+	 * @param AccessPolicy $oPolicy            What this caller is served, as decided for the request.
+	 * @param string|null  $sInternalDateFormat iTop's internal date format, as a date() pattern, or null when it could not be read.
 	 *
 	 * @since 1.0.0 Narrowed by the caller's access policy; previously took no argument.
 	 */
-	public static function Text(AccessPolicy $oPolicy): string
+	public static function Text(AccessPolicy $oPolicy, ?string $sInternalDateFormat = null): string
 	{
 		$aParts = [
 			self::PREAMBLE,
 			self::datamodelSection($oPolicy),
-			self::readingSection($oPolicy),
+			self::readingSection($oPolicy, $sInternalDateFormat),
 			self::writingSection($oPolicy),
 			self::WHATEVER_IS_SERVED,
 			...MCPRegistry::GetInstructions(),
@@ -101,19 +110,34 @@ final class ServerInstructions
 	}
 
 	/**
-	 * How reads come back. The date bullet names core_class_schema, so the
-	 * half of it that does is dropped with the datamodel tools rather than
-	 * left pointing at something this caller cannot call.
+	 * How reads come back.
+	 *
+	 * The date bullet has to say what the format *is*, not only what it is
+	 * not. "Not RFC 3339" on its own leaves the model holding a rejected value
+	 * and no replacement, and the pointer that used to supply one - read
+	 * core_class_schema - is exactly what a caller without the datamodel tools
+	 * cannot follow. So the shape is stated inline, as a worked example rather
+	 * than a date() pattern, because an example is what a model copies.
+	 *
+	 * Rendered from the format iTop reports rather than hardcoded, and omitted
+	 * entirely when that could not be read: a format is a promise about the
+	 * string on the wire, and a wrong one has the model send a value iTop then
+	 * refuses - worse than saying nothing (DatamodelReader::format()).
 	 */
-	private static function readingSection(AccessPolicy $oPolicy): string
+	private static function readingSection(AccessPolicy $oPolicy, ?string $sInternalDateFormat): string
 	{
 		if (!$oPolicy->allowsToolset(self::TOOLSET_OBJECTS) || !$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ)) {
 			return '';
 		}
 
-		$sDates = '- Dates and date-times use iTop\'s own format, not RFC 3339.';
+		$sDates = '- Dates and date-times use iTop\'s own format, not RFC 3339';
+		$sDates .= $sInternalDateFormat === null
+			? '.'
+			: ': a date-time is'."\n".gmdate($sInternalDateFormat, self::EXAMPLE_INSTANT)
+				.', and a date is the same without the time.';
+
 		if ($oPolicy->allowsToolset(self::TOOLSET_DATAMODEL)) {
-			$sDates .= ' core_class_schema reports'."\n".'the exact pattern per attribute.';
+			$sDates .= "\n".'core_class_schema reports the exact pattern per attribute.';
 		}
 
 		return "Reading\n"
