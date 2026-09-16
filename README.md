@@ -77,6 +77,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
+| `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
@@ -195,6 +196,13 @@ and support for resource *templates* is thinner still; a model that cannot reach
 falls back to guessing attribute codes, and every other tool here is the poorer for it. The
 tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
 hundred classes, so `core_class_list` takes a `category` and a `filter`.
+
+`itop://core/current-user` is doubled for the first of those reasons alone, by
+`core_current_user`. There is nothing to narrow — one identity, no arguments — so the tool form
+adds only reach, which for this particular fact is what was missing: a model that cannot find
+out who it is either asks the user a question the server would have answered, or answers "my
+tickets" with somebody else's. The protocol puts that on the tool side of its own split, where
+resources are context a user attaches and tools are what the model reaches for mid-task.
 
 **Prompts**
 
