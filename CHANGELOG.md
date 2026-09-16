@@ -51,12 +51,21 @@ entry itself, not left to be inferred from it.
   RFC 3339" told a model what its value was not and then sent it to `core_class_schema` for
   what it should be — which is exactly the tool a caller restricted to the object tools does
   not have, leaving it with a rejected value and nowhere to go. The bullet now carries a worked
-  example of the instance's own internal format, rendered from what `AttributeDateTime` reports
-  rather than from what iTop ships with, so an instance that moved its format stays correctly
-  described. The read is guarded: this runs while the server is being built, before any tool
-  has been dispatched, and the instructions lose the example rather than the endpoint losing
-  every request. Unreadable, no format is stated at all — a format is a promise about the
-  string on the wire, and a wrong one is worse than silence.
+  example of each, rendered from what the instance reports rather than from what iTop ships
+  with, so an instance that moved its format stays correctly described.
+
+  A date and a date-time are two promises, so they are two reads: `AttributeDate` extends
+  `AttributeDateTime` and overrides `GetInternalFormat()`, which makes "the date-time one
+  without the time" an inference about an override — true of the shipped pair and guaranteed
+  of nothing else. An `AttributeDate` that did *not* override would answer with the date-time
+  format and print a clock inside the date example, so the two coming back identical is read as
+  "the date format was not really read" rather than as a fact about dates, and the date example
+  is dropped. Either example can be missing without taking the other with it.
+
+  The reads are guarded: this runs while the server is being built, before any tool has been
+  dispatched, and the instructions lose an example rather than the endpoint losing every
+  request. Unreadable, no format is stated at all — a format is a promise about the string on
+  the wire, and a wrong one is worse than silence.
 
 - **Every request to `extensions/altioo-mcp/index.php` was a fatal error.** The entry point
   required `__DIR__.'/vendor/autoload.php'` before booting iTop, and `module.altioo-mcp.php`
