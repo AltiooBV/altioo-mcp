@@ -172,10 +172,27 @@ the calls, including the ones that read and the ones that failed.
 class before returning anything, so a credential issued without the bulk right cannot sweep a
 class. `core_object_get_related` applies the same rule to the graph it walks, per class and
 from the second object onward: one related object of a class is a single read and is served on
-`UR_ACTION_READ` alone, so ordinary impact analysis still works, but a walk that would hand
-back two or more of a class is refused exactly as the search would have been. That is stricter
-than iTop's own console, which gates impact analysis on read alone — the console is a person on
-one screen, and this is a credential that can walk every relation from every object it reaches.
+`UR_ACTION_READ` alone, so ordinary impact analysis still works, while two or more of a class
+is a bulk read of it and needs the bulk right. That is stricter than iTop's own console, which
+gates impact analysis on read alone — the console is a person on one screen, and this is a
+credential that can walk every relation from every object it reaches.
+
+The class is withheld, not the call. A walk spans classes an account is graded differently on,
+so the rest of the answer is still returned, and the response says which classes were held back
+and why:
+
+```json
+"withheld": {
+  "classes": ["Server"],
+  "note": "More than one related object of Server was found, which is a bulk read of that
+           class, and this account does not hold UR_ACTION_BULK_READ on it. ..."
+}
+```
+
+The classes are named and never counted — the names describe this account's rights on classes
+it already holds read on, whereas a count would be the very datum the bulk right withholds. The
+relations touching a withheld object are dropped with it, so no returned edge points at
+something the payload does not carry. The `withheld` key is absent when nothing was held back.
 
 **The bulk tools** check `UR_ACTION_BULK_MODIFY` / `UR_ACTION_BULK_DELETE` first — a profile
 can be allowed to edit one object and not a thousand — and then take every object one at a

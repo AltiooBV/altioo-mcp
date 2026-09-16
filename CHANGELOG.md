@@ -43,18 +43,32 @@ entry itself, not left to be inferred from it.
 
   The rule is per class and starts at the second object. One related object of a class is a
   single read and stays one, so the ordinary "what does this depend on" answer still works for
-  a caller holding only `UR_ACTION_READ`; a walk that would return two or more of a class is
-  refused with the same wording the search tools use. It is stricter than iTop's own console,
-  which gates impact analysis on read alone, and deliberately so: the console is a person
-  clicking one screen, this is a credential that can walk every relation on every object it can
-  reach.
+  a caller holding only `UR_ACTION_READ`. It is stricter than iTop's own console, which gates
+  impact analysis on read alone, and deliberately so: the console is a person clicking one
+  screen, this is a credential that can walk every relation on every object it can reach.
 
-  Refused rather than trimmed — dropping the surplus would leave the returned edges pointing at
-  objects no longer in the payload and hand back a graph that reads as complete, which is the
-  failure the find-by-name rights tests exist to keep out of the search tools.
+  **The class is withheld, not the call.** A walk spans classes an account is graded
+  differently on, and refusing the whole answer because one of them needs a right the others do
+  not throws away everything the caller is entitled to. So the rest of the graph is returned
+  and the response carries a `withheld` block naming the classes held back and saying why —
+  absent entirely when nothing was. The relations touching a withheld object are dropped with
+  it, because an edge pointing at an object the payload no longer carries is how a partial
+  graph reads as a complete one.
 
-  **Operators:** a token whose profile has read but not bulk read on a class loses multi-object
-  relation walks over it. Grant bulk read on that class, or accept single-object results.
+  What is ruled out is the silent version, for the reason the find-by-name rights tests already
+  give for search: a graph quietly missing a class reads as a whole one, and an agent reports
+  "nothing related" to a user as fact. The note says in as many words that this is a statement
+  about the account's rights and not about what exists, and that another route to the same
+  objects is not to be looked for.
+
+  The classes are named and never counted. The names describe this account's rights on classes
+  it already holds read on — the graph only ever contained objects the ORM let it see — whereas
+  a count would be the datum the bulk right is withholding, which is the oracle SECURITY.md
+  closes.
+
+  **Operators:** a token whose profile has read but not bulk read on a class now gets relation
+  walks over it truncated to nothing for that class, with a note, instead of the full set.
+  Grant bulk read on that class to restore it.
 
 ### Fixed
 
