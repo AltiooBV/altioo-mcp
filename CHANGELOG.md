@@ -47,6 +47,17 @@ entry itself, not left to be inferred from it.
   caller: the method takes no toolset, so there is nothing to narrow on. Giving it one is an
   `@api` change and is not in this entry.
 
+  One sentence needed more than narrowing. "Dates and date-times use iTop's own format, not
+  RFC 3339" told a model what its value was not and then sent it to `core_class_schema` for
+  what it should be — which is exactly the tool a caller restricted to the object tools does
+  not have, leaving it with a rejected value and nowhere to go. The bullet now carries a worked
+  example of the instance's own internal format, rendered from what `AttributeDateTime` reports
+  rather than from what iTop ships with, so an instance that moved its format stays correctly
+  described. The read is guarded: this runs while the server is being built, before any tool
+  has been dispatched, and the instructions lose the example rather than the endpoint losing
+  every request. Unreadable, no format is stated at all — a format is a promise about the
+  string on the wire, and a wrong one is worse than silence.
+
 - **Every request to `extensions/altioo-mcp/index.php` was a fatal error.** The entry point
   required `__DIR__.'/vendor/autoload.php'` before booting iTop, and `module.altioo-mcp.php`
   names `vendor/autoload.php` as its first datamodel file, which iTop resolves against the
