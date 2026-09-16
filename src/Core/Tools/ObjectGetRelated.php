@@ -241,7 +241,14 @@ class ObjectGetRelated extends AbstractMCPTool
 			$aStats[$sClass] = ($aStats[$sClass] ?? 0) + 1;
 		}
 
-		self::assertBulkReadWhereTheGraphReadsInBulk($aStats);
+		$aWithheld = self::classesReadInBulkWithoutTheRight($aStats);
+		foreach ($aWithheld as $sWithheldClass) {
+			unset($aStats[$sWithheldClass]);
+		}
+		$aObjects = array_filter(
+			$aObjects,
+			static fn(array $aObject): bool => !in_array($aObject['class'], $aWithheld, true)
+		);
 
 		/** @var \RelationEdge $oEdge */
 		foreach ($oGraph->GetEdges() as $oEdge) {
@@ -263,10 +270,16 @@ class ObjectGetRelated extends AbstractMCPTool
 				continue;
 			}
 
-			$aRelations[] = [
-				'from' => get_class($oSourceObj).'::'.$oSourceObj->GetKey(),
-				'to'   => get_class($oSinkObj).'::'.$oSinkObj->GetKey(),
-			];
+			$sFrom = get_class($oSourceObj).'::'.$oSourceObj->GetKey();
+			$sTo   = get_class($oSinkObj).'::'.$oSinkObj->GetKey();
+
+			// An edge to an object that was withheld would dangle, and a
+			// dangling edge is how a partial graph reads as a complete one.
+			if (!isset($aObjects[$sFrom]) || !isset($aObjects[$sTo])) {
+				continue;
+			}
+
+			$aRelations[] = ['from' => $sFrom, 'to' => $sTo];
 		}
 
 		$aSummaryParts = [];
@@ -274,47 +287,77 @@ class ObjectGetRelated extends AbstractMCPTool
 			$aSummaryParts[] = "{$sClass}={$iCount}";
 		}
 
-		return [
+		$aPayload = [
 			'objects'   => $aObjects,
 			'relations' => $aRelations,
 			'summary'   => implode(', ', $aSummaryParts),
 		];
+
+		if ($aWithheld !== []) {
+			$aPayload['withheld'] = [
+				'classes' => $aWithheld,
+				'note'    => 'More than one related object of '.implode(' and ', $aWithheld)
+					.' was found, which is a bulk read of that class, and this account does not hold'
+					.' UR_ACTION_BULK_READ on it. Those objects and the relations touching them are'
+					.' not in this answer; objects of every other class are. This is a statement about'
+					.' the rights of this account, not about what exists - do not report it as "there'
+					.' is nothing related", and do not look for another route to the same objects.',
+			];
+		}
+
+		return $aPayload;
 	}
 
 	/**
-	 * A walk that returns two or more objects of a class has read that class in
-	 * bulk, whatever the tool is called.
+	 * The classes this walk read in bulk without holding the right to.
 	 *
-	 * The search tools ask for UR_ACTION_BULK_READ before they hand back a set,
-	 * and a relation walk that did not would be the way around a credential
-	 * deliberately issued without the bulk right: one reachable object, a
-	 * relation and a depth, and the caller has the set it was refused. iTop's
-	 * own console gates impact analysis on UR_ACTION_READ alone, so this is
-	 * stricter than the console on purpose - the console is a person clicking
-	 * one screen, and this is a credential handed to something that can walk
-	 * every relation on every object it can reach.
+	 * A walk that returns two or more objects of a class has read that class in
+	 * bulk, whatever the tool is called. The search tools ask for
+	 * UR_ACTION_BULK_READ before they hand back a set, and a relation walk that
+	 * did not would be the way around a credential deliberately issued without
+	 * it: one reachable object, a relation and a depth, and the caller has what
+	 * search refused. iTop's own console gates impact analysis on
+	 * UR_ACTION_READ alone, so this is stricter than the console on purpose -
+	 * the console is a person clicking one screen, and this is a credential
+	 * handed to something that can walk every relation on every object it can
+	 * reach.
 	 *
 	 * Per class, and only past the first object. One related object of a class
 	 * is a single read and stays one, which is what keeps the ordinary "what
 	 * does this depend on" answer working for a caller holding nothing but
 	 * UR_ACTION_READ.
 	 *
-	 * Refused rather than trimmed. Dropping the surplus would leave the edges
-	 * pointing at objects no longer in the payload, and would hand back a graph
-	 * that reads as complete - the failure FindByNameRightsTest exists to keep
-	 * out of the search tools, rebuilt here.
+	 * The class is withheld, not the call. A walk spans classes the caller is
+	 * graded differently on, and refusing the whole answer because one of them
+	 * needs a right the others do not throws away everything the caller is
+	 * entitled to. What must not happen is the silent version: a graph quietly
+	 * missing a class reads as a complete one, and an agent reports "nothing
+	 * related" as fact - which is what FindByNameRightsTest exists to keep out
+	 * of the search tools. So the caller is told, and the edges touching a
+	 * withheld object go with it rather than dangling.
 	 *
-	 * @param array<string, int> $aStats Objects returned, counted per class.
+	 * Named, never counted. The names are a statement about this account's
+	 * rights on classes it already holds UR_ACTION_READ on - the graph only
+	 * ever contained objects the ORM let it see. A count would be the datum the
+	 * bulk right withholds, which is the oracle SECURITY.md closes.
 	 *
-	 * @throws ToolCallException
+	 * @param array<string, int> $aStats Objects found, counted per class.
+	 *
+	 * @return array<int, string> Class names, sorted, empty when nothing is withheld.
 	 */
-	private static function assertBulkReadWhereTheGraphReadsInBulk(array $aStats): void
+	private static function classesReadInBulkWithoutTheRight(array $aStats): array
 	{
+		$aWithheld = [];
+
 		foreach ($aStats as $sRelatedClass => $iCount) {
 			if ($iCount > 1 && !UserRights::IsActionAllowed($sRelatedClass, UR_ACTION_BULK_READ)) {
-				throw new ToolCallException("Bulk read access denied to class '{$sRelatedClass}'.");
+				$aWithheld[] = $sRelatedClass;
 			}
 		}
+
+		sort($aWithheld);
+
+		return $aWithheld;
 	}
 
 	/**
