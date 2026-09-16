@@ -100,7 +100,11 @@ final class MCPService
 	{
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
-			->setInstructions(ServerInstructions::Text($oPolicy, self::internalDateFormat()))
+			->setInstructions(ServerInstructions::Text(
+				$oPolicy,
+				self::internalFormatOf(\AttributeDateTime::class),
+				self::internalFormatOf(\AttributeDate::class)
+			))
 			->setPaginationLimit(MCPHelper::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
@@ -118,30 +122,42 @@ final class MCPService
 	}
 
 	/**
-	 * iTop's internal date format, for the worked example in the instructions.
+	 * One attribute class's internal format, for the worked examples in the
+	 * instructions.
 	 *
 	 * Read rather than hardcoded, for the reason DatamodelReader gives about
 	 * the JSON Schema pattern: an instance that changes the internal format
 	 * stays correctly described, and a format stated wrongly is worse than one
 	 * not stated at all - the model sends a value iTop then refuses.
 	 *
+	 * Taken per class rather than derived. AttributeDate extends
+	 * AttributeDateTime and overrides this, so a date format inferred by
+	 * cutting the time off a date-time is a guess about an override - it holds
+	 * for the shipped pair and is guaranteed of nothing else.
+	 *
 	 * Guarded rather than called outright. This runs while the server is being
-	 * built, before any tool has been dispatched, so an AttributeDateTime that
-	 * is not loaded or an iTop that renamed the accessor would take down every
+	 * built, before any tool has been dispatched, so a class that is not
+	 * loaded or an iTop that renamed the accessor would take down every
 	 * request to the endpoint - which is the shape of the entry-point fatal
-	 * this module has already shipped once. The instructions lose one sentence
+	 * this module has already shipped once. The instructions lose one example
 	 * instead.
+	 *
+	 * @param class-string $sAttributeClass
 	 */
-	private static function internalDateFormat(): ?string
+	private static function internalFormatOf(string $sAttributeClass): ?string
 	{
-		if (!class_exists(\AttributeDateTime::class) || !method_exists(\AttributeDateTime::class, 'GetInternalFormat')) {
+		if (!class_exists($sAttributeClass) || !method_exists($sAttributeClass, 'GetInternalFormat')) {
 			return null;
 		}
 
 		try {
-			$sFormat = \AttributeDateTime::GetInternalFormat();
+			$sFormat = $sAttributeClass::GetInternalFormat();
 		} catch (\Throwable $oException) {
-			MCPHelper::LogError('Could not read the internal date format for the server instructions: '.$oException->getMessage());
+			MCPHelper::LogError(sprintf(
+				'Could not read the internal format of %s for the server instructions: %s',
+				$sAttributeClass,
+				$oException->getMessage()
+			));
 
 			return null;
 		}

@@ -63,17 +63,18 @@ final class ServerInstructions
 	private const EXAMPLE_INSTANT = 1789569000; // 2026-09-16 14:30:00 UTC
 
 	/**
-	 * @param AccessPolicy $oPolicy            What this caller is served, as decided for the request.
-	 * @param string|null  $sInternalDateFormat iTop's internal date format, as a date() pattern, or null when it could not be read.
+	 * @param AccessPolicy $oPolicy          What this caller is served, as decided for the request.
+	 * @param string|null  $sDateTimeFormat  AttributeDateTime's internal format, as a date() pattern, or null when it could not be read.
+	 * @param string|null  $sDateFormat      AttributeDate's own internal format, likewise. Read separately because it is a separate accessor: AttributeDate extends AttributeDateTime and overrides it, and nothing holds the two in any particular relation.
 	 *
 	 * @since 1.0.0 Narrowed by the caller's access policy; previously took no argument.
 	 */
-	public static function Text(AccessPolicy $oPolicy, ?string $sInternalDateFormat = null): string
+	public static function Text(AccessPolicy $oPolicy, ?string $sDateTimeFormat = null, ?string $sDateFormat = null): string
 	{
 		$aParts = [
 			self::PREAMBLE,
 			self::datamodelSection($oPolicy),
-			self::readingSection($oPolicy, $sInternalDateFormat),
+			self::readingSection($oPolicy, $sDateTimeFormat, $sDateFormat),
 			self::writingSection($oPolicy),
 			self::WHATEVER_IS_SERVED,
 			...MCPRegistry::GetInstructions(),
@@ -119,22 +120,36 @@ final class ServerInstructions
 	 * cannot follow. So the shape is stated inline, as a worked example rather
 	 * than a date() pattern, because an example is what a model copies.
 	 *
-	 * Rendered from the format iTop reports rather than hardcoded, and omitted
-	 * entirely when that could not be read: a format is a promise about the
+	 * Rendered from the formats iTop reports rather than hardcoded, and each
+	 * claimed only where it was actually read: a format is a promise about the
 	 * string on the wire, and a wrong one has the model send a value iTop then
 	 * refuses - worse than saying nothing (DatamodelReader::format()).
+	 *
+	 * A date and a date-time are two promises, so they are two reads.
+	 * AttributeDate extends AttributeDateTime and overrides GetInternalFormat,
+	 * and "the date-time one without the time" is an inference about an
+	 * override rather than something either class states - true of the shipped
+	 * pair and not guaranteed of any other. Worse, an AttributeDate that did
+	 * not override would answer with the date-time format and have this print
+	 * a clock in the date example, so the two coming back identical is read as
+	 * "the date format was not really read" rather than as a fact about dates.
 	 */
-	private static function readingSection(AccessPolicy $oPolicy, ?string $sInternalDateFormat): string
+	private static function readingSection(AccessPolicy $oPolicy, ?string $sDateTimeFormat, ?string $sDateFormat): string
 	{
 		if (!$oPolicy->allowsToolset(self::TOOLSET_OBJECTS) || !$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ)) {
 			return '';
 		}
 
+		$aExamples = [];
+		if ($sDateTimeFormat !== null) {
+			$aExamples[] = 'a date-time is '.gmdate($sDateTimeFormat, self::EXAMPLE_INSTANT);
+		}
+		if ($sDateFormat !== null && $sDateFormat !== $sDateTimeFormat) {
+			$aExamples[] = 'a date is '.gmdate($sDateFormat, self::EXAMPLE_INSTANT);
+		}
+
 		$sDates = '- Dates and date-times use iTop\'s own format, not RFC 3339';
-		$sDates .= $sInternalDateFormat === null
-			? '.'
-			: ': a date-time is'."\n".gmdate($sInternalDateFormat, self::EXAMPLE_INSTANT)
-				.', and a date is the same without the time.';
+		$sDates .= empty($aExamples) ? '.' : ':'."\n".implode(', and ', $aExamples).'.';
 
 		if ($oPolicy->allowsToolset(self::TOOLSET_DATAMODEL)) {
 			$sDates .= "\n".'core_class_schema reports the exact pattern per attribute.';
