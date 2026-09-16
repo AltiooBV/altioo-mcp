@@ -28,6 +28,7 @@ class CoreExtensions implements iMCPServiceProvider
 		MCPRegistry::RegisterResourceTemplate(new ResourceTemplates\ObjectDocument());
 
 		//Tools
+		MCPRegistry::RegisterTool(new Tools\CurrentUser());
 		MCPRegistry::RegisterTool(new Tools\ClassList());
 		MCPRegistry::RegisterTool(new Tools\ClassSchema());
 		MCPRegistry::RegisterTool(new Tools\ObjectSearchByOQL());
