@@ -1120,6 +1120,25 @@ name in a class position — after `new`/`instanceof`/`extends`/`implements`, be
 `catch (...)` — is imported, declared in the same namespace, or fully qualified. The same pass
 enforces §4.1: no closing tag, no trailing whitespace, tabs, UTF-8 no BOM, LF, final newline.
 
+**A type hint on a value that crosses the iTop boundary MUST be read off the target branch's
+source, never inferred from what the value represents.** `DBObject::DBInsert()` returns the key as
+a string — `DBInsertSingleTable()` assigns it `"$iNewKey"` — so a `?int` parameter receiving it
+throws a `TypeError` under `strict_types`, *after* the row is committed. Rule 3 applies to types as
+much as to names: a declared type is a claim about the source, and `?int` for an identifier is what
+an id ought to be rather than what the ORM hands over.
+
+Nothing you run catches this. `php -l` passes, a unit suite that boots no iTop never exercises the
+hint, and the integration suite skips without an instance — so it first appears in production, on
+the far side of a write. Where a boundary value's real type is awkward, accept what iTop gives and
+normalise in **one** place; a cast at each call site is the fix the next caller is written without.
+
+**Catch `\Throwable`, not `\Exception`, around anything that writes.** An `Error` is not an
+`Exception`, and a `TypeError` raised between the commit and the response escapes an `\Exception`
+handler, losing whatever diagnostic wrapper the module puts on failures. The caller is then told the
+write failed when it succeeded — and since creation is not idempotent and no protocol says a failed
+write may have written, the reasonable next move is a retry that writes a second object. A write
+that reports failure MUST have written nothing, or MUST say what it wrote.
+
 ### 8.8 Wiring
 
 - `phpunit/phpunit` under `require-dev`, **never** `require`.
