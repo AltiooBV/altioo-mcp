@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser;
+use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
+use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
+use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -35,6 +37,11 @@ require_once __DIR__.'/../bootstrap.php';
  * thing that keeps this from being a contact reader - the id is taken from the
  * caller's own user record and can never come from the caller.
  *
+ * The lookup lives in CurrentUserReader because two surfaces answer with it -
+ * itop://core/current-user and core_current_user - and an invariant this sharp
+ * is worth holding in one place rather than twice. The last test here is what
+ * keeps it one place: both surfaces delegate, neither re-derives.
+ *
  * A source scan rather than a behavioural test for the same reason as
  * AuthRefusalCoverageTest: MetaModel and UserRights do not exist without iTop,
  * and a unit suite that boots neither can still hold the invariant in place.
@@ -42,16 +49,16 @@ require_once __DIR__.'/../bootstrap.php';
 class CurrentUserContactTest extends TestCase
 {
 	/**
-	 * read() must not reach the silo-scoped accessor.
+	 * Payload() must not reach the silo-scoped accessor.
 	 */
-	public function testReadDoesNotUseTheSiloScopedAccessor(): void
+	public function testThePayloadDoesNotUseTheSiloScopedAccessor(): void
 	{
 		$this->assertStringNotContainsString(
 			'UserRights::GetContactFriendlyname()',
-			$this->methodBody('read'),
+			$this->methodBody('Payload'),
 			'GetContactFriendlyname() reads the contact under the caller\'s silo and'
 			.' raises CoreException when it falls outside it, which fails the whole'
-			.' resource. The caller\'s own contact is not read that way.'
+			.' payload. The caller\'s own contact is not read that way.'
 		);
 	}
 
@@ -91,7 +98,7 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testTheLookupTakesNothingFromTheCaller(): void
 	{
-		$oMethod = new ReflectionMethod(CurrentUser::class, 'ContactFriendlyname');
+		$oMethod = new ReflectionMethod(CurrentUserReader::class, 'ContactFriendlyname');
 
 		$this->assertSame(
 			0,
@@ -101,7 +108,7 @@ class CurrentUserContactTest extends TestCase
 		);
 		$this->assertTrue(
 			$oMethod->isPrivate(),
-			'Nothing outside this resource has a reason to call an AllowAllData lookup.'
+			'Nothing outside this helper has a reason to call an AllowAllData lookup.'
 		);
 	}
 
@@ -126,6 +133,45 @@ class CurrentUserContactTest extends TestCase
 	}
 
 	/**
+	 * Both surfaces answer out of the helper, and neither re-derives it.
+	 *
+	 * The whole reason the identity is served twice is that clients differ in
+	 * what they fetch, which is only worth anything while the two answers are
+	 * the same answer. A surface that read UserRights itself would drift from
+	 * the other silently - and would take the AllowAllData lookup with it,
+	 * away from the assertions above.
+	 *
+	 * @dataProvider surfaceProvider
+	 */
+	public function testEverySurfaceDelegatesToTheReader(string $sClass, string $sMethod): void
+	{
+		$sBody = $this->bodyOf($sClass, $sMethod);
+
+		$this->assertStringContainsString(
+			'CurrentUserReader::Payload()',
+			$sBody,
+			"{$sClass}::{$sMethod}() must answer out of the shared reader."
+		);
+		$this->assertStringNotContainsString(
+			'UserRights::',
+			$sBody,
+			"{$sClass}::{$sMethod}() reads the identity itself, which is how the two"
+			.' surfaces start answering differently.'
+		);
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string}>
+	 */
+	public function surfaceProvider(): array
+	{
+		return [
+			'resource' => [CurrentUserResource::class, 'read'],
+			'tool'     => [CurrentUserTool::class, 'execute'],
+		];
+	}
+
+	/**
 	 * The fields that never depended on the contact still answer.
 	 *
 	 * These are the point of the resource for a caller whose contact is
@@ -137,8 +183,8 @@ class CurrentUserContactTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			$sCall,
-			$this->methodBody('read'),
-			"read() must still answer {$sCall}: it does not go through the contact."
+			$this->methodBody('Payload'),
+			"Payload() must still answer {$sCall}: it does not go through the contact."
 		);
 	}
 
@@ -160,8 +206,16 @@ class CurrentUserContactTest extends TestCase
 	 */
 	private function methodBody(string $sMethod): string
 	{
-		$oMethod = new ReflectionMethod(CurrentUser::class, $sMethod);
-		$aLines = file((new ReflectionClass(CurrentUser::class))->getFileName());
+		return $this->bodyOf(CurrentUserReader::class, $sMethod);
+	}
+
+	/**
+	 * The same, for a method of any of the classes under test.
+	 */
+	private function bodyOf(string $sClass, string $sMethod): string
+	{
+		$oMethod = new ReflectionMethod($sClass, $sMethod);
+		$aLines = file((new ReflectionClass($sClass))->getFileName());
 		$sBody = implode('', array_slice(
 			$aLines,
 			$oMethod->getStartLine() - 1,
