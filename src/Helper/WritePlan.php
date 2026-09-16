@@ -418,13 +418,13 @@ final class WritePlan
 
 		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
 			foreach (array_keys($aEntries) as $iId) {
-				$aDeleted[] = self::Identity($sClass, (int)$iId);
+				$aDeleted[] = self::Identity($sClass, $iId);
 			}
 		}
 
 		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
 			foreach (array_keys($aEntries) as $iId) {
-				$aUpdated[] = self::Identity($sClass, (int)$iId);
+				$aUpdated[] = self::Identity($sClass, $iId);
 			}
 		}
 
@@ -440,14 +440,24 @@ final class WritePlan
 	 * twice into one array literal for all but those two. The key attribute is
 	 * emitted exactly when it says something.
 	 *
-	 * @param int|null $iId Null before a creation has happened.
+	 * Takes what iTop hands back rather than what the signature would prefer.
+	 * DBObject::DBInsert() returns the key it set in DBInsertSingleTable(),
+	 * which assigns it as `"$iNewKey"` - a string. Under strict_types a ?int
+	 * parameter rejects that with a TypeError, thrown *after* the row is
+	 * committed, which is how a create came to write a ticket and answer
+	 * "Error while executing tool". Every create path hands this method an id
+	 * straight out of the ORM, so the normalisation belongs here rather than in
+	 * a cast at each of them - a cast the next such tool would be written
+	 * without.
+	 *
+	 * @param int|string|null $mId The id as iTop reports it. Null before a creation has happened.
 	 *
 	 * @return array<string, mixed>
-	 * @since 1.0.0
+	 * @since 1.0.0 Accepts the id as a string too; previously ?int only, which iTop's own return value violated.
 	 */
-	public static function Identity(string $sClass, ?int $iId): array
+	public static function Identity(string $sClass, int|string|null $mId): array
 	{
-		$aIdentity = ['id' => $iId];
+		$aIdentity = ['id' => self::AsId($mId)];
 
 		try {
 			$sKeyField = MetaModel::DBGetKey($sClass);
@@ -456,10 +466,37 @@ final class WritePlan
 		}
 
 		if (is_string($sKeyField) && $sKeyField !== '' && $sKeyField !== 'id') {
-			$aIdentity[$sKeyField] = $iId;
+			$aIdentity[$sKeyField] = $aIdentity['id'];
 		}
 
 		return $aIdentity;
+	}
+
+	/**
+	 * An object id as a number, or null when there is not one yet.
+	 *
+	 * The one place that decides what counts as an id, because two callers
+	 * need the same answer for different reasons: this class reports it, and
+	 * ObjectCreate uses it to tell a write that committed from one that did
+	 * not.
+	 *
+	 * Anything not a positive number is null. iTop gives an unsaved object a
+	 * deliberately negative temporary key (DBObject::GetNextTempId()), so a
+	 * negative one means the row never landed - the same thing "no id yet"
+	 * already means here - and reporting it would be reporting a row nobody
+	 * can fetch.
+	 *
+	 * @param int|string|null $mId
+	 *
+	 * @since 1.0.0
+	 */
+	public static function AsId(int|string|null $mId): ?int
+	{
+		if ($mId === null || !is_numeric($mId)) {
+			return null;
+		}
+
+		return (int) $mId > 0 ? (int) $mId : null;
 	}
 
 	/**

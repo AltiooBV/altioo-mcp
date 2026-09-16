@@ -244,10 +244,11 @@ class ObjectCreate extends AbstractMCPTool
 	/**
 	 * The id of an object that reached the database, or null if it did not.
 	 *
-	 * iTop gives an unsaved object a temporary key, and makes it negative
-	 * precisely so it cannot be mistaken for a real one (DBObject::
-	 * GetNextTempId()). The insert overwrites it with the autonumber - as a
-	 * string, which is why this casts rather than compares types.
+	 * What counts as an id is decided once, in {@see WritePlan::AsId()}: a
+	 * positive number, whether iTop reports it as one or as the string its
+	 * insert actually assigns. An unsaved object's key is negative on purpose
+	 * (DBObject::GetNextTempId()), so it answers null here - which is exactly
+	 * "nothing was written".
 	 *
 	 * Guarded, because it runs on the failure path: an object left in a state
 	 * where even reading its key throws must not replace the failure being
@@ -256,15 +257,9 @@ class ObjectCreate extends AbstractMCPTool
 	private static function committedId(\DBObject $oObject): ?int
 	{
 		try {
-			$mKey = $oObject->GetKey();
+			return WritePlan::AsId($oObject->GetKey());
 		} catch (\Throwable $e) {
 			return null;
 		}
-
-		if (!is_numeric($mKey) || (int) $mKey <= 0) {
-			return null;
-		}
-
-		return (int) $mKey;
 	}
 }
