@@ -72,6 +72,31 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **A write could commit and report failure, and the log could not say why.** `core_object_create`
+  created a `UserRequest` and answered `Error while executing tool`. The row existed; the caller
+  was told it did not. Creating is not idempotent, nothing in the protocol says a failed write
+  may have written, and the reasonable next move on an error is to retry — which is a second
+  ticket.
+
+  Two causes. Every catch on the write paths was written `catch (\Exception)`, and an `Error` is
+  not an `Exception`, so one passed straight through to the SDK's own handler — which logs
+  `Unhandled error during tool execution` and answers with a fixed string carrying no class, no
+  message and no reference. That is why the endpoint's audit event recorded `Error while
+  executing tool` and nothing usable: the failures that most need `MCPHelper::OpaqueFailure()`'s
+  reference were the only ones never reaching it. All 16 sites now catch `\Throwable`, so an
+  `Error` is logged with its class, message, file and line under a reference the caller is given.
+
+  And `DBInsert()` commits before it returns — it reloads external values afterwards — so
+  catching around it was never the same as knowing nothing was written. `core_object_create` now
+  asks: iTop gives an unsaved object a deliberately negative temporary key, so a positive one
+  means the row reached the database. When it did, the call answers as the success it is,
+  reporting the id and attaching the failure under `warning` instead of substituting it. Only a
+  create that really wrote nothing is still an error.
+
+  Update, delete, apply-stimulus, attach and the bulk tools get the widened catch and its
+  reference, but not yet the commit check — detecting "did this one write" differs per operation
+  and is not guessed here.
+
 - **The `initialize` guidance was sent unnarrowed to every caller.** `MCPService::createServer()`
   threaded the request's `AccessPolicy` into all four registration passes and not into
   `setInstructions()`, so the server instructions were one fixed string: a token scoped
