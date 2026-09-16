@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -100,18 +101,51 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testATemporaryKeyIsNotMistakenForACommittedOne(): void
 	{
-		$sBody = $this->methodBody(ObjectCreate::class, 'committedId');
-
 		$this->assertMatchesRegularExpression(
-			'/\(int\)\s*\$mKey\s*<=\s*0/',
-			$sBody,
+			'/\(int\)\s*\$mId\s*>\s*0\s*\?/',
+			$this->methodBody(WritePlan::class, 'AsId'),
 			'A temporary key is negative; treating it as an id reports failures as successes.'
 		);
 		$this->assertStringContainsString(
 			'catch (\Throwable',
-			$sBody,
+			$this->methodBody(ObjectCreate::class, 'committedId'),
 			'This runs on the failure path and must not replace the failure with one of its own.'
 		);
+	}
+
+	/**
+	 * The TypeError that started this: DBInsert() returns the key as a string,
+	 * and a ?int parameter under strict_types rejects it *after* the commit.
+	 * Every create path hands this method an id straight out of the ORM.
+	 */
+	public function testTheIdentityHelperTakesTheIdAsITopReportsIt(): void
+	{
+		$oMethod = new ReflectionMethod(WritePlan::class, 'Identity');
+		$aParams = $oMethod->getParameters();
+		$sType = (string) $aParams[1]->getType();
+
+		$this->assertStringContainsString('string', $sType, sprintf(
+			'DBInsert() returns the key as a string, so a %s parameter throws a TypeError once the row is already written.',
+			$sType
+		));
+	}
+
+	/** Every id that came out of a write goes through the one normaliser. */
+	public function testNoCreatePathCastsTheIdItself(): void
+	{
+		$aOffenders = [];
+
+		foreach ($this->phpFiles() as $sPath) {
+			$sSource = (string) file_get_contents($sPath);
+			if (preg_match('/Identity\([^,]+,\s*\(int\)/', $sSource) === 1) {
+				$aOffenders[] = substr($sPath, strlen(self::SRC) + 1);
+			}
+		}
+
+		$this->assertSame([], $aOffenders, sprintf(
+			'A cast at the call site is the fix the next create tool would be written without: %s',
+			implode(', ', $aOffenders)
+		));
 	}
 
 	/** @return array<int, string> */
