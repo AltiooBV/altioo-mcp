@@ -138,6 +138,51 @@ class ServerInstructionsTest extends TestCase
 		$this->assertStringNotContainsString('simulate=false', ServerInstructions::Text($oPolicy));
 	}
 
+	/**
+	 * "Not RFC 3339" is only half a rule. The pointer that used to supply the
+	 * other half - read core_class_schema - is precisely what a caller without
+	 * the datamodel tools cannot follow, so the shape has to be in the text.
+	 */
+	public function testTheDateBulletSaysWhatTheFormatIsAndNotOnlyWhatItIsNot(): void
+	{
+		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
+
+		$sText = ServerInstructions::Text($oPolicy, 'Y-m-d H:i:s');
+
+		$this->assertStringContainsString('2026-09-16 14:30:00', $sText);
+		$this->assertStringNotContainsString('core_class_schema', $sText);
+	}
+
+	/**
+	 * Rendered from what the instance reports, not from what iTop ships with.
+	 * An instance that moved its internal format and a text that did not is
+	 * the failure this is read at runtime to avoid.
+	 */
+	public function testTheExampleFollowsTheInstanceFormat(): void
+	{
+		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
+
+		$this->assertStringContainsString(
+			'16/09/2026 14:30:00',
+			ServerInstructions::Text($oPolicy, 'd/m/Y H:i:s')
+		);
+	}
+
+	/**
+	 * A format is a promise about the string on the wire. Unreadable, the
+	 * sentence loses its example rather than gaining an invented one - the
+	 * model sending a value iTop refuses is the worse outcome.
+	 */
+	public function testNoFormatIsInventedWhenTheInstanceCannotBeRead(): void
+	{
+		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], ['objects']);
+
+		$sText = ServerInstructions::Text($oPolicy, null);
+
+		$this->assertStringContainsString('not RFC 3339.', $sText);
+		$this->assertDoesNotMatchRegularExpression('/\d{4}-\d{2}-\d{2}/', $sText);
+	}
+
 	/** A pack's paragraph still reaches the caller; narrowing core says nothing about it. */
 	public function testPackInstructionsAreStillAppended(): void
 	{
