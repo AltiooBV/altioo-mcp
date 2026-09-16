@@ -51,16 +51,20 @@ entry itself, not left to be inferred from it.
   RFC 3339" told a model what its value was not and then sent it to `core_class_schema` for
   what it should be — which is exactly the tool a caller restricted to the object tools does
   not have, leaving it with a rejected value and nowhere to go. The bullet now carries a worked
-  example of each, rendered from what the instance reports rather than from what iTop ships
-  with, so an instance that moved its format stays correctly described.
+  example of each, read from `AttributeDateTime::GetInternalFormat()` and
+  `AttributeDate::GetInternalFormat()` rather than written into the prose — so the guidance
+  follows the iTop the module is running on rather than the one it was written against. That
+  tracks an upgrade, not a configuration: the internal format is a literal on the attribute
+  class (`Y-m-d H:i:s` and `Y-m-d` on 3.2) and no operator can move it. The configurable one is
+  `GetFormat()`, the display format, which never crosses this wire.
 
-  A date and a date-time are two promises, so they are two reads: `AttributeDate` extends
-  `AttributeDateTime` and overrides `GetInternalFormat()`, which makes "the date-time one
-  without the time" an inference about an override — true of the shipped pair and guaranteed
-  of nothing else. An `AttributeDate` that did *not* override would answer with the date-time
-  format and print a clock inside the date example, so the two coming back identical is read as
-  "the date format was not really read" rather than as a fact about dates, and the date example
-  is dropped. Either example can be missing without taking the other with it.
+  A date and a date-time are two reads because they are two accessors: `AttributeDate` extends
+  `AttributeDateTime` and overrides `GetInternalFormat()`, so "the date-time one without the
+  time" would be an inference about an override rather than a reading of either class. On 3.2
+  it does override. Where it would not, the inherited accessor answers with the date-time
+  format and would print a clock inside the date example, so two identical formats are read as
+  "the date format was not really read" and the date example is dropped. Either example can be
+  missing without taking the other with it.
 
   The reads are guarded: this runs while the server is being built, before any tool has been
   dispatched, and the instructions lose an example rather than the endpoint losing every

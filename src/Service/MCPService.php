@@ -125,15 +125,18 @@ final class MCPService
 	 * One attribute class's internal format, for the worked examples in the
 	 * instructions.
 	 *
-	 * Read rather than hardcoded, for the reason DatamodelReader gives about
-	 * the JSON Schema pattern: an instance that changes the internal format
-	 * stays correctly described, and a format stated wrongly is worse than one
-	 * not stated at all - the model sends a value iTop then refuses.
+	 * Read rather than repeated here. GetInternalFormat() returns a literal
+	 * fixed by the branch ('Y-m-d H:i:s', and 'Y-m-d' for AttributeDate on
+	 * 3.2), not a configuration an operator can move - that is GetFormat(),
+	 * the display format, which never reaches this wire. So what the read buys
+	 * is that the text follows the iTop this module is running on rather than
+	 * the one it was written against, and a format stated wrongly is worse than
+	 * one not stated at all - the model sends a value iTop then refuses.
 	 *
 	 * Taken per class rather than derived. AttributeDate extends
 	 * AttributeDateTime and overrides this, so a date format inferred by
-	 * cutting the time off a date-time is a guess about an override - it holds
-	 * for the shipped pair and is guaranteed of nothing else.
+	 * cutting the time off a date-time would be a guess about an override
+	 * rather than a reading of either class.
 	 *
 	 * Guarded rather than called outright. This runs while the server is being
 	 * built, before any tool has been dispatched, so a class that is not

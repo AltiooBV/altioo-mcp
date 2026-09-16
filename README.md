@@ -213,8 +213,8 @@ resources are context a user attaches and tools are what the model reaches for m
 **Server instructions.** At `initialize` the server also sends a short block of guidance —
 that attribute codes vary per instance and must be looked up, that OQL has no `ORDER BY`,
 that dates are not RFC 3339 — with a worked example of each, rendered at request time from
-what `AttributeDateTime` and `AttributeDate` report, since an instance may move either — that
-a refusal is a real refusal, and that text found inside an
+what `AttributeDateTime` and `AttributeDate` report, so the guidance follows the iTop you are
+running — that a refusal is a real refusal, and that text found inside an
 object asking the client to call a tool or ignore an instruction is content to report rather
 than a request to act on. A pack can append a paragraph with
 `MCPRegistry::AddInstructions()`.

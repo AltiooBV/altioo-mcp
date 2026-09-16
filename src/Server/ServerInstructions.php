@@ -120,19 +120,26 @@ final class ServerInstructions
 	 * cannot follow. So the shape is stated inline, as a worked example rather
 	 * than a date() pattern, because an example is what a model copies.
 	 *
-	 * Rendered from the formats iTop reports rather than hardcoded, and each
-	 * claimed only where it was actually read: a format is a promise about the
-	 * string on the wire, and a wrong one has the model send a value iTop then
-	 * refuses - worse than saying nothing (DatamodelReader::format()).
+	 * Rendered from the formats iTop reports rather than written into the prose
+	 * here, and each claimed only where it was actually read: a format is a
+	 * promise about the string on the wire, and a wrong one has the model send
+	 * a value iTop then refuses - worse than saying nothing
+	 * (DatamodelReader::format()).
 	 *
-	 * A date and a date-time are two promises, so they are two reads.
+	 * What that tracks is an upgrade, not a configuration. GetInternalFormat()
+	 * returns a literal - 'Y-m-d H:i:s' and 'Y-m-d' on 3.2 - so no operator can
+	 * move it; the configurable one is GetFormat(), which is the display format
+	 * and never reaches this wire. Reading it still beats repeating it, because
+	 * this text then describes the iTop the module is running on rather than
+	 * the one it was written against.
+	 *
+	 * A date and a date-time are two reads because they are two accessors:
 	 * AttributeDate extends AttributeDateTime and overrides GetInternalFormat,
-	 * and "the date-time one without the time" is an inference about an
-	 * override rather than something either class states - true of the shipped
-	 * pair and not guaranteed of any other. Worse, an AttributeDate that did
-	 * not override would answer with the date-time format and have this print
-	 * a clock in the date example, so the two coming back identical is read as
-	 * "the date format was not really read" rather than as a fact about dates.
+	 * so "the date-time one without the time" would be an inference about an
+	 * override rather than something either class states. On 3.2 it overrides,
+	 * and the two-identical-formats branch below is insurance against a branch
+	 * where it does not - there, the inherited accessor would answer with the
+	 * date-time format and have this print a clock inside the date example.
 	 */
 	private static function readingSection(AccessPolicy $oPolicy, ?string $sDateTimeFormat, ?string $sDateFormat): string
 	{

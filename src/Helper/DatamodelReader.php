@@ -359,9 +359,11 @@ final class DatamodelReader
 	 * The JSON Schema `pattern` an attribute's values match, or null.
 	 *
 	 * Dates and date-times only, and read off the attribute rather than
-	 * hardcoded: a datamodel that changes the internal format stays correctly
-	 * described. Unlike `format`, a pattern is asserted by every validator, so
-	 * it is the part that actually keeps a date-time honest.
+	 * hardcoded - which follows an iTop upgrade rather than a datamodel: the
+	 * internal format is a literal on the attribute class, not a setting, and
+	 * the configurable one is GetFormat(), the display format, which is not
+	 * what crosses this wire. Unlike `format`, a pattern is asserted by every
+	 * validator, so it is the part that actually keeps a date-time honest.
 	 */
 	private static function pattern(AttributeDefinition $oAttDef): ?string
 	{
