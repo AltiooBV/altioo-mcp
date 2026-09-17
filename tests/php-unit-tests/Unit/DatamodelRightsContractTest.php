@@ -30,7 +30,7 @@ require_once __DIR__.'/../bootstrap.php';
  * to see coming, and the day it appears is the day someone adds a gate, not the
  * day anyone reads this file.
  *
- * Both halves are source scans. rights() needs MetaModel and the UR_ACTION_*
+ * Both halves are source scans. RightsOf() needs MetaModel and the UR_ACTION_*
  * constants, neither of which exists in a suite that boots no iTop - but what
  * actually goes wrong here is a set of constants drifting apart from another
  * set of constants, and that is a shape, readable for the cost of reading the
@@ -64,7 +64,7 @@ class DatamodelRightsContractTest extends TestCase
 				$aGated[$sAction] = $sAction;
 			}
 		}
-		$aGraded = $this->actionsIn($this->body('rights'));
+		$aGraded = $this->actionsIn($this->body('RightsOf'));
 
 		$this->assertNotEmpty($aGated, 'no UR_ACTION_* gate found in src/ - the scan is looking in the wrong place');
 
@@ -73,7 +73,7 @@ class DatamodelRightsContractTest extends TestCase
 		$this->assertSame(
 			[],
 			$aUngraded,
-			'DatamodelReader::rights() does not grade '.implode(', ', $aUngraded)
+			'DatamodelReader::RightsOf() does not grade '.implode(', ', $aUngraded)
 			.', which the tools refuse on. A model reading the schema cannot see that refusal coming.'
 		);
 	}
@@ -106,7 +106,7 @@ class DatamodelRightsContractTest extends TestCase
 				$aVerbs[$sVerb] = $sVerb;
 			}
 		}
-		$sRights = $this->body('rights');
+		$sRights = $this->body('RightsOf');
 
 		$this->assertNotEmpty($aVerbs, 'no checkBulkAllowed() call site found - the scan is looking in the wrong place');
 
@@ -122,7 +122,7 @@ class DatamodelRightsContractTest extends TestCase
 		$this->assertSame(
 			[],
 			$aMissing,
-			'DatamodelReader::rights() has no key for '.implode(', ', $aMissing)
+			'DatamodelReader::RightsOf() has no key for '.implode(', ', $aMissing)
 			.'. A model cannot work the gate out from the raw rights: it calls the tool, not the action.'
 		);
 	}
@@ -137,7 +137,7 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testBulkCreateIsTheConjunctionAndNotAnInventedRight(): void
 	{
-		$sRights = $this->body('rights');
+		$sRights = $this->body('RightsOf');
 
 		$this->assertMatchesRegularExpression(
 			"/'bulkCreate'\s*=>\s*self::stricter\(/",

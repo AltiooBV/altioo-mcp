@@ -248,7 +248,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheGateListMatchesTheBlockItDescribes(): void
 	{
-		$oMethod = new ReflectionMethod(DatamodelReader::class, 'rights');
+		$oMethod = new ReflectionMethod(DatamodelReader::class, 'RightsOf');
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice(
 			$aLines,
