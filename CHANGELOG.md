@@ -329,10 +329,8 @@ published archive was installed and exercised on into this line; the README and
   take `audit: true` for it. There is no field behind this — iTop stamps neither on the object —
   so it is two indexed single-row reads of the change log per object. That is cheap once and
   unbounded over a page, so the search tools refuse `audit` for a page of more than 25 rather
-  than serving it slowly. The block is absent entirely for a caller who may not read
-  `CMDBChangeOp`: who last touched an object is what that grant decides. Note for operators —
-  the gate is the profile grant, not the `history` toolset, which withholds the tool rather than
-  the fact.
+  than serving it slowly. Gated by the object and by nothing else, as the console gates it — so
+  anyone who can read the ticket can see who opened it and who last touched it.
 
 - **`core_object_history`, and with it the answer to "who changed this".** An iTop object
   carries no creation or update stamp — `DBObject` declares neither — so until now the endpoint
@@ -349,7 +347,11 @@ published archive was installed and exercised on into this line; the README and
   directly, it is a way around both silos and per-attribute rights. This applies the object gate
   and today's attribute rights to every row — today's, not the ones in force when the row was
   written, since a revocation that left the old value readable would be a revocation in name
-  only.
+  only. The object is the only gate, which is how the console gates it: `ActivityPanelHelper`
+  reads these rows for whatever object is on screen and asks `UserRights` nothing about
+  `CMDBChangeOp`. Rows are ordered by id rather than by date, because one change writes several
+  of them carrying that change's timestamp — iTop's own query says so, and orders the same way.
+  Case-log entries are included, which the console renders separately instead.
 
   Served as its own `history` toolset, with an `MCP-toolset-history` token scope, so an operator
   can withhold the change log without withholding object reads.
