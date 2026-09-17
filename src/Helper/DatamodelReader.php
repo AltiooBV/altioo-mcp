@@ -51,6 +51,16 @@ final class DatamodelReader
 	 * is one a caller cannot narrow on; one here and not in the block is a
 	 * filter that silently matches nothing.
 	 */
+	/**
+	 * The gates whose answer can differ from one object to the next.
+	 *
+	 * Reading is settled by the time an object is in a result, and creating
+	 * is asked of a class rather than of an object that does not exist yet.
+	 * What is left is the four writes, which a silo or an addon grading per
+	 * object answers one object at a time.
+	 */
+	public const OBJECT_RIGHTS_KEYS = ['modify', 'bulkModify', 'delete', 'bulkDelete'];
+
 	private const RIGHTS_KEYS = [
 		'read',
 		'bulkRead',
@@ -257,7 +267,7 @@ final class DatamodelReader
 	public static function WithRights(array $aClasses): array
 	{
 		return array_values(array_map(
-			static fn (array $aClass): array => $aClass + ['rights' => self::rights($aClass['class'])],
+			static fn (array $aClass): array => $aClass + ['rights' => self::RightsOf($aClass['class'])],
 			$aClasses
 		));
 	}
@@ -330,7 +340,7 @@ final class DatamodelReader
 	public static function Describe(string $sClass): array
 	{
 		return self::Summarize($sClass) + [
-			'rights'     => self::rights($sClass),
+			'rights'     => self::RightsOf($sClass),
 			'attributes' => self::attributes($sClass),
 			'relations'  => self::relations($sClass),
 			'lifecycle'  => self::lifecycle($sClass),
@@ -367,8 +377,9 @@ final class DatamodelReader
 	 * is ungated, or absent.
 	 *
 	 * @return array<string, string>
+	 * @since 1.0.0
 	 */
-	private static function rights(string $sClass): array
+	public static function RightsOf(string $sClass): array
 	{
 		$sCreate = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE));
 		$sBulkModify = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_MODIFY));
