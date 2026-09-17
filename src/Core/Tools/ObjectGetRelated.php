@@ -65,7 +65,9 @@ class ObjectGetRelated extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Find objects related to a given iTop object through a named relation (e.g. impacts, depends on). Useful for impact analysis and dependency mapping on CIs.';
+		return 'Find objects related to a given iTop object through a named relation (e.g. impacts, depends on). Useful for impact analysis and dependency mapping on CIs. '
+			.'A relation is declared per class and per direction, so a class takes part in some, one direction of some, and none of the rest: find out which before calling, by reading the "relations" block of core_class_schema for the class - it maps each relation code this class participates in to the classes it reaches. '
+			.'If you call with one it does not have, the refusal names every relation that class does have in the direction you asked for, so a wrong guess costs one round trip rather than leaving you to guess again.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -95,11 +97,11 @@ class ObjectGetRelated extends AbstractMCPTool
 				],
 				'relation'  => [
 					'type'        => 'string',
-					'description' => 'Relation code to follow. Built-in values: "impacts", "depends on". Call core_class_schema for the relations a class takes part in.',
+					'description' => 'Relation code to follow. A stock iTop declares "impacts" and "depends on", but a datamodel may declare others and no class takes part in all of them. Call core_class_schema for this class and read its "relations" block: the keys are the codes valid here. A code the class does not have is refused with the list of the ones it does, for the direction you asked for.',
 				],
 				'direction' => [
 					'type'        => 'string',
-					'description' => '"down" follows the relation forward (e.g. what does this CI impact). "up" follows it backward (e.g. what does this CI depend on). Defaults to "down".',
+					'description' => '"down" follows the relation forward (e.g. what does this CI impact). "up" follows it backward (e.g. what does this CI depend on). Defaults to "down". Direction is part of what a class participates in, not a free choice on top of it: a class may declare a relation in one direction only, and asking for the other is refused even though the relation code is right.',
 					'enum'        => [self::DIRECTION_DOWN, self::DIRECTION_UP],
 					'default'     => self::DIRECTION_DOWN,
 				],
