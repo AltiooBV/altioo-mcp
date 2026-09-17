@@ -38,7 +38,12 @@ const SUPPORT_FILE = __DIR__.'/../../.github/itop-support.json';
 const TAGS_API = 'https://api.github.com/repos/Combodo/iTop/tags?per_page=100';
 // The packaged releases. Not every one of them is mirrored to GitHub releases -
 // 3.2.2 is not - so SourceForge is the listing that answers for every branch.
-const FILES_RSS = 'https://sourceforge.net/projects/itop/rss?path=/itop&limit=200';
+//
+// limit=100 because that is the largest SourceForge accepts: anything above it
+// is answered 400, and this file treats an unreadable listing as fatal, so a
+// larger number is not a longer listing but no listing at all. 100 entries
+// reach back past 2.4, which is several branches further than we claim.
+const FILES_RSS = 'https://sourceforge.net/projects/itop/rss?path=/itop&limit=100';
 const PAGES = 4; // ~400 tags, back past 2.6. More than enough for any live branch.
 
 /**
