@@ -90,7 +90,33 @@ The machine-readable floor and ceiling on any branch:
 
 ---
 
-## 4. `extension.xml` — elements the parser reads — `AGENTS.md` §2.3
+## 4. Module dependency resolution — `AGENTS.md` §2.2
+
+Source: `setup/modulediscovery.class.inc.php`, `DependencyIsResolved()`, confirmed at 3.2.2.
+
+Each entry of the `dependencies` array is a **string expression**, not a single module id. The
+resolver splits it on `( ) & |` and whitespace, replaces every `<module>/<version>` term with
+`(true)` or `(false)`, and `eval`s the result. So `&`, `|`, `&&`, `||` and parentheses all work.
+
+| Part | At 3.2.2 |
+|---|---|
+| Version operators | `<` `<=` `=` `>` `>=`, written before the version; `>=` when none is given |
+| Comparison | `version_compare()` against the version in the depended-on module's own id |
+| Missing module | the term is `(false)`; an expression that comes out false leaves the module unselectable |
+| Real precedent | `itop-service-mgmt/2.7.1 || itop-service-mgmt-provider/2.7.1` in Combodo's own modules, for a class either module can supply |
+
+**Quirk worth knowing.** A module named anywhere in the expression that is itself *selected* for
+installation is treated as a prerequisite for ordering, whatever the boolean result — so naming a
+module in an `||` branch still constrains load order when that module is being installed. See
+`$bMissingPrerequisite` in the same method.
+
+There is **no optional dependency** on any branch to date: the list decides selectability, and
+adapting to what an instance has installed is a runtime question (`MetaModel::IsValidClass()`),
+not something the declaration can express.
+
+---
+
+## 5. `extension.xml` — elements the parser reads — `AGENTS.md` §2.3
 
 Source: `setup/extensionsmap.class.inc.php`, `iTopExtensionsMap::ReadDir()`. Six elements in 3.2.2;
 everything else is silently ignored.
@@ -108,7 +134,7 @@ Confirmed absent in 3.2.2: `itop_version_min`, `php_min_version`, `license`.
 
 ---
 
-## 5. Extension point deprecation status — `AGENTS.md` §3.2
+## 6. Extension point deprecation status — `AGENTS.md` §3.2
 
 Status as of 3.2. Re-grep `@deprecated` in `application/applicationextension.inc.php` on your branch.
 
@@ -124,7 +150,7 @@ removed as of 3.2.2.
 
 ---
 
-## 6. Lifecycle events — `AGENTS.md` §3.3
+## 7. Lifecycle events — `AGENTS.md` §3.3
 
 `iApplicationObjectExtension::OnDBInsert/OnDBUpdate/OnDBDelete/OnCheckToWrite…` are all
 `@deprecated 3.1.0 N°4756`.
@@ -141,7 +167,7 @@ Core events, declared in `application/datamodel.application.xml` `<events>`; eac
 
 ---
 
-## 7. Test harness pins — `AGENTS.md` §8.3
+## 8. Test harness pins — `AGENTS.md` §8.3
 
 Read `tests/php-unit-tests/composer.json` on the target branch; values below are 3.2.2.
 
@@ -156,7 +182,7 @@ are PHPUnit 10+ and the suite will not run them. Doc-comments are deprecated in 
 
 ---
 
-## 8. CI / unattended setup — `AGENTS.md` §12.3
+## 9. CI / unattended setup — `AGENTS.md` §12.3
 
 This repository's own install-verification chain is documented in
 [`doc/ci-itop-matrix.md`](ci-itop-matrix.md) — **read that, not this**. Only the upstream facts it
@@ -175,7 +201,7 @@ depends on are recorded here:
 
 ---
 
-## 9. Security config parameter names — `AGENTS.md` §6.9
+## 10. Security config parameter names — `AGENTS.md` §6.9
 
 Verified in `core/config.class.inc.php` at 3.2.2. These have been renamed between branches — grep
 before use.
@@ -188,7 +214,7 @@ before use.
 
 ---
 
-## 10. Source file map — `AGENTS.md` §14
+## 11. Source file map — `AGENTS.md` §14
 
 Paths confirmed at 3.2.2. Stable across several majors, but confirm on your branch.
 

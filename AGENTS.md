@@ -285,6 +285,18 @@ SetupWebPage::AddModule(
 - `dependencies` MUST list only what is used — it also determines **compile/load order** (§3.7).
   Each entry is `'<module>/<version>'`, where the version is a floor; take the floor for a Combodo
   module from the branch you target, not from this example (§12.5).
+- **An entry is a boolean expression, not just one module.** `&` and `|` (and their doubled
+  forms) and parentheses are supported, each `<module>/<version>` term is replaced by its truth
+  value and the result evaluated — so `'<module-a>/<version> || <module-b>/<version>'` says "either
+  of these", which is how Combodo's own modules depend on a class that two different modules can
+  supply. The version carries an optional leading operator, `>=` when none is written. The branch
+  notes cite the source and the operator set.
+- **There is no optional dependency.** Every term that decides the expression must resolve or the
+  module is not selectable — and an unsatisfiable dependency does not fail a setup, it removes a
+  checkbox (§12.3). A module that should adapt to what an instance happens to have installed MUST
+  declare nothing for it and ask at runtime instead (`MetaModel::IsValidClass()` before touching a
+  class), because "installed, and I use it" and "absent, and I do without it" are not states a
+  dependency list can express.
 - **`datamodel` lists PHP files, NEVER XML.** Each entry is compiled into a
   `MetaModel::IncludeModule()` call — a runtime `require_once`
   (`compiler.class.inc.php`, `GetFilesToInclude('business')`). Datamodel XML files are found by the
