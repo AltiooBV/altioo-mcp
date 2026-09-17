@@ -356,6 +356,22 @@ published archive was installed and exercised on into this line; the README and
   Served as its own `history` toolset, with an `MCP-toolset-history` token scope, so an operator
   can withhold the change log without withholding object reads.
 
+- **`core_current_user` reports what this session can reach.** An `access` block naming the
+  toolsets served and the capabilities held. Without it, "this server has no such tool" and "I am
+  not served that toolset" are the same observation from `tools/list`, and a model that cannot
+  tell them apart states the first — it reports a capability as absent, and stops. That is not
+  hypothetical: it is how a session concluded there was no way to read an object's history, on an
+  instance that had one, because a scope had not been ticked.
+
+  Only what is served is named, never the catalogue. Naming a toolset the caller does not hold
+  would teach it the shape of the withheld surface, which is exactly what `ServerInstructions`
+  narrows itself to avoid — so what comes back never exceeds what `tools/list` already showed. An
+  unrestricted caller learns nothing new; a narrowed one learns only that its own view has edges.
+  Derived element by element through the same check registration uses, rather than from the
+  policy's permitted list: empty there means "everything", and a toolset whose only element is
+  disabled, or whose elements all require a profile this user lacks, is not one the caller can
+  reach whatever the policy allows.
+
 - **`core_class_list` narrows by what the caller may do.** `may=create` returns the classes this
   user is allowed to create, each with the full rights block, in one call. Without it the only
   way to answer "what can I create here" was `core_class_schema` once per class — several hundred

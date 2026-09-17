@@ -77,7 +77,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
-| `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode |
+| `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
@@ -212,7 +212,7 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 | URI | Content |
 |---|---|
 | `itop://core/version` | iTop version and edition |
-| `itop://core/current-user` | Who the request authenticated as: contact, user id, language, and whether archive mode is on |
+| `itop://core/current-user` | Who the request authenticated as: contact, user id, language, whether archive mode is on, and the toolsets this session is served |
 | `itop://core/classes` | The list of classes in the datamodel |
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle, and the caller's rights on it |
 | `itop://core/document/{class}/{id}/{att_code}` | One document, by the URI a read reported |
