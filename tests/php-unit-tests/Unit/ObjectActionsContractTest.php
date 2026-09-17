@@ -86,6 +86,28 @@ class ObjectActionsContractTest extends TestCase
 	}
 
 	/**
+	 * A refused transition says which gate refused it.
+	 *
+	 * Every entry in `available` is a transition the datamodel declares out of
+	 * the current state, so 'no' is always a rights answer - but "nobody may
+	 * drive this transition by hand" and "this account may not modify this
+	 * object" are different facts, and a caller told only 'no' reads the first
+	 * as the second and reports the object as stuck. Both grades are already
+	 * computed; reporting them costs nothing and neither is a second query.
+	 */
+	public function testARefusedStimulusSaysWhichGateRefusedIt(): void
+	{
+		$sBody = $this->bodyOf(ObjectSerializer::class, 'StimuliOn');
+
+		$this->assertStringContainsString("'gates'", $sBody, 'the entry does not report its gates');
+		$this->assertMatchesRegularExpression(
+			"/'gates'\s*=>\s*\[\s*'modify'\s*=>[^,]+,\s*'stimulus'\s*=>/s",
+			$sBody,
+			'both gates are reported, under the names the grades are read from'
+		);
+	}
+
+	/**
 	 * A class with no lifecycle answers null, not an empty list: "no
 	 * transitions from here" and "this class has no states" are different
 	 * claims, and the second one read as the first says a server is stuck.
