@@ -90,7 +90,9 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			],
 			'ids'   => [
 				'type'        => 'array',
-				'description' => 'Ids of the objects to act on, at most '.self::MAX_OBJECTS.'. Find them with core_object_search_by_oql or core_object_search_by_class.',
+				'description' => 'Ids of the objects to act on, at most '.self::MAX_OBJECTS.'. Find them with core_object_search_by_oql or core_object_search_by_class. '
+					.'Both report "total" for the whole matching set beside the page they return, so one search with limit=1 says how many objects the work covers before it is split into calls of '.self::MAX_OBJECTS.'. '
+					.'The "total" a bulk call answers with is the ids it was given, never the size of a set it was not shown.',
 				'items'       => ['type' => 'integer', 'minimum' => 1],
 				'minItems'    => 1,
 				'maxItems'    => self::MAX_OBJECTS,
