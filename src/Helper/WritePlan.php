@@ -160,7 +160,7 @@ final class WritePlan
 	 * rest of the outcome follows.
 	 *
 	 * @return array<string, mixed>
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 */
 	public static function OverriddenSchemaProperty(): array
 	{
@@ -187,7 +187,7 @@ final class WritePlan
 	 * @param array<int, string> $aAttCodes The attribute codes the caller named.
 	 *
 	 * @return array<string, array{raw: mixed, shown: mixed}>
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 */
 	public static function Requested(DBObject $oObject, string $sClass, array $aAttCodes): array
 	{
@@ -238,7 +238,7 @@ final class WritePlan
 	 * @param array<string, array{raw: mixed, shown: mixed}> $aRequested From {@see Requested()}, taken before {@see Check()}.
 	 *
 	 * @return array<string, array{requested: mixed, effective: mixed}>
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 */
 	public static function Overridden(DBObject $oObject, string $sClass, array $aRequested): array
 	{
@@ -286,7 +286,7 @@ final class WritePlan
 	 * @param array<string, array{requested: mixed, effective: mixed}> $aOverridden From {@see Overridden()}.
 	 *
 	 * @throws ToolCallException When a discarded value was not a legal one.
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 */
 	public static function CheckRequested(DBObject $oObject, array $aRequested, array $aOverridden, string $sWhat): void
 	{

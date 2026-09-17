@@ -108,6 +108,32 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **A dry run answered `changes: {}` for a value the write would have thrown away, and called it
+  valid.** Asked to set a `UserRequest`'s `priority` to `2`, `core_object_update` with
+  `simulate=true` answered `{"valid": true, "changes": {}}`. Asked to set it to `9` — the enum
+  allows four values and `9` is not one of them — it answered exactly the same. A caller could
+  not tell "nothing would change" from "this value is garbage", which is the whole of what a dry
+  run is for.
+
+  One cause, and the write path was not part of it: nothing would have changed either way.
+  `CheckToWrite()` runs `DoComputeValues()` before it checks anything, and a class is free to
+  `Set()` an attribute there from other attributes — `UserRequest::ComputeValues()` derives
+  `priority` from `urgency` and `impact` on every write. It puts back the value already stored,
+  `DBObject::ListChangedValues()` compares strictly against the original, finds them equal and
+  drops the attribute from the delta. `DoCheckToWrite()` then validates the delta and nothing
+  else, so the supplied value was neither applied nor looked at, and the answer said neither.
+
+  `core_object_create`, `core_object_update`, `core_object_apply_stimulus` and both bulk tools
+  now report an `overridden` block: attribute code => `{requested, effective}` for every supplied
+  value the write would not keep, always present and empty when there is nothing to say. The
+  values are captured on the only side of `CheckToWrite()` where the object still holds what the
+  caller asked for. Reported rather than refused, because setting a derived attribute alongside
+  the ones it derives from is a legitimate call — the defect was the silence, not the behaviour.
+
+  A discarded value is now also validated in its own right, which is the question
+  `DoCheckToWrite()` skipped, so a `priority` of `9` is refused instead of coming back `valid`.
+  On a bulk call that refusal lands on the row, not the batch.
+
 - **A write could commit and report failure, and the log could not say why.** `core_object_create`
   created a `UserRequest` and answered `Error while executing tool`. The row existed; the caller
   was told it did not. Creating is not idempotent, nothing in the protocol says a failed write
