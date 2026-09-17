@@ -89,8 +89,7 @@ final class ChangeTracking
 	{
 		return [
 			'type'        => 'string',
-			'description' => 'Why '.$sWhatItDoes.', in one short sentence, recorded in the object\'s history next to the user and the tool. '
-				.'Pass the reason the user gave, not a restatement of the call: "customer confirmed the laptop was returned" is worth recording, "updating the ticket" is not. Leave it out when there is nothing to add.',
+			'description' => 'Why '.$sWhatItDoes.', in one short sentence, recorded in the object\'s history. The reason the user gave, or nothing.',
 			'maxLength'   => self::MAX_INFO_CHARS,
 		];
 	}

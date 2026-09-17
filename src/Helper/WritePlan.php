@@ -58,7 +58,7 @@ final class WritePlan
 	{
 		return [
 			'type'        => 'boolean',
-			'description' => 'true (the default) validates everything and reports what would change, without writing. Show that to the user, then call again with simulate=false to '.$sWhatItWouldDo.'.',
+			'description' => 'true (the default) validates and reports what would change, writing nothing. Show it to the user, then call again with simulate=false to '.$sWhatItWouldDo.'.',
 			'default'     => self::SIMULATE_BY_DEFAULT,
 		];
 	}
