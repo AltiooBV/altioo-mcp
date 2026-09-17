@@ -69,6 +69,24 @@ entry itself, not left to be inferred from it.
   is the one that matters most to the caller holding the smallest surface — which is exactly
   the caller most likely to be holding it because of something an operator has since changed.
 
+- **The schema says how a case log is written, and the relation walk says what shape it answers in.**
+  Three things a caller could only learn by trying. An attribute now carries an optional
+  `writeHint`, and `AttributeCaseLog` is the first type to need one: it reads as the log and is
+  written one entry at a time, so a type name left a model either sending the rendered log back
+  as the new value or looking for an add-a-log-entry tool — which is task-shaped and belongs to a
+  pack, not here. The hint names both shapes iTop accepts, the plain string and
+  `{"add_item": {"message": "..."}}`.
+
+  `core_object_get_related` now describes its answer: a node map keyed `"Class::id"`, a flat list
+  of `{from, to}` edges over those keys, and a per-class `summary` — a graph, not the tree its
+  `depth` argument suggests — plus the `withheld` block, which only prevents a truncated graph
+  being read as a whole one if the caller knows to look for it.
+
+  And the bulk tools say where the size of the work comes from: they take ids, at most 100, so
+  the `total` they answer with counts what they were given and never the set behind a criterion.
+  The search tools report that set's `total` beside the page they return, so one call with
+  `limit=1` sizes the work before it is split.
+
 ### Changed
 
 - **The class schema separates what can be written from what cannot.** A stock `UserRequest` runs
