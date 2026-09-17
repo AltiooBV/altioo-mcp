@@ -49,7 +49,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 	public function getDescription(): ?string
 	{
 		return 'Create several iTop objects of one class at once, each with its own attribute values. '
-			.'Runs as a dry run by default: call it with simulate=true to have every row validated without creating anything, show the result to the user, then call again with simulate=false. '
+			.'The dry run validates every row without creating anything. '
 			.'Rows are independent, so a call can partly succeed; the response reports every row separately, with the id of each object that was created.';
 	}
 

@@ -55,7 +55,7 @@ class ObjectDelete extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
-			.'Runs as a dry run by default: call it with simulate=true to obtain the deletion plan, show that plan to the user, and only then call it again with simulate=false to delete for real. '
+			.'The dry run reports the deletion plan: what else iTop would delete or update along with this object. '
 			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal says which class is in the way.';
 	}
 
@@ -93,7 +93,7 @@ class ObjectDelete extends AbstractMCPTool
 				],
 				'simulate' => [
 					'type'        => 'boolean',
-					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Set it to false to actually delete, once the plan has been confirmed by the user.',
+					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Show the plan to the user, then call again with simulate=false to delete.',
 					'default'     => true,
 				],
 				'comment'  => ChangeTracking::CommentSchemaProperty('the object is being deleted'),

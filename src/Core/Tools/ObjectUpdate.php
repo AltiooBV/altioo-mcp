@@ -54,7 +54,7 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
-			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the change and report exactly which attributes would change, show that to the user, then call again with simulate=false to apply it. '
+			.'The dry run reports exactly which attributes would change. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 

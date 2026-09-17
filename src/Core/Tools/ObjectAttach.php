@@ -76,7 +76,7 @@ class ObjectAttach extends AbstractMCPTool
 		return 'Attach a file to an iTop object, or set one of its document attributes. '
 			.'The content is passed base64-encoded, and must be content you already hold: this tool does not download anything. '
 			.'Leave att_code out to add an Attachment to the object, the way the console does; give it to set a specific blob attribute, e.g. a picture. '
-			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the file and report where it would land, show that to the user, then call again with simulate=false to store it.';
+			.'The dry run validates the file and reports where it would land.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations

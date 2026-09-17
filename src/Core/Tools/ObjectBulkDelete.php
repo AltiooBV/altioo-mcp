@@ -50,7 +50,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 	public function getDescription(): ?string
 	{
 		return 'Delete several iTop objects of one class at once. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules, so the real reach of the call can be much larger than the list of ids. '
-			.'Runs as a dry run by default: call it with simulate=true to obtain the combined deletion plan, show that plan to the user, and only then call it again with simulate=false. '
+			.'The dry run reports the combined deletion plan. '
 			.'Each object is checked on its own, so a call can partly succeed; the response reports every object separately. '
 			.'The cascade of each object is checked against this user\'s rights, not just the object itself, so one id can be refused for what its deletion would reach while the others go through.';
 	}

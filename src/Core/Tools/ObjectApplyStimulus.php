@@ -61,7 +61,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs. '
-			.'Runs as a dry run by default: call it with simulate=true to check that the transition is allowed from the current state and that nothing mandatory is missing, show that to the user, then call again with simulate=false to apply it. '
+			.'The dry run checks the transition against the current state and reports anything mandatory that is missing. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 

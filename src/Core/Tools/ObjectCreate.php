@@ -53,7 +53,7 @@ class ObjectCreate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Create a new iTop object of the given class. Call core_class_schema first: it reports the attribute codes, their types and which ones are mandatory. '
-			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the object and report what would be written, show that to the user, then call again with simulate=false to create it. '
+			.'The dry run validates the object and reports what would be written. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 

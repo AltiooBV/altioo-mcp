@@ -49,7 +49,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	public function getDescription(): ?string
 	{
 		return 'Set the same attributes on several iTop objects of one class at once. '
-			.'Runs as a dry run by default: call it with simulate=true to see what would change and which objects the current user may not touch, show that to the user, then call again with simulate=false. '
+			.'The dry run reports what would change and which objects this user may not touch. '
 			.'Each object is checked on its own, so a call can partly succeed; the response reports every object separately.';
 	}
 
