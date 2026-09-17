@@ -30,8 +30,8 @@ entry itself, not left to be inferred from it.
   buttons had nothing to read.
 
   `core_class_schema` and `itop://core/class/{class}` now carry a `rights` block grading
-  `read`, `bulkRead`, `create`, `modify`, `delete`, `bulkModify` and `bulkDelete`, and every
-  attribute carries the same grade under `modify` — the one that matters most, since the
+  `read`, `bulkRead`, `create`, `bulkCreate`, `modify`, `bulkModify`, `delete` and
+  `bulkDelete`, and every attribute carries the same grade under `modify` — the one that matters most, since the
   attribute is what a model actually picks off a schema and gets refused on. Each is `yes`,
   `no` or `depends`, never a boolean: `UR_ALLOWED_DEPENDS` is a third answer meaning "ask again
   with the object", and a model told `yes` or `no` instead has been told something no addon
@@ -44,6 +44,14 @@ entry itself, not left to be inferred from it.
   class or a read-only database refuses whatever the rights say. That asymmetry is the useful
   part: both halves are something a model can act on, where a symmetric "either way, who knows"
   would be neither.
+
+  **`bulkCreate` is derived, not read.** iTop has no `UR_ACTION_BULK_CREATE`, so
+  `core_object_bulk_create` gates on `UR_ACTION_CREATE` and `UR_ACTION_BULK_MODIFY` together,
+  and the block reports the stricter of the two. Bulk update and bulk delete pair with the
+  rights their names suggest and need no help; bulk creation does not, so a model reading
+  `create` and `bulkModify` had nothing telling it those two are the pair that decides — and
+  no key named for what it was actually trying to do. Left to infer it, the reasonable
+  conclusions are that the call is ungated or that it does not exist, and both are wrong.
 
   An attribute's `modify` sits **beside** `readOnly`, not in place of it. `readOnly` is the
   datamodel refusing everybody, permanently and beyond any administrator's reach; `modify` is

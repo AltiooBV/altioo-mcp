@@ -226,8 +226,8 @@ hundred classes, so `core_class_list` takes a `category` and a `filter`.
 
 `core_class_schema` also reports what the calling user may *do* with the class — the question
 the console answers by rendering a button or not, and a client with no buttons had no way to
-ask. A `rights` block grades `read`, `bulkRead`, `create`, `modify`, `delete`, `bulkModify` and
-`bulkDelete`, and every attribute carries the same grade under `modify`. Each is `yes`, `no` or
+ask. A `rights` block grades `read`, `bulkRead`, `create`, `bulkCreate`, `modify`, `bulkModify`,
+`delete` and `bulkDelete`, and every attribute carries the same grade under `modify`. Each is `yes`, `no` or
 `depends`: three answers, because iTop's rights API has three, and folding `UR_ALLOWED_DEPENDS`
 into either neighbour reports something no addon ever said.
 
@@ -237,6 +237,13 @@ gets that far: the object can still refuse through a silo, a lifecycle state or 
 own `DoCheckToWrite()`. An attribute's `modify` sits beside `readOnly` rather than replacing it,
 because they fail for different reasons — `readOnly` is the datamodel refusing everybody and no
 administrator can grant it, `modify` is this caller being refused something somebody can.
+
+`bulkCreate` is the one key iTop does not answer. There is no `UR_ACTION_BULK_CREATE`, so
+`core_object_bulk_create` is gated on `UR_ACTION_CREATE` and `UR_ACTION_BULK_MODIFY` together
+and the block reports the stricter of the two. The other two bulk tools pair with the rights
+their names suggest; this one does not, and a model reading `create` and `bulkModify` has no
+way to learn that those two together are what decide it — so it is combined here rather than
+left to be inferred.
 
 `itop://core/current-user` is doubled for the first of those reasons alone, by
 `core_current_user`. There is nothing to narrow — one identity, no arguments — so the tool form
