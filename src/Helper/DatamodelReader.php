@@ -218,7 +218,8 @@ final class DatamodelReader
 	}
 
 	/**
-	 * One class in full: the summary, plus attributes, relations and lifecycle.
+	 * One class in full: the summary, the caller's rights on it, plus
+	 * attributes, relations and lifecycle.
 	 *
 	 * Readability is the caller's to check - see {@see IsReadable()} - because
 	 * only the caller knows which exception its surface has to raise.
@@ -229,10 +230,71 @@ final class DatamodelReader
 	public static function Describe(string $sClass): array
 	{
 		return self::Summarize($sClass) + [
+			'rights'     => self::rights($sClass),
 			'attributes' => self::attributes($sClass),
 			'relations'  => self::relations($sClass),
 			'lifecycle'  => self::lifecycle($sClass),
 		];
+	}
+
+	/**
+	 * What this caller may do to objects of $sClass, as the class-level gate
+	 * answers it.
+	 *
+	 * Every write tool asks this same gate before it looks at any object -
+	 * ObjectUpdate and ObjectCreate refuse on it, and the bulk tools refuse on
+	 * the UR_ACTION_BULK_* half - so reporting it up front is what lets a model
+	 * pick a call that can succeed instead of discovering the refusal by making
+	 * it. iTop's console answers the same question by rendering a button or
+	 * not; a client with no buttons has only this.
+	 *
+	 * Read as a gate, never as an outcome. 'yes' means the call gets past the
+	 * class check and no further: the object can still refuse it through a
+	 * silo, a lifecycle state or the datamodel's own DoCheckToWrite(), and an
+	 * abstract class or a read-only database refuses whatever the rights say -
+	 * isAbstract sits in the same payload for the first of those. 'no' is the
+	 * firmer half, and the useful one: the tools raise on it before an object
+	 * is ever fetched, so no object exists that could get past it.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function rights(string $sClass): array
+	{
+		return [
+			'read'       => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_READ)),
+			'bulkRead'   => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)),
+			'create'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE)),
+			'modify'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_MODIFY)),
+			'bulkModify' => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_MODIFY)),
+			'delete'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_DELETE)),
+			'bulkDelete' => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_DELETE)),
+		];
+	}
+
+	/**
+	 * One tri-state rights answer, as a word a model can act on.
+	 *
+	 * DEPENDS keeps its own word rather than being folded into either
+	 * neighbour. It is the addon saying "ask again, with the object in hand",
+	 * and a model told 'yes' or 'no' instead has been told something nobody
+	 * answered - the same mistake, one surface further out, that reading these
+	 * as booleans makes in the tools.
+	 *
+	 * The parameter carries no type, on purpose. UserRights answers with the
+	 * UR_ALLOWED_* constants, but the return type is not declared on the iTop
+	 * side, and a bool arriving at an `int` hint under strict_types is a
+	 * TypeError rather than a wrong answer. The cast reads both: true and false
+	 * land on UR_ALLOWED_YES and UR_ALLOWED_NO, which are 1 and 0.
+	 *
+	 * @param mixed $mAllowed A UR_ALLOWED_* answer, as iTop returned it.
+	 */
+	private static function grade($mAllowed): string
+	{
+		return match ((int)$mAllowed) {
+			UR_ALLOWED_NO => 'no',
+			UR_ALLOWED_YES => 'yes',
+			default => 'depends',
+		};
 	}
 
 	/**
@@ -250,6 +312,19 @@ final class DatamodelReader
 	 * object, and the object tools decide it per object. Only an outright
 	 * refusal for the whole class removes it here.
 	 *
+	 * readOnly and modify are two keys on purpose. readOnly is the datamodel's
+	 * answer - the attribute is computed or structural, nobody writes it, and
+	 * no administrator can grant it. modify is this caller's answer, and an
+	 * administrator can change it. Collapsed into one key a model can no longer
+	 * tell "nobody may write this" from "you may not", and reports the wrong
+	 * one of the two to the user - the second is worth raising with whoever
+	 * grants the rights, the first never is.
+	 *
+	 * Unlike the class-level gate, this one is close to final under a stock
+	 * install: iTop's shipped addon documents that it ignores the instance set
+	 * for attributes, so there is no per-object answer waiting behind it. A
+	 * datamodel that does grade per object says so with 'depends'.
+	 *
 	 * @param string $sClass The class for which to retrieve attribute details
 	 * @return array An array of attribute details
 	 */
@@ -262,6 +337,13 @@ final class DatamodelReader
 				continue;
 			}
 
+			// The write right, which is the one a model gets wrong: it reads a
+			// schema, picks an attribute off it and is refused at write time.
+			// UR_ACTION_MODIFY is the right for both paths - ObjectCreate gates
+			// a field it is about to set on the same action ObjectUpdate does -
+			// so one answer covers creating and updating alike.
+			$iModify = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY);
+
 			$aAttributes[$sAttCode] = [
 				'label'         => MetaModel::GetLabel($sClass, $sAttCode),
 				'description'   => $oAttDef->GetDescription(),
@@ -270,6 +352,7 @@ final class DatamodelReader
 				'pattern'       => self::pattern($oAttDef),
 				'required'      => $oAttDef->IsNullAllowed() === false,
 				'readOnly'      => $oAttDef->IsWritable() === false,
+				'modify'        => self::grade($iModify),
 				'nullable'      => $oAttDef->IsNullAllowed(),
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),

@@ -48,7 +48,7 @@ class ClassSchema extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Describe one iTop class: its attributes (code, label, type, whether required, read-only or sensitive, and allowed values), the relations it takes part in, and its lifecycle states and stimuli. Attributes also carry a JSON Schema "format" and "pattern" where one applies; date and date-time values must match the pattern exactly, as iTop rejects the RFC 3339 form. Read this before creating or updating an object of the class, or before applying a stimulus. Use core_class_list to find the class name first. An external key reports its target class rather than its candidate objects: search that class with core_object_search_by_class and pass the id you find.';
+		return 'Describe one iTop class: its attributes (code, label, type, whether required, read-only or sensitive, and allowed values), the relations it takes part in, and its lifecycle states and stimuli. It also reports what the current user may do with the class, so you can pick a call that will succeed instead of discovering the refusal by making it: "rights" grades read, bulkRead, create, modify, delete, bulkModify and bulkDelete as "yes", "no" or "depends", and each attribute carries the same grade under "modify". "no" means the call is refused outright, so do not attempt it and say so instead. "yes" means only that the class-level check passes - the individual object may still refuse the write - and "depends" means the answer is decided per object. Attributes also carry a JSON Schema "format" and "pattern" where one applies; date and date-time values must match the pattern exactly, as iTop rejects the RFC 3339 form. Read this before creating or updating an object of the class, or before applying a stimulus. Use core_class_list to find the class name first. An external key reports its target class rather than its candidate objects: search that class with core_object_search_by_class and pass the id you find.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -78,7 +78,7 @@ class ClassSchema extends AbstractMCPTool
 
 	/**
 	 * @param string $class The class to describe, e.g. 'UserRequest'
-	 * @return array An array containing the class summary, its attributes, its relations and its lifecycle
+	 * @return array An array containing the class summary, the caller's rights on the class, its attributes, its relations and its lifecycle
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
 	public static function execute(
