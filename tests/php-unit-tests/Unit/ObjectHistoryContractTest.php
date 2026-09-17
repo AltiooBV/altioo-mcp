@@ -8,7 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -108,6 +111,51 @@ class ObjectHistoryContractTest extends TestCase
 		$this->assertSame(ObjectHistory::DEFAULT_LIMIT, $aSchema['properties']['limit']['default']);
 		$this->assertLessThan(ObjectHistory::MAX_LIMIT, ObjectHistory::DEFAULT_LIMIT);
 		$this->assertSame(['class', 'id'], $aSchema['required']);
+	}
+
+	/**
+	 * Attribution is who-last-touched-this, which is precisely what the grant
+	 * on the change log decides. A read must not hand it out to a caller the
+	 * history tool would refuse.
+	 */
+	public function testAttributionIsWithheldFromACallerWhoMayNotReadTheLog(): void
+	{
+		$sBody = $this->bodyOf(ObjectHistory::class, 'AttributionFor');
+
+		$this->assertStringContainsString('IsReadable()', $sBody);
+		$this->assertStringContainsString('return null;', $sBody);
+	}
+
+	/**
+	 * Cheap enough to be unconditional for one object; the search tools ask,
+	 * because there the number of these reads is the page size.
+	 */
+	public function testASingleObjectReadIsAttributedWithoutBeingAsked(): void
+	{
+		$this->assertStringContainsString('AttributionFor', $this->bodyOf(ObjectGet::class, 'execute'));
+
+		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
+			$aSchema = (new $sTool())->getInputSchema();
+			$this->assertArrayHasKey('audit', $aSchema['properties'], $sTool.' cannot be asked for attribution');
+			$this->assertFalse($aSchema['properties']['audit']['default'], $sTool.' attributes every page by default');
+		}
+	}
+
+	/**
+	 * A page too large to attribute is refused rather than served slowly, and
+	 * the ceiling has to be below the paging one or it never bites.
+	 */
+	public function testAnUnattributablePageIsRefused(): void
+	{
+		$this->assertLessThan(ObjectSearchByOQL::MAX_LIMIT, ObjectHistory::MAX_AUDIT_PAGE);
+
+		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
+			$this->assertStringContainsString(
+				'refuseUnattributablePage',
+				$this->bodyOf($sTool, 'execute'),
+				$sTool.' serves an unbounded number of attribution reads'
+			);
+		}
 	}
 
 	/**
