@@ -106,6 +106,48 @@ final class TokenScopes
 		return array_values($aValues);
 	}
 
+	/**
+	 * Whether $sClass is a class whose rows can grade this endpoint.
+	 *
+	 * The token classes are named in TOKEN_CLASSES because the enumeration has
+	 * to be read before login, from classes that are known then. This answers
+	 * the question the other way round - given a class, does it carry a scope
+	 * attribute declaring scopes of ours - so that a class this module has
+	 * never heard of is recognised the day an iTop version or a pack adds it.
+	 *
+	 * AccessGrants is the caller: a class that can grade this endpoint is a
+	 * class this endpoint must not write, whatever its name turns out to be.
+	 *
+	 * False whenever it cannot be established - no MetaModel, an unknown
+	 * class, an attribute definition that raises. The name floor in
+	 * AccessGrants is what covers today's classes; this only ever adds to it,
+	 * so failing quietly here narrows nothing that was already refused.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function GradesThisEndpoint(string $sClass): bool
+	{
+		if (!class_exists('MetaModel')) {
+			return false;
+		}
+
+		try {
+			if (!MetaModel::IsValidClass($sClass) || !MetaModel::IsValidAttCode($sClass, 'scope')) {
+				return false;
+			}
+
+			foreach (self::PossibleScopeValues(MetaModel::GetAttributeDef($sClass, 'scope')) as $sValue) {
+				if (str_starts_with($sValue, MCPContext::SCOPE_MCP)) {
+					return true;
+				}
+			}
+		} catch (Throwable $e) {
+			MCPHelper::LogError('Could not read the scopes declared by '.$sClass.': '.$e->getMessage());
+		}
+
+		return false;
+	}
+
 	/** Whether this request authenticated with a token at all. */
 	public static function RequestCarriesAToken(): bool
 	{
