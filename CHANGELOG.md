@@ -304,6 +304,26 @@ published archive was installed and exercised on into this line; the README and
   never a class you search or a form you fill. Held by a test that derives the tools it covers
   from their toolsets, so one registered later is covered the day it appears.
 
+- **A read says what may be done to the object it just returned.** `core_class_schema` answers
+  for a class, and answers `depends` wherever the addon wants to be shown the object first — a
+  silo, or any rule graded per object. A read has the object, so it is the one place that
+  question can be settled, and `core_object_get` now settles it: `modify`, `bulkModify`,
+  `delete` and `bulkDelete` answered for that row. Only a class-level `depends` costs a query;
+  `yes` and `no` were answered without reference to any object and are carried straight through.
+
+  The lifecycle had the same gap. The schema reports every transition of every state, and only
+  the object knows which state it is in — so a model had to find the state attribute, match it
+  against the graph, and hope it picked the right one. A get now reports the current state and
+  the stimuli that state accepts, each graded by **both** gates `core_object_apply_stimulus`
+  checks: `UR_ACTION_MODIFY` on the object and `UserRights::IsStimulusAllowed()`, stricter
+  winning. A class with no lifecycle answers null rather than an empty list, since "no
+  transitions from here" and "this class has no states" are different claims.
+
+  `core_object_search_by_oql` and `_by_class` take `actions: true` for the same, capped at 25
+  objects like `audit`. Still gates and still a snapshot: `DoCheckToWrite()`, a mandatory
+  attribute the transition requires, or another user getting there first can each refuse a write
+  this reports as available.
+
 - **Reads say when an object was created and last changed, and by whom.** `core_object_get`
   carries an `audit` block always; `core_object_search_by_oql` and `core_object_search_by_class`
   take `audit: true` for it. There is no field behind this — iTop stamps neither on the object —

@@ -81,9 +81,9 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
-| `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, for a page of 25 or fewer |
+| `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
-| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution |
+| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
 | `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
