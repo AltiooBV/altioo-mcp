@@ -153,6 +153,26 @@ attribute *flag*, which a write path that checks `UserRights` and `IsWritable()`
 consult. So any door other than the console reaches the object without meeting that rule. The
 barrier above is this endpoint declining to be such a door.
 
+**The rights model has the same shape, and it is the reason `URP_*` is behind the barrier too.**
+iTop's protections against a user dismantling their own access — no deleting yourself, no
+stripping your last profile, no demoting yourself out of being able to come back, no granting
+yourself a profile that denies the backoffice — all live in `User::DoCheckToWrite()` and
+`User::DoCheckToDelete()`, and all of them fire only when `profile_list` appears in the changes
+**on the `User` object**. The link row itself carries no such check: in the rights addon a
+standard install actually runs (`userrightsprofile.db.class.inc.php`, which is what setup writes
+into the configuration), `URP_UserProfile` declares no `DoCheckToWrite()` and no
+`DoCheckToDelete()`. The `CheckIfProfileIsAllowed()` routine that blocks a non-administrator from
+granting the Administrator profile exists only in the *other* addon file, which a standard
+install does not load. And a link row written directly takes effect immediately —
+`UserRightsBaseClass` and `UserRightsBaseClassGUI` call `UserRights::FlushPrivileges()` on
+insert, update and delete, which is a hook that exists because direct writes happen.
+
+So one inserted row grants a profile without passing a single one of those checks. Whether any
+credential other than this endpoint's can reach that row is iTop's question and not one this
+document answers; what matters here is that **this** endpoint will not be the one that does, and
+that the self-guard keeps holding when `mcp_allow_access_administration` is on — a profile link
+naming the caller, and a grant on a profile the caller holds, stay refused.
+
 **No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
 bulk tools all default to `simulate: true` and return what the call *would* change, having run
 iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is the mitigation
