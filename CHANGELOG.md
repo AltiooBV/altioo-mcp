@@ -293,6 +293,26 @@ published archive was installed and exercised on into this line; the README and
 
 ### Added
 
+- **`core_object_history`, and with it the answer to "who changed this".** An iTop object
+  carries no creation or update stamp — `DBObject` declares neither — so until now the endpoint
+  could report what a ticket says and never when it was opened, who last touched it, or why a
+  value is what it is. That record is in the change log, which this reads: each operation with
+  its date, its user, the attribute affected and the values before and after, newest first.
+
+  It is a tool rather than a documented OQL query for two reasons. The log does not normalise
+  itself — `oldvalue` and `newvalue` live on `CMDBChangeOpSetAttributeScalar`, while text, case
+  logs, blobs and link sets each record differently, so a query against the parent returns rows
+  with no values and one against the scalar subclass silently misses every case-log entry. And
+  `CMDBChangeOp` is granted per profile *as a class*: the grant says nothing about the object a
+  row points at, nor about the attribute it names, and `objkey` is an integer column. Read
+  directly, it is a way around both silos and per-attribute rights. This applies the object gate
+  and today's attribute rights to every row — today's, not the ones in force when the row was
+  written, since a revocation that left the old value readable would be a revocation in name
+  only.
+
+  Served as its own `history` toolset, with an `MCP-toolset-history` token scope, so an operator
+  can withhold the change log without withholding object reads.
+
 - **`core_class_list` narrows by what the caller may do.** `may=create` returns the classes this
   user is allowed to create, each with the full rights block, in one call. Without it the only
   way to answer "what can I create here" was `core_class_schema` once per class — several hundred
