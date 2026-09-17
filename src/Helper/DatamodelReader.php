@@ -618,12 +618,16 @@ final class DatamodelReader
 	 * because the schema is where a model already goes for the attribute code.
 	 * {@see RestValue} is what makes both shapes arrive intact.
 	 *
-	 * The append is observed rather than inferred: two successive plain-string
-	 * writes on a live instance left two entries, the first one intact, and the
-	 * dry run reported the same shape the real write then produced - which is
-	 * worth having for this type in particular, since a case log is where a
-	 * simulated diff could plausibly disagree with what
-	 * AttributeCaseLog::FromJSONToValue() does on the real path. It did not.
+	 * The append is what the source does, and what an instance was watched
+	 * doing. `AttributeCaseLog::FromJSONToValue()` passes a string straight
+	 * through and takes `add_item` as the entry, refusing it without a
+	 * `message`; `MakeRealValue()` then clones the log already on the object
+	 * and appends to that clone, which is where "keeps the entries already
+	 * there" comes from. Two successive plain-string writes on a live instance
+	 * left two entries with the first intact, and the dry run reported the same
+	 * shape the real write then produced - worth confirming for this type in
+	 * particular, since a case log is where a simulated diff could plausibly
+	 * disagree with the real path. It did not.
 	 *
 	 * @return array<string, string> Empty for a type that needs no hint.
 	 */
