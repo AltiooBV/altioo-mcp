@@ -38,7 +38,7 @@ class SchemaToolsContractTest extends TestCase
 	 * A stock datamodel runs to several hundred classes. Narrowing that a
 	 * client cannot ask for is narrowing that never happens.
 	 */
-	public function testListExposesBothNarrowingArgumentsToTheClient(): void
+	public function testListExposesEveryNarrowingArgumentToTheClient(): void
 	{
 		$aSchema = (new ClassList())->getInputSchema();
 
@@ -46,6 +46,22 @@ class SchemaToolsContractTest extends TestCase
 		$this->assertSame('string', $aSchema['properties']['category']['type']);
 		$this->assertArrayHasKey('filter', $aSchema['properties']);
 		$this->assertSame('string', $aSchema['properties']['filter']['type']);
+		$this->assertArrayHasKey('may', $aSchema['properties']);
+		$this->assertSame('string', $aSchema['properties']['may']['type']);
+	}
+
+	/**
+	 * The gates a client may send are the gates a rights block reports.
+	 *
+	 * Declared as an enum so a client can reject a bad one before the round
+	 * trip, and taken from RightsKeys() so that the schema, the refusal message
+	 * and the block itself cannot come apart.
+	 */
+	public function testTheGatesOfferedAreTheGatesReported(): void
+	{
+		$aSchema = (new ClassList())->getInputSchema();
+
+		$this->assertSame(DatamodelReader::RightsKeys(), $aSchema['properties']['may']['enum']);
 	}
 
 	/**
@@ -62,7 +78,7 @@ class SchemaToolsContractTest extends TestCase
 			$this->assertSame('', $oParameter->getDefaultValue(), "ClassList::execute() parameter {$sName} defaults to something other than 'no narrowing'");
 		}
 
-		$this->assertSame(['category', 'filter'], array_keys($this->parameters(ClassList::class)));
+		$this->assertSame(['category', 'filter', 'may'], array_keys($this->parameters(ClassList::class)));
 	}
 
 	public function testSchemaToolRequiresTheClassItDescribes(): void
@@ -144,6 +160,109 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertSame([0], array_keys($aFiltered));
 		$this->assertStringStartsWith('[', json_encode($aFiltered));
+	}
+
+	/**
+	 * A refusal removes the class; 'depends' does not.
+	 *
+	 * 'depends' is the addon asking for the object before it answers, so the
+	 * class is one the caller may well be able to act on. Dropping it hides
+	 * work that can be done, which is the opposite of what narrowing by rights
+	 * is for.
+	 */
+	public function testNarrowingByRightKeepsWhatWasNotRefused(): void
+	{
+		$aClasses = [
+			['class' => 'UserRequest', 'rights' => ['create' => 'yes']],
+			['class' => 'Server', 'rights' => ['create' => 'no']],
+			['class' => 'Contact', 'rights' => ['create' => 'depends']],
+		];
+
+		$this->assertSame(
+			['UserRequest', 'Contact'],
+			$this->names(DatamodelReader::FilterByRight($aClasses, 'create'))
+		);
+	}
+
+	/**
+	 * One gate at a time: a class refused the gate that was asked about stays
+	 * out however generous the others are.
+	 */
+	public function testNarrowingReadsOnlyTheGateItWasAskedAbout(): void
+	{
+		$aClasses = [
+			['class' => 'Server', 'rights' => ['create' => 'yes', 'delete' => 'no']],
+		];
+
+		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByRight($aClasses, 'create')));
+		$this->assertSame([], $this->names(DatamodelReader::FilterByRight($aClasses, 'delete')));
+	}
+
+	/**
+	 * No gate means no narrowing - not an empty result, which is the reading
+	 * that would make an unset argument look like a locked-down instance.
+	 */
+	public function testAnEmptyGateKeepsEverything(): void
+	{
+		$aClasses = [['class' => 'Server', 'rights' => ['create' => 'no']]];
+
+		$this->assertSame($aClasses, DatamodelReader::FilterByRight($aClasses, ''));
+	}
+
+	/**
+	 * Only a refusal removes anything. A summary carrying no rights block says
+	 * nothing about the caller, and silence is not a refusal.
+	 */
+	public function testASummaryWithNoRightsBlockIsKept(): void
+	{
+		$aClasses = [['class' => 'Server']];
+
+		$this->assertCount(1, DatamodelReader::FilterByRight($aClasses, 'create'));
+	}
+
+	/**
+	 * Same reason as the text filter: a gapped array JSON-encodes as an object
+	 * keyed by the surviving indices instead of a list.
+	 */
+	public function testNarrowingByRightReturnsAList(): void
+	{
+		$aClasses = [
+			['class' => 'Contact', 'rights' => ['create' => 'no']],
+			['class' => 'Server', 'rights' => ['create' => 'yes']],
+		];
+
+		$aFiltered = DatamodelReader::FilterByRight($aClasses, 'create');
+
+		$this->assertSame([0], array_keys($aFiltered));
+		$this->assertStringStartsWith('[', json_encode($aFiltered));
+	}
+
+	/**
+	 * RightsKeys() is written out by hand because rights() cannot be called
+	 * without iTop. This is what keeps the two level: every key the block
+	 * writes is one a caller can narrow on, and no key is offered that the
+	 * block never carries.
+	 *
+	 * A source scan for the same reason as CurrentUserContactTest - the method
+	 * needs UserRights, and this suite boots no iTop.
+	 */
+	public function testTheGateListMatchesTheBlockItDescribes(): void
+	{
+		$oMethod = new ReflectionMethod(DatamodelReader::class, 'rights');
+		$aLines = file($oMethod->getFileName());
+		$sBody = implode('', array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		));
+
+		preg_match_all("/'([A-Za-z]+)'\\s*=>/", $sBody, $aMatches);
+
+		$this->assertSame(
+			DatamodelReader::RightsKeys(),
+			$aMatches[1],
+			'RightsKeys() and the block rights() returns have come apart'
+		);
 	}
 
 	public function testFilteringToleratesSummariesMissingAField(): void
