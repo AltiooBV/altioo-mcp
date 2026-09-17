@@ -293,6 +293,16 @@ published archive was installed and exercised on into this line; the README and
 
 ### Added
 
+- **Reads say when an object was created and last changed, and by whom.** `core_object_get`
+  carries an `audit` block always; `core_object_search_by_oql` and `core_object_search_by_class`
+  take `audit: true` for it. There is no field behind this — iTop stamps neither on the object —
+  so it is two indexed single-row reads of the change log per object. That is cheap once and
+  unbounded over a page, so the search tools refuse `audit` for a page of more than 25 rather
+  than serving it slowly. The block is absent entirely for a caller who may not read
+  `CMDBChangeOp`: who last touched an object is what that grant decides. Note for operators —
+  the gate is the profile grant, not the `history` toolset, which withholds the tool rather than
+  the fact.
+
 - **`core_object_history`, and with it the answer to "who changed this".** An iTop object
   carries no creation or update stamp — `DBObject` declares neither — so until now the endpoint
   could report what a ticket says and never when it was opened, who last touched it, or why a
