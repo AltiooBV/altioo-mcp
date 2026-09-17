@@ -138,6 +138,13 @@ opposed to the recoverable types an object's own secrets live in — or if iTop 
 credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused. Manage them in the
 console, which is where granting access belongs.
 
+That last sentence is not only advice. iTop enforces its own token-management rule —
+`personal_tokens_allowed_profiles` — in the console controller and again at login, never on the
+object: `PersonalToken` declares no `DoCheckToWrite()`, and the `user_id` protection is an
+attribute *flag*, which a write path that checks `UserRights` and `IsWritable()` does not
+consult. So any door other than the console reaches the object without meeting that rule. The
+barrier above is this endpoint declining to be such a door.
+
 **No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
 bulk tools all default to `simulate: true` and return what the call *would* change, having run
 iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is the mitigation
@@ -205,6 +212,11 @@ particular, and specifically relevant here:
   working iTop credential.
 - Grant `MCP Services User` alongside a functional profile chosen for this purpose — the paired
   profile is the real blast radius, not the MCP profile itself.
+- Review **`personal_tokens_allowed_profiles`** (authent-token, default `array('Administrator')`)
+  before assuming every token holder is an administrator. It is checked when a token *logs in*,
+  so adding a profile to it widens who can hold a working credential for every API on this
+  instance, this endpoint included — and it is the reason a token minted against the wrong
+  account is worth something rather than nothing.
 - Leave `log_mcp_level` at `error` in normal operation: `debug` stores raw request parameters,
   which may contain data your users would not expect to find in an audit log.
 - Review `AltiooEventMCPService` retention against your own data-retention policy.
