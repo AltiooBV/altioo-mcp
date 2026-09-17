@@ -204,20 +204,42 @@ final class ServerInstructions
 	}
 
 	/**
-	 * The dry-run protocol, which is the whole of what this block says and is
-	 * addressed to a caller that can actually destroy something. Told to a
-	 * token that cannot, it plants the belief that deletion here is reversible
-	 * by default - a belief that outlives the tool name it arrived with.
+	 * The two conventions every writing tool shares, said once.
+	 *
+	 * Said here rather than in each tool's description because this block is
+	 * narrowed per caller and a description is not: a caller that cannot write
+	 * never reads it, and one that can reads it once instead of six times in a
+	 * tools/list it pays for on every connection. What stays on the tools is
+	 * the mechanics a model needs while composing the call - the `simulate`
+	 * and `comment` properties themselves - since an instruction block is
+	 * advisory and some clients drop it.
+	 *
+	 * The delete line is still gated on holding delete. Told to a token that
+	 * cannot, it plants the belief that deletion here is reversible by
+	 * default - a belief that outlives the tool name it arrived with.
 	 */
 	private static function writingSection(AccessPolicy $oPolicy): string
 	{
-		if (!$oPolicy->allowsToolset(self::TOOLSET_OBJECTS) || !$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE)) {
+		if (!$oPolicy->allowsToolset(self::TOOLSET_OBJECTS) || !self::mayChangeSomething($oPolicy)) {
 			return '';
 		}
 
-		return "Writing\n"
-			.'- core_object_delete is a dry run by default. Call it with simulate=true, show the'
-			."\n".'deletion plan to the user, and only then call it again with simulate=false.';
+		$sText = "Writing\n"
+			.'- Every writing tool is a dry run by default. simulate=true validates the call and'
+			."\n".'reports what would change without writing it; show that to the user, then call'
+			."\n".'again with simulate=false to go through with it.'
+			."\n".'- comment takes the reason the user gave, in one short sentence, and it is'
+			."\n".'recorded in the object\'s history beside the user and the tool. Leave it out'
+			."\n".'rather than restating the call: "customer confirmed the laptop came back" is'
+			."\n".'worth recording, "updating the ticket" is not.';
+
+		if (!$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE)) {
+			return $sText;
+		}
+
+		return $sText
+			."\n".'- core_object_delete reports a deletion plan on the dry run: what else iTop would'
+			."\n".'delete or update along with the object. Show the plan, not just the object.';
 	}
 
 	/** Whether anything this caller holds can alter an object. */
