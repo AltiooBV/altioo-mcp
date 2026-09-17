@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
@@ -128,6 +129,9 @@ class ObjectDelete extends AbstractMCPTool
 
 		if (ObjectHistory::IsReserved($class)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		}
+		if (AccessGrants::IsGranting($class)) {
+			throw new ToolCallException(sprintf(AccessGrants::GRANT_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
