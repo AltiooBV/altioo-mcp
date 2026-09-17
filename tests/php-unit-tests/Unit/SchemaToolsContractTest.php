@@ -107,6 +107,75 @@ class SchemaToolsContractTest extends TestCase
 	}
 
 	/**
+	 * The writable attributes and the ones nobody writes are two blocks.
+	 *
+	 * A stock UserRequest runs to around a hundred attributes, and most of what
+	 * a class with many external keys carries is the `_friendlyname` and
+	 * `_obsolescence_flag` companion iTop attaches to each of them. Those are
+	 * never an answer to "what can I set", and a reader looking for one had to
+	 * scan past all of them to find out.
+	 *
+	 * Checked on the shape of Describe(), not on a live datamodel: the split
+	 * has to be readOnly and nothing else, because that is the datamodel's own
+	 * answer and it moves when iTop adds an attribute type. A list of attribute
+	 * class names here would be a second answer to keep level with the first.
+	 */
+	public function testTheSchemaSeparatesWhatCanBeSetFromWhatCannot(): void
+	{
+		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+
+		$this->assertStringContainsString("'attributes'", $sBody);
+		$this->assertStringContainsString("'derived'", $sBody);
+		$this->assertStringContainsString(
+			"'readOnly'",
+			$sBody,
+			'Describe() must split on the datamodel\'s own IsWritable() answer, carried as readOnly, rather than on a list of attribute class names that goes stale when iTop adds one'
+		);
+
+		// Both blocks come out of one enumeration, so an attribute cannot fall
+		// between them or land in both.
+		$this->assertSame(
+			1,
+			substr_count($sBody, 'self::attributes('),
+			'the two blocks must be filtered from a single pass, or an attribute can be enumerated into neither'
+		);
+	}
+
+	public function testTheDescriptionSaysWhichBlockHoldsWhat(): void
+	{
+		// The only string a model reads before it picks a block.
+		$sDescription = (new ClassSchema())->getDescription();
+
+		$this->assertStringContainsString('derived', $sDescription);
+		$this->assertStringContainsString('_friendlyname', $sDescription);
+	}
+
+	/**
+	 * The body of a method, comments stripped, so that a doc comment describing
+	 * a split cannot stand in for the split.
+	 */
+	private function methodBody(string $sClass, string $sMethod): string
+	{
+		$oMethod = new ReflectionMethod($sClass, $sMethod);
+		$aLines = file($oMethod->getFileName());
+		$sSource = implode('', array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		));
+
+		$sCode = '';
+		foreach (token_get_all('<?php '.$sSource) as $mToken) {
+			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+				continue;
+			}
+			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
+		}
+
+		return $sCode;
+	}
+
+	/**
 	 * Both narrowing arguments are optional, on both sides: "list everything"
 	 * has to stay one call away, and the SDK binds by name off the signature.
 	 */

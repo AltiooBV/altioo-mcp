@@ -28,7 +28,7 @@ class ClassDetail extends AbstractMCPResourceTemplate
 
 	public function getDescription(): ?string
 	{
-		return 'Get details of a specific iTop class: attributes, relations, lifecycle, and what the current user may do with it - a "rights" block grading read, bulkRead, create, bulkCreate, modify, bulkModify, delete and bulkDelete as "yes", "no" or "depends", and the same grade on each attribute under "modify". URI: itop://core/class/{class}. The core_class_schema tool returns the same thing for clients that do not read resource templates.';
+		return 'Get details of a specific iTop class: attributes, relations, lifecycle, and what the current user may do with it. Attributes arrive in two blocks - "attributes" for the ones that can be written and "derived" for the computed and structural ones, which on a class with many external keys is most of them - a "rights" block grading read, bulkRead, create, bulkCreate, modify, bulkModify, delete and bulkDelete as "yes", "no" or "depends", and the same grade on each attribute under "modify". URI: itop://core/class/{class}. The core_class_schema tool returns the same thing for clients that do not read resource templates.';
 	}
 
 	/** The datamodel itself: what classes exist and what they look like. */

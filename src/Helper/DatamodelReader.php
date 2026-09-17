@@ -361,6 +361,26 @@ final class DatamodelReader
 	 * One class in full: the summary, the caller's rights on it, plus
 	 * attributes, relations and lifecycle.
 	 *
+	 * The attributes arrive in two blocks, and the line between them is the
+	 * question a caller is usually asking. `attributes` holds the ones the
+	 * datamodel lets anybody write, which is the answer to "what can I set".
+	 * `derived` holds the ones nobody writes: computed or structural, and on a
+	 * class with many external keys most of the payload - iTop gives every such
+	 * key a `_friendlyname` companion and, where the target can go obsolete, an
+	 * `_obsolescence_flag`, so a hundred-attribute class is largely mechanical
+	 * and a reader scanning for a writable field scrolls past all of it.
+	 *
+	 * Split rather than dropped, and split on IsWritable() rather than on a
+	 * list of attribute classes: the datamodel already answers this, the answer
+	 * moves when iTop adds an attribute type, and a hardcoded list would go
+	 * quietly wrong the first time it did. An entry has the same shape in both
+	 * blocks - `readOnly` still on it, still saying which side it is on - so a
+	 * caller that wants them together can merge the two and lose nothing.
+	 *
+	 * The two are separate keys rather than one key and a flag because the flag
+	 * was already there and did not help: `readOnly` told a reader which
+	 * attributes to ignore only after it had read all of them.
+	 *
 	 * Readability is the caller's to check - see {@see IsReadable()} - because
 	 * only the caller knows which exception its surface has to raise.
 	 *
@@ -369,9 +389,12 @@ final class DatamodelReader
 	 */
 	public static function Describe(string $sClass): array
 	{
+		$aAttributes = self::attributes($sClass);
+
 		return self::Summarize($sClass) + [
 			'rights'     => self::RightsOf($sClass),
-			'attributes' => self::attributes($sClass),
+			'attributes' => array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === false),
+			'derived'    => array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === true),
 			'relations'  => self::relations($sClass),
 			'lifecycle'  => self::lifecycle($sClass),
 		];

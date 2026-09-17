@@ -71,6 +71,27 @@ entry itself, not left to be inferred from it.
 
 ### Changed
 
+- **The class schema separates what can be written from what cannot.** A stock `UserRequest` runs
+  to around a hundred attributes, and most of what a class with many external keys carries is
+  mechanical: iTop attaches a `_friendlyname` companion to every external key, and an
+  `_obsolescence_flag` wherever the target can go obsolete. None of that is an answer to "what can
+  I set", and a reader looking for one had to scan past all of it — the `readOnly` flag was already
+  on each entry, but it only helped after every entry had been read.
+
+  `core_class_schema` and `itop://core/class/{class}` now return `attributes` for the ones that can
+  be written and `derived` for the computed and structural ones. Nothing is dropped, and an entry
+  has the same shape in both blocks — `readOnly` still on it — so a caller that wants them together
+  merges the two and loses nothing.
+
+  The split is `IsWritable()`, the datamodel's own answer, rather than a list of attribute class
+  names: that list would go quietly wrong the first time iTop added a type to it.
+
+- **`core_class_list` can report the rights without narrowing on one of them.** A rights block has
+  always carried all eight grades, so one call already answered "what may I create versus modify
+  versus delete" — but asking for the block and narrowing on a gate were the same request, so the
+  classes a gate refuses were dropped from the very answer meant to say so. `may="*"` reports the
+  block on every class and narrows on none.
+
 - **`core_object_get_related` now requires `UR_ACTION_BULK_READ` for any class it returns more
   than one object of.** It checked `UR_ACTION_READ` and nothing else, while returning a set —
   so a credential deliberately issued without the bulk right got, through one reachable object
