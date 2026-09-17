@@ -180,6 +180,14 @@ class ObjectBulkCreate extends AbstractBulkTool
 			return self::outcome(null, $iRow, false, implode(' ', $aIssues));
 		}
 
+		// Declared before the try, because the catch reads them: a throw from
+		// DBInsert() can land after the row was committed, and the entry that
+		// then reports the object has to carry the same keys as one that
+		// reported the dry run.
+		$oObject     = null;
+		$aChanges    = [];
+		$aOverridden = [];
+
 		try {
 			$oObject = MetaModel::NewObject($sClass);
 			foreach ($aValues as $sAttCode => $value) {
@@ -220,6 +228,38 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// One row that cannot be created does not cancel the others.
 			return self::outcome(null, $iRow, false, $e->getMessage());
 		} catch (\Throwable $e) {
+			// A throw here does not mean this row wrote nothing. DBInsert()
+			// commits in DBInsertNoReload() and only then reloads the object,
+			// so anything raised by the second half - an after-write listener,
+			// a reload of external values, a TypeError in this module's own
+			// reporting - arrives with the row already in the database.
+			//
+			// Observed: a bulk create of two duplicate lnkContactToTicket rows
+			// answered "succeeded: 0, failed: 2" with the first row committed.
+			// Which of those threw is in that instance's log and not here; the
+			// uniqueness rule is not it, since DoCheckUniqueness() runs inside
+			// DoCheckToWrite() and so refuses before the insert - which is
+			// exactly what the second row got, cleanly and by name.
+			//
+			// Reported as the success it is, with the failure attached rather
+			// than substituted for it, exactly as core_object_create does:
+			// "succeeded: 0" for a row that exists is the answer a caller
+			// either retries, creating a second object, or passes on to a user
+			// as a change that did not happen.
+			$iCommittedId = WritePlan::CommittedId($oObject);
+			if ($iCommittedId !== null) {
+				return self::outcome($iCommittedId, $iRow, true, "Created, but the call failed after the write.")
+					+ WritePlan::Identity($sClass, $iCommittedId)
+					+ [
+						'changes'    => $aChanges,
+						'overridden' => $aOverridden,
+						'warning'    => MCPHelper::OpaqueFailure(
+							"Row {$iRow} was created with id {$iCommittedId}, but the call failed after the write",
+							$e
+						),
+					];
+			}
+
 			// The ToolCallException branch above carries this module's own
 			// refusals, which are what the caller fixes the row with. This one
 			// carries the ORM's, which it does not.
