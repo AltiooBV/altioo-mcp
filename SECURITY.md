@@ -135,8 +135,16 @@ a `scope` attribute that can hold an `MCP*` value, if it carries an `AttributeOn
 the type iTop verifies a login against, which stores a salted hash that cannot be read back, as
 opposed to the recoverable types an object's own secrets live in — or if iTop files it under its
 `addon/userrights` category. So a
-credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused. Manage them in the
-console, which is where granting access belongs.
+credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused.
+
+`mcp_allow_access_administration` (default `false`) lets an instance opt into that
+administration where an operator wants it — onboarding a user, retiring a leaked token. It opts
+in to administering **other people's** access only: a call that reaches the access the caller is
+connected with stays refused, and that guard does not read the setting. Not the token it
+authenticated with, not another of its own, not its own account, not a profile link naming it,
+not a grant on a profile it holds. The guard is asked of the row rather than the verb — minting a
+second, wider token is easier than editing the one in hand — and it refuses whenever it cannot
+establish whose access a row is.
 
 That last sentence is not only advice. iTop enforces its own token-management rule —
 `personal_tokens_allowed_profiles` — in the console controller and again at login, never on the
@@ -169,7 +177,7 @@ reference.
 | Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | Dry run by default on every write; `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; `UserRights` on every object and attribute |
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
-| An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too |
+| An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |

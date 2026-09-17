@@ -324,7 +324,34 @@ entry itself, not left to be inferred from it.
   This is narrower than "an administrator can do anything anyway", which is true and is not the
   point: an administrator reaching these classes through the console was always out of scope,
   while an administrator reaching them through a credential minted to be narrow is precisely
-  the escalation the scopes exist to prevent. Manage tokens and profiles in the console.
+  the escalation the scopes exist to prevent.
+
+- **`mcp_allow_access_administration` lets an instance opt into that administration anyway —
+  for other people, never for the caller.** Onboarding a user and retiring somebody's leaked
+  token are ordinary administration, and an operator who wants an assistant doing them had no
+  way to say so. The setting is `false` by default and an instance that never heard of it gets
+  the refusal above.
+
+  Turned on, one rule survives and no configuration lifts it: **a call that reaches the access
+  the caller is connected with is refused.** Not the token it authenticated with, not another
+  token of its own, not its own account, not a profile link naming it, and not a grant on a
+  profile it holds. Without that, opting in would hand back the whole escalation — widen the
+  scope of the token in your hand, or mint a second one that is wider, and the narrow credential
+  an operator issued was never narrow.
+
+  The guard is asked of the **row**, because which verb is cheapest depends on the row: a create
+  carries its owner in the values it is given, an update can re-point someone else's token at the
+  caller, and deleting the credential in use is the self-harm iTop's console already refuses. It
+  refuses whenever it cannot tell — no login, a row that will not load, a create naming no owner,
+  which is a create for the caller since iTop's own controller fills that field in. Being wrong
+  the other way is the escalation; being wrong this way is a refusal an administrator satisfies
+  from the console.
+
+  It is iTop's own rule, moved one layer out. The console will not let a user delete themselves,
+  strip their last profile, or demote themselves out of being able to come back — `User` checks
+  all three in `DoCheckToWrite()` and `DoCheckToDelete()`. This applies the same idea to the
+  credential rather than the session, because a credential is what a caller of this endpoint
+  holds. Manage your own token, account and profiles in the console.
 
 Everything else written so far ships in 1.0.0. Nothing above has shipped — 1.0.0 is untagged, so
 this entry folds into it at release rather than describing a change anyone has seen.
