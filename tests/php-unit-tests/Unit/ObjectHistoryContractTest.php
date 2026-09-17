@@ -12,7 +12,9 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
+use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -156,6 +158,79 @@ class ObjectHistoryContractTest extends TestCase
 				$sTool.' serves an unbounded number of attribution reads'
 			);
 		}
+	}
+
+	/**
+	 * The change log is not an object the object tools serve.
+	 *
+	 * CMDBChange and CMDBChangeOp are ordinary DBObjects, so every generic
+	 * tool would otherwise treat them as ordinary objects - and reach the rows
+	 * without the object gate and the attribute gate this surface applies one
+	 * layer above them. The console draws the same line: history is a tab on
+	 * an object, never a class you search or a form you fill.
+	 *
+	 * Stated over the toolsets rather than over a list of tools, so that a
+	 * tool added to any of them later is covered by this test on the day it is
+	 * registered rather than on the day someone remembers.
+	 *
+	 * @dataProvider objectFacingToolProvider
+	 */
+	public function testNoObjectToolWillTouchTheChangeLog(string $sName, string $sClass): void
+	{
+		$this->assertStringContainsString(
+			'IsReserved',
+			$this->sourceWithParents($sClass),
+			"{$sName} accepts a class without asking whether it is the change log"
+		);
+	}
+
+	/**
+	 * Every registered tool whose toolset is about objects, their documents or
+	 * their relations. The datamodel and server toolsets describe rather than
+	 * fetch, and the history toolset is the surface itself.
+	 *
+	 * @return array<string, array{0: string, 1: string}>
+	 */
+	public static function objectFacingToolProvider(): array
+	{
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+
+		$aCases = [];
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			if (in_array($oTool->getToolset(), ['objects', 'documents', 'relations'], true)) {
+				$aCases[$sName] = [$sName, get_class($oTool)];
+			}
+		}
+		MCPRegistry::Clear();
+
+		self::assertNotEmpty($aCases, 'no object-facing tool was found; the scan has stopped working');
+
+		return $aCases;
+	}
+
+	/** Reserved roots cover their subclasses, which is what a list would not. */
+	public function testTheReservationCoversSubclasses(): void
+	{
+		$this->assertTrue(ObjectHistory::IsReserved('CMDBChangeOp'));
+		$this->assertTrue(ObjectHistory::IsReserved('CMDBChange'));
+		$this->assertFalse(ObjectHistory::IsReserved('UserRequest'));
+		// Case is not what decides it: OQL is parsed before this is asked.
+		$this->assertTrue(ObjectHistory::IsReserved('cmdbchangeop'));
+	}
+
+	/** The source of a class and of every ancestor it inherits a guard from. */
+	private function sourceWithParents(string $sClass): string
+	{
+		$sSource = '';
+		for ($oClass = new ReflectionClass($sClass); $oClass !== false; $oClass = $oClass->getParentClass()) {
+			$sFile = $oClass->getFileName();
+			if ($sFile !== false) {
+				$sSource .= file_get_contents($sFile);
+			}
+		}
+
+		return $sSource;
 	}
 
 	/**
