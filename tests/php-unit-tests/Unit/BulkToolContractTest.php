@@ -76,6 +76,39 @@ class BulkToolContractTest extends TestCase
 		$this->assertSame(1, $aList['minItems']);
 	}
 
+	/**
+	 * The schema has to accept what checkIds() accepts.
+	 *
+	 * Observed on a live instance: core_object_bulk_delete was handed the ids
+	 * a read had just reported - ["1", "2"] - and the call was refused as
+	 * "Expected integer, but received string" before it reached the tool at
+	 * all. iTop's key is a string all the way out of the ORM, so every read
+	 * here answers "id": "4", and a caller passing back exactly what it was
+	 * given was the one thing the id list would not take.
+	 *
+	 * testDigitStringsAreAcceptedAsIds() below covers the runtime and passed
+	 * throughout: the disagreement was between the two, which is the kind only
+	 * a test that reads both can see.
+	 *
+	 * @dataProvider bulkToolProvider
+	 */
+	public function testTheIdSchemaAcceptsTheIdsAReadReports(object $oTool): void
+	{
+		$aProperties = $oTool->getInputSchema()['properties'];
+		if (!isset($aProperties['ids'])) {
+			// bulk_create takes rows of fields, not ids.
+			$this->assertArrayHasKey('objects', $aProperties);
+
+			return;
+		}
+
+		$mType = $aProperties['ids']['items']['type'];
+
+		$this->assertContains('string', (array) $mType, 'a read reports id as a string, so the id list has to take one');
+		$this->assertContains('integer', (array) $mType, 'and a client sending a number is not wrong either');
+		$this->assertSame('^[0-9]+$', $aProperties['ids']['items']['pattern'] ?? null, 'a string id is digits, not free text');
+	}
+
 	public function testTheDeleteToolIsAnnotatedDestructiveAndNotIdempotent(): void
 	{
 		$aAnnotations = (new ObjectBulkDelete())->getAnnotations()->jsonSerialize();
