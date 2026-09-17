@@ -79,6 +79,104 @@ class DatamodelRightsContractTest extends TestCase
 	}
 
 	/**
+	 * Every bulk tool has a key of its own in the block.
+	 *
+	 * The other direction of the rule above, and the one that would have caught
+	 * bulkCreate missing. Grading the raw UR_ACTION_* constants is not the same
+	 * as answering the question a model asks, because a model calls tools, not
+	 * rights - and a bulk tool is gated on two of them at once. Two of the three
+	 * pairs can be guessed from their names. Bulk creation cannot: iTop has no
+	 * UR_ACTION_BULK_CREATE, so it is gated on UR_ACTION_BULK_MODIFY, and a
+	 * model reading 'create' and 'bulkModify' has no way to learn that those
+	 * two together are the answer.
+	 *
+	 * So each verb a bulk tool declares has to come back as bulk<Verb>. A tool
+	 * added later with a verb nobody graded fails here rather than in the field.
+	 */
+	public function testEveryBulkToolHasAKeyOfItsOwn(): void
+	{
+		$aVerbs = [];
+		foreach ($this->sourceFiles() as $sPath) {
+			preg_match_all(
+				"/checkBulkAllowed\([^;]*?,\s*'(\w+)'\s*\)/",
+				file_get_contents($sPath),
+				$aMatches
+			);
+			foreach ($aMatches[1] as $sVerb) {
+				$aVerbs[$sVerb] = $sVerb;
+			}
+		}
+		$sRights = $this->body('rights');
+
+		$this->assertNotEmpty($aVerbs, 'no checkBulkAllowed() call site found - the scan is looking in the wrong place');
+
+		$aMissing = [];
+		foreach ($aVerbs as $sVerb) {
+			$sKey = 'bulk'.ucfirst($sVerb);
+			if (!str_contains($sRights, "'{$sKey}'")) {
+				$aMissing[] = $sKey.' (for the bulk '.$sVerb.' tool)';
+			}
+		}
+		sort($aMissing);
+
+		$this->assertSame(
+			[],
+			$aMissing,
+			'DatamodelReader::rights() has no key for '.implode(', ', $aMissing)
+			.'. A model cannot work the gate out from the raw rights: it calls the tool, not the action.'
+		);
+	}
+
+	/**
+	 * And bulkCreate is that conjunction, not a right read off iTop.
+	 *
+	 * Pinned because the temptation, the next time somebody tidies this, is to
+	 * look for UR_ACTION_BULK_CREATE and wire it up. There is no such constant,
+	 * and a key that silently became one right instead of two would report a
+	 * permission the tool does not grant on.
+	 */
+	public function testBulkCreateIsTheConjunctionAndNotAnInventedRight(): void
+	{
+		$sRights = $this->body('rights');
+
+		$this->assertMatchesRegularExpression(
+			"/'bulkCreate'\s*=>\s*self::stricter\(/",
+			$sRights,
+			'bulkCreate is no longer derived from two grades'
+		);
+		$this->assertStringNotContainsString(
+			'UR_ACTION_BULK_CREATE',
+			$sRights,
+			'UR_ACTION_BULK_CREATE does not exist in iTop - see ObjectBulkCreate'
+		);
+	}
+
+	/**
+	 * The conjunction itself, which needs no iTop: both halves have to allow
+	 * the call, so the worse grade is the answer. 'depends' beating 'yes' is
+	 * the case worth writing down - a pair is settled only when both halves
+	 * are, and one half still asking for the object leaves the pair asking.
+	 */
+	public function testStricterTakesTheWorseOfTwoGrades(): void
+	{
+		$oStricter = new ReflectionMethod(DatamodelReader::class, 'stricter');
+
+		$this->assertSame('yes', $oStricter->invoke(null, 'yes', 'yes'));
+
+		$this->assertSame('depends', $oStricter->invoke(null, 'yes', 'depends'));
+		$this->assertSame('depends', $oStricter->invoke(null, 'depends', 'yes'));
+		$this->assertSame('depends', $oStricter->invoke(null, 'depends', 'depends'));
+
+		foreach ([['no', 'yes'], ['yes', 'no'], ['no', 'depends'], ['depends', 'no'], ['no', 'no']] as $aPair) {
+			$this->assertSame(
+				'no',
+				$oStricter->invoke(null, $aPair[0], $aPair[1]),
+				"({$aPair[0]}, {$aPair[1]}) has a refusal in it and must grade 'no'"
+			);
+		}
+	}
+
+	/**
 	 * UR_ALLOWED_DEPENDS keeps a word of its own.
 	 *
 	 * Folded into either neighbour it becomes an answer nobody gave: the addon
