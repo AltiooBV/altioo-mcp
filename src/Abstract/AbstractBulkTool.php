@@ -93,7 +93,16 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				'description' => 'Ids of the objects to act on, at most '.self::MAX_OBJECTS.'. Find them with core_object_search_by_oql or core_object_search_by_class. '
 					.'Both report "total" for the whole matching set beside the page they return, so one search with limit=1 says how many objects the work covers before it is split into calls of '.self::MAX_OBJECTS.'. '
 					.'The "total" a bulk call answers with is the ids it was given, never the size of a set it was not shown.',
-				'items'       => ['type' => 'integer', 'minimum' => 1],
+				// Both spellings, because a caller pasting back what it just
+				// read is sending strings: iTop's key is a string all the way
+				// out of the ORM, so every read here reports "id": "4" and a
+				// client validating ["4"] against an integer-only schema
+				// refuses the call before it is ever dispatched. checkIds() has
+				// always accepted either and is what actually decides; this is
+				// the schema catching up with it. `minimum` grades the numbers
+				// and `pattern` the strings - each keyword applies only to the
+				// type it belongs to.
+				'items'       => ['type' => ['integer', 'string'], 'minimum' => 1, 'pattern' => '^[0-9]+$'],
 				'minItems'    => 1,
 				'maxItems'    => self::MAX_OBJECTS,
 			],
