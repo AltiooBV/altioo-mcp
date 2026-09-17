@@ -40,20 +40,46 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class ObjectHistoryContractTest extends TestCase
 {
-	public function testTheLogItselfIsGatedBeforeAnythingIsLookedUp(): void
+	/**
+	 * The object is the gate, and there is no second one.
+	 *
+	 * ActivityPanelHelper reads these same rows for whatever object is on
+	 * screen and asks UserRights nothing about CMDBChangeOp: in the console,
+	 * seeing the ticket is seeing its history. A class grant required here
+	 * would make this stricter than the UI it mirrors, on an instance where
+	 * nobody had granted something iTop never asks for - which is what it did,
+	 * until a get on a real ticket came back with the object and no audit
+	 * block.
+	 */
+	public function testTheChangeLogNeedsNoGrantOfItsOwn(): void
 	{
-		$sBody = $this->bodyOf(HistoryTool::class, 'execute');
+		foreach ([[HistoryTool::class, 'execute'], [ObjectHistory::class, 'AttributionFor']] as [$sClass, $sMethod]) {
+			$this->assertStringNotContainsString(
+				"IsActionAllowed('CMDBChangeOp'",
+				$this->bodyOf($sClass, $sMethod),
+				"{$sClass}::{$sMethod}() asks for a right the console does not"
+			);
+			$this->assertStringNotContainsString(
+				'IsReadable',
+				$this->bodyOf($sClass, $sMethod),
+				"{$sClass}::{$sMethod}() still gates on a class grant"
+			);
+		}
+	}
 
-		$this->assertStringContainsString(
-			'IsReadable()',
-			$sBody,
-			'the class-level grant on the change log is never checked'
-		);
-		$this->assertLessThan(
-			strpos($sBody, 'MetaModel::GetObject'),
-			strpos($sBody, 'IsReadable()'),
-			'an instance that grants nobody the log must answer the same way whether or not the object exists'
-		);
+	/**
+	 * Newest first means by id, not by date.
+	 *
+	 * One change writes several CMDBChangeOp rows carrying that change's
+	 * timestamp, so a date sort leaves their order to the database. iTop says
+	 * so where it runs the same query, and orders by the id instead.
+	 */
+	public function testTheOrderIsByIdBecauseTimestampsRepeat(): void
+	{
+		$sSource = file_get_contents((new ReflectionClass(ObjectHistory::class))->getFileName());
+
+		$this->assertStringContainsString("['id' => false]", $sSource, 'newest-first is not ordered by id');
+		$this->assertStringNotContainsString("['date' =>", $sSource, 'rows are still ordered by a timestamp several of them share');
 	}
 
 	/**
@@ -113,19 +139,6 @@ class ObjectHistoryContractTest extends TestCase
 		$this->assertSame(ObjectHistory::DEFAULT_LIMIT, $aSchema['properties']['limit']['default']);
 		$this->assertLessThan(ObjectHistory::MAX_LIMIT, ObjectHistory::DEFAULT_LIMIT);
 		$this->assertSame(['class', 'id'], $aSchema['required']);
-	}
-
-	/**
-	 * Attribution is who-last-touched-this, which is precisely what the grant
-	 * on the change log decides. A read must not hand it out to a caller the
-	 * history tool would refuse.
-	 */
-	public function testAttributionIsWithheldFromACallerWhoMayNotReadTheLog(): void
-	{
-		$sBody = $this->bodyOf(ObjectHistory::class, 'AttributionFor');
-
-		$this->assertStringContainsString('IsReadable()', $sBody);
-		$this->assertStringContainsString('return null;', $sBody);
 	}
 
 	/**
