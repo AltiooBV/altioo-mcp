@@ -74,7 +74,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			],
 			'offset' => [
 				'type'        => 'integer',
-				'description' => 'Number of objects to skip. Paging is stable: results are ordered by the requested attribute and then by id, so no object is returned twice or skipped between pages. The result reports has_more and next_offset; pass next_offset back here for the following page rather than working the arithmetic out, since a page can be shorter than limit when object-level rights remove rows from it.',
+				'description' => 'Number of objects to skip. Pages are ordered by order_by then id, so paging is stable; pass the result\'s next_offset back here rather than computing one, since rights can make a page shorter than limit.',
 				'default'     => self::DEFAULT_OFFSET,
 				'minimum'     => self::MIN_OFFSET,
 			],
