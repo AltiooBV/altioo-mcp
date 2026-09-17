@@ -140,7 +140,6 @@ class ObjectDelete extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot delete objects of class '{$class}'.");
 		}
 
-
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
@@ -171,7 +170,7 @@ class ObjectDelete extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the delete with the correct final class."); // hide that the object exists
 		}
 
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_DELETE, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
 			throw new ToolCallException("Access denied: cannot delete objects of class '{$class}'.");
 		}
 		if ($oObject->IsReadOnly()) {

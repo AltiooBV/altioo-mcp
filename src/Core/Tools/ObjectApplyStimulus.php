@@ -173,7 +173,6 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
-
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
@@ -204,7 +203,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the apply stimulus with the correct final class."); // hide that the object exists
 		}
 
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_MODIFY, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY, $oSet)) {
 			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
 		}
 		// Validate its current state
@@ -227,7 +226,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 
 		// Check access rights on the stimulus (e.g. agent can apply ev_assign but not ev_reassign)
-		if (!UserRights::IsStimulusAllowed($class,  $stimulus, $oSet)) {
+		if (!UserRights::IsStimulusAllowed($class, $stimulus, $oSet)) {
 			throw new ToolCallException("Access denied: cannot apply stimulus '{$stimulus}' to this object of class '{$class}'.");
 		}
 

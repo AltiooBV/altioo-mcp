@@ -108,7 +108,7 @@ class ObjectGet extends AbstractMCPTool
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
@@ -132,7 +132,7 @@ class ObjectGet extends AbstractMCPTool
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
-			if (!UserRights::IsActionAllowed($sFinalClass,  UR_ACTION_READ, $oSetFinal)) {
+			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, $oSetFinal)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 		}

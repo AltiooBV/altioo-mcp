@@ -94,7 +94,6 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			throw new ToolCallException("Invalid OQL query. Reason: {$aCheck['message']}");
 		}
 
-
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
 
@@ -111,7 +110,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 		$aResults = [];
 		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'class' => $class,
 				'oql' => $oql,

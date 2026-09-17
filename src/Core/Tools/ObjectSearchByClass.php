@@ -126,7 +126,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 		$aResults = [];
 		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_READ, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $class,

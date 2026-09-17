@@ -264,7 +264,7 @@ final class MCPController
 		/** @var \User $oUser */
 		$oUser = UserRights::GetUserObject();
 
-		if (is_null($oUser)){
+		if (is_null($oUser)) {
 			return false;
 		}
 

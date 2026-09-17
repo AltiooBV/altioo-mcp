@@ -56,7 +56,7 @@ class ObjectUpdate extends AbstractMCPTool
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
-{
+	{
 	return new ToolAnnotations(
 		$this->getTitle() ?? 'Update iTop object',
 		false,  // readOnlyHint
@@ -141,7 +141,6 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
-
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
@@ -171,7 +170,7 @@ class ObjectUpdate extends AbstractMCPTool
 			// Even if the rights are allowed, this is not the correct class to use.
 			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the update with the correct final class."); // hide that the object exists
 		}
-		if (!UserRights::IsActionAllowed($class,  UR_ACTION_MODIFY, $oSet)) {
+		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY, $oSet)) {
 			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
 		}
 
