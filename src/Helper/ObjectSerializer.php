@@ -250,11 +250,25 @@ final class ObjectSerializer
 		$aStimuli = MetaModel::EnumStimuli($sClass);
 		$aAvailable = [];
 		foreach (MetaModel::EnumTransitions($sClass, $sState) as $sStimulusCode => $aTransitionDef) {
+			// Both halves, not just the stricter one. Every entry here is a
+			// transition the datamodel declares out of the current state, so a
+			// 'no' is always a rights answer - but which of the two rights is
+			// the difference between "nobody may drive this transition by hand"
+			// and "this account may not modify this object at all", and a
+			// caller told only 'no' reads the first as the second and reports
+			// the object as stuck. ev_timeout is the case in hand: the
+			// lifecycle offers it, no profile grants it, and the object is
+			// otherwise perfectly writable.
+			$sStimulus = self::stimulusGrade($oObject, $sClass, $sStimulusCode, $oInstanceSet);
 			$aAvailable[] = [
 				'stimulus'     => $sStimulusCode,
 				'label'        => isset($aStimuli[$sStimulusCode]) ? $aStimuli[$sStimulusCode]->GetLabel() : $sStimulusCode,
 				'target_state' => $aTransitionDef['target_state'] ?? null,
-				'allowed'      => self::stricterGrade($sModify, self::stimulusGrade($oObject, $sClass, $sStimulusCode, $oInstanceSet)),
+				'allowed'      => self::stricterGrade($sModify, $sStimulus),
+				'gates'        => [
+					'modify'   => $sModify,
+					'stimulus' => $sStimulus,
+				],
 			];
 		}
 
