@@ -48,7 +48,7 @@ class CurrentUser extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Report who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode. Read this before answering anything phrased as "me", "my tickets" or "assigned to me", rather than asking the user who they are. The contact id it returns is what ties the caller to objects: pass it as the value of a person or team attribute in core_object_search_by_class, or in a core_object_search_by_oql query. Every other tool here already runs as this user, so this also reports whose rights an "access denied" was about.';
+		return 'Report who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode. Read this before answering anything phrased as "me", "my tickets" or "assigned to me", rather than asking the user who they are. The contact id it returns is what ties the caller to objects: pass it as the value of a person or team attribute in core_object_search_by_class, or in a core_object_search_by_oql query. Every other tool here already runs as this user, so this also reports whose rights an "access denied" was about. It also reports the toolsets this session is served: if something you expected is not in your tool list, check that before concluding this server does not have it.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations

@@ -425,6 +425,61 @@ final class MCPService
 	}
 
 	/**
+	 * The toolsets this caller can actually reach, and the capabilities it
+	 * holds - what it can see, not what exists.
+	 *
+	 * Reported so that a caller can tell "this server does not have it" from
+	 * "I am not served it". Those look identical from tools/list, and a model
+	 * that cannot tell them apart states the first: it concludes a capability
+	 * is absent, tells the user so, and stops - when the answer was a scope
+	 * nobody had ticked. That happened.
+	 *
+	 * Only what is served, never the catalogue. Naming a toolset this caller
+	 * does not hold would teach it the shape of the withheld surface, which is
+	 * the thing {@see \Altioo\iTop\Extension\MCP\Server\ServerInstructions}
+	 * narrows itself to avoid. What comes back here never exceeds what
+	 * tools/list already showed, so an unrestricted caller learns nothing new
+	 * and a narrowed one learns only that its own view has edges.
+	 *
+	 * Derived by asking the same question registration asks, element by
+	 * element, rather than by reading the policy's toolset list: empty there
+	 * means "everything", and a toolset whose only element is disabled, or
+	 * whose elements all want a profile this user lacks, is not one the caller
+	 * can reach whatever the policy says.
+	 *
+	 * @return array{toolsets: array<int, string>, capabilities: array<int, string>}
+	 * @since 1.0.0
+	 */
+	public static function ServedAccess(): array
+	{
+		$oPolicy = self::AccessPolicyOfCurrentRequest();
+		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+
+		$aToolsets = [];
+		$aRegistries = [
+			MCPRegistry::GetTools(),
+			MCPRegistry::GetResources(),
+			MCPRegistry::GetResourceTemplates(),
+			MCPRegistry::GetPrompts(),
+		];
+		foreach ($aRegistries as $aElements) {
+			foreach ($aElements as $sIdentifier => $oElement) {
+				if (!self::isHidden((string)$sIdentifier, $oElement, $aDisabled, $oPolicy)) {
+					$aToolsets[$oElement->getToolset()] = true;
+				}
+			}
+		}
+
+		$aNames = array_keys($aToolsets);
+		sort($aNames);
+
+		return [
+			'toolsets'     => $aNames,
+			'capabilities' => $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES,
+		];
+	}
+
+	/**
 	 * What this caller is served: the instance configuration, narrowed by the
 	 * scopes of the token it authenticated with.
 	 *

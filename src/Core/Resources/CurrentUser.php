@@ -27,7 +27,7 @@ class CurrentUser extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'Read the current user information.';
+		return 'Read the current user information, and the toolsets and capabilities this session is served.';
 	}
 
 	protected function getResourceNamespace(): string

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\MCPService;
 use MetaModel;
 use UserRights;
 use utils;
@@ -23,7 +24,10 @@ use utils;
  * to me" - which is the side of the protocol's split that tools are on.
  *
  * Two surfaces, one implementation: what the resource reports and what the
- * tool reports cannot drift apart.
+ * tool reports cannot drift apart. That is also why the access block is read
+ * here rather than in either surface - MCPService is the only place the
+ * policy, the registry and the disabled list meet, and asking it once is
+ * cheaper than keeping two copies of the answer level with each other.
  *
  * @api
  * @since 1.0.0
@@ -43,6 +47,10 @@ final class CurrentUserReader
 	public static function Payload(): array
 	{
 		return [
+			// What this caller can reach, so that "the server has no such tool"
+			// and "I am not served it" stop looking the same. Only what is
+			// served is named - see MCPService::ServedAccess().
+			'access' => MCPService::ServedAccess(),
 			'current_contact_friendlyname' => self::ContactFriendlyname(),
 			'current_contact_id' => UserRights::GetContactId(),
 			'current_id' => UserRights::GetUserId(),
