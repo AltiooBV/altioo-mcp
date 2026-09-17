@@ -68,7 +68,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties(),
+			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties() + self::actionsSchemaProperties(),
 			'required' => ['class'],
 		];
 	}
@@ -82,6 +82,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	 * @param string $order_direction 'asc' or 'desc'
 	 * @param string $output_fields Comma-separated attribute codes to return, or '*' for all of them
 	 * @param bool $audit Also report when each object was created and last changed, and by whom; limited to a page of ObjectHistory::MAX_AUDIT_PAGE objects
+	 * @param bool $actions Also report, per object, the write gates answered for that object and the stimuli its state accepts; same page limit
 	 * @return array An array containing the class, filters, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
@@ -94,6 +95,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		string $order_direction = self::DEFAULT_SORT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
 		bool   $audit = false,
+		bool   $actions = false,
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
@@ -104,7 +106,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
 
-		self::refuseUnattributablePage($audit, $limit);
+		self::refuseUnattributablePage($audit, $limit, $actions);
 
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
@@ -182,7 +184,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					continue;
 				}
 
-				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields, $audit);
+				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields, $audit, $actions);
 			}
 
 			$iTotal = $oSet->Count();

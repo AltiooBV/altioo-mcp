@@ -47,7 +47,7 @@ class ObjectGet extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, and - where this user may read the change log - an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. Call core_object_history for the full record of what changed.';
+		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, and - where this user may read the change log - an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class, and the stimuli its current state accepts, which is what core_object_apply_stimulus will take. Call core_object_history for the full record of what changed.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -151,6 +151,14 @@ class ObjectGet extends AbstractMCPTool
 		if ($aAttribution !== null) {
 			$aObject['audit'] = $aAttribution;
 		}
+
+		// What may be done to this object now, rather than to its class: the
+		// write gates with the 'depends' ones resolved, and the stimuli its
+		// current state accepts. One object, so no flag - the search tools ask,
+		// because there this is a question per row.
+		$oInstanceSet = null;
+		$aObject['rights'] = ObjectSerializer::RightsOn($oObject, $sFinalClass, null, $oInstanceSet);
+		$aObject['stimuli'] = ObjectSerializer::StimuliOn($oObject, $sFinalClass, $aObject['rights'], $oInstanceSet);
 
 		return ToolOutput::Json([
 			'requested_class'  => $class,

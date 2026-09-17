@@ -222,7 +222,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	/**
 	 * @param array<int, string>|null $aFields
 	 */
-	protected static function serializeObject(DBObject $oObject, string $sClass, ?array $aFields = null, bool $bAudit = false): array
+	protected static function serializeObject(DBObject $oObject, string $sClass, ?array $aFields = null, bool $bAudit = false, bool $bActions = false): array
 	{
 		$aObject = ObjectSerializer::Serialize($oObject, $sClass, $aFields);
 
@@ -231,6 +231,13 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			if ($aAttribution !== null) {
 				$aObject['audit'] = $aAttribution;
 			}
+		}
+
+		if ($bActions) {
+			// One instance set for both, built only if some gate asks for it.
+			$oInstanceSet = null;
+			$aObject['rights'] = ObjectSerializer::RightsOn($oObject, $sClass, null, $oInstanceSet);
+			$aObject['stimuli'] = ObjectSerializer::StimuliOn($oObject, $sClass, $aObject['rights'], $oInstanceSet);
 		}
 
 		return $aObject;
@@ -244,6 +251,26 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
+	/**
+	 * The argument that asks what can be done with each object returned.
+	 *
+	 * Off by default for the same reason as audit: the class-level gates are
+	 * free, but resolving a 'depends' and asking about each stimulus is a
+	 * question per object - and for stimuli, per transition.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	protected static function actionsSchemaProperties(): array
+	{
+		return ['actions' => [
+			'type'        => 'boolean',
+			'description' => 'For each object returned, report what may be done to it now: the update and delete gates answered for that object rather than for its class, '
+				.'and the stimuli its current state accepts. Use it to plan writes that will not be refused. '
+				.'Costs a question per object, so it is refused for a page of more than '.ObjectHistory::MAX_AUDIT_PAGE.'.',
+			'default'     => false,
+		]];
+	}
+
 	protected static function auditSchemaProperties(): array
 	{
 		return ['audit' => [
@@ -260,14 +287,18 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 *
 	 * @throws ToolCallException
 	 */
-	protected static function refuseUnattributablePage(bool $bAudit, int $iLimit): void
+	protected static function refuseUnattributablePage(bool $bAudit, int $iLimit, bool $bActions = false): void
 	{
-		if ($bAudit && $iLimit > ObjectHistory::MAX_AUDIT_PAGE) {
-			throw new ToolCallException(sprintf(
-				'audit is available for up to %d objects at a time; this call asks for %d. Lower limit, or drop audit and call core_object_history for the objects that matter.',
-				ObjectHistory::MAX_AUDIT_PAGE,
-				$iLimit
-			));
+		foreach (['audit' => $bAudit, 'actions' => $bActions] as $sArgument => $bAsked) {
+			if ($bAsked && $iLimit > ObjectHistory::MAX_AUDIT_PAGE) {
+				throw new ToolCallException(sprintf(
+					'%s is available for up to %d objects at a time; this call asks for %d. Lower limit, or drop %s and ask about the objects that matter one at a time.',
+					$sArgument,
+					ObjectHistory::MAX_AUDIT_PAGE,
+					$iLimit,
+					$sArgument
+				));
+			}
 		}
 	}
 
