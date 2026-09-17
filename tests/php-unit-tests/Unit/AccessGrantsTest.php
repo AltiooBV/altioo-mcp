@@ -366,7 +366,7 @@ class AccessGrantsTest extends TestCase
 			$sSource = (string)file_get_contents((new ReflectionClass($oTool))->getFileName());
 
 			$this->assertTrue(
-				str_contains($sSource, 'AccessGrants::IsGranting')
+				str_contains($sSource, 'AccessGrants::RefusalFor')
 				|| str_contains($sSource, 'checkBulkAllowed('),
 				"{$sName} can write the classes that decide what it may write"
 			);
@@ -381,7 +381,7 @@ class AccessGrantsTest extends TestCase
 	public function testTheSharedBulkGateChecksIt(): void
 	{
 		$this->assertStringContainsString(
-			'AccessGrants::IsGranting',
+			'AccessGrants::RefusalFor',
 			$this->body('Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool', 'checkBulkAllowed'),
 			'the bulk tools no longer check the barrier'
 		);
@@ -406,6 +406,139 @@ class AccessGrantsTest extends TestCase
 				'AccessGrants',
 				(string)file_get_contents($sFile),
 				"{$sTool} refuses to read a token, which was never the point of the barrier"
+			);
+		}
+	}
+
+	/**
+	 * An ordinary class is nobody's business here, whatever the setting says.
+	 */
+	public function testAnOrdinaryClassIsNeverRefusedByThisRule(): void
+	{
+		$this->assertNull(AccessGrants::RefusalGiven(false, 'UserRequest', 12));
+		$this->assertNull(AccessGrants::RefusalGiven(true, 'UserRequest', 12));
+	}
+
+	/**
+	 * The default, and the answer for almost every instance: refused outright,
+	 * naming the setting that would change it.
+	 *
+	 * The refusal names mcp_allow_access_administration because a model told
+	 * only "no" retries a variation of the same call, while one told which
+	 * switch is off reports it and stops.
+	 */
+	public function testWithoutTheSettingAGrantingClassIsRefusedOutright(): void
+	{
+		$sRefusal = AccessGrants::RefusalGiven(false, 'PersonalToken', 7);
+
+		$this->assertNotNull($sRefusal);
+		$this->assertStringContainsString('PersonalToken', $sRefusal);
+		$this->assertStringContainsString('mcp_allow_access_administration', $sRefusal);
+	}
+
+	/**
+	 * The two refusals are different sentences, and have to stay that way.
+	 *
+	 * One is an instance that has not opted in and can; the other is a rule no
+	 * configuration lifts. A caller that cannot tell them apart asks an
+	 * operator to turn on a setting that would not have helped.
+	 */
+	public function testTheTwoRefusalsDoNotReadAlike(): void
+	{
+		$this->assertNotSame(AccessGrants::GRANT_REFUSAL, AccessGrants::SELF_REFUSAL);
+		$this->assertStringNotContainsString('mcp_allow_access_administration', AccessGrants::SELF_REFUSAL);
+		$this->assertStringContainsString('yourself', AccessGrants::SELF_REFUSAL);
+	}
+
+	/**
+	 * With the setting on and nothing to decide with, the answer is still no.
+	 *
+	 * This is the failure mode that matters. No MetaModel, no login, an object
+	 * that will not load: every one of those has to read as "this is your own
+	 * access", because being wrong the other way is the escalation the whole
+	 * barrier exists to prevent, and being wrong this way is a refusal an
+	 * administrator satisfies from the console. The unit suite runs without an
+	 * iTop, so this is that path exactly.
+	 */
+	public function testTheSelfGuardFailsClosed(): void
+	{
+		if (class_exists('MetaModel') && class_exists('UserRights')) {
+			$this->markTestSkipped('an iTop is loaded, so the undecidable path is not reachable here.');
+		}
+
+		$sRefusal = AccessGrants::RefusalGiven(true, 'PersonalToken', 7);
+
+		$this->assertNotNull($sRefusal, 'a write was allowed while nothing could establish whose access it was');
+		$this->assertStringContainsString('yourself', $sRefusal);
+	}
+
+	/**
+	 * The setting cannot reach the self-guard.
+	 *
+	 * That is the property that makes the setting safe to offer at all:
+	 * opting in buys administration of other people's access and nothing
+	 * whatever about your own. Checked as a shape because the behaviour needs
+	 * a datamodel, and because the way it would break is somebody threading
+	 * the flag into the guard as an early return.
+	 */
+	public function testTheSettingCannotReachTheSelfGuard(): void
+	{
+		$sDecision = $this->body(AccessGrants::class, 'RefusalGiven');
+		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+
+		$this->assertStringContainsString('ReachesTheCaller', $sDecision, 'the self-guard is no longer consulted');
+		$this->assertStringContainsString('SELF_REFUSAL', $sDecision);
+		$this->assertStringNotContainsString(
+			'AllowsAccessAdministration',
+			$sGuard,
+			'the self-guard reads the setting, so an instance can switch off the one rule that has no switch'
+		);
+		$this->assertStringNotContainsString(
+			'$bAdministrationAllowed',
+			$sGuard,
+			'the self-guard was handed the setting, which is the same thing one argument later'
+		);
+	}
+
+	/**
+	 * Minting is the cheap escalation, so the guard is asked of the row rather
+	 * than of the verb.
+	 *
+	 * Editing the token in your hand is the obvious move and the easily
+	 * blocked one; creating a second token that is wider reaches the same
+	 * place without touching the row you authenticated with. So the create
+	 * path passes the values being written, and a create naming no owner is
+	 * read as a create for the caller - which is what iTop's own controller
+	 * does when it fills user_id in.
+	 */
+	public function testTheGuardIsAskedOfTheRowIncludingOnACreate(): void
+	{
+		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+
+		$this->assertStringContainsString('user_id', $sGuard, 'the owner of a token is not consulted');
+		$this->assertStringContainsString('userid', $sGuard, 'the user named by a rights link is not consulted');
+		$this->assertStringContainsString('$aFields', $sGuard, 'a create has only the values to go on and they are not read');
+		$this->assertStringContainsString('ProfileOf', $sGuard, 'the profile a row decides about is not consulted');
+	}
+
+	/**
+	 * Every bulk row is asked, not just the class.
+	 *
+	 * checkBulkAllowed() sees a class and a verb; whether a row is the
+	 * caller's own token is a property of the row. A bulk create of thirty
+	 * tokens, one of them for the caller, has to fail that one entry - so the
+	 * three bulk tools each ask again per row, the way they already check
+	 * per-object rights.
+	 */
+	public function testEveryBulkRowIsAskedAndNotOnlyTheClass(): void
+	{
+		foreach (['ObjectBulkCreate', 'ObjectBulkUpdate', 'ObjectBulkDelete'] as $sTool) {
+			$sFile = dirname(__DIR__, 3).'/src/Core/Tools/'.$sTool.'.php';
+
+			$this->assertStringContainsString(
+				'AccessGrants::RefusalFor',
+				(string)file_get_contents($sFile),
+				"{$sTool} checks the class and never the rows, so one row naming the caller goes through with the batch"
 			);
 		}
 	}

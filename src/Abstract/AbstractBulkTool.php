@@ -124,8 +124,9 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		if (ObjectHistory::IsReserved($sClass)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 		}
-		if (AccessGrants::IsGranting($sClass)) {
-			throw new ToolCallException(sprintf(AccessGrants::GRANT_REFUSAL, $sClass));
+		$sAccessRefusal = AccessGrants::RefusalFor($sClass);
+		if ($sAccessRefusal !== null) {
+			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists

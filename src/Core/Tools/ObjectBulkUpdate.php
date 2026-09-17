@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -129,6 +130,14 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			$mObject = self::objectFor($class, $iId, UR_ACTION_MODIFY, 'modify');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
+				continue;
+			}
+
+			// Per row, because checkBulkAllowed() saw only the class: whether a
+			// row is the caller's own access is a property of the row.
+			$sAccessRefusal = AccessGrants::RefusalFor($class, $iId, $fields);
+			if ($sAccessRefusal !== null) {
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $sAccessRefusal);
 				continue;
 			}
 

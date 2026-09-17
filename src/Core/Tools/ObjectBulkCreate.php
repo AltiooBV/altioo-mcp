@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -163,6 +164,14 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// one, so an entry has the same keys whatever became of it.
 		if (empty($aFields)) {
 			return self::outcome(null, $iRow, false, 'No fields given for this object.');
+		}
+
+		// Per row, because checkBulkAllowed() saw only the class: on a create
+		// the owner is in the values, so whether this row is the caller's own
+		// access cannot be known any earlier than here.
+		$sAccessRefusal = AccessGrants::RefusalFor($sClass, null, $aFields);
+		if ($sAccessRefusal !== null) {
+			return self::outcome(null, $iRow, false, $sAccessRefusal);
 		}
 
 		[$aValues, $aIssues] = self::validatedValues($sClass, $aFields);

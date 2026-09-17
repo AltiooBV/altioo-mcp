@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -126,6 +127,13 @@ class ObjectBulkDelete extends AbstractBulkTool
 	 */
 	private static function deleteOne(DBObject $oObject, string $sClass, int $iId, int $iRow, bool $bSimulate): array
 	{
+		// Per row, because checkBulkAllowed() saw only the class: whether a
+		// row is the caller's own access is a property of the row.
+		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
+		if ($sAccessRefusal !== null) {
+			return self::outcome($iId, $iRow, false, $sAccessRefusal);
+		}
+
 		// CheckToDelete() returns a boolean and fills the plan by reference;
 		// the reasons live on the plan.
 		$oPlan = new DeletionPlan();

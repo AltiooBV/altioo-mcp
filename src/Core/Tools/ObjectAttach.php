@@ -214,8 +214,9 @@ class ObjectAttach extends AbstractMCPTool
 		if (ObjectHistory::IsReserved($sClass)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 		}
-		if (AccessGrants::IsGranting($sClass)) {
-			throw new ToolCallException(sprintf(AccessGrants::GRANT_REFUSAL, $sClass));
+		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
+		if ($sAccessRefusal !== null) {
+			throw new ToolCallException($sAccessRefusal);
 		}
 		if (MetaModel::DBIsReadOnly()) {
 			throw new ToolCallException('The database is in read-only mode, cannot attach documents.');

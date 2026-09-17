@@ -131,8 +131,9 @@ class ObjectUpdate extends AbstractMCPTool
 		if (ObjectHistory::IsReserved($class)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
-		if (AccessGrants::IsGranting($class)) {
-			throw new ToolCallException(sprintf(AccessGrants::GRANT_REFUSAL, $class));
+		$sAccessRefusal = AccessGrants::RefusalFor($class, $id, $fields);
+		if ($sAccessRefusal !== null) {
+			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
