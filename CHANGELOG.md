@@ -589,6 +589,14 @@ published archive was installed and exercised on into this line; the README and
   so in `mimetype_note`, and inert text formats libmagic has no signature for (CSV, Markdown,
   YAML) are honoured as declared. Reading sniffs nothing: it returns the corrected type that was
   stored.
+- **An attribute's allowed values are keyed by the code a caller has to send.** iTop answers
+  code => label, and for most attributes the codes are strings — but a stopwatch sub-item is keyed
+  `[0 => label, 1 => label]`, which PHP calls a list and `json_encode` strips the keys from, so
+  `sla_tto_passed` would arrive as `["no","yes"]`: the labels, resolved through the dictionary, with
+  the `0` and `1` the column holds gone, and `["non","oui"]` on a French instance. Nothing writes a
+  sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
+  on a string the database never stores. One shape now, for every attribute.
+
 - **`core_class_schema` reports the target class of an external key rather than the rows behind
   it.** Describing `UserRequest` otherwise means returning every `Person` in the database under
   `caller_id`, on every call, and those rows have not been through object-level rights.
