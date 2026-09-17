@@ -54,7 +54,8 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
-			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the change and report exactly which attributes would change, show that to the user, then call again with simulate=false to apply it.';
+			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the change and report exactly which attributes would change, show that to the user, then call again with simulate=false to apply it. '
+			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -71,7 +72,8 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
-			'changes' => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
+			'changes'    => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
+			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -248,9 +250,21 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Failed to update due to setting fields : ".implode(', ', $aIssues));
 		}
 
+		// Before the check, because the check is what moves them: CheckToWrite()
+		// runs DoComputeValues(), and a class that derives an attribute from
+		// others overwrites whatever was just Set() into it. This is the last
+		// moment the object holds what the caller asked for.
+		$aRequested = WritePlan::Requested($oObject, $class, array_keys($aValidatedValues));
+
 		// iTop's own pre-write check, run before anything is written rather
 		// than discovered by DBUpdate() throwing from inside the ORM.
 		WritePlan::Check($oObject, "{$class}::{$id}");
+
+		// What the check threw away, and - for those attributes only - whether
+		// what the caller sent was even a legal value. DoCheckToWrite() never
+		// asked, because by the time it looked the value was gone.
+		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
+		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "{$class}::{$id}");
 
 		// After the check and before the write: this is the only point where
 		// the pending values are still pending, and it is what tells the user
@@ -261,9 +275,10 @@ class ObjectUpdate extends AbstractMCPTool
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $id)
 				+ [
-					'simulated' => true,
-					'valid'     => true,
-					'changes'   => $aChanges,
+					'simulated'  => true,
+					'valid'      => true,
+					'changes'    => $aChanges,
+					'overridden' => $aOverridden,
 				]);
 		}
 
@@ -277,9 +292,10 @@ class ObjectUpdate extends AbstractMCPTool
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $id)
 				+ [
-					'simulated' => false,
-					'valid'     => true,
-					'changes'   => $aChanges,
+					'simulated'  => false,
+					'valid'      => true,
+					'changes'    => $aChanges,
+					'overridden' => $aOverridden,
 				]);
 		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to update {$class}::{$id}", $e));

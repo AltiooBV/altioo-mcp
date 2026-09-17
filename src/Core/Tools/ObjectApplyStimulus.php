@@ -61,7 +61,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs. '
-			.'Runs as a dry run by default: call it with simulate=true to check that the transition is allowed from the current state and that nothing mandatory is missing, show that to the user, then call again with simulate=false to apply it.';
+			.'Runs as a dry run by default: call it with simulate=true to check that the transition is allowed from the current state and that nothing mandatory is missing, show that to the user, then call again with simulate=false to apply it. '
+			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 
 	public function getOutputSchema(): ?array
@@ -80,6 +81,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
 			],
 			'changes'       => WritePlan::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
+			'overridden'    => WritePlan::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -329,10 +331,22 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException(self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked));
 		}
 
+		// Before the check, because the check is what moves them: CheckToWrite()
+		// runs DoComputeValues(), and a class that derives an attribute from
+		// others overwrites whatever was just Set() into it.
+		$aRequested = WritePlan::Requested($oObject, $class, array_keys($aValidatedValues));
+
 		// iTop's own pre-write check, on top of the target-state check above:
 		// that one knows what the transition requires, this one knows what the
 		// class and its extensions require of any write.
 		WritePlan::Check($oObject, "{$class}::{$id}");
+
+		// What the check threw away, and whether it was legal in the first
+		// place. DoCheckToWrite() never asked - by the time it looked, the
+		// value was gone.
+		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
+		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "{$class}::{$id}");
+
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
@@ -345,6 +359,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
 					'changes'       => $aChanges,
+					'overridden'    => $aOverridden,
 				]);
 		}
 
@@ -377,6 +392,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// the transition happened.
 				'would_move_to' => $sTargetState,
 				'changes'       => $aChanges,
+				'overridden'    => $aOverridden,
 			]);
 	}
 	/**

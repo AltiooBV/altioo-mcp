@@ -53,7 +53,8 @@ class ObjectCreate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Create a new iTop object of the given class. Call core_class_schema first: it reports the attribute codes, their types and which ones are mandatory. '
-			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the object and report what would be written, show that to the user, then call again with simulate=false to create it.';
+			.'Runs as a dry run by default: call it with simulate=true to have iTop validate the object and report what would be written, show that to the user, then call again with simulate=false to create it. '
+			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -71,7 +72,8 @@ class ObjectCreate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
-			'changes' => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
+			'changes'    => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
+			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -183,10 +185,23 @@ class ObjectCreate extends AbstractMCPTool
 			throw new ToolCallException("Failed to create due to setting fields : ".implode(', ', $aIssues));
 		}
 
+		// Before the check, because the check is what moves them: CheckToWrite()
+		// runs DoComputeValues(), and a class that derives an attribute from
+		// others overwrites whatever was just Set() into it.
+		$aRequested = WritePlan::Requested($oObject, $class, array_keys($aValidatedValues));
+
 		// iTop's own pre-write check: mandatory attributes, DoCheckToWrite() on
 		// the class and on every extension hooked into it. Without it the
 		// first thing that fails is DBInsert(), from inside the ORM.
 		WritePlan::Check($oObject, "A {$class}");
+
+		// What the check threw away. On a creation every attribute is in
+		// `changes`, so an overridden one is reported there too - with the
+		// computed value, which is exactly what makes it unreadable as a
+		// refusal of what the caller sent.
+		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
+		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "A {$class}");
+
 		$aChanges = WritePlan::Changes($oObject, $class);
 
 		if ($simulate) {
@@ -195,9 +210,10 @@ class ObjectCreate extends AbstractMCPTool
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, null)
 				+ [
-					'simulated' => true,
-					'valid'     => true,
-					'changes'   => $aChanges,
+					'simulated'  => true,
+					'valid'      => true,
+					'changes'    => $aChanges,
+					'overridden' => $aOverridden,
 				]);
 		}
 
@@ -211,9 +227,10 @@ class ObjectCreate extends AbstractMCPTool
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $iId)
 				+ [
-					'simulated' => false,
-					'valid'     => true,
-					'changes'   => $aChanges,
+					'simulated'  => false,
+					'valid'      => true,
+					'changes'    => $aChanges,
+					'overridden' => $aOverridden,
 				]);
 		} catch (\Throwable $e) {
 			// A throw here does not mean nothing was written. DBInsert()
@@ -240,10 +257,11 @@ class ObjectCreate extends AbstractMCPTool
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $iCommittedId)
 				+ [
-					'simulated' => false,
-					'valid'     => true,
-					'changes'   => $aChanges,
-					'warning'   => MCPHelper::OpaqueFailure(
+					'simulated'  => false,
+					'valid'      => true,
+					'changes'    => $aChanges,
+					'overridden' => $aOverridden,
+					'warning'    => MCPHelper::OpaqueFailure(
 						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
 						$e
 					),
