@@ -618,6 +618,13 @@ final class DatamodelReader
 	 * because the schema is where a model already goes for the attribute code.
 	 * {@see RestValue} is what makes both shapes arrive intact.
 	 *
+	 * The append is observed rather than inferred: two successive plain-string
+	 * writes on a live instance left two entries, the first one intact, and the
+	 * dry run reported the same shape the real write then produced - which is
+	 * worth having for this type in particular, since a case log is where a
+	 * simulated diff could plausibly disagree with what
+	 * AttributeCaseLog::FromJSONToValue() does on the real path. It did not.
+	 *
 	 * @return array<string, string> Empty for a type that needs no hint.
 	 */
 	private static function writeHint(AttributeDefinition $oAttDef): array
