@@ -106,7 +106,8 @@ class ServerInstructionsTest extends TestCase
 
 		$this->assertStringContainsString('core_class_list', $sText);
 		$this->assertStringContainsString('core_class_schema', $sText);
-		$this->assertStringContainsString('core_object_delete is a dry run by default', $sText);
+		$this->assertStringContainsString('Every writing tool is a dry run by default', $sText);
+		$this->assertStringContainsString('core_object_delete reports a deletion plan', $sText);
 		$this->assertStringContainsString('OQL has no ORDER BY clause', $sText);
 	}
 
@@ -128,15 +129,31 @@ class ServerInstructionsTest extends TestCase
 	}
 
 	/**
-	 * The deletion protocol is addressed to a caller that can delete. Told to
-	 * one that cannot, it plants the belief that deletion here is reversible
-	 * by default - which outlives the tool name it arrived with.
+	 * A caller that can write is told the dry-run protocol, because it has
+	 * one: create, update, attach and apply-stimulus all withhold the write
+	 * until asked twice. What it is not told is anything about deletion -
+	 * addressed to a caller that cannot delete, that plants the belief that
+	 * deletion here is reversible by default, which outlives the tool name it
+	 * arrived with.
 	 */
-	public function testTheDryRunProtocolIsWithheldFromATokenThatCannotDelete(): void
+	public function testAWriterIsToldTheProtocolAndNothingAboutDeleting(): void
 	{
-		$oPolicy = AccessPolicy::Of([AccessPolicy::CAPABILITY_READ, AccessPolicy::CAPABILITY_WRITE], []);
+		$sText = ServerInstructions::Text(
+			AccessPolicy::Of([AccessPolicy::CAPABILITY_READ, AccessPolicy::CAPABILITY_WRITE], [])
+		);
 
-		$this->assertStringNotContainsString('simulate=false', ServerInstructions::Text($oPolicy));
+		$this->assertStringContainsString('simulate=false', $sText, 'a writer has a dry run and is not told so');
+		$this->assertStringNotContainsString('core_object_delete', $sText);
+		$this->assertStringNotContainsString('deletion plan', $sText);
+	}
+
+	/** A reader has nothing to be told about writing, so the block is absent. */
+	public function testAReaderIsToldNothingAboutWritingAtAll(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
+
+		$this->assertStringNotContainsString('simulate', $sText);
+		$this->assertStringNotContainsString('Writing', $sText);
 	}
 
 	/**
