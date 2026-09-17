@@ -47,7 +47,7 @@ class ClassList extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'List the iTop classes the current user can read, with their label, description and place in the class hierarchy. A full datamodel holds several hundred classes, so narrow it: category "bizmodel" keeps the business objects (tickets, CIs, contacts) and drops the technical ones, and filter keeps only classes whose name, label or description contains the given text. Call core_class_schema next for the attributes of one class.';
+		return 'List the iTop classes the current user can read, with their label, description and place in the class hierarchy. A full datamodel holds several hundred classes, so narrow it: category "bizmodel" keeps the business objects (tickets, CIs, contacts) and drops the technical ones, filter keeps only classes whose name, label or description contains the given text, and may keeps only the classes the caller is allowed to act on - may="create" answers "what can I create here" in one call instead of one core_class_schema per class. Call core_class_schema next for the attributes of one class.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -76,6 +76,13 @@ class ClassList extends AbstractMCPTool
 					'description' => 'Case-insensitive text kept only if it appears in the class name, its label or its description, e.g. "ticket" or "server".',
 					'default'     => '',
 				],
+				'may'      => [
+					'type'        => 'string',
+					'description' => 'Keep only the classes this caller may act on through the named gate, and report every gate on each one. Empty (the default) means no such narrowing and no rights reported. A class the gate refuses outright is dropped; one graded "depends" is kept, because that is the datamodel asking for the object rather than refusing the class. The gates are the ones the tools check: '
+						.implode(', ', DatamodelReader::RightsKeys()).'.',
+					'enum'        => DatamodelReader::RightsKeys(),
+					'default'     => '',
+				],
 			],
 			'required' => [],
 		];
@@ -84,16 +91,19 @@ class ClassList extends AbstractMCPTool
 	/**
 	 * @param string $category Optional datamodel category to restrict the list to, e.g. 'bizmodel'
 	 * @param string $filter Optional case-insensitive text matched against class name, label and description
-	 * @return array An array containing the category, the filter, the number of classes returned, and the classes themselves
-	 * @throws ToolCallException if the category is not one the datamodel declares.
+	 * @param string $may Optional rights gate to narrow on, e.g. 'create'; also attaches the rights block to each class returned
+	 * @return array An array containing the category, the filter, the gate narrowed on, the number of classes returned, and the classes themselves
+	 * @throws ToolCallException if the category is not one the datamodel declares, or the gate is not one the tools check.
 	 */
 	public static function execute(
 		string $category = '',
 		string $filter = '',
+		string $may = '',
 	): mixed
 	{
 		$sCategory = trim($category);
 		$sFilter = trim($filter);
+		$sMay = trim($may);
 
 		if ($sCategory !== '' && !in_array($sCategory, DatamodelReader::Categories(), true)) {
 			// Naming the valid ones costs one line and saves the model a round of guessing.
@@ -104,8 +114,17 @@ class ClassList extends AbstractMCPTool
 			));
 		}
 
+		if ($sMay !== '' && !in_array($sMay, DatamodelReader::RightsKeys(), true)) {
+			// Same courtesy as the category above: the valid ones cost one line.
+			throw new ToolCallException(sprintf(
+				"Unknown gate '%s'. Valid gates: %s.",
+				$sMay,
+				implode(', ', DatamodelReader::RightsKeys())
+			));
+		}
+
 		// The envelope itself is DatamodelReader's, so that itop://core/classes
 		// answers with the same shape for the same data.
-		return ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter));
+		return ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter, $sMay));
 	}
 }

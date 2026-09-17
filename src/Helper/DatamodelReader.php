@@ -43,6 +43,26 @@ final class DatamodelReader
 	public const MAX_ALLOWED_VALUES = 100;
 
 	/**
+	 * The keys a rights block carries, in the order rights() writes them.
+	 *
+	 * Written here rather than derived from rights(), which cannot be called
+	 * without iTop - and held level with it by SchemaToolsContractTest, which
+	 * reads that method's source. A key that exists in the block and not here
+	 * is one a caller cannot narrow on; one here and not in the block is a
+	 * filter that silently matches nothing.
+	 */
+	private const RIGHTS_KEYS = [
+		'read',
+		'bulkRead',
+		'create',
+		'bulkCreate',
+		'modify',
+		'bulkModify',
+		'delete',
+		'bulkDelete',
+	];
+
+	/**
 	 * PHP date() tokens this module can turn into a regular expression.
 	 *
 	 * Deliberately only the numeric ones: a format built from anything else is
@@ -185,16 +205,96 @@ final class DatamodelReader
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function ClassListPayload(string $sCategory = '', string $sFilter = ''): array
+	public static function ClassListPayload(string $sCategory = '', string $sFilter = '', string $sMay = ''): array
 	{
 		$aClasses = self::FilterByText(self::ListClasses($sCategory), $sFilter);
+
+		// Rights cost a gate call per class, so they are read after the cheap
+		// narrowing has run and only when they were asked for. A list with no
+		// $sMay carries no rights block, which is what keeps itop://core/classes
+		// the same answer it has always been.
+		if ($sMay !== '') {
+			$aClasses = self::FilterByRight(self::WithRights($aClasses), $sMay);
+		}
 
 		return [
 			'category' => $sCategory,
 			'filter'   => $sFilter,
+			'may'      => $sMay,
 			'total'    => count($aClasses),
 			'classes'  => $aClasses,
 		];
+	}
+
+	/**
+	 * The gates {@see ClassListPayload()} can narrow on, which are the keys a
+	 * rights block carries.
+	 *
+	 * Public because the tool builds its enum and its refusal message from
+	 * this: a second list written out in the schema would be a second thing to
+	 * keep level with rights(), and the one a client validates against.
+	 *
+	 * @return array<int, string>
+	 * @since 1.0.0
+	 */
+	public static function RightsKeys(): array
+	{
+		return self::RIGHTS_KEYS;
+	}
+
+	/**
+	 * Every summary with the caller's rights on that class attached.
+	 *
+	 * Impure, and separated from the filtering for the reason FilterByText is
+	 * separate from ListClasses: what needs UserRights is one step, and the
+	 * decision made from its answer is a pure one that a unit suite can hold.
+	 *
+	 * @param array<int, array<string, mixed>> $aClasses Summaries, as returned by {@see ListClasses()}.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
+	 */
+	public static function WithRights(array $aClasses): array
+	{
+		return array_values(array_map(
+			static fn (array $aClass): array => $aClass + ['rights' => self::rights($aClass['class'])],
+			$aClasses
+		));
+	}
+
+	/**
+	 * Keeps the classes whose $sRight gate is not a refusal.
+	 *
+	 * 'depends' survives on purpose. It is the addon asking for the object
+	 * before it answers, so a class graded that way is one the caller may well
+	 * be able to act on - dropping it hides work that can be done, and
+	 * reporting it as 'yes' claims an answer nobody gave. It comes back with
+	 * its own word, as it does everywhere else here.
+	 *
+	 * Only a known refusal removes anything: a summary carrying no rights block
+	 * is kept rather than dropped, because nothing about it says the caller was
+	 * refused.
+	 *
+	 * Pure - it touches no MetaModel - which is what lets it be tested without
+	 * a live iTop.
+	 *
+	 * @param array<int, array<string, mixed>> $aClasses Summaries carrying a rights block, as returned by {@see WithRights()}.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
+	 */
+	public static function FilterByRight(array $aClasses, string $sRight): array
+	{
+		if ($sRight === '') {
+			return array_values($aClasses);
+		}
+
+		$aAllowed = array_filter(
+			$aClasses,
+			static fn (array $aClass): bool => ($aClass['rights'][$sRight] ?? null) !== 'no'
+		);
+
+		return array_values($aAllowed);
 	}
 
 	/**
