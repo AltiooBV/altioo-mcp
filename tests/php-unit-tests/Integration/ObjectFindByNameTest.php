@@ -68,8 +68,14 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	 * An Organization, which every iTop has: the class is declared by
 	 * itop-structure, which this module depends on, so a test written against
 	 * it runs on a CMDB-only instance as much as on a ticketing one.
+	 *
+	 * Not createOrganization: ItopDataTestCase declares a protected
+	 * CreateOrganization, method names are case-insensitive in PHP, and a
+	 * private one of the same name is a fatal at class-declaration time - the
+	 * suite does not start, so no test reports it. Theirs is not used instead
+	 * because this one records what it made for tearDown below.
 	 */
-	private function createOrganization(string $sName): \DBObject
+	private function newOrganization(string $sName): \DBObject
 	{
 		$oOrg = MetaModel::NewObject('Organization');
 		$oOrg->Set('name', $sName);
@@ -108,7 +114,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 
 	public function testFindsAnObjectByItsName(): void
 	{
-		$oOrg = $this->createOrganization('Acme '.$this->sMarker);
+		$oOrg = $this->newOrganization('Acme '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker);
 
@@ -126,7 +132,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	 */
 	public function testEveryResultCarriesItsClass(): void
 	{
-		$this->createOrganization('Acme '.$this->sMarker);
+		$this->newOrganization('Acme '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker);
 
@@ -145,7 +151,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	 */
 	public function testAnObjectIsReportedOnce(): void
 	{
-		$oOrg = $this->createOrganization('Acme '.$this->sMarker);
+		$oOrg = $this->newOrganization('Acme '.$this->sMarker);
 
 		$aIds = $this->idsOf($this->find($this->sMarker), 'Organization');
 
@@ -160,7 +166,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	/** Several words are AND, so a needle pair that no single object carries finds nothing. */
 	public function testSeveralWordsAreAnded(): void
 	{
-		$this->createOrganization('Acme '.$this->sMarker);
+		$this->newOrganization('Acme '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker.' '.$this->sMarker.'zzz');
 
@@ -169,7 +175,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 
 	public function testRestrictingToAClassSearchesOnlyThatClass(): void
 	{
-		$oOrg = $this->createOrganization('Acme '.$this->sMarker);
+		$oOrg = $this->newOrganization('Acme '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker, 'Organization');
 
@@ -215,9 +221,9 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	/** The limit caps the whole answer, not one class's share of it. */
 	public function testTheLimitCapsTheResult(): void
 	{
-		$this->createOrganization('Acme one '.$this->sMarker);
-		$this->createOrganization('Acme two '.$this->sMarker);
-		$this->createOrganization('Acme three '.$this->sMarker);
+		$this->newOrganization('Acme one '.$this->sMarker);
+		$this->newOrganization('Acme two '.$this->sMarker);
+		$this->newOrganization('Acme three '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker, '', 2);
 
@@ -231,7 +237,7 @@ class ObjectFindByNameTest extends ItopDataTestCaseAlias
 	 */
 	public function testTheAnswerSaysWhetherItIsComplete(): void
 	{
-		$this->createOrganization('Acme '.$this->sMarker);
+		$this->newOrganization('Acme '.$this->sMarker);
 
 		$aResult = $this->find($this->sMarker);
 
