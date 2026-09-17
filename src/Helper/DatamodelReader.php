@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use AttributeCaseLog;
 use AttributeDate;
 use AttributeDateTime;
 use AttributeDefinition;
@@ -555,7 +556,7 @@ final class DatamodelReader
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef),
-			] + self::allowedValues($oAttDef);
+			] + self::allowedValues($oAttDef) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;
@@ -599,6 +600,35 @@ final class DatamodelReader
 			'valuesTruncated' => true,
 			'valuesTotal'     => count($aValues),
 		];
+	}
+
+	/**
+	 * How to write an attribute that is not written the way it reads.
+	 *
+	 * Most attributes take back what a read returned. A case log does not: it
+	 * reads as the log and is written one entry at a time, so a type name is
+	 * the whole of what a model is told and neither of the two accepted shapes
+	 * is in it. Left to work that out, the reasonable guesses are sending the
+	 * rendered log back as the new value - which is the log twice - or looking
+	 * for an add-a-log-entry tool, which this module deliberately does not
+	 * ship: a work note is task-shaped, and task-shaped tools belong to a pack.
+	 *
+	 * Reported per attribute rather than in the write tools' descriptions,
+	 * because it is a property of the attribute in front of the caller and
+	 * because the schema is where a model already goes for the attribute code.
+	 * {@see RestValue} is what makes both shapes arrive intact.
+	 *
+	 * @return array<string, string> Empty for a type that needs no hint.
+	 */
+	private static function writeHint(AttributeDefinition $oAttDef): array
+	{
+		if ($oAttDef instanceof AttributeCaseLog) {
+			return [
+				'writeHint' => 'Write the new entry, not the whole log: pass its text as a plain string, or as {"add_item": {"message": "..."}}. iTop adds it to the log and keeps the entries already there.',
+			];
+		}
+
+		return [];
 	}
 
 	/**
