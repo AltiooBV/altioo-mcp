@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use PHPUnit\Framework\TestCase;
@@ -73,7 +74,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$this->assertNotFalse($iCatch, 'The write has to be wrapped to be reported.');
 		$sHandler = substr($sBody, $iCatch);
 
-		$this->assertStringContainsString('committedId', $sHandler, 'The handler must ask whether the row exists.');
+		$this->assertStringContainsString('CommittedId', $sHandler, 'The handler must ask whether the row exists.');
 		$this->assertStringContainsString('ToolOutput::Structured', $sHandler, 'A committed row is answered as a result.');
 		$this->assertStringContainsString("'warning'", $sHandler, 'The failure is attached, not discarded.');
 	}
@@ -107,10 +108,45 @@ class WriteFailureReportingContractTest extends TestCase
 			'A temporary key is negative; treating it as an id reports failures as successes.'
 		);
 		$this->assertStringContainsString(
-			'catch (\Throwable',
-			$this->methodBody(ObjectCreate::class, 'committedId'),
+			'catch (Throwable',
+			$this->methodBody(WritePlan::class, 'CommittedId'),
 			'This runs on the failure path and must not replace the failure with one of its own.'
 		);
+	}
+
+	/**
+	 * The same question, asked by the bulk path.
+	 *
+	 * Observed on a live instance: two bulk-created lnkContactToTicket rows
+	 * that duplicated one another came back "succeeded: 0, failed: 2", and one
+	 * of the two was in the database. The second row's refusal was the
+	 * uniqueness rule, which runs in DoCheckToWrite() before any insert and
+	 * named itself properly; what threw *after* the first row committed is
+	 * recorded only in that instance's log. DBInsert() commits and then
+	 * reloads, so the second half of it has always been able to fail with the
+	 * row written - which reason it was does not change what the report has to
+	 * say. A caller reading "failed" for a row that exists either retries,
+	 * writing a second one, or tells a user nothing was created.
+	 *
+	 * Pinned per tool rather than centrally because each write path decides for
+	 * itself what "did this one write" means: a creation can answer from the
+	 * key, and an update cannot, which is why only the two create paths carry
+	 * this.
+	 */
+	public function testACommittedBulkRowIsReportedAsOneDespiteTheFailure(): void
+	{
+		$sBody = $this->methodBody(ObjectBulkCreate::class, 'createOne');
+		$iCatch = strpos($sBody, 'catch (\Throwable');
+		$this->assertNotFalse($iCatch, 'The write has to be wrapped to be reported.');
+		$sHandler = substr($sBody, $iCatch);
+
+		$this->assertStringContainsString('WritePlan::CommittedId', $sHandler, 'The handler must ask whether the row exists.');
+		$this->assertMatchesRegularExpression(
+			'/if\s*\(\$iCommittedId !== null\)\s*\{.*self::outcome\(\$iCommittedId, \$iRow, true/s',
+			$sHandler,
+			'A committed row is an entry that succeeded, carrying its id.'
+		);
+		$this->assertStringContainsString("'warning'", $sHandler, 'The failure is attached, not discarded.');
 	}
 
 	/**
