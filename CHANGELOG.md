@@ -78,14 +78,17 @@ published archive was installed and exercised on into this line; the README and
   answers a fixed string carrying no class, no message and no reference — the failures that most
   need `MCPHelper::OpaqueFailure()`'s reference being the only ones never to get one. And
   `DBInsert()` commits before it returns, so catching around it was never the same as knowing
-  nothing was written: `core_object_create` asks the object instead. iTop gives an unsaved object
-  a deliberately negative temporary key, so a positive one means the row reached the database,
-  and the call then answers as the success it is, reporting the id and attaching the failure
-  under `warning`. `WritePlan::AsId()` is the single place deciding what counts as an id — a
-  positive number, whether it arrives as an int or a string, since `DBInsertSingleTable()`
-  assigns the key as `"$iNewKey"`. Update, delete, apply-stimulus, attach and the bulk tools
-  carry the widened catch and its reference, but not the commit check: what "did this one write"
-  means differs per operation and is not guessed here.
+  nothing was written: **both creation paths ask the object instead**. iTop gives an unsaved
+  object a deliberately negative temporary key, so a positive one means the row reached the
+  database, and the call then answers as the success it is, reporting the id and attaching the
+  failure under `warning`. `DBInsert()` commits and then reloads, so anything the second half
+  raises — an after-write listener, a reload of external values — arrives with the row already
+  written, and a batch that reports it as failed is one a caller repeats. `WritePlan::CommittedId()` asks the question and
+  `WritePlan::AsId()` decides what counts as an id — a positive number, whether it arrives as an
+  int or a string, since `DBInsertSingleTable()` assigns the key as `"$iNewKey"`. Update,
+  delete, apply-stimulus and attach carry the widened catch and its reference, but not the
+  commit check: what "did this one write" means differs per operation, and outside a creation it
+  is not answerable from the key.
 - **Every write tool answers with one shape, whatever `simulate` was.** Whatever a tool
   declares in its output schema, it reports on every call; it is the *values* that vary, not
   the keys — `id` is `null` rather than absent until there is one, `changes` is `{}` rather
@@ -98,7 +101,12 @@ published archive was installed and exercised on into this line; the README and
   property that is not required and on any description saying a field is "present only" under
   some condition.
 - **Bulk tools**: `core_object_bulk_create`, `core_object_bulk_update` and
-  `core_object_bulk_delete`, up to 100 objects per call. They check `UR_ACTION_BULK_MODIFY` /
+  `core_object_bulk_delete`, up to 100 objects per call. The id list takes the ids a read
+  reports, which are strings — iTop's key is one all the way out of the ORM, so passing back
+  exactly what came out of a search is the obvious call and has to be the working one. Up to 100
+  because past it a model has stopped acting on a list a person recognised; the search tools
+  report `total` for the whole matching set beside the page they return, so the size of the work
+  is one call with `limit=1` rather than a walk. They check `UR_ACTION_BULK_MODIFY` /
   `UR_ACTION_BULK_DELETE` before anything else, then check every object and every attribute
   individually — before writing anything, so a batch cannot fail on the eleventh object having
   already written ten. Dry runs by default, and each object is reported separately, because a
@@ -267,7 +275,10 @@ published archive was installed and exercised on into this line; the README and
 - **`output_fields`** on the reading tools, spelled as iTop's REST API spells it. Searches
   default to `id, friendlyname`; `core_object_get` defaults to `*`.
 - **`order_by` / `order_direction`** on both searches. OQL has no `ORDER BY`, so without them
-  there is no way to ask for "the ten most recent".
+  there is no way to ask for "the ten most recent" — and because every other query language has
+  the clause, writing one anyway is the mistake that arrives. A query carrying it is refused with
+  iTop's own parser message plus the sentence naming these two parameters, rather than with a
+  token position and nowhere to go.
 - **Paging is stable, and says when there is more.** Every page is ordered by the requested
   attribute and then by `id`, so an object cannot appear on two consecutive pages while another
   is never returned. `has_more` and `next_offset` come back on both searches, because a page can
