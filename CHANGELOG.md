@@ -22,6 +22,34 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **The class schema now says what the caller may do, on the class and on every attribute.**
+  It described what a class looks like and nothing about what this user may do with it, so a
+  model found out by making the call and reading the refusal — and a refusal is a poor way to
+  learn, because a model that meets one often retries a variation of it rather than reporting
+  it. iTop's console answers the same question by rendering a button or not; a client with no
+  buttons had nothing to read.
+
+  `core_class_schema` and `itop://core/class/{class}` now carry a `rights` block grading
+  `read`, `bulkRead`, `create`, `modify`, `delete`, `bulkModify` and `bulkDelete`, and every
+  attribute carries the same grade under `modify` — the one that matters most, since the
+  attribute is what a model actually picks off a schema and gets refused on. Each is `yes`,
+  `no` or `depends`, never a boolean: `UR_ALLOWED_DEPENDS` is a third answer meaning "ask again
+  with the object", and a model told `yes` or `no` instead has been told something no addon
+  said.
+
+  **The two levels do not promise the same thing.** The class gate is what every write tool
+  checks before it fetches anything, so `no` there is final — no object exists that could get
+  past a check which raises first. `yes` means only that the call gets that far, with the silo,
+  the lifecycle state and the datamodel's own `DoCheckToWrite()` still ahead of it; an abstract
+  class or a read-only database refuses whatever the rights say. That asymmetry is the useful
+  part: both halves are something a model can act on, where a symmetric "either way, who knows"
+  would be neither.
+
+  An attribute's `modify` sits **beside** `readOnly`, not in place of it. `readOnly` is the
+  datamodel refusing everybody, permanently and beyond any administrator's reach; `modify` is
+  this caller being refused something somebody can grant. Collapsed into one key a model can no
+  longer tell them apart, and raises the wrong one of the two with the user.
+
 - **The instructions now say that the surface is fixed at connect time.** This transport is
   stateless and sends no `tools/listChanged`, so a client's tool list is whatever it fetched at
   `initialize` and nothing the server can revise: an operator who grants a scope, installs a

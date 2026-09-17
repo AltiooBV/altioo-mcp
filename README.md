@@ -79,7 +79,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
-| `core_class_schema` | Describe one class: attributes, relations, lifecycle |
+| `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria |
@@ -213,7 +213,7 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 | `itop://core/version` | iTop version and edition |
 | `itop://core/current-user` | Who the request authenticated as: contact, user id, language, and whether archive mode is on |
 | `itop://core/classes` | The list of classes in the datamodel |
-| `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle |
+| `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle, and the caller's rights on it |
 | `itop://core/document/{class}/{id}/{att_code}` | One document, by the URI a read reported |
 
 `itop://core/classes` and `itop://core/class/{class}` are deliberately served twice — as
@@ -223,6 +223,20 @@ and support for resource *templates* is thinner still; a model that cannot reach
 falls back to guessing attribute codes, and every other tool here is the poorer for it. The
 tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
 hundred classes, so `core_class_list` takes a `category` and a `filter`.
+
+`core_class_schema` also reports what the calling user may *do* with the class — the question
+the console answers by rendering a button or not, and a client with no buttons had no way to
+ask. A `rights` block grades `read`, `bulkRead`, `create`, `modify`, `delete`, `bulkModify` and
+`bulkDelete`, and every attribute carries the same grade under `modify`. Each is `yes`, `no` or
+`depends`: three answers, because iTop's rights API has three, and folding `UR_ALLOWED_DEPENDS`
+into either neighbour reports something no addon ever said.
+
+`no` is the final half — every write tool checks the class gate before it fetches an object, so
+nothing gets past it and the model should say so rather than try. `yes` means only that the call
+gets that far: the object can still refuse through a silo, a lifecycle state or the datamodel's
+own `DoCheckToWrite()`. An attribute's `modify` sits beside `readOnly` rather than replacing it,
+because they fail for different reasons — `readOnly` is the datamodel refusing everybody and no
+administrator can grant it, `modify` is this caller being refused something somebody can.
 
 `itop://core/current-user` is doubled for the first of those reasons alone, by
 `core_current_user`. There is nothing to narrow — one identity, no arguments — so the tool form
