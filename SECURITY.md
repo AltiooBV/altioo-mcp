@@ -40,7 +40,10 @@ letting a user reach something you did not expect (that is what `mcp_allowed_pro
 `mcp_capabilities` and the token scopes are for); a model being talked into calling a tool it
 was allowed to call; and anything reachable only by an administrator, who can already edit the
 datamodel. A tool that lets a caller exceed *their own* iTop permissions is very much in
-scope — that is the property this extension exists to keep.
+scope — that is the property this extension exists to keep — and so is one that lets a
+credential exceed the scope it was minted with, which is the same property one layer down. An
+administrator editing a token in the console is a decision; an assistant editing one through
+this endpoint is not.
 
 ## Supported versions
 
@@ -121,6 +124,20 @@ so a browser cookie cannot be replayed against it. Four gates apply, and all of 
 A token scope can only ever make a credential **narrower** than the user's own profiles. It
 never widens anything.
 
+**The endpoint never writes the things that decide what the endpoint may write.** The scope
+above is an ordinary attribute on an ordinary object, so a tool able to write `PersonalToken`
+would let a credential widen itself — or mint a second one that is already wider — and writing
+`User` or a `URP_` link does the same thing one layer up, through the profiles. So
+`PersonalToken`, `UserToken`, `User`, the `URP_*` rights classes and everything descending from
+any of them are refused by every write tool, whatever the caller's iTop rights say. Those names
+are a floor rather than the whole rule. Whatever it is called, a class is refused if it declares
+a `scope` attribute that can hold an `MCP*` value, if it carries an `AttributeOneWayPassword` —
+the type iTop verifies a login against, which stores a salted hash that cannot be read back, as
+opposed to the recoverable types an object's own secrets live in — or if iTop files it under its
+`addon/userrights` category. So a
+credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused. Manage them in the
+console, which is where granting access belongs.
+
 **No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
 bulk tools all default to `simulate: true` and return what the call *would* change, having run
 iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is the mitigation
@@ -145,6 +162,7 @@ reference.
 | Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | Dry run by default on every write; `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; `UserRights` on every object and attribute |
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
+| An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |

@@ -271,6 +271,61 @@ entry itself, not left to be inferred from it.
   rights on a class, never whether an object exists: naming a class the caller may not read stays
   indistinguishable from naming one that does not exist, and a unit test holds that apart.
 
+### Security
+
+- **The classes that decide what this endpoint may do can no longer be written through it.**
+  Four gates decide a request, and three of them — the profile gate, the instance capability
+  grading, `UserRights` — hang off the user or the configuration, where no tool can reach them.
+  The token scope is the exception: it is an ordinary attribute on an ordinary `DBObject`, and
+  it is the only one of the four that grades a single credential rather than everyone holding
+  it. That is what an operator buys when they issue an administrator an `MCP-write` token
+  instead of maintaining a second user account, and a caller able to write `PersonalToken` kept
+  that bargain only by choosing to: it could widen its own scope to `MCP`, or — without
+  touching the row it authenticated with — mint a fresh token that already held it. Writing
+  `User` or a `URP_` link does the same thing one layer up, by granting the profiles the scope
+  was narrowing.
+
+  `PersonalToken`, `UserToken`, `User`, iTop's `URP_*` rights classes and **everything
+  descending from any of them** are now refused by `core_object_create`, `core_object_update`,
+  `core_object_delete`, `core_object_attach`, `core_object_apply_stimulus` and the three bulk
+  tools, whatever the caller's iTop rights say. Descendants are matched with `is_a()` rather
+  than by name, so a datamodel extension declaring `<parent>User</parent>` is covered and not a
+  way round; the `URP_` prefix is matched as well, so a rights class a later iTop adds is
+  covered the day it ships.
+
+  **The names are a floor, not the whole rule.** This is a part of iTop that moves — personal
+  tokens arrived in 3.1, application tokens after them, and whatever grades a credential in 4.x
+  has no name that can be written down today — so the datamodel is asked as well, about the
+  class in front of it rather than about a list. A class declaring a `scope` attribute that can
+  hold an `MCP*` value grades this endpoint and is refused on that basis alone. So is a class
+  carrying an `AttributeOneWayPassword` — the type that stores a salted hash and nothing else,
+  so its value can only ever be compared against, never read back and replayed. That is what
+  makes it a credential *into iTop* rather than a secret an object happens to hold: every
+  outbound credential has to be recoverable to be used, so it lives in `AttributePassword` or
+  `AttributeEncryptedString` instead, as iTop's own OAuth client secret and webhook password do.
+  Those recoverable types are deliberately not matched — a mailbox password on a mailbox or a
+  login on a CI is ordinary object data, and refusing to write it would be an unrelated
+  restriction wearing this one's name. So is a class iTop files under its `addon/userrights`
+  category, which every `URP_` class carries.
+
+  The three are a union with the names, which only ever adds: a MetaModel that cannot be read,
+  or a category a later version renames, costs the dynamic half and leaves everything the names
+  cover still refused. Written the other way round, an instance whose datamodel failed to load
+  would open every one of these classes at once.
+
+  iTop's own `addon/authentication` category would have been the obvious signal and is not used:
+  `SynchroDataSource` carries it, and a synchro source is not a credential.
+
+  **Reading is deliberately untouched.** A caller listing its own tokens learns nothing it did
+  not arrive with — the secret is not readable once minted — and an assistant that can report
+  "this token expires on Friday" is worth having. Every read stays gated by `UserRights`
+  exactly as before.
+
+  This is narrower than "an administrator can do anything anyway", which is true and is not the
+  point: an administrator reaching these classes through the console was always out of scope,
+  while an administrator reaching them through a credential minted to be narrow is precisely
+  the escalation the scopes exist to prevent. Manage tokens and profiles in the console.
+
 Everything else written so far ships in 1.0.0. Nothing above has shipped — 1.0.0 is untagged, so
 this entry folds into it at release rather than describing a change anyone has seen.
 
