@@ -57,6 +57,8 @@ final class ServerInstructions
 
 	private const TOOLSET_OBJECTS = 'objects';
 
+	private const TOOLSET_HISTORY = 'history';
+
 	/**
 	 * The instant the worked example is rendered at. Arbitrary, fixed, and
 	 * chosen so every field differs from every other - a 01/02/03 would read
@@ -79,6 +81,7 @@ final class ServerInstructions
 			self::datamodelSection($oPolicy),
 			self::readingSection($oPolicy, $sDateTimeFormat, $sDateFormat),
 			self::writingSection($oPolicy),
+			self::historySection($oPolicy),
 			self::WHATEVER_IS_SERVED,
 			...MCPRegistry::GetInstructions(),
 		];
@@ -114,6 +117,30 @@ final class ServerInstructions
 			."\n".'class; search that class to find the id.';
 
 		return "Discovering the datamodel\n".implode("\n", $aBullets);
+	}
+
+	/**
+	 * Where attribution lives, which is not on the object.
+	 *
+	 * Worth its own block because the absence is not guessable: every other
+	 * system a model has seen puts a created_at and an updated_by on the row,
+	 * and iTop puts neither anywhere. A model that assumes otherwise looks for
+	 * an attribute that does not exist, concludes the information is not held,
+	 * and tells the user so - with the whole log sitting one call away.
+	 */
+	private static function historySection(AccessPolicy $oPolicy): string
+	{
+		if (!$oPolicy->allowsToolset(self::TOOLSET_HISTORY)) {
+			return '';
+		}
+
+		return "Who changed what\n"
+			.'- An iTop object carries no "created by" or "last updated" field. When something'
+			."\n".'happened, and who did it, is in the change log: call core_object_history with the'
+			."\n".'class and the id.'
+			."\n".'- It reports only what iTop tracked. An attribute excluded from tracking, and'
+			."\n".'anything written outside iTop, leaves no record - so an empty history is not'
+			."\n".'evidence that nothing happened.';
 	}
 
 	/**
