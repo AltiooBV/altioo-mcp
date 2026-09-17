@@ -440,6 +440,37 @@ class SchemaToolsContractTest extends TestCase
 	}
 
 	/**
+	 * Allowed values keep the code a caller has to send.
+	 *
+	 * iTop answers code => label, and for most attributes the codes are
+	 * strings, so the payload carries an object. A stopwatch sub-item is keyed
+	 * [0 => label, 1 => label]: PHP calls that a list, json_encode drops the
+	 * keys, and sla_tto_passed reached a caller as ["no","yes"] - the labels,
+	 * localised through Dict::S('BooleanLabel:*'), with the 0 and 1 that are
+	 * actually stored gone. A search built from that filters on a string the
+	 * column never holds.
+	 *
+	 * Asserted on the encoded form, because the defect was in the encoding: in
+	 * PHP both shapes are arrays and look equally fine.
+	 */
+	public function testAllowedValuesKeepTheirCodesThroughTheEncoding(): void
+	{
+		$oCodeKeyed = new ReflectionMethod(DatamodelReader::class, 'codeKeyed');
+
+		$this->assertSame(
+			'{"0":"no","1":"yes"}',
+			json_encode($oCodeKeyed->invoke(null, [0 => 'no', 1 => 'yes'])),
+			'a stopwatch sub-item must not answer with its labels alone'
+		);
+		$this->assertSame(
+			'{"open":"Open"}',
+			json_encode($oCodeKeyed->invoke(null, ['open' => 'Open'])),
+			'an ordinary enumeration encodes exactly as it did'
+		);
+		$this->assertNull($oCodeKeyed->invoke(null, null), 'no enumeration stays no enumeration');
+	}
+
+	/**
 	 * @return array<string, \ReflectionParameter>
 	 */
 	private function parameters(string $sTool): array
