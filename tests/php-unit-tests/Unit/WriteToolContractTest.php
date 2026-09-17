@@ -120,16 +120,29 @@ class WriteToolContractTest extends TestCase
 	}
 
 	/**
-	 * The two-step is only followed if the description says so; the schema
-	 * default alone is not something a model reasons about out loud.
+	 * The two-step has to be legible from the tool itself, not only from the
+	 * instructions: an instruction block is advisory, some clients drop it,
+	 * and a schema default alone is not something a model reasons about out
+	 * loud. What the tool carries is what a client cannot drop.
+	 *
+	 * Description *or* the simulate property, because the prose no longer
+	 * repeats what the property says - the shared protocol moved into
+	 * ServerInstructions, which is narrowed per caller and sent once instead
+	 * of once per tool. The guarantee is unchanged; the place it is kept is
+	 * the cheaper of the two.
 	 */
 	public function testEveryWritingToolExplainsTheTwoCalls(): void
 	{
 		foreach ($this->writingTools() as [$sName, $oTool]) {
-			$sDescription = (string)$oTool->getDescription();
+			$sAtCallTime = (string)$oTool->getDescription()
+				.json_encode($oTool->getInputSchema()['properties']['simulate'] ?? []);
 
-			$this->assertStringContainsString('simulate=true', $sDescription, "{$sName} does not describe the dry run");
-			$this->assertStringContainsString('simulate=false', $sDescription, "{$sName} does not say how to go through with it");
+			$this->assertStringContainsString('simulate=false', $sAtCallTime, "{$sName} does not say how to go through with it");
+			$this->assertStringContainsString(
+				'default',
+				$sAtCallTime,
+				"{$sName} does not say the dry run is what a first call does"
+			);
 		}
 	}
 

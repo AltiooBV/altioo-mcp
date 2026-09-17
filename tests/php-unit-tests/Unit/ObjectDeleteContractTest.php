@@ -58,12 +58,23 @@ class ObjectDeleteContractTest extends TestCase
 		$this->assertTrue($aSimulate[0]->getDefaultValue());
 	}
 
-	public function testTheDescriptionTellsTheModelHowTheTwoCallsWork(): void
+	/**
+	 * The deletion plan is this tool's own half of the protocol - the shared
+	 * two-step lives in the simulate property and in the instructions now, but
+	 * "the dry run tells you what else goes with it" is true of no other tool
+	 * and has to be readable here.
+	 */
+	public function testTheDescriptionSaysWhatTheDryRunIsWorthHere(): void
 	{
-		$sDescription = (new ObjectDelete())->getDescription();
+		$oTool = new ObjectDelete();
+		$sDescription = (string)$oTool->getDescription();
 
-		$this->assertStringContainsString('simulate=true', $sDescription);
-		$this->assertStringContainsString('simulate=false', $sDescription);
+		$this->assertStringContainsString('deletion plan', $sDescription);
+		$this->assertStringContainsString(
+			'simulate=false',
+			$sDescription.json_encode($oTool->getInputSchema()['properties']['simulate']),
+			'nothing at call time says how to go through with it'
+		);
 	}
 
 	/**
