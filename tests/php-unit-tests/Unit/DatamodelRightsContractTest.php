@@ -256,6 +256,28 @@ class DatamodelRightsContractTest extends TestCase
 	}
 
 	/**
+	 * And the resource template says it too.
+	 *
+	 * Both surfaces run the same Describe(), so the payloads cannot drift - but
+	 * the descriptions are written twice and can. A client reading the template
+	 * gets the rights block either way; what it loses is any reason to look for
+	 * it, which for a block whose whole purpose is to be consulted before the
+	 * call is the whole of it.
+	 */
+	public function testTheResourceTemplateDescribesTheSamePayload(): void
+	{
+		$sDescription = (new \Altioo\iTop\Extension\MCP\Core\ResourceTemplates\ClassDetail())->getDescription();
+
+		foreach (['rights', 'bulkCreate', 'depends'] as $sWord) {
+			$this->assertStringContainsString(
+				$sWord,
+				$sDescription,
+				"itop://core/class/{class} serves the rights block but never mentions '{$sWord}'"
+			);
+		}
+	}
+
+	/**
 	 * The attribute-level answer is its own key. readOnly is the datamodel
 	 * refusing everybody; modify is this caller being refused, which somebody
 	 * can grant. Collapsed into one, the model raises the wrong one with the
