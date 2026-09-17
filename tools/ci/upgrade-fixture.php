@@ -195,9 +195,24 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 }
 
 // The delta-added enum value, on the class and on the row that uses it.
-$aScopes = MetaModel::IsValidClass('PersonalToken')
-	? array_keys(MetaModel::GetAttributeDef('PersonalToken', 'scope')->GetAllowedValues())
-	: [];
+//
+// Asked through both accessors, as TokenScopes::PossibleScopeValues does at
+// runtime: scope is an AttributeEnumSet, and GetAllowedValues() - the accessor
+// a plain enum answers - returns null for it. array_keys(null) is a fatal, so
+// asking that one alone did not report a missing scope, it ended the run three
+// checks in and never minted the token the HTTP smoke needs.
+$aScopes = [];
+if (MetaModel::IsValidClass('PersonalToken')) {
+	$oScope = MetaModel::GetAttributeDef('PersonalToken', 'scope');
+	foreach (['GetPossibleValues', 'GetAllowedValues'] as $sMethod) {
+		$mDeclared = method_exists($oScope, $sMethod) ? $oScope->$sMethod() : null;
+		if (!is_array($mDeclared)) {
+			continue;
+		}
+		$aCodes = array_filter(array_keys($mDeclared), 'is_string');
+		$aScopes = array_merge($aScopes, $aCodes !== [] ? $aCodes : array_filter($mDeclared, 'is_string'));
+	}
+}
 check('PersonalToken still offers the MCP scope', in_array('MCP', $aScopes, true));
 
 $oToken = MetaModel::GetObject('PersonalToken', (int)$aState['token']['id'], false, true);
