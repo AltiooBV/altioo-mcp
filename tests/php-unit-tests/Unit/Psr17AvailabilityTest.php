@@ -37,10 +37,13 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * So nyholm/psr7 is required explicitly. Nyholm rather than Guzzle on
  * purpose: a Composer loader prepends itself, so of the two in this process
- * the one registered last - iTop's - answers first. A second copy of
- * GuzzleHttp\Psr7 vendored here would be the one that loses, leaving every
- * request on whatever version iTop happens to ship. A namespace iTop does not
- * ship cannot be resolved out from under this module that way.
+ * the one registered last answers first - and that is this module's. iTop
+ * registers its own from bootstrap.inc.php, reached on the first line of
+ * index.php; this module's vendor/autoload.php is a datamodel file and is
+ * loaded later, during MetaModel::Startup(). A second copy of GuzzleHttp\Psr7
+ * vendored here would therefore be the copy that *wins*, shadowing iTop's own
+ * for every request to the environment rather than only the ones this
+ * endpoint serves. A namespace iTop does not ship displaces nothing.
  *
  * This test needs no iTop, which is the point - it fails in a bare checkout
  * the moment the dependency goes away, rather than in production.

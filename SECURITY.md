@@ -262,10 +262,18 @@ The other one worth knowing about is **`nyholm/psr7`**, the PSR-17 implementatio
 and response is built through. No line of this module names it: it is located at runtime by
 `php-http/discovery`, which makes it look unused to a reader and to anything that prunes
 dependencies. `Psr17AvailabilityTest` fails if it goes missing. Nyholm rather than Guzzle
-deliberately — iTop ships `guzzlehttp/psr7` itself, and of two Composer autoloaders in one
-process the one registered *last* answers first, which is iTop's. A second copy of that
-namespace vendored here would therefore be the copy that loses: every request would run on
-whatever version iTop ships, which is not the same across the branches this module supports. A
-namespace iTop does not ship cannot be resolved that way. `index.php` explains the ordering,
-and `VendoredDependencyResolutionTest` checks that what actually resolves still satisfies what
-`composer.json` asks for.
+deliberately — iTop ships `guzzlehttp/psr7` itself, and a Composer autoloader prepends itself
+when it registers, so of two in one process the one registered *last* answers first. That is
+this module's: iTop registers its own on the first line of `index.php`, while this module's
+`vendor/autoload.php` is a datamodel file and is loaded later, during `MetaModel::Startup()`.
+So a second copy of that namespace vendored here would be the copy that *wins* — shadowing
+iTop's own for every request to the environment, not only for the ones this endpoint serves. A
+namespace iTop does not ship displaces nothing. `index.php` explains the ordering.
+
+Seven packages nonetheless appear in both trees, and on that reasoning it is this module's
+copies of them that answer. `VendoredDependencyResolutionTest` lists the seven and checks each
+against what `composer.json` declares, with the one accepted divergence named in the file and
+any eighth failing the test. The reverse question — whether the copies that actually answer
+satisfy what *iTop's* own `installed.json` declares — is recorded there as a known gap rather
+than answered; the versions cannot simply be pinned to iTop's, because the branches this module
+supports do not ship the same ones.
