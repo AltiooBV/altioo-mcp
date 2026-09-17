@@ -98,7 +98,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		require_once(APPROOT.'core/oql/check_oql.php');
 		$aCheck = CheckOQL($oql, new \ModelReflectionRuntime());
 		if ($aCheck['status'] === 'error') {
-			throw new ToolCallException("Invalid OQL query. Reason: {$aCheck['message']}");
+			throw new ToolCallException("Invalid OQL query. Reason: {$aCheck['message']}".self::orderByHint($oql));
 		}
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
@@ -167,5 +167,35 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			// keeps its message. Anything else came out of the query layer.
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));
 		}
+	}
+
+	/**
+	 * The sentence a parser error about ORDER BY is missing.
+	 *
+	 * OQL has no ORDER BY, and writing one is the mistake a model arrives
+	 * with - every other query language it knows has the clause. What comes
+	 * back is the parser's own complaint about an unexpected token, which says
+	 * nothing about the two parameters this tool has for exactly that, and the
+	 * server instructions say to use them only to a caller that read them.
+	 *
+	 * Appended to the refusal rather than replacing it: the parser message
+	 * names the position, which is worth keeping when the query has a second
+	 * problem as well.
+	 *
+	 * Matched on the query text, not on the message, because the message is
+	 * iTop's and moves. A query that carries the words inside a literal and
+	 * fails for some other reason gets one sentence of advice it did not need,
+	 * which is the cheap side of the trade.
+	 */
+	private static function orderByHint(string $sOql): string
+	{
+		if (preg_match('/\border\s+by\b/i', $sOql) !== 1) {
+			return '';
+		}
+
+		// The direction values come from the constants the enum is built from,
+		// so advice and schema cannot name different strings.
+		return ' OQL has no ORDER BY clause: remove it and pass the attribute to order_by, '
+			.'with order_direction as "'.self::SORT_ASC.'" or "'.self::SORT_DESC.'".';
 	}
 }
