@@ -592,14 +592,44 @@ final class DatamodelReader
 
 		$aValues = $oAttDef->GetAllowedValues();
 		if (!is_array($aValues) || count($aValues) <= self::MAX_ALLOWED_VALUES) {
-			return ['values' => $aValues];
+			return ['values' => self::codeKeyed($aValues)];
 		}
 
 		return [
-			'values'          => array_slice($aValues, 0, self::MAX_ALLOWED_VALUES, true),
+			'values'          => self::codeKeyed(array_slice($aValues, 0, self::MAX_ALLOWED_VALUES, true)),
 			'valuesTruncated' => true,
 			'valuesTotal'     => count($aValues),
 		];
+	}
+
+	/**
+	 * The allowed values as a map, whatever iTop keyed them with.
+	 *
+	 * iTop answers code => label, and for most attributes the codes are
+	 * strings, so the payload carries an object and a caller reads the key it
+	 * has to send. A stopwatch sub-item does not: AttributeStopWatch's
+	 * GetSubItemAllowedValues() returns [0 => label, 1 => label], PHP calls
+	 * that a list, and json_encode drops the keys - so sla_tto_passed arrived
+	 * as ["no","yes"]. What survived was GetBooleanLabel(), which resolves
+	 * through the dictionary: the *labels*, localised, with the 0 and 1 that
+	 * are actually stored gone. On a French instance the same read answers
+	 * ["non","oui"].
+	 *
+	 * Nothing writes those - a sub-item is computed, so it is reported under
+	 * `derived` - but a search reads them, and "WHERE sla_tto_passed = 'no'"
+	 * filters on a string the column never holds.
+	 *
+	 * Casting to an object is what keeps the keys: an array cast alone does
+	 * not, because PHP folds a numeric-string key straight back to an int.
+	 * An attribute whose values are already string-keyed encodes identically
+	 * either way, so one shape covers both and a caller has one thing to
+	 * parse.
+	 *
+	 * @param mixed $mValues As GetAllowedValues() answered: a map, or null.
+	 */
+	private static function codeKeyed(mixed $mValues): mixed
+	{
+		return is_array($mValues) ? (object) $mValues : $mValues;
 	}
 
 	/**
