@@ -67,11 +67,12 @@ class ObjectBulkCreate extends AbstractBulkTool
 	public function getOutputSchema(): ?array
 	{
 		return self::reportSchema([
-			'changes' => [
+			'changes'    => [
 				'type'                 => 'object',
 				'additionalProperties' => true,
 				'description'          => 'Attribute code => the value this write set, or would set.',
 			],
+			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -148,7 +149,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// Through report() like the other two, rather than a hand-rolled copy
 		// of it: the defaults it applies are what make every entry carry the
 		// keys the schema promises.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => []]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => [], 'overridden' => []]));
 	}
 
 	/**
@@ -185,10 +186,19 @@ class ObjectBulkCreate extends AbstractBulkTool
 				$oObject->Set($sAttCode, $value);
 			}
 
+			// Before the check, because the check is what moves them:
+			// CheckToWrite() runs DoComputeValues(), and a class that derives
+			// an attribute from others overwrites whatever was just Set() into
+			// it.
+			$aRequested = WritePlan::Requested($oObject, $sClass, array_keys($aValues));
+
 			// The check that catches a missing mandatory attribute before the
 			// row is inserted, and so the whole reason a dry run here is worth
 			// running.
 			WritePlan::Check($oObject, "Row {$iRow}");
+
+			$aOverridden = WritePlan::Overridden($oObject, $sClass, $aRequested);
+			WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "Row {$iRow}");
 
 			// Read before the insert on both paths: DBInsert() clears the
 			// pending changes, so asking afterwards reports nothing and the
@@ -197,14 +207,15 @@ class ObjectBulkCreate extends AbstractBulkTool
 			$aChanges = WritePlan::Changes($oObject, $sClass);
 
 			if ($bSimulate) {
-				return self::outcome(null, $iRow, true, 'Would be created.') + ['changes' => $aChanges];
+				return self::outcome(null, $iRow, true, 'Would be created.')
+					+ ['changes' => $aChanges, 'overridden' => $aOverridden];
 			}
 
 			$iId = $oObject->DBInsert();
 
 			return self::outcome($iId, $iRow, true, 'Created.')
 				+ WritePlan::Identity($sClass, $iId)
-				+ ['changes' => $aChanges];
+				+ ['changes' => $aChanges, 'overridden' => $aOverridden];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
 			return self::outcome(null, $iRow, false, $e->getMessage());

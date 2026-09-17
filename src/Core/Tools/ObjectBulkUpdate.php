@@ -67,11 +67,12 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	public function getOutputSchema(): ?array
 	{
 		return self::reportSchema([
-			'changes' => [
+			'changes'    => [
 				'type'                 => 'object',
 				'additionalProperties' => true,
 				'description'          => 'Attribute code => the value this write set, or would set.',
 			],
+			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -156,6 +157,13 @@ class ObjectBulkUpdate extends AbstractBulkTool
 					$mObject->Set($sAttCode, $value);
 				}
 
+				// Before the check, because the check is what moves them:
+				// CheckToWrite() runs DoComputeValues(), and a class that
+				// derives an attribute from others overwrites whatever was
+				// just Set() into it. Per object, because a value can survive
+				// on one row and be recomputed away on the next.
+				$aRequested = WritePlan::Requested($mObject, $class, array_keys($aValues));
+
 				// Per object, and before the write: the same values can be
 				// valid on one object and not on the next - a state that
 				// forbids the transition, a DoCheckToWrite() that reads other
@@ -163,8 +171,12 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// exception from the ORM half way through the batch.
 				WritePlan::Check($mObject, "{$class}::{$iId}");
 
+				$aOverridden = WritePlan::Overridden($mObject, $class, $aRequested);
+				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");
+
 				$aOutcome = self::outcome($iId, $iRow, true, $simulate ? 'Would be updated.' : 'Updated.');
-				$aOutcome['changes'] = WritePlan::Changes($mObject, $class);
+				$aOutcome['changes']    = WritePlan::Changes($mObject, $class);
+				$aOutcome['overridden'] = $aOverridden;
 
 				if (!$simulate) {
 					$mObject->DBUpdate();
@@ -182,6 +194,6 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		// An entry that failed before anything was set still reports changes,
 		// empty: the schema promises it on every entry.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => []]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => [], 'overridden' => []]));
 	}
 }

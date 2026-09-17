@@ -9,9 +9,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
+use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -48,33 +52,104 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class DerivedAttributeReportingContractTest extends TestCase
 {
+	protected function setUp(): void
+	{
+		parent::setUp();
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+	}
+
+	protected function tearDown(): void
+	{
+		MCPRegistry::Clear();
+		parent::tearDown();
+	}
+
 	/**
-	 * The tools that take caller-supplied attribute values and write them.
+	 * Every tool that takes caller-supplied attribute values and writes them,
+	 * with the method that does it: the single-object tools do it in execute(),
+	 * ObjectBulkCreate in the per-row helper execute() delegates to.
 	 *
-	 * @return array<string, class-string>
+	 * Listed rather than discovered from the registry, because what is being
+	 * asserted is a property of the write path inside a named method and there
+	 * is no annotation that points at it. A write tool added later and not
+	 * added here is the gap; {@see testTheListIsTheWholeOfIt()} closes it.
+	 *
+	 * @return array<string, array{0: class-string, 1: string}>
 	 */
 	private function toolsTakingFields(): array
 	{
 		return [
-			'core_object_create'         => ObjectCreate::class,
-			'core_object_update'         => ObjectUpdate::class,
-			'core_object_apply_stimulus' => ObjectApplyStimulus::class,
+			'core_object_create'         => [ObjectCreate::class, 'execute'],
+			'core_object_update'         => [ObjectUpdate::class, 'execute'],
+			'core_object_apply_stimulus' => [ObjectApplyStimulus::class, 'execute'],
+			'core_object_bulk_create'    => [ObjectBulkCreate::class, 'createOne'],
+			'core_object_bulk_update'    => [ObjectBulkUpdate::class, 'execute'],
 		];
+	}
+
+	/**
+	 * A bulk tool describes one outcome per object, so its promise about
+	 * `overridden` sits on the entry rather than on the report.
+	 *
+	 * @return array{0: array<string, mixed>, 1: array<int, string>}
+	 */
+	private function outcomeShape(string $sClass): array
+	{
+		$aSchema = (new $sClass())->getOutputSchema();
+
+		if (array_key_exists('objects', $aSchema['properties'])) {
+			$aItems = $aSchema['properties']['objects']['items'];
+
+			return [$aItems['properties'], $aItems['required']];
+		}
+
+		return [$aSchema['properties'], $aSchema['required']];
+	}
+
+	/**
+	 * Guards the list above: a writing tool that takes `fields` and is not
+	 * named there would be exempt from every assertion in this file without
+	 * anything failing.
+	 */
+	public function testTheListIsTheWholeOfIt(): void
+	{
+		$aListed = [];
+		foreach ($this->toolsTakingFields() as [$sClass, $sMethod]) {
+			$aListed[] = $sClass;
+		}
+
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$aProperties = $oTool->getInputSchema()['properties'] ?? [];
+			// 'fields' on the single-object tools and on bulk update, which
+			// applies one map to every row; 'objects' on bulk create, which
+			// carries one map per row. Both are caller-supplied attribute
+			// values reaching Set().
+			if (!array_key_exists('fields', $aProperties) && !array_key_exists('objects', $aProperties)) {
+				continue;
+			}
+
+			$this->assertContains(
+				get_class($oTool),
+				$aListed,
+				"{$sName} takes caller-supplied fields and is not covered here, so nothing checks that it reports a value the write would discard"
+			);
+		}
 	}
 
 	public function testEveryToolTakingFieldsDeclaresWhatItWouldDiscard(): void
 	{
-		foreach ($this->toolsTakingFields() as $sName => $sClass) {
-			$aSchema = (new $sClass())->getOutputSchema();
+		foreach ($this->toolsTakingFields() as $sName => [$sClass, $sMethod]) {
+			[$aProperties, $aRequired] = $this->outcomeShape($sClass);
 
 			$this->assertArrayHasKey(
 				'overridden',
-				$aSchema['properties'],
+				$aProperties,
 				"{$sName} does not declare `overridden`, so a caller cannot tell a supplied value that was applied from one the write threw away"
 			);
 			$this->assertContains(
 				'overridden',
-				$aSchema['required'],
+				$aRequired,
 				"{$sName} may omit `overridden`, which makes it two response shapes wearing one schema - the thing WritePlan::OutcomeSchema() exists to prevent"
 			);
 		}
@@ -100,8 +175,8 @@ class DerivedAttributeReportingContractTest extends TestCase
 	 */
 	public function testTheRequestIsCapturedBeforeTheCheckAndComparedAfterIt(): void
 	{
-		foreach ($this->toolsTakingFields() as $sName => $sClass) {
-			$sBody = $this->methodBody($sClass, 'execute');
+		foreach ($this->toolsTakingFields() as $sName => [$sClass, $sMethod]) {
+			$sBody = $this->methodBody($sClass, $sMethod);
 
 			$iRequested  = strpos($sBody, 'WritePlan::Requested');
 			$iCheck      = strpos($sBody, 'WritePlan::Check(');
@@ -126,8 +201,8 @@ class DerivedAttributeReportingContractTest extends TestCase
 
 	public function testEveryToolTakingFieldsValidatesWhatItWouldDiscard(): void
 	{
-		foreach ($this->toolsTakingFields() as $sName => $sClass) {
-			$sBody = $this->methodBody($sClass, 'execute');
+		foreach ($this->toolsTakingFields() as $sName => [$sClass, $sMethod]) {
+			$sBody = $this->methodBody($sClass, $sMethod);
 
 			$this->assertStringContainsString(
 				'WritePlan::CheckRequested',
