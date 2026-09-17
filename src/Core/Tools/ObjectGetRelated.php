@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
@@ -151,12 +152,30 @@ class ObjectGetRelated extends AbstractMCPTool
 			throw new ToolCallException("Requested depth of {$depth} exceeds the maximum allowed depth of {$iMaxRecursionDepth}. Please specify a lower depth.");
 		}
 
-		// Validate relation
-		$aValidRelations = MetaModel::EnumRelationsEx();
-		if (!in_array($relation, $aValidRelations, true)) {
-			throw new ToolCallException(
-				"Invalid relation '{$relation}'. Available: ".implode(', ', $aValidRelations).'.'
-			);
+		// Validate the relation against this class, and in the direction asked
+		// for.
+		//
+		// EnumRelationsEx() takes the class - a relation is declared per class,
+		// and one this class has no query for is not a relation it has - and it
+		// answers a map keyed by relation code whose value says which
+		// directions exist: ['impacts' => ['down' => 'Impacts', 'up' => ...]].
+		// Called without the class it raises ArgumentCountError, and read as a
+		// list of codes it never matches, because the values are those inner
+		// arrays rather than the codes.
+		$aValidRelations = MetaModel::EnumRelationsEx($class);
+		if (!isset($aValidRelations[$relation][$direction])) {
+			$aAvailable = array_keys(array_filter(
+				$aValidRelations,
+				static fn(array $aDirections): bool => isset($aDirections[$direction])
+			));
+
+			throw new ToolCallException(sprintf(
+				"Invalid relation '%s' for %s in direction '%s'. Available: %s.",
+				$relation,
+				$class,
+				$direction,
+				$aAvailable === [] ? 'none' : implode(', ', $aAvailable)
+			));
 		}
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
@@ -191,14 +210,32 @@ class ObjectGetRelated extends AbstractMCPTool
 			$oSet = $oSetFinal;
 		}
 
-		// Build a single-object set as the source for the relation graph
-		if ($direction === self::DIRECTION_DOWN) {
-			$oGraph = $oSet->GetRelatedObjectsDown($relation, $depth, $redundancy);
-		} else {
-			$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
-		}
+		// Build a single-object set as the source for the relation graph.
+		//
+		// Wrapped because everything below is the ORM's: a relation query that
+		// does not match the datamodel it was declared against fails inside
+		// iTop, and unwrapped that reaches the caller as the SDK's fixed
+		// string - no class, no message, and no reference to find it by. This
+		// tool had no handler at all, which is how a call that could never
+		// succeed looked the same as one that broke today.
+		try {
+			if ($direction === self::DIRECTION_DOWN) {
+				$oGraph = $oSet->GetRelatedObjectsDown($relation, $depth, $redundancy);
+			} else {
+				$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
+			}
 
-		return ToolOutput::Json(self::serializeGraph($oGraph));
+			return ToolOutput::Json(self::serializeGraph($oGraph));
+		} catch (ToolCallException $e) {
+			// The withheld-class refusal from serializeGraph is this module's
+			// own answer and keeps its wording.
+			throw $e;
+		} catch (\Throwable $e) {
+			throw new ToolCallException(MCPHelper::OpaqueFailure(
+				"Failed to walk '{$relation}' from {$class}::{$id}",
+				$e
+			));
+		}
 	}
 
 	private static function serializeGraph(\RelationGraph $oGraph): array
