@@ -293,6 +293,17 @@ published archive was installed and exercised on into this line; the README and
 
 ### Added
 
+- **`core_class_list` narrows by what the caller may do.** `may=create` returns the classes this
+  user is allowed to create, each with the full rights block, in one call. Without it the only
+  way to answer "what can I create here" was `core_class_schema` once per class — several hundred
+  calls on a stock datamodel, or a partial picture from however many an agent could afford, which
+  is a poor basis for planning work it intends to carry out. A class the gate refuses is dropped;
+  one graded `depends` is kept and says so, because that is the datamodel asking for the object
+  rather than refusing the class. The gates are the ones the tools actually check, taken from the
+  same list the rights block is built from, so the schema's enum, the refusal message and the
+  block cannot come apart. With no `may` no rights are read at all, so `itop://core/classes` costs
+  what it always did.
+
 - **`core_current_user`, the identity as a tool.** `itop://core/current-user` already answered
   who the session is authenticated as, and a client that never fetches resources never asked:
   a model looks for a tool, finds none, and concludes the server cannot say — then either puts
