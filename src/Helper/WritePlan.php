@@ -684,6 +684,40 @@ final class WritePlan
 	}
 
 	/**
+	 * The id of an object that reached the database, or null if it did not.
+	 *
+	 * For the failure path of a creation, where the question is not "what is
+	 * this object's id" but "is there a row". DBInsert() commits inside
+	 * DBInsertNoReload() and only then walks the loaded attributes calling
+	 * ReadExternalValues(), so a throw from the second half leaves a committed
+	 * row behind an exception - and the object carries its key from the moment
+	 * it does.
+	 *
+	 * Answering "failed" there is the worst thing a create can do: creating is
+	 * not idempotent, nothing in the protocol says a failed write may have
+	 * written, and the reasonable next move on an error is to try again. That
+	 * is a second object.
+	 *
+	 * Guarded, because it runs while an exception is already being reported:
+	 * an object left in a state where even reading its key throws must not
+	 * replace the failure being described with one from the describing.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function CommittedId(?DBObject $oObject): ?int
+	{
+		if ($oObject === null) {
+			return null;
+		}
+
+		try {
+			return self::AsId($oObject->GetKey());
+		} catch (Throwable $e) {
+			return null;
+		}
+	}
+
+	/**
 	 * Runs iTop's own pre-write check, and refuses with what it found.
 	 *
 	 * CheckToWrite() returns [ok, issues, securityIssue] and fills the issues
