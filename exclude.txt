@@ -17,6 +17,14 @@
 # is not in the archive. This file excludes itself for the same reason: it
 # describes how the archive was built, which is a question about the build and
 # not about the instance.
+#
+# doc/example-pack ships as source and only as source. Its vendor/ and its lock
+# are what appear when somebody follows its README and runs composer in there -
+# a whole test framework, landing inside doc/ on a customer instance. .gitignore
+# already keeps both out of the repository, so a release CI builds from a clean
+# checkout never saw them; one built from a working tree that had followed the
+# pack's own instructions would ship them. Two filters, and this is the case
+# where only one of them was looking.
 
 .DS_Store
 ._*
@@ -34,6 +42,8 @@ phpcs.xml.dist
 exclude.txt
 .phpunit.result.cache
 .phpunit.cache
+doc/example-pack/vendor
+doc/example-pack/composer.lock
 tools
 build
 altioo-mcp-*.zip
