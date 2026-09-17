@@ -61,6 +61,36 @@ class SearchPagingContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * A filter value the datamodel cannot hold is refused, not answered.
+	 *
+	 * An unknown attribute code was always refused by name; an unknown value
+	 * for a known code was not, so filters {"status": "bogus_status"} came back
+	 * total: 0 - indistinguishable from a state nobody is in, and read by an
+	 * agent as "no ticket is in that state". That is a wrong answer rather than
+	 * a missing one, which is the only kind worth a refusal.
+	 *
+	 * Read off the source, because the check needs a datamodel to run: what is
+	 * asserted here is that the call exists on the filter loop, that it names
+	 * the valid codes, and that it skips the two cases where asking would cost
+	 * more than it is worth.
+	 */
+	public function testAnInvalidFilterValueIsRefusedWithTheValidOnes(): void
+	{
+		$sFile = (string) file_get_contents(
+			(new \ReflectionClass(ObjectSearchByClass::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('refusalForValue', $sFile, 'the filter loop never checks the value');
+		$this->assertStringContainsString('array_keys($aValues)', $sFile, 'the refusal does not name the valid codes');
+		$this->assertStringContainsString('IsExternalKey', $sFile, 'an external key would enumerate its whole target table');
+		$this->assertStringContainsString(
+			'MAX_ALLOWED_VALUES',
+			$sFile,
+			'an unbounded enumeration is not one a refusal can list'
+		);
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{
