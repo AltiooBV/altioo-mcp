@@ -105,6 +105,9 @@ final class ServerInstructions
 		if (self::mayChangeSomething($oPolicy)) {
 			$aBullets[] = '- Read core_class_schema before any create, update or stimulus. It reports which'
 				."\n".'attributes are mandatory, which are read-only, and which stimuli a state accepts.';
+			$aBullets[] = '- To find out what you are allowed to do at all, narrow the list rather than reading'
+				."\n".'schemas one by one: core_class_list with may=create answers which classes you may create,'
+				."\n".'and may=modify, may=delete and the bulk gates likewise.';
 		}
 
 		$aBullets[] = '- An external key holds the id of another object. core_class_schema names the target'
