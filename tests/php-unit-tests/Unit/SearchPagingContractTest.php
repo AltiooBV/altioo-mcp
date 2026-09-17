@@ -33,6 +33,34 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class SearchPagingContractTest extends TestCase
 {
+	/**
+	 * An ORDER BY in the query is answered with the parameter that replaces it.
+	 *
+	 * OQL has no ORDER BY and every other query language a model knows does,
+	 * so it is the mistake that actually arrives. What iTop's parser says back
+	 * is that something is unexpected at position n, which leaves a caller
+	 * rewriting the same query - the two parameters that do the job are on the
+	 * same tool, and the server instructions mention them only to a caller
+	 * that read them.
+	 *
+	 * The direction values are read from the constants the enum is built from,
+	 * so the advice cannot name a string order_direction would refuse.
+	 */
+	public function testAnOrderByInTheQueryIsToldWhereToPutIt(): void
+	{
+		$oHint = new \ReflectionMethod(ObjectSearchByOQL::class, 'orderByHint');
+
+		$sHint = (string) $oHint->invoke(null, 'SELECT UserRequest ORDER BY start_date DESC');
+		$this->assertStringContainsString('order_by', $sHint);
+		$this->assertStringContainsString('"'.AbstractObjectSearch::SORT_DESC.'"', $sHint);
+
+		$this->assertSame(
+			'',
+			(string) $oHint->invoke(null, 'SELECT UserRequest WHERE status = "open"'),
+			'a query with no ORDER BY gets no advice about one'
+		);
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{
