@@ -256,19 +256,53 @@ final class DatamodelReader
 	 * firmer half, and the useful one: the tools raise on it before an object
 	 * is ever fetched, so no object exists that could get past it.
 	 *
+	 * bulkCreate is the one key here iTop does not answer: there is no
+	 * UR_ACTION_BULK_CREATE, so ObjectBulkCreate gates on UR_ACTION_CREATE and
+	 * UR_ACTION_BULK_MODIFY together, and this reports the stricter of the two.
+	 * It is derived rather than read because the alternative is a model working
+	 * the conjunction out for itself, and nothing in 'create' or 'bulkModify'
+	 * says they are the pair that decides it - the other two bulk tools are
+	 * guessable from their names and this one is not, so a model looking for
+	 * permission to create in bulk finds no key for it and concludes the call
+	 * is ungated, or absent.
+	 *
 	 * @return array<string, string>
 	 */
 	private static function rights(string $sClass): array
 	{
+		$sCreate = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE));
+		$sBulkModify = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_MODIFY));
+
 		return [
 			'read'       => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_READ)),
 			'bulkRead'   => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)),
-			'create'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE)),
+			'create'     => $sCreate,
+			'bulkCreate' => self::stricter($sCreate, $sBulkModify),
 			'modify'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_MODIFY)),
-			'bulkModify' => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_MODIFY)),
+			'bulkModify' => $sBulkModify,
 			'delete'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_DELETE)),
 			'bulkDelete' => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_DELETE)),
 		];
+	}
+
+	/**
+	 * The stricter of two grades, which is how a tool gated on both answers.
+	 *
+	 * 'no' wins over everything, because either refusal ends the call on its
+	 * own. 'depends' wins over 'yes' for the same reason one step later: a
+	 * conjunction is only settled when both halves are, and one half still
+	 * asking for the object leaves the pair asking for it.
+	 */
+	private static function stricter(string $sLeft, string $sRight): string
+	{
+		if ($sLeft === 'no' || $sRight === 'no') {
+			return 'no';
+		}
+		if ($sLeft === 'depends' || $sRight === 'depends') {
+			return 'depends';
+		}
+
+		return 'yes';
 	}
 
 	/**
