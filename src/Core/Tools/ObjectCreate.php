@@ -245,7 +245,7 @@ class ObjectCreate extends AbstractMCPTool
 			// the reasonable next move on an error is to try again. That is a
 			// second ticket. So a committed id is reported as the success it
 			// is, with the failure attached rather than substituted for it.
-			$iCommittedId = self::committedId($oObject);
+			$iCommittedId = WritePlan::CommittedId($oObject);
 			if ($iCommittedId === null) {
 				// WritePlan::Check() ran first and refused everything the
 				// caller could have corrected, so what reaches here is the
@@ -266,28 +266,6 @@ class ObjectCreate extends AbstractMCPTool
 						$e
 					),
 				]);
-		}
-	}
-
-	/**
-	 * The id of an object that reached the database, or null if it did not.
-	 *
-	 * What counts as an id is decided once, in {@see WritePlan::AsId()}: a
-	 * positive number, whether iTop reports it as one or as the string its
-	 * insert actually assigns. An unsaved object's key is negative on purpose
-	 * (DBObject::GetNextTempId()), so it answers null here - which is exactly
-	 * "nothing was written".
-	 *
-	 * Guarded, because it runs on the failure path: an object left in a state
-	 * where even reading its key throws must not replace the failure being
-	 * reported with one from the reporting.
-	 */
-	private static function committedId(\DBObject $oObject): ?int
-	{
-		try {
-			return WritePlan::AsId($oObject->GetKey());
-		} catch (\Throwable $e) {
-			return null;
 		}
 	}
 }
