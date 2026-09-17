@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -104,6 +105,12 @@ class ObjectGetDocument extends AbstractMCPTool
 		string $att_code,
 	): mixed
 	{
+		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
+		// so this is a real way into the change log and not a formality.
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		}
+
 		try {
 			$oDocument = DocumentAccess::Fetch($class, $id, $att_code);
 		} catch (MCPDocumentException $e) {

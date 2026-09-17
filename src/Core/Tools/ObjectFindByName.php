@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -269,6 +270,10 @@ class ObjectFindByName extends AbstractMCPTool
 			if (!MetaModel::IsValidClass($sClass)) {
 				throw new ToolCallException("Unknown class '{$sClass}'.");
 			}
+
+			if (ObjectHistory::IsReserved($sClass)) {
+				throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists
 			}
@@ -280,6 +285,11 @@ class ObjectFindByName extends AbstractMCPTool
 		$iWithheld = 0;
 		foreach ($aCandidates as $sCandidate) {
 			if (MetaModel::IsAbstract($sCandidate)) {
+				continue;
+			}
+			// Not searchable on a stock install, so this is for the datamodel
+			// that marks it so rather than for the one that ships.
+			if (ObjectHistory::IsReserved($sCandidate)) {
 				continue;
 			}
 			if (!UserRights::IsActionAllowed($sCandidate, UR_ACTION_READ)) {

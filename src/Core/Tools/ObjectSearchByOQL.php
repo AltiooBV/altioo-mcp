@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -100,6 +101,13 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
+
+		// The class comes from the query rather than from an argument, which is
+		// exactly why this one matters: "SELECT CMDBChangeOpSetAttributeScalar"
+		// is the shortest way round every gate core_object_history applies.
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
@@ -117,6 +118,10 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	{
 		if (!MetaModel::IsValidClass($sClass)) {
 			throw new ToolCallException("Unknown class '{$sClass}'.");
+		}
+
+		if (ObjectHistory::IsReserved($sClass)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 		}
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists

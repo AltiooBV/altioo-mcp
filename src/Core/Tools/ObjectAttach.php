@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
@@ -207,6 +208,10 @@ class ObjectAttach extends AbstractMCPTool
 		}
 		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists
+		}
+
+		if (ObjectHistory::IsReserved($sClass)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 		}
 		if (MetaModel::DBIsReadOnly()) {
 			throw new ToolCallException('The database is in read-only mode, cannot attach documents.');

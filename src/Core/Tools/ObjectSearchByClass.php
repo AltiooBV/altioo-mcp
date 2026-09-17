@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -107,6 +108,10 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
+		}
+
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists

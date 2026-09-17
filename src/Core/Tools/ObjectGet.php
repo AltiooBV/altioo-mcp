@@ -102,6 +102,10 @@ class ObjectGet extends AbstractMCPTool
 			throw new ToolCallException("Unknown class '{$class}'.");
 		}
 
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		}
+
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
 		}

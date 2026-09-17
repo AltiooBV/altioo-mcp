@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
@@ -111,6 +112,10 @@ class ObjectCreate extends AbstractMCPTool
 	{
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
+		}
+
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
