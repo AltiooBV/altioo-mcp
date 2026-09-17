@@ -92,7 +92,11 @@ final class ObjectSerializer
 	 */
 	public static function Serialize(DBObject $oObject, string $sClass, ?array $aFields = null): array
 	{
-		$aData = [MetaModel::DBGetKey($sClass) => $oObject->GetKey()];
+		// WritePlan::AsId(), because a write already reports the id through it and
+		// a read that answers "4" where a create answered 4 is one surface with
+		// two types in it - the caller that pastes the first into the second is
+		// the caller this module has already had refused by its own schema.
+		$aData = [MetaModel::DBGetKey($sClass) => WritePlan::AsId($oObject->GetKey())];
 
 		// A root class with no subclass declares no final class field, and
 		// keying the response on '' is not a way to say so.
@@ -345,7 +349,7 @@ final class ObjectSerializer
 	public static function Value(DBObject $oObject, string $sClass, string $sAttCode, bool $bClip = true): mixed
 	{
 		if ($sAttCode === 'id') {
-			return $oObject->GetKey();
+			return WritePlan::AsId($oObject->GetKey());
 		}
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);

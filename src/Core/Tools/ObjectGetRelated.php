@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSet;
@@ -280,7 +281,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			$sKey = $sClass.'::'.$oObject->GetKey();
 			$aObjects[$sKey] = [
 				'class'        => $sClass,
-				MetaModel::DBGetKey($sClass)           => $oObject->GetKey(),
+				MetaModel::DBGetKey($sClass)           => WritePlan::AsId($oObject->GetKey()),
 				'friendlyname' => $oObject->GetName(),
 			];
 
