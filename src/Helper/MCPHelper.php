@@ -137,6 +137,17 @@ class MCPHelper
 	const MODULE_SETTING_READ_ONLY = 'mcp_read_only';
 
 	/**
+	 * Whether the classes that decide what a caller may do can be written
+	 * through this endpoint at all - tokens, users, and iTop's rights model.
+	 *
+	 * Off, and off is the answer for almost every instance. On, the caller may
+	 * administer other people's access and still never its own: see
+	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
+	 * self-guard is unconditional and this setting cannot reach it.
+	 */
+	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -474,6 +485,27 @@ class MCPHelper
 	public static function IsReadOnly(): bool
 	{
 		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_READ_ONLY, false) === true;
+	}
+
+	/**
+	 * Whether this instance lets the endpoint write the classes that grant
+	 * access.
+	 *
+	 * Refused outright when this is off, which is the default and the right
+	 * answer unless an operator has decided otherwise: no ordinary assistant
+	 * workflow mints a token or grants a profile. Turning it on buys the
+	 * ability to administer *other* accounts - onboarding a user, retiring
+	 * somebody's token - and buys nothing at all where the caller's own
+	 * access is concerned, because the self-guard does not consult this.
+	 *
+	 * Compared strictly against true, like every other boolean here: a
+	 * configuration holding the string 'false' must not read as permission.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function AllowsAccessAdministration(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION, false) === true;
 	}
 
 	/**

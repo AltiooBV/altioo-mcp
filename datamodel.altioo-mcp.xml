@@ -338,6 +338,18 @@
       -->
       <mcp_read_only type="bool">false</mcp_read_only>
       <!--
+        Whether the classes that decide what a caller may do - PersonalToken,
+        UserToken, User and iTop's URP_ rights model - may be written through
+        this endpoint. Off by default: no ordinary assistant workflow mints a
+        token or grants a profile, and a caller able to write these can widen
+        the credential it was handed.
+        On, the caller may administer other people's access. It can still
+        never touch its own - not the token it authenticated with, not another
+        of its own, not its own account or profiles - and that guard does not
+        read this setting.
+      -->
+      <mcp_allow_access_administration type="bool">false</mcp_allow_access_administration>
+      <!--
         Elements per tools/list, resources/list or prompts/list page. The MCP
         SDK defaults to 50 and pages the rest behind a cursor, which a client
         that ignores nextCursor never asks for: the 51st tool then exists and
