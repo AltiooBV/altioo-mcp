@@ -293,6 +293,17 @@ published archive was installed and exercised on into this line; the README and
 
 ### Added
 
+- **The change log is reachable through `core_object_history` and nowhere else.** `CMDBChange`
+  and `CMDBChangeOp` are ordinary `DBObject`s, so every generic tool would otherwise treat them
+  as ordinary objects — and reach the rows without the object gate and the per-attribute gate
+  the history tool applies one layer above them. `objkey` is an integer column, so
+  `SELECT CMDBChangeOpSetAttributeScalar` would have been a readable audit trail of every object
+  in the database, silos and attribute rights included; a create on one would forge an audit
+  record. Every object, document and relation tool now refuses these classes and their
+  subclasses, naming the way in. The console draws the same line: history is a tab on an object,
+  never a class you search or a form you fill. Held by a test that derives the tools it covers
+  from their toolsets, so one registered later is covered the day it appears.
+
 - **Reads say when an object was created and last changed, and by whom.** `core_object_get`
   carries an `audit` block always; `core_object_search_by_oql` and `core_object_search_by_class`
   take `audit: true` for it. There is no field behind this — iTop stamps neither on the object —

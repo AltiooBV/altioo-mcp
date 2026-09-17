@@ -85,7 +85,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
 | `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset |
+| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
 | `core_object_attach` | Attach a file to an object, or set one of its document attributes. Dry run by default |
 | `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
