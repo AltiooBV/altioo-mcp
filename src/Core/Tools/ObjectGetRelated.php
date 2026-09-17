@@ -66,12 +66,11 @@ class ObjectGetRelated extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Find objects related to a given iTop object through a named relation (e.g. impacts, depends on). Useful for impact analysis and dependency mapping on CIs. '
-			.'A relation is declared per class and per direction, so a class takes part in some, one direction of some, and none of the rest: find out which before calling, by reading the "relations" block of core_class_schema for the class - it maps each relation code this class participates in to the classes it reaches. '
-			.'If you call with one it does not have, the refusal names every relation that class does have in the direction you asked for, so a wrong guess costs one round trip rather than leaving you to guess again. '
-			.'The answer is a graph rather than a tree: "objects" maps "<Class>::<id>" to that object\'s class, id and friendlyname, "relations" is a flat list of {from, to} naming those same keys, and "summary" counts what was found per class. '
-			.'The object you started from is not in it, an object two paths reach appears once, and a cycle is two edges rather than a branch that repeats. '
-			.'A "withheld" block means a class was held back because returning more than one object of it is a bulk read this account does not hold: read the rest as an answer about what you may see, not about what exists.';
+		return 'Walk a named relation from one iTop object (impacts, depends on, ...): impact analysis and dependency mapping on CIs. '
+			.'Relations are declared per class and per direction, so read the "relations" block of core_class_schema for this class first; a code it does not have is refused with the list of the ones it does. '
+			.'The answer is a graph, not a tree: "objects" maps "<Class>::<id>" to class, id and friendlyname, "relations" is a flat list of {from, to} over those keys, "summary" counts per class. '
+			.'The source object is not in it and an object reached twice appears once. '
+			.'A "withheld" block means a class was held back for want of bulk read on it: what came back is what you may see, not what exists.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
