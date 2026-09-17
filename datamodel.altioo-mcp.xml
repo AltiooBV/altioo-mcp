@@ -29,6 +29,9 @@
             <value id="MCP-toolset-documents" _delta="define">
               <code>MCP-toolset-documents</code>
             </value>
+            <value id="MCP-toolset-history" _delta="define">
+              <code>MCP-toolset-history</code>
+            </value>
             <value id="MCP-toolset-server" _delta="define">
               <code>MCP-toolset-server</code>
             </value>
@@ -63,6 +66,9 @@
             </value>
             <value id="MCP-toolset-documents" _delta="define">
               <code>MCP-toolset-documents</code>
+            </value>
+            <value id="MCP-toolset-history" _delta="define">
+              <code>MCP-toolset-history</code>
             </value>
             <value id="MCP-toolset-server" _delta="define">
               <code>MCP-toolset-server</code>
@@ -303,7 +309,7 @@
       <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",
-        "relations", "documents" and "server", each with a matching
+        "relations", "documents", "history" and "server", each with a matching
         MCP-toolset-<name> token scope, and a pack declares its own. Empty
         means every toolset, which is what an instance that has not been asked
         to narrow wants.
