@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use DBObject;
@@ -221,9 +222,53 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	/**
 	 * @param array<int, string>|null $aFields
 	 */
-	protected static function serializeObject(DBObject $oObject, string $sClass, ?array $aFields = null): array
+	protected static function serializeObject(DBObject $oObject, string $sClass, ?array $aFields = null, bool $bAudit = false): array
 	{
-		return ObjectSerializer::Serialize($oObject, $sClass, $aFields);
+		$aObject = ObjectSerializer::Serialize($oObject, $sClass, $aFields);
+
+		if ($bAudit) {
+			$aAttribution = ObjectHistory::AttributionFor($oObject);
+			if ($aAttribution !== null) {
+				$aObject['audit'] = $aAttribution;
+			}
+		}
+
+		return $aObject;
+	}
+
+	/**
+	 * The argument that asks for creation and last-update attribution.
+	 *
+	 * Off by default, and not because the answer is rarely wanted: it is two
+	 * more reads per object, and the only bound on that is the page size.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	protected static function auditSchemaProperties(): array
+	{
+		return ['audit' => [
+			'type'        => 'boolean',
+			'description' => 'Report when each object was created and when it was last changed, with the user behind each. '
+				.'iTop keeps no such field on an object, so this is read from the change log - which costs two extra reads per object, '
+				.'and is therefore refused for a page of more than '.ObjectHistory::MAX_AUDIT_PAGE.'. Use core_object_history for the full record of one object.',
+			'default'     => false,
+		]];
+	}
+
+	/**
+	 * Refuses a page too large to attribute, rather than serving it slowly.
+	 *
+	 * @throws ToolCallException
+	 */
+	protected static function refuseUnattributablePage(bool $bAudit, int $iLimit): void
+	{
+		if ($bAudit && $iLimit > ObjectHistory::MAX_AUDIT_PAGE) {
+			throw new ToolCallException(sprintf(
+				'audit is available for up to %d objects at a time; this call asks for %d. Lower limit, or drop audit and call core_object_history for the objects that matter.',
+				ObjectHistory::MAX_AUDIT_PAGE,
+				$iLimit
+			));
+		}
 	}
 
 	/**

@@ -60,6 +60,17 @@ final class ObjectHistory
 	public const MAX_LIMIT = 500;
 
 	/**
+	 * How many objects one page may ask attribution for.
+	 *
+	 * Attribution is two indexed single-row reads per object - the creation
+	 * row, and the newest row of any kind. Each is cheap; the number of them
+	 * is what has to be bounded, so a page that asks for it is refused rather
+	 * than served slowly. A caller that wants attribution for more objects
+	 * pages through them.
+	 */
+	public const MAX_AUDIT_PAGE = 25;
+
+	/**
 	 * How much of a recorded value is reported.
 	 *
 	 * oldvalue and newvalue are plain strings holding whatever the attribute
@@ -81,6 +92,71 @@ final class ObjectHistory
 	{
 		return MetaModel::IsValidClass(self::HISTORY_CLASS)
 			&& UserRights::IsActionAllowed(self::HISTORY_CLASS, UR_ACTION_READ) !== UR_ALLOWED_NO;
+	}
+
+	/**
+	 * When the object was created and when it was last touched, with the user
+	 * behind each.
+	 *
+	 * iTop stamps neither on the object, so both are read from the log: the
+	 * CMDBChangeOpCreate row for the first, and the newest row of any kind for
+	 * the second. Two single-row reads on the (objclass, objkey) index.
+	 *
+	 * Either half is null when the log has no row for it, which is a real
+	 * state rather than an error - an object loaded before change tracking
+	 * covered it, or created by a data load, has no creation row, and an
+	 * object never modified has no operation newer than its creation.
+	 *
+	 * Absent entirely, rather than null, when this caller may not read the log
+	 * at all: who last touched an object is exactly what the grant on
+	 * CMDBChangeOp decides, and a read is not the place to hand it out anyway.
+	 *
+	 * Note for an operator: this is gated by that grant, not by the history
+	 * toolset. Withholding the toolset withholds core_object_history, which is
+	 * the surface; withholding attribution everywhere is a profile decision on
+	 * CMDBChangeOp.
+	 *
+	 * @return array<string, mixed>|null
+	 * @since 1.0.0
+	 */
+	public static function AttributionFor(DBObject $oObject): ?array
+	{
+		if (!self::IsReadable()) {
+			return null;
+		}
+
+		return [
+			'created'      => self::firstRow($oObject, 'CMDBChangeOpCreate', true),
+			'last_updated' => self::firstRow($oObject, self::HISTORY_CLASS, false),
+		];
+	}
+
+	/**
+	 * The oldest or newest recorded operation on one object, as who and when.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	private static function firstRow(DBObject $oObject, string $sOpClass, bool $bOldest): ?array
+	{
+		if (!MetaModel::IsValidClass($sOpClass)) {
+			return null;
+		}
+
+		$oSearch = new DBObjectSearch($sOpClass);
+		$oSearch->AddCondition('objclass', get_class($oObject), '=');
+		$oSearch->AddCondition('objkey', (int)$oObject->GetKey(), '=');
+
+		$oSet = new DBObjectSet($oSearch, ['date' => $bOldest], [], null, 1, 0);
+		$oOp = $oSet->Fetch();
+		if ($oOp === null) {
+			return null;
+		}
+
+		return [
+			'when'    => $oOp->Get('date'),
+			'who'     => $oOp->Get('userinfo'),
+			'user_id' => $oOp->Get('user_id'),
+		];
 	}
 
 	/**

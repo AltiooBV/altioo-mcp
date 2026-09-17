@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -46,7 +47,7 @@ class ObjectGet extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes.';
+		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, and - where this user may read the change log - an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. Call core_object_history for the full record of what changed.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -137,10 +138,20 @@ class ObjectGet extends AbstractMCPTool
 			}
 		}
 
+		$aObject = ObjectSerializer::Serialize($oObject, $sFinalClass, ObjectSerializer::ParseFieldList($sFinalClass, $output_fields));
+
+		// Unconditional here, where it is two indexed single-row reads for one
+		// object. The search tools ask for it, because there the count of those
+		// reads is the page size. Absent when this caller may not read the log.
+		$aAttribution = ObjectHistory::AttributionFor($oObject);
+		if ($aAttribution !== null) {
+			$aObject['audit'] = $aAttribution;
+		}
+
 		return ToolOutput::Json([
 			'requested_class'  => $class,
 			'class' => $sFinalClass,
-			'object' => ObjectSerializer::Serialize($oObject, $sFinalClass, ObjectSerializer::ParseFieldList($sFinalClass, $output_fields)),
+			'object' => $aObject,
 		]);
 	}
 }

@@ -57,7 +57,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 					'type'                 => 'string',
 					'description'          => 'The OQL query to execute. OQL has no ORDER BY clause; sort with order_by instead.',
 				],
-			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties(),
+			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties(),
 			'required' => ['oql'],
 		];
 	}
@@ -69,6 +69,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 	 * @param string $order_by Attribute code to sort on; '' for the order the datamodel declares
 	 * @param string $order_direction 'asc' or 'desc'
 	 * @param string $output_fields Comma-separated attribute codes to return, or '*' for all of them
+	 * @param bool $audit Also report when each object was created and last changed, and by whom; limited to a page of ObjectHistory::MAX_AUDIT_PAGE objects
 	 * @return array An array containing the class, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the OQL query is invalid, if the class is unknown, or if access is denied.
 	 */
@@ -79,6 +80,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		string $order_by = '',
 		string $order_direction = self::DEFAULT_SORT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
+		bool   $audit = false,
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
@@ -87,6 +89,8 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		if ($offset < self::MIN_OFFSET) {
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
+
+		self::refuseUnattributablePage($audit, $limit);
 
 		require_once(APPROOT.'core/oql/check_oql.php');
 		$aCheck = CheckOQL($oql, new \ModelReflectionRuntime());
@@ -130,7 +134,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 					continue;
 				}
 
-				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
+				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields, $audit);
 			}
 
 			$iTotal = $oSet->Count();

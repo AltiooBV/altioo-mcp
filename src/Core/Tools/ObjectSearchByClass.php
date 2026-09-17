@@ -67,7 +67,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties(),
+			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties(),
 			'required' => ['class'],
 		];
 	}
@@ -80,6 +80,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	 * @param string $order_by Attribute code to sort on; '' for the order the datamodel declares
 	 * @param string $order_direction 'asc' or 'desc'
 	 * @param string $output_fields Comma-separated attribute codes to return, or '*' for all of them
+	 * @param bool $audit Also report when each object was created and last changed, and by whom; limited to a page of ObjectHistory::MAX_AUDIT_PAGE objects
 	 * @return array An array containing the class, filters, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
@@ -91,6 +92,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		string $order_by = '',
 		string $order_direction = self::DEFAULT_SORT,
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
+		bool   $audit = false,
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
@@ -100,6 +102,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		if ($offset < self::MIN_OFFSET) {
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
+
+		self::refuseUnattributablePage($audit, $limit);
 
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException("Unknown class '{$class}'.");
@@ -173,7 +177,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 					continue;
 				}
 
-				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields);
+				$aResults[] = self::serializeObject($oObject, $sObjectFinalClass, $aFields, $audit);
 			}
 
 			$iTotal = $oSet->Count();
