@@ -9,8 +9,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
+use DBObject;
 use MetaModel;
 use Throwable;
+use UserRights;
 
 /**
  * The classes that decide what this endpoint may do, which it may therefore
@@ -127,10 +129,24 @@ final class AccessGrants
 	private const GRANTING_PREFIX = 'URP_';
 
 	/**
-	 * What every write tool says when it refuses one, spelled once so they all
-	 * say the same thing and all name where the change belongs instead.
+	 * What every write tool says when the instance refuses these classes
+	 * outright, spelled once so they all say the same thing and all name the
+	 * setting that decides it - a model told only "no" retries a variation,
+	 * and a model told which switch is off reports it.
 	 */
-	public const GRANT_REFUSAL = 'Class \'%s\' decides who may reach this endpoint and what they may do with it, so it cannot be written here. Change it in the iTop console.';
+	public const GRANT_REFUSAL = 'Class \'%s\' decides who may reach this endpoint and what they may do with it, so it cannot be written here unless mcp_allow_access_administration is on. Change it in the iTop console.';
+
+	/**
+	 * What they say when the instance allows these classes and the call
+	 * reaches the caller's own access anyway.
+	 *
+	 * A different sentence from the one above on purpose: the first is an
+	 * instance that has not opted in and can, the second is a rule no
+	 * configuration lifts. Telling them apart is what stops a model - or the
+	 * person reading over its shoulder - from asking an operator to turn on a
+	 * setting that would not have helped.
+	 */
+	public const SELF_REFUSAL = 'Class \'%s\' can be administered here, but not for yourself: this call reaches the access you are connected with. Change your own token, account or profiles in the iTop console.';
 
 	/**
 	 * The category iTop files its rights model under.
@@ -259,6 +275,203 @@ final class AccessGrants
 		}
 
 		return false;
+	}
+
+	/**
+	 * Why this write is refused, or null when it may go ahead.
+	 *
+	 * Three answers, not two. A class that grants nothing is nobody's business
+	 * here and passes straight through. A granting class is refused outright
+	 * unless the instance opted in, which is the default. And where the
+	 * instance did opt in, one thing is still refused: a call that reaches the
+	 * caller's own access.
+	 *
+	 * That last rule is the whole reason the setting is safe to offer. Without
+	 * it, opting in would hand back exactly the escalation the barrier exists
+	 * to stop - widen the scope of the token in your hand, or mint a second
+	 * one that is wider, and the narrow credential an operator issued was
+	 * never narrow. With it, the setting buys administration of *other*
+	 * people's access and nothing whatever about your own, which is the shape
+	 * an operator actually wants when they turn it on: onboard a user, retire
+	 * somebody's leaked token, never promote yourself.
+	 *
+	 * It is also the rule iTop already follows for the console - a user may
+	 * not delete themselves, may not strip their own last profile, and may not
+	 * demote themselves out of being able to come back - applied here to the
+	 * credential rather than to the session, because the credential is what a
+	 * caller of this endpoint holds.
+	 *
+	 * @param string             $sClass  The class being written.
+	 * @param int|null           $iId     The row, where there is one; null on a create.
+	 * @param array<string, mixed> $aFields Values being written, which on a create are all there is to go on.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RefusalFor(string $sClass, ?int $iId = null, array $aFields = []): ?string
+	{
+		return self::RefusalGiven(MCPHelper::AllowsAccessAdministration(), $sClass, $iId, $aFields);
+	}
+
+	/**
+	 * The same decision with the instance's answer handed in rather than read.
+	 *
+	 * Split for the reason AccessPolicy is a value object: the rule is worth
+	 * testing without an iTop, a configuration or a request, and the half that
+	 * needs all three is one line long and lives above.
+	 *
+	 * @param bool                 $bAdministrationAllowed What mcp_allow_access_administration says.
+	 * @param array<string, mixed> $aFields
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RefusalGiven(bool $bAdministrationAllowed, string $sClass, ?int $iId = null, array $aFields = []): ?string
+	{
+		if (!self::IsGranting($sClass)) {
+			return null;
+		}
+
+		if (!$bAdministrationAllowed) {
+			return sprintf(self::GRANT_REFUSAL, $sClass);
+		}
+
+		if (self::ReachesTheCaller($sClass, $iId, $aFields)) {
+			return sprintf(self::SELF_REFUSAL, $sClass);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Whether this write reaches the access the caller is connected with.
+	 *
+	 * Asked of the row, not of the tool: the same escalation is a create, an
+	 * update or a delete depending on which one is cheapest, and minting a
+	 * second token is easier than editing the one in hand.
+	 *
+	 * Refuses whenever it cannot tell. No login, no MetaModel, an object that
+	 * will not load, a create that names no owner - iTop's own controller
+	 * fills the owner in with the current user, so a token created naming
+	 * nobody is a token for the caller. Every one of those is answered "yes,
+	 * this is yours", because the cost of being wrong the other way is the
+	 * escalation this exists to prevent and the cost of being wrong this way
+	 * is a refusal an administrator can satisfy from the console.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function ReachesTheCaller(string $sClass, ?int $iId, array $aFields): bool
+	{
+		if (!class_exists('MetaModel') || !class_exists('UserRights')) {
+			return true;
+		}
+
+		try {
+			$iCaller = (int)UserRights::GetUserId();
+			if ($iCaller < 1) {
+				return true;
+			}
+
+			// The account itself. A create is never the caller: nobody makes
+			// the user they are already logged in as.
+			if (self::Is($sClass, 'User')) {
+				return $iId !== null && $iId === $iCaller;
+			}
+
+			if (!MetaModel::IsValidClass($sClass)) {
+				return true;
+			}
+
+			$oObject = ($iId !== null && $iId > 0)
+				? MetaModel::GetObject($sClass, $iId, false, true)
+				: null;
+
+			// Whose row is it. user_id on the token classes, userid on the
+			// rights links; both are asked of the values being written first,
+			// since re-pointing someone else's token at yourself is a write
+			// that the stored row still describes as theirs.
+			foreach (['user_id', 'userid'] as $sAttCode) {
+				if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+					continue;
+				}
+				if (array_key_exists($sAttCode, $aFields)) {
+					if ((int)$aFields[$sAttCode] === $iCaller) {
+						return true;
+					}
+					continue;
+				}
+				if ($oObject === null) {
+					return true; // a create naming no owner is a create for the caller
+				}
+				if ((int)$oObject->Get($sAttCode) === $iCaller) {
+					return true;
+				}
+			}
+
+			$sProfile = self::ProfileOf($sClass, $oObject, $aFields);
+
+			return $sProfile !== null && in_array($sProfile, UserRights::ListProfiles(), true);
+		} catch (Throwable) {
+			return true;
+		}
+	}
+
+	/**
+	 * The profile a row decides something about, by name, or null when it
+	 * decides nothing about any profile.
+	 *
+	 * Names rather than ids, because that is the currency
+	 * UserRights::ListProfiles() answers in. URP_AttributeGrant is the one
+	 * that needs a hop: it names an action grant and nothing else, and the
+	 * profile is on the grant.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function ProfileOf(string $sClass, ?DBObject $oObject, array $aFields): ?string
+	{
+		if (self::Is($sClass, 'URP_Profiles')) {
+			if (array_key_exists('name', $aFields)) {
+				return (string)$aFields['name'];
+			}
+
+			return $oObject !== null ? (string)$oObject->Get('name') : null;
+		}
+
+		if (MetaModel::IsValidAttCode($sClass, 'profileid')) {
+			$iProfile = array_key_exists('profileid', $aFields)
+				? (int)$aFields['profileid']
+				: ($oObject !== null ? (int)$oObject->Get('profileid') : 0);
+
+			return self::ProfileName($iProfile);
+		}
+
+		if (MetaModel::IsValidAttCode($sClass, 'actiongrantid')) {
+			$iGrant = array_key_exists('actiongrantid', $aFields)
+				? (int)$aFields['actiongrantid']
+				: ($oObject !== null ? (int)$oObject->Get('actiongrantid') : 0);
+
+			$oGrant = $iGrant > 0 ? MetaModel::GetObject('URP_ActionGrant', $iGrant, false, true) : null;
+
+			return $oGrant !== null ? (string)$oGrant->Get('profile') : null;
+		}
+
+		return null;
+	}
+
+	/** One profile's name, read past the caller's silo because this is a gate. */
+	private static function ProfileName(int $iProfile): ?string
+	{
+		if ($iProfile < 1) {
+			return null;
+		}
+
+		$oProfile = MetaModel::GetObject('URP_Profiles', $iProfile, false, true);
+
+		return $oProfile !== null ? (string)$oProfile->Get('name') : null;
+	}
+
+	/** $sClass is $sRoot or descends from it, spelled once. */
+	private static function Is(string $sClass, string $sRoot): bool
+	{
+		return strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true);
 	}
 
 	/**
