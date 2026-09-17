@@ -227,10 +227,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		$aObject = ObjectSerializer::Serialize($oObject, $sClass, $aFields);
 
 		if ($bAudit) {
-			$aAttribution = ObjectHistory::AttributionFor($oObject);
-			if ($aAttribution !== null) {
-				$aObject['audit'] = $aAttribution;
-			}
+			$aObject['audit'] = ObjectHistory::AttributionFor($oObject);
 		}
 
 		if ($bActions) {

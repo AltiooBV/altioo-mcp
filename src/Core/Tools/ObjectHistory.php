@@ -57,7 +57,7 @@ class ObjectHistory extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
+		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -115,7 +115,7 @@ class ObjectHistory extends AbstractMCPTool
 	 * @param int $limit Maximum number of entries to return (default 50, max 500)
 	 * @param int $offset Number of entries to skip for paging
 	 * @return array An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
-	 * @throws ToolCallException if the class is unknown, if the object is not found, if the attribute is not one the class declares, or if this user may not read the change log.
+	 * @throws ToolCallException if the class is unknown, if the object is not found, or if the attribute is not one the class declares.
 	 */
 	public static function execute(
 		string $class,
@@ -133,12 +133,6 @@ class ObjectHistory extends AbstractMCPTool
 		}
 		if ($offset < 0) {
 			throw new ToolCallException('Invalid offset. Please specify a non-negative offset.');
-		}
-
-		if (!HistoryReader::IsReadable()) {
-			// A real refusal about this user's rights, phrased as one: the
-			// change log is granted per profile and this one does not have it.
-			throw new ToolCallException('Read access denied to the change log for this user.');
 		}
 
 		if (!MetaModel::IsValidClass($class)) {

@@ -36,13 +36,18 @@ use UserRights;
  * does not, so "nothing else changed" and "this surface cannot show what
  * changed" stay different answers.
  *
- * The second is rights, and it is the one that matters. CMDBChangeOp is
- * granted per profile, as a class - the grant says nothing about the object
- * the row points at, nor about the attribute it names. objkey is an integer
- * column, so a caller holding that grant can read the history of objects its
- * silo hides and the former values of attributes it may not read today. Both
- * gates are therefore applied here, against the object in hand and against
- * today's rights rather than the rights in force when the row was written.
+ * The second is rights. objkey is an integer column and the rows say nothing
+ * about the silo the object sits in, so reaching them directly is a way round
+ * both. The gate is the object, which is how the console gates it -
+ * ActivityPanelHelper reads these rows for whatever object is on screen and
+ * asks UserRights nothing about CMDBChangeOp - and on top of that, a row
+ * naming an attribute this caller may not read is dropped. That last part is
+ * stricter than the UI on purpose: the console renders a page to a person who
+ * is already looking at the object, while this hands values to a model.
+ *
+ * Today's rights, never the rights in force when the row was written. A
+ * revocation that left the old value readable would be a revocation in name
+ * only.
  *
  * @api
  * @since 1.0.0
@@ -130,19 +135,17 @@ final class ObjectHistory
 	}
 
 	/**
-	 * Whether this caller may read the change log at all.
+	 * How the console orders the same rows, and why.
 	 *
-	 * Asked before the object is looked at, so that an instance which grants
-	 * nobody the log answers the same way for an object that exists and one
-	 * that does not.
-	 *
-	 * @since 1.0.0
+	 * Not by date. iTop writes several CMDBChangeOp rows for one change, all
+	 * carrying that change's timestamp, so a date sort leaves their order to
+	 * the database - and the ActivityPanel says so where it does the same
+	 * query: ordering by the id is "way much simpler and less DB CPU
+	 * consuming" and it is the only one that separates rows written together.
 	 */
-	public static function IsReadable(): bool
-	{
-		return MetaModel::IsValidClass(self::HISTORY_CLASS)
-			&& UserRights::IsActionAllowed(self::HISTORY_CLASS, UR_ACTION_READ) !== UR_ALLOWED_NO;
-	}
+	private const NEWEST_FIRST = ['id' => false];
+
+	private const OLDEST_FIRST = ['id' => true];
 
 	/**
 	 * When the object was created and when it was last touched, with the user
@@ -157,36 +160,31 @@ final class ObjectHistory
 	 * covered it, or created by a data load, has no creation row, and an
 	 * object never modified has no operation newer than its creation.
 	 *
-	 * Absent entirely, rather than null, when this caller may not read the log
-	 * at all: who last touched an object is exactly what the grant on
-	 * CMDBChangeOp decides, and a read is not the place to hand it out anyway.
+	 * Gated by the object and by nothing else, which is how the console gates
+	 * it: ActivityPanelHelper reads these rows for whatever object is on
+	 * screen and asks UserRights nothing about CMDBChangeOp. A class grant
+	 * checked here would make this stricter than the UI it mirrors - an
+	 * instance where the ticket is visible and its "last updated by" is not.
 	 *
-	 * Note for an operator: this is gated by that grant, not by the history
-	 * toolset. Withholding the toolset withholds core_object_history, which is
-	 * the surface; withholding attribution everywhere is a profile decision on
-	 * CMDBChangeOp.
-	 *
-	 * @return array<string, mixed>|null
+	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function AttributionFor(DBObject $oObject): ?array
+	public static function AttributionFor(DBObject $oObject): array
 	{
-		if (!self::IsReadable()) {
-			return null;
-		}
-
 		return [
-			'created'      => self::firstRow($oObject, 'CMDBChangeOpCreate', true),
-			'last_updated' => self::firstRow($oObject, self::HISTORY_CLASS, false),
+			'created'      => self::firstRow($oObject, 'CMDBChangeOpCreate', self::OLDEST_FIRST),
+			'last_updated' => self::firstRow($oObject, self::HISTORY_CLASS, self::NEWEST_FIRST),
 		];
 	}
 
 	/**
 	 * The oldest or newest recorded operation on one object, as who and when.
 	 *
+	 * @param array<string, bool> $aOrder self::OLDEST_FIRST or self::NEWEST_FIRST.
+	 *
 	 * @return array<string, mixed>|null
 	 */
-	private static function firstRow(DBObject $oObject, string $sOpClass, bool $bOldest): ?array
+	private static function firstRow(DBObject $oObject, string $sOpClass, array $aOrder): ?array
 	{
 		if (!MetaModel::IsValidClass($sOpClass)) {
 			return null;
@@ -196,7 +194,7 @@ final class ObjectHistory
 		$oSearch->AddCondition('objclass', get_class($oObject), '=');
 		$oSearch->AddCondition('objkey', (int)$oObject->GetKey(), '=');
 
-		$oSet = new DBObjectSet($oSearch, ['date' => $bOldest], [], null, 1, 0);
+		$oSet = new DBObjectSet($oSearch, $aOrder, [], null, 1, 0);
 		$oOp = $oSet->Fetch();
 		if ($oOp === null) {
 			return null;
@@ -241,7 +239,7 @@ final class ObjectHistory
 			$oSearch->AddCondition('attcode', $sAttCode, '=');
 		}
 
-		$oSet = new DBObjectSet($oSearch, ['date' => false], [], null, $iLimit, $iOffset);
+		$oSet = new DBObjectSet($oSearch, self::NEWEST_FIRST, [], null, $iLimit, $iOffset);
 		$iTotal = $oSet->Count();
 
 		$aEntries = [];
