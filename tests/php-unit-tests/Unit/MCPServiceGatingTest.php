@@ -194,4 +194,70 @@ class MCPServiceGatingTest extends TestCase
 
 		$this->assertSame($oTool->getNamespace(), $oTool->getToolset());
 	}
+
+	/**
+	 * What a caller is told it can reach is derived the same way registration
+	 * decides what to serve it.
+	 *
+	 * Not from the policy's own toolset list, which answers a different
+	 * question: empty there means "everything", and a toolset whose only
+	 * element is disabled, or whose elements all want a profile this user
+	 * lacks, is not one the caller can reach whatever the policy allows. The
+	 * point of the block is to be believed when it is read, so it has to be
+	 * the reachable set rather than the permitted one.
+	 */
+	public function testServedAccessIsDerivedElementByElement(): void
+	{
+		$sBody = $this->bodyOf('ServedAccess');
+
+		$this->assertStringContainsString('isHidden', $sBody, 'the served set is not decided the way registration decides it');
+		$this->assertStringNotContainsString('$oPolicy->toolsets()', $sBody, 'the permitted list is being reported as the reachable one');
+	}
+
+	/**
+	 * Only what is served is named. A toolset this caller does not hold would
+	 * teach it the shape of the withheld surface, which is what
+	 * ServerInstructions narrows itself to avoid - and what comes back must
+	 * never exceed what tools/list already showed.
+	 */
+	public function testServedAccessNamesNothingItDidNotServe(): void
+	{
+		$sBody = $this->bodyOf('ServedAccess');
+
+		$this->assertStringContainsString('!self::isHidden', $sBody, 'toolsets are collected without asking whether the element is served');
+		$this->assertStringNotContainsString('GetKnownToolsets', $sBody);
+	}
+
+	/**
+	 * An unrestricted policy holds every capability, and says so with null -
+	 * which has to be resolved before it is reported, or the block claims a
+	 * caller holds nothing.
+	 */
+	public function testAnUnrestrictedPolicyHasToBeSpeltOut(): void
+	{
+		$this->assertNull(AccessPolicy::Unrestricted()->capabilities());
+		$this->assertSame(
+			[AccessPolicy::CAPABILITY_READ, AccessPolicy::CAPABILITY_WRITE, AccessPolicy::CAPABILITY_DELETE],
+			AccessPolicy::CAPABILITIES
+		);
+		$this->assertStringContainsString('?? AccessPolicy::CAPABILITIES', $this->bodyOf('ServedAccess'));
+	}
+
+	/** The body of one MCPService method, comments stripped. */
+	private function bodyOf(string $sMethod): string
+	{
+		$oMethod = new ReflectionMethod(MCPService::class, $sMethod);
+		$aLines = file($oMethod->getFileName());
+		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+
+		$sCode = '';
+		foreach (token_get_all('<?php '.$sBody) as $mToken) {
+			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+				continue;
+			}
+			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
+		}
+
+		return $sCode;
+	}
 }
