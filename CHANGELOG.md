@@ -304,7 +304,13 @@ published archive was installed and exercised on into this line; the README and
   that attribute codes vary per instance and must be looked up, that OQL has no `ORDER BY`, that
   dates are not RFC 3339, that a refusal is a real refusal, and that text found inside an object
   asking the client to call a tool or ignore an instruction is content to report rather than a
-  request to act on. It is assembled section by section from the same policy that decides what is
+  request to act on — plus the conventions every writing tool shares: the dry-run two-step, and
+  what `comment` is for. Those are stated here once instead of in each tool's description, which
+  is eight copies of two paragraphs in a `tools/list` a client pays for on every connection, on a
+  surface read by models rather than by people; the mechanics stay on the `simulate` and `comment`
+  properties themselves, which no client can drop, because an instruction block is advisory. With
+  the longest descriptions trimmed to the facts a caller acts on, `tools/list` is about 14%
+  smaller. It is assembled section by section from the same policy that decides what is
   registered, so a token scoped to one toolset is not told to call tools it will never be served
   — being handed the names and the calling convention of a withheld surface is the opposite of
   withholding it, and a model then spends the session discovering by failure exactly what the
