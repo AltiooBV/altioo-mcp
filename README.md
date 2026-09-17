@@ -78,7 +78,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | Tool | Purpose |
 |---|---|
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode |
-| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…) and by `filter` |
+| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query |
