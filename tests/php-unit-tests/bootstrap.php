@@ -64,6 +64,18 @@ function altioo_mcp_locate_itop(): ?string
 if (!defined('APPROOT')) {
 	$sItopRoot = altioo_mcp_locate_itop();
 	if ($sItopRoot !== null) {
+		// iTop's bootstrap.inc.php assigns $fItopStarted and $iItopInitialMemory
+		// at file scope, and startup.inc.php's first ExecutionKPI report reads
+		// them back with `global`. Reached from a web entry point those are the
+		// same variable; reached from here they are not, because PHPUnit loads
+		// this file from inside a method and an include inherits the scope of
+		// its include line. ExecutionKPI then gets null where it declares float
+		// and the whole run dies before the first test. Binding the names here
+		// puts iTop's own assignments on the globals it later looks at.
+		// ItopTestCase::setUp guards the same two variables, for the same
+		// reason, for iTop's own suites.
+		global $fItopStarted, $iItopInitialMemory;
+
 		require_once $sItopRoot.'/approot.inc.php';
 		require_once APPROOT.'/application/application.inc.php';
 		require_once APPROOT.'/application/startup.inc.php';
