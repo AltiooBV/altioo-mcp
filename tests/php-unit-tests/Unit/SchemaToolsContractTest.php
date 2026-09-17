@@ -51,17 +51,59 @@ class SchemaToolsContractTest extends TestCase
 	}
 
 	/**
-	 * The gates a client may send are the gates a rights block reports.
+	 * The gates a client may send are the gates a rights block reports, plus
+	 * the one value that is not a gate.
 	 *
 	 * Declared as an enum so a client can reject a bad one before the round
-	 * trip, and taken from RightsKeys() so that the schema, the refusal message
+	 * trip, and taken from MayValues() so that the schema, the refusal message
 	 * and the block itself cannot come apart.
 	 */
 	public function testTheGatesOfferedAreTheGatesReported(): void
 	{
 		$aSchema = (new ClassList())->getInputSchema();
 
-		$this->assertSame(DatamodelReader::RightsKeys(), $aSchema['properties']['may']['enum']);
+		$this->assertSame(DatamodelReader::MayValues(), $aSchema['properties']['may']['enum']);
+
+		// Every offered value is either a key of the block or the sentinel that
+		// asks for the block without narrowing. A ninth gate arriving in one
+		// list and not the other is what this catches.
+		$this->assertSame(
+			DatamodelReader::RightsKeys(),
+			array_values(array_diff(DatamodelReader::MayValues(), [DatamodelReader::RIGHTS_ALL])),
+			'may offers a value that is neither a gate a rights block reports nor the report-them-all sentinel'
+		);
+		$this->assertNotContains(
+			DatamodelReader::RIGHTS_ALL,
+			DatamodelReader::RightsKeys(),
+			'the report-them-all sentinel has become a gate name, so FilterByRight() would look for it in a rights block'
+		);
+	}
+
+	/**
+	 * Asking for the rights and narrowing on them are two requests, and the
+	 * sentinel is what separates them.
+	 *
+	 * Without it the only way to see the block is to narrow, so the classes a
+	 * gate refuses - the ones a caller most wants to know about before it
+	 * plans a call - are exactly the ones dropped from the answer.
+	 */
+	public function testTheRightsBlockCanBeAskedForWithoutNarrowing(): void
+	{
+		$aClasses = [
+			['class' => 'Allowed', 'rights' => ['create' => 'yes', 'delete' => 'yes']],
+			['class' => 'Refused', 'rights' => ['create' => 'no', 'delete' => 'yes']],
+		];
+
+		$this->assertCount(
+			1,
+			DatamodelReader::FilterByRight($aClasses, 'create'),
+			'a named gate must still drop the classes it refuses'
+		);
+		$this->assertCount(
+			2,
+			DatamodelReader::FilterByRight($aClasses, DatamodelReader::RIGHTS_ALL),
+			'the sentinel must narrow on nothing: it reports what the caller may do, it does not decide it'
+		);
 	}
 
 	/**

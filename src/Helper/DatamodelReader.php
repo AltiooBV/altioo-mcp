@@ -61,6 +61,20 @@ final class DatamodelReader
 	 */
 	public const OBJECT_RIGHTS_KEYS = ['modify', 'bulkModify', 'delete', 'bulkDelete'];
 
+	/**
+	 * The `may` value that reports every gate and narrows on none.
+	 *
+	 * A rights block always carries all eight grades, so one call already
+	 * answers "what may I create, modify and delete here" - what it could not
+	 * do was answer it for the classes one of those gates refuses, because
+	 * asking for rights and narrowing on them were the same request. This
+	 * separates them. Spelled '*' rather than named after a gate, so nothing
+	 * reads it as a ninth one.
+	 *
+	 * @since 1.0.0
+	 */
+	public const RIGHTS_ALL = '*';
+
 	private const RIGHTS_KEYS = [
 		'read',
 		'bulkRead',
@@ -253,6 +267,22 @@ final class DatamodelReader
 	}
 
 	/**
+	 * Everything `may` accepts: the gates, plus {@see RIGHTS_ALL}.
+	 *
+	 * Separate from {@see RightsKeys()} because the two are asked different
+	 * questions. RightsKeys() is the keys a rights block carries, which is what
+	 * FilterByRight() indexes into; this is what a caller may send, and '*' is
+	 * a request rather than a key.
+	 *
+	 * @return array<int, string>
+	 * @since 1.0.0
+	 */
+	public static function MayValues(): array
+	{
+		return array_merge([self::RIGHTS_ALL], self::RIGHTS_KEYS);
+	}
+
+	/**
 	 * Every summary with the caller's rights on that class attached.
 	 *
 	 * Impure, and separated from the filtering for the reason FilterByText is
@@ -295,7 +325,7 @@ final class DatamodelReader
 	 */
 	public static function FilterByRight(array $aClasses, string $sRight): array
 	{
-		if ($sRight === '') {
+		if ($sRight === '' || $sRight === self::RIGHTS_ALL) {
 			return array_values($aClasses);
 		}
 
