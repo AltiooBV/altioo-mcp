@@ -39,6 +39,41 @@ class ObjectDeleteContractTest extends TestCase
 	}
 
 	/**
+	 * A refused deletion names the way that is open.
+	 *
+	 * A profile that may not delete is the normal case, not the exception:
+	 * service desks retire tickets and decommission CIs through the lifecycle,
+	 * and deletion belongs to administrators. The refusal said only that the
+	 * door was shut, so a caller had to already know the datamodel to find the
+	 * one that is open - and an agent asked to clean something up stopped
+	 * there.
+	 *
+	 * Only transitions this caller may actually apply: offering one that would
+	 * itself be refused replaces a dead end with another, and StimuliOn()
+	 * already grades each by the modify right on the object and by
+	 * IsStimulusAllowed().
+	 *
+	 * Silent when there is nothing to say, and it cannot raise: a refusal must
+	 * not fail while explaining itself.
+	 */
+	public function testARefusedDeletionPointsAtTheLifecycle(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('retirementHint', $sBody, 'a refused deletion offers nothing else');
+		$this->assertStringContainsString('StimuliOn', $sBody, 'the transitions are not read from the object');
+		$this->assertStringContainsString("!== 'no'", $sBody, 'a transition this caller may not apply would be offered');
+		$this->assertStringContainsString('core_object_apply_stimulus', $sBody, 'the hint names no tool to use');
+		$this->assertMatchesRegularExpression(
+			'/catch \\(\\\\Throwable[^}]*return \x27\x27;/s',
+			$sBody,
+			'explaining a refusal can raise over the refusal itself'
+		);
+	}
+
+	/**
 	 * An object the account cannot see is refused, with both ways out named.
 	 *
 	 * The case is a stale id: an account that hides obsolete objects - the
