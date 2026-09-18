@@ -301,5 +301,13 @@ the user to reconnect it - an operator who has just granted a scope or installed
 pack changes nothing for a session already running. Report that rather than
 concluding the client is misconfigured, and never treat a missing tool as one to
 work around.
+- Nothing here ever reaches you unasked. This server answers calls and sends nothing
+else: no notification when an object changes, no subscription to wait on, no event when
+a ticket is opened or an SLA runs out. Watching for something means calling again
+later, and saying so to the user - an agent that promises to be told will wait forever.
+- Each call stands alone. The server keeps nothing between them, so there is no state
+to set up and nothing to clean up afterwards; what does persist persists because it
+was written into iTop, which is the audit trail, the objects themselves, and the "show
+obsolete data" preference on the account.
 TEXT;
 }
