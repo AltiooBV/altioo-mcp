@@ -1485,6 +1485,28 @@ final class AccessGrants
 		}
 
 		try {
+			// Maintenance mode, named rather than described. access_mode
+			// withholds writing from everyone (ACCESS_READONLY) or from
+			// everyone but administrators (ACCESS_ADMIN_WRITE), and
+			// UserRights::IsActionAllowed() answers UR_ALLOWED_NO for every
+			// writing action while it holds. Without this the refusal below
+			// would enumerate create, modify and delete as though the caller's
+			// profile were the problem, and send an operator to grant rights
+			// that would change nothing.
+			//
+			// It matters here specifically because this barrier runs before a
+			// tool reaches its own read-only check - the tools ask this first,
+			// so on a mechanism class this is the message the caller gets.
+			if ($bWouldWrite && MetaModel::DBIsReadOnly()) {
+				return sprintf(
+					self::DELEGATED_RIGHTS_REFUSAL,
+					$sClass,
+					$sTarget,
+					'This instance is in read-only mode (access_mode), so nothing may be written here at all just now - which has nothing to do with your rights on it.',
+					$sTarget
+				);
+			}
+
 			if (!MetaModel::IsValidClass($sTarget)) {
 				return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, "'{$sTarget}' is not a class this instance knows.", $sTarget);
 			}

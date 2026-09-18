@@ -579,6 +579,15 @@ published archive was installed and exercised on into this line; the README and
   would settle the call. **Not covered:** per-attribute rights. iTop populates a new source's
   mapping itself, without any call reaching this endpoint, so there is no write here to refuse —
   the rule is honestly a class-level one, and `SECURITY.md` says so.
+- **Maintenance mode is named instead of blamed on your profile.** `access_mode` withholds writing
+  from everyone (`ACCESS_READONLY`) or from everyone but administrators (`ACCESS_ADMIN_WRITE`, the
+  value `2`), and `UserRights::IsActionAllowed()` answers `UR_ALLOWED_NO` for every writing action
+  while it holds. The mechanism rule therefore enumerated create, modify and delete as though the
+  caller's profile were the problem — and it is reached *before* a tool's own read-only check,
+  since the tools ask the barrier first, so on a mechanism class that was the message a caller got.
+  It now says the instance is in read-only mode and that this has nothing to do with rights on the
+  class, which is the difference between an operator granting a profile that changes nothing and an
+  operator waiting for the maintenance window to end.
 - **An external key given as a string says what is wrong with it.** The one invalid-value case
   that still dead-ended: `org_id: "abc"` came back as an opaque reference into the instance log,
   which no tool here reads, while every other bad value - an enum, a date - is named in full.
