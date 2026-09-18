@@ -271,6 +271,38 @@ class SchemaToolsContractTest extends TestCase
 		}
 	}
 
+	/**
+	 * required_only answers "what must I set", so it drops the derived block.
+	 *
+	 * A stock UserRequest has seven writable attributes and about twenty-five
+	 * derived ones, so leaving them in made the argument shrink the half that
+	 * was already small - and every derived entry carries required: true, which
+	 * is the database saying the column it computes is not nullable and reads
+	 * as a write obligation. Nothing can set a derived attribute, so it is
+	 * never an answer to this question.
+	 */
+	public function testRequiredOnlyDropsTheBlockNothingCanSet(): void
+	{
+		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+
+		$this->assertMatchesRegularExpression(
+			'/BLOCK_DERIVED.*&&\s*!\$bRequiredOnly/s',
+			$sBody,
+			'required_only still answers with attributes no write can supply'
+		);
+
+		$this->assertStringContainsString(
+			'drop the derived ones',
+			(string) (new ClassSchema())->getInputSchema()['properties']['required_only']['description'],
+			'the argument does not say it drops them'
+		);
+		$this->assertStringContainsString(
+			'forbidding null',
+			(string) (new ClassSchema())->getDescription(),
+			'required is left to read as a write obligation on a computed attribute'
+		);
+	}
+
 	/** Nothing recognised is not the same as nothing wanted. */
 	public function testAnUnknownBlockNameDoesNotEmptyTheAnswer(): void
 	{
