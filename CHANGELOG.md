@@ -746,6 +746,16 @@ published archive was installed and exercised on into this line; the README and
   promises a user it will be told waits forever. Beside it: each call stands alone, so what
   persists does so because it was written into iTop.
 
+- **The rights block answers for this endpoint, not only for iTop.** It exists so a model can pick a
+  call that will succeed instead of discovering the refusal by making it — and on the classes that
+  decide what this endpoint may do it did the opposite: iTop says an administrator may modify
+  `UserToken`, so the block said `modify: "yes"`, and the write was then refused by a barrier the
+  block never mentioned. A caller could learn that its own escalation was blocked only by attempting
+  one. The write gates are now graded `"no"` where the barrier refuses outright, `"depends"` where
+  `mcp_allow_access_administration` is on and only the caller's own access is off limits, and a
+  `restricted` line says which it is — because "no" alone sends a caller to ask an administrator for
+  a right no profile can grant. Reads are untouched.
+
 - **A category is listed once, and narrowing on one finds every class in it.** A class declares its
   categories as one string — `"core/cmdb, grant_by_profile"` — and `MetaModel` explodes it on the
   comma without trimming, so a spaced declaration registers `" grant_by_profile"` and an unspaced
