@@ -134,6 +134,83 @@ final class WritePlan
 	}
 
 	/**
+	 * The escape hatch for the guard below, spelled once.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function ObsoleteOkSchemaProperty(string $sWhatItDoes): array
+	{
+		return [
+			'type'        => 'boolean',
+			'description' => 'Set true to '.$sWhatItDoes.' an object that counts as obsolete while your account does not show obsolete objects. Off by default: such an object is absent from your own searches, so acting on it is usually a stale id rather than a decision.',
+			'default'     => false,
+		];
+	}
+
+	/**
+	 * Refuses to act on an object the caller cannot see in its own searches.
+	 *
+	 * The case: an account that hides obsolete objects - the default - acting
+	 * on an id from before the object became obsolete. It cannot find the
+	 * object, cannot check what it now is, and the write lands on something
+	 * the caller's own view says is gone.
+	 *
+	 * Not a right, and deliberately not enforced as one. Obsolescence is a
+	 * display filter in iTop: the console opens an obsolete object by URL and
+	 * edits it, and that is not an oversight - modifying the object is the
+	 * only way to stop it being obsolete, because the flag is a condition over
+	 * its own fields. A guard with no way past it would make un-obsoleting
+	 * impossible for exactly the accounts that hide them, which is every
+	 * account nobody has configured.
+	 *
+	 * So it refuses by default and names the two ways forward: obsolete_ok on
+	 * this call, or core_set_obsolete_data to stop hiding them at all. The
+	 * refusal says which of the two conditions it is - the object being
+	 * obsolete, or the account hiding them - since a caller that cannot tell
+	 * will try the wrong one.
+	 *
+	 * Single-object tools only. A bulk call is given its ids explicitly and
+	 * reports per row, so a hidden-obsolete row there is an entry that says so
+	 * rather than a refusal that stops the other ninety-nine.
+	 *
+	 * @throws ToolCallException When the object is obsolete, hidden from this account, and no hatch was passed.
+	 * @since 1.0.0
+	 */
+	public static function RefuseHiddenObsolete(DBObject $oObject, string $sClass, bool $bObsoleteOk, string $sVerb): void
+	{
+		if ($bObsoleteOk) {
+			return;
+		}
+
+		try {
+			if (!MetaModel::IsObsoletable($sClass) || utils::ShowObsoleteData()) {
+				return;
+			}
+
+			if (!$oObject->Get('obsolescence_flag')) {
+				return;
+			}
+		} catch (Throwable $e) {
+			// A question about the object must not refuse a write it cannot
+			// answer for: the guard is a courtesy, and failing open leaves the
+			// caller exactly where it was before the guard existed.
+			MCPHelper::LogError('Could not check obsolescence before a write on '.$sClass.': '.$e->getMessage());
+
+			return;
+		}
+
+		throw new ToolCallException(sprintf(
+			"This %s counts as obsolete (%s) and your account does not show obsolete objects, so it is absent from your own searches. "
+			."Refused because acting on it is usually a stale id rather than a decision. "
+			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete - or call core_set_obsolete_data to show them.",
+			$sClass,
+			MetaModel::GetObsolescenceExpression($sClass)->Render(),
+			$sVerb
+		));
+	}
+
+	/**
 	 * The `obsolescence` property, for a tool that changes an object's fields.
 	 *
 	 * The case it exists for: an agent sets a status the datamodel counts as
