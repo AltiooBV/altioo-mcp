@@ -68,6 +68,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				'filters' => [
 					'type'                 => 'object',
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory. '
+						.'Every pair is an equality: the value must match in full, so a word out of a title matches nothing. For a substring use core_object_search_by_oql with LIKE, and for text you would have typed into the console\'s search box use core_object_find_by_name. '
 						.'Omit it to search the whole class - an empty filter is {} and never [], which is the shape a language without a distinct empty map will hand you.',
 					'additionalProperties' => true,
 					'default'              => new \stdClass(),

@@ -413,7 +413,8 @@ final class WritePlan
 		return [
 			'type'                 => 'object',
 			'additionalProperties' => true,
-			'description'          => 'Attribute code => the value this write set, or would set. '.$sWhichOnes.' Empty when the write touched nothing.',
+			'description'          => 'Attribute code => the value this write set, or would set. '.$sWhichOnes.' Empty when the write touched nothing. '
+				.'Read before the write, because the write clears it - so an attribute the write itself fills is empty here rather than wrong: a ticket answers "" for ref and friendlyname, which are assigned as the row is inserted. What the object ended up with is in `after`.',
 		];
 	}
 

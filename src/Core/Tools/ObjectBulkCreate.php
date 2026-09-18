@@ -72,7 +72,9 @@ class ObjectBulkCreate extends AbstractBulkTool
 			'changes'    => [
 				'type'                 => 'object',
 				'additionalProperties' => true,
-				'description'          => 'Attribute code => the value this write set, or would set.',
+				'description'          => 'Attribute code => the value this write set, or would set. '
+					.'Read before the write, because the write clears it - so an attribute the write itself fills is empty here rather than wrong: a ticket answers "" for ref and friendlyname, which are assigned as the row is inserted. '
+					.'These tools report no `after` block per row - a hundred rows would be a hundred reads - so take the id this entry reports and call core_object_get for what the object ended up with.',
 			],
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
 			'applied'    => [
