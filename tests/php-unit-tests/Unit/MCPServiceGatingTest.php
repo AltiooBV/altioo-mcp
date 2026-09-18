@@ -229,6 +229,29 @@ class MCPServiceGatingTest extends TestCase
 	}
 
 	/**
+	 * The identity block names the prompts too, narrowed the same way.
+	 *
+	 * A prompt is fetched by the client and listed through prompts/list, which
+	 * plenty of clients never call - so a model whose client is silent about
+	 * them cannot discover a recipe written for the question it was just
+	 * asked. This block is already where a model looks when something seems to
+	 * be missing, and naming them there needs no tool per prompt.
+	 *
+	 * Through the same isHidden() check, because a name the caller cannot
+	 * fetch is the withheld surface being advertised - the thing this whole
+	 * block is careful not to do.
+	 */
+	public function testServedAccessNamesThePromptsThisCallerCanFetch(): void
+	{
+		$sBody = $this->bodyOf('ServedAccess');
+		$this->assertStringContainsString("'prompts'", $sBody, 'the identity block never mentions prompts');
+
+		$sNames = $this->bodyOf('servedPromptNames');
+		$this->assertStringContainsString('GetPrompts', $sNames);
+		$this->assertStringContainsString('!self::isHidden', $sNames, 'a withheld prompt would be advertised');
+	}
+
+	/**
 	 * An unrestricted policy holds every capability, and says so with null -
 	 * which has to be resolved before it is reported, or the block claims a
 	 * caller holds nothing.

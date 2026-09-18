@@ -157,6 +157,36 @@ class ServerInstructionsTest extends TestCase
 	}
 
 	/**
+	 * A prompt nobody can find is a prompt nobody uses.
+	 *
+	 * Prompts land in prompts/list, which plenty of clients never call and
+	 * some do not implement, so the recipe written for the commonest question
+	 * here is invisible to exactly the caller it was written for - which is
+	 * how a review of this server concluded there was no shortcut for "my open
+	 * tickets" while core_my_open_tickets was registered and served.
+	 *
+	 * Naming them in the instructions costs a line and no tool per prompt. The
+	 * names passed in are already narrowed, and the contract test above holds
+	 * the rest: a name the policy withholds must never appear here.
+	 */
+	public function testTheServedPromptsAreNamedWhereAModelWillSeeThem(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::Unrestricted(), null, null, ['core_my_open_tickets']);
+
+		$this->assertStringContainsString('core_my_open_tickets', $sText);
+		$this->assertStringContainsString('prompts/get', $sText, 'the model is not told how one is fetched');
+	}
+
+	/** No prompt served, no section: an empty heading advertises nothing. */
+	public function testNoPromptsMeansNoPromptSection(): void
+	{
+		$this->assertStringNotContainsString(
+			'Prompts',
+			ServerInstructions::Text(AccessPolicy::Unrestricted(), null, null, [])
+		);
+	}
+
+	/**
 	 * "Not RFC 3339" is only half a rule. The pointer that used to supply the
 	 * other half - read core_class_schema - is precisely what a caller without
 	 * the datamodel tools cannot follow, so the shape has to be in the text.
