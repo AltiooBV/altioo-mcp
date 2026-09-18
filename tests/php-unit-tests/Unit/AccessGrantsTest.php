@@ -411,6 +411,180 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * The other half of the barrier: what this endpoint may not hand to
+	 * something that writes for it.
+	 *
+	 * Found by a red-team pass, and it is a gap in what the barrier covered
+	 * rather than a hole in the barrier. Every identity class is refused and
+	 * stays refused - and a caller that may not write UserLocal could create a
+	 * SynchroDataSource whose scope_class is UserLocal, which iTop fills in
+	 * with the whole attribute list, update:true, password and profile_list
+	 * included. The synchronisation engine applies it later from cron or from
+	 * a console button, as a trusted internal process that never passes
+	 * through this endpoint. The staged write is an administrator account with
+	 * a chosen password, and nothing in the call that staged it touched a
+	 * class this module refuses.
+	 *
+	 * So the refusal is about what executes elsewhere, not about what the row
+	 * holds - which is why the credential-attribute rule above was never going
+	 * to catch it, and says so.
+	 *
+	 * @dataProvider delegatingClassProvider
+	 */
+	public function testASynchronisationClassIsRefusedOutright(string $sClass): void
+	{
+		$this->assertTrue(AccessGrants::IsDelegating($sClass));
+		$this->assertTrue(AccessGrants::IsBarred($sClass));
+
+		$sRefusal = AccessGrants::RefusalGiven(false, $sClass, 1);
+
+		$this->assertNotNull($sRefusal, "{$sClass} stages writes for the synchronisation engine and was allowed through");
+		$this->assertStringContainsString($sClass, $sRefusal);
+		$this->assertStringContainsString('mcp_allow_access_administration', $sRefusal);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public function delegatingClassProvider(): array
+	{
+		return [
+			'the definition'   => ['SynchroDataSource'],
+			'the mapping'      => ['SynchroAttribute'],
+			'a mapping subclass' => ['SynchroAttExtKey'],
+			'the staged data'  => ['SynchroReplica'],
+			'the run log'      => ['SynchroLog'],
+			'case is not a way past it' => ['synchrodatasource'],
+		];
+	}
+
+	/**
+	 * The prefix, for the one a later branch adds.
+	 *
+	 * Same reason the URP_ prefix is matched: the family is a naming
+	 * convention as much as a hierarchy, and a barrier made only of names is
+	 * one release behind whoever extends it.
+	 */
+	public function testAnUnknownMemberOfTheSynchroFamilyIsRefused(): void
+	{
+		$this->assertTrue(AccessGrants::IsDelegating('SynchroWhateverComesNext'));
+		$this->assertNotNull(AccessGrants::RefusalGiven(false, 'SynchroWhateverComesNext'));
+	}
+
+	/**
+	 * The two refusals name different problems, so they are different
+	 * sentences.
+	 *
+	 * "This decides who may reach the endpoint" and "this is carried out later
+	 * by something else" call for different actions from whoever reads them,
+	 * and a model that cannot tell them apart reports the wrong one.
+	 */
+	public function testTheDelegationRefusalDoesNotReadLikeTheOthers(): void
+	{
+		$this->assertNotSame(AccessGrants::GRANT_REFUSAL, AccessGrants::DELEGATION_REFUSAL);
+		$this->assertNotSame(AccessGrants::SELF_REFUSAL, AccessGrants::DELEGATION_REFUSAL);
+		$this->assertStringContainsString('synchronisation engine', AccessGrants::DELEGATION_REFUSAL);
+		$this->assertStringContainsString('Reading is unaffected', AccessGrants::DELEGATION_REFUSAL);
+	}
+
+	/**
+	 * With the setting on, the one target that stays shut.
+	 *
+	 * mcp_allow_access_administration buys administration of other people's
+	 * access *through this endpoint*, where every such write is graded against
+	 * the caller's own credential on the way past - see the self guard above.
+	 * A definition the engine runs later is graded against nothing, so
+	 * permitting one pointed at the rights model would hand back exactly the
+	 * self-escalation no setting is allowed to lift: stage it instead of
+	 * performing it.
+	 *
+	 * Pinned on the decision rather than on the instance, since resolving a
+	 * scope_class needs a datamodel and the rule does not.
+	 */
+	public function testTheSettingCannotOpenASynchroPointedAtTheRightsModel(): void
+	{
+		$sRefusal = AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => 'URP_UserProfile']);
+
+		$this->assertNotNull($sRefusal, 'the setting was allowed to open a staged write into the rights model');
+		$this->assertStringContainsString('URP_UserProfile', $sRefusal);
+		$this->assertStringNotContainsString(
+			'Turn on mcp_allow_access_administration',
+			$sRefusal,
+			'the refusal sends an operator to a setting that is already on'
+		);
+	}
+
+	/**
+	 * The one the red team actually used, which needs a datamodel to recognise.
+	 *
+	 * UserLocal is not in the named floor - User is, and UserLocal is refused
+	 * for descending from it - so a suite with no iTop cannot resolve the
+	 * relationship and this is the same skip the descendant test above takes.
+	 * Kept separate from the case that runs everywhere, rather than weakening
+	 * that one to match.
+	 */
+	public function testTheSettingCannotOpenASynchroPointedAtUserLocal(): void
+	{
+		if (!class_exists('UserLocal')) {
+			$this->markTestSkipped('no iTop datamodel is loaded, so UserLocal is not known to descend from User here.');
+		}
+
+		$sRefusal = AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => 'UserLocal']);
+
+		$this->assertNotNull($sRefusal, 'a synchro source pointed at UserLocal is the reported escalation, unchanged');
+		$this->assertStringContainsString('UserLocal', $sRefusal);
+	}
+
+	/**
+	 * A target that cannot be established is refused, not waved through.
+	 *
+	 * The rule is answered by not answering it otherwise: omit scope_class on
+	 * the create, set it on a second call. Same stance as the self guard, and
+	 * the same cost of being wrong - a refusal an administrator satisfies from
+	 * the console.
+	 */
+	public function testASynchroWhoseTargetIsNotSettledIsRefused(): void
+	{
+		$this->assertNotNull(
+			AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, []),
+			'a definition that names no target was allowed through'
+		);
+		$this->assertNotNull(
+			AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => '  ']),
+			'a blank target was allowed through'
+		);
+	}
+
+	/**
+	 * The same call pointed somewhere ordinary, with the setting on, goes
+	 * through.
+	 *
+	 * The barrier is a refusal to stage privileged writes, not a ban on
+	 * synchronisation: an operator who turned the setting on gets to define a
+	 * source over their CMDB.
+	 */
+	public function testASynchroPointedAtAnOrdinaryClassIsAllowedOnceTheSettingIsOn(): void
+	{
+		$this->assertNull(AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => 'Server']));
+	}
+
+	/**
+	 * Reads are untouched here too.
+	 *
+	 * The barrier is about what a write sets in motion. Reporting that a
+	 * source last ran on Tuesday is useful and sets nothing in motion, and the
+	 * read tools are checked as a whole by testReadingIsNotRefused() above.
+	 */
+	public function testASynchronisationClassIsStillReadable(): void
+	{
+		$this->assertStringContainsString(
+			'Reading is unaffected',
+			AccessGrants::DELEGATION_REFUSAL,
+			'the refusal does not say that reading is still open, so a caller stops asking'
+		);
+	}
+
+	/**
 	 * An ordinary class is nobody's business here, whatever the setting says.
 	 */
 	public function testAnOrdinaryClassIsNeverRefusedByThisRule(): void

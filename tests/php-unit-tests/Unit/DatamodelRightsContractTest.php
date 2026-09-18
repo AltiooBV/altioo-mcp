@@ -65,6 +65,14 @@ class DatamodelRightsContractTest extends TestCase
 	 *
 	 * `restricted` carries the why, because "no" alone sends a caller to ask an
 	 * administrator for a right no profile can grant.
+	 *
+	 * The barrier has two halves and the block has to tell them apart. A class
+	 * that decides who may reach this endpoint is refused because writing it
+	 * would widen the caller's own access; a class that stages work for the
+	 * synchronisation engine is refused because the write happens later,
+	 * somewhere else, with rights this endpoint does not have. Same grades,
+	 * different sentence - and a caller sent to the wrong one asks an operator
+	 * to change the wrong thing.
 	 */
 	public function testTheRightsBlockReflectsTheWriteBarrier(): void
 	{
@@ -76,7 +84,9 @@ class DatamodelRightsContractTest extends TestCase
 			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
 		));
 
-		$this->assertStringContainsString('AccessGrants::IsGranting', $sBody, 'the block never asks the barrier');
+		$this->assertStringContainsString('AccessGrants::IsBarred', $sBody, 'the block never asks the barrier');
+		$this->assertStringContainsString('AccessGrants::IsDelegating', $sBody,
+			'the block asks one half of the barrier, so a synchronisation class is graded with the wrong sentence');
 		$this->assertStringContainsString('AllowsAccessAdministration', $sBody, 'the setting that decides is not consulted');
 		$this->assertStringContainsString("'restricted'", $sBody, 'a caller is told no without being told why');
 		$this->assertStringContainsString("'no'", $sBody, 'a refused write is graded as something other than final');

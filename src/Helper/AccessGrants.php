@@ -129,6 +129,66 @@ final class AccessGrants
 	private const GRANTING_PREFIX = 'URP_';
 
 	/**
+	 * The classes that write on this endpoint's behalf, with rights it does
+	 * not have.
+	 *
+	 * The barrier above is built on one sentence: the endpoint never writes
+	 * the things that decide what the endpoint may write. These classes are
+	 * the other half of it, and the half that was missing. A
+	 * SynchroDataSource decides nothing about this endpoint's rights - it is
+	 * not a credential and carries none, which is why the census by attribute
+	 * type passes it by and why the note on CREDENTIAL_ATTRIBUTE says as much.
+	 * What it is, is a standing instruction to iTop's synchronisation engine:
+	 * scope_class names any class in the datamodel, attribute_list names the
+	 * fields to overwrite, and the engine applies it later, from cron or from
+	 * a console button, as a trusted internal process. It does not pass
+	 * through this endpoint, so it never meets the barrier above.
+	 *
+	 * A caller that may not write UserLocal can therefore write a
+	 * SynchroDataSource whose scope_class is UserLocal - iTop fills the
+	 * mapping in for you, password and profile_list included, update:true by
+	 * default - and wait. The account it creates is an administrator with a
+	 * password of the caller's choosing, and nothing in the write that staged
+	 * it touched a class this module refuses.
+	 *
+	 * The refusal is therefore not about credentials. It is that a definition
+	 * executed later by something else is a write this endpoint cannot grade:
+	 * not the class it lands on, not the values, not whether it reaches the
+	 * caller's own access. Staging one is indistinguishable from performing
+	 * one, except in when it happens and in who is blamed.
+	 *
+	 * Matched by descent and by prefix, like the family above and for the same
+	 * reason. SynchroAttribute is abstract and its subclasses carry the field
+	 * mapping; SynchroReplica is the staged data itself; SynchroLog records a
+	 * run. A datamodel is one <parent> away from adding another.
+	 *
+	 * Reading is not refused, exactly as above: a caller that can report "this
+	 * source last ran on Tuesday and touched 40 rows" is useful, and the
+	 * refusal is about what executes, not about what is visible.
+	 */
+	private const DELEGATING_ROOTS = [
+		'SynchroDataSource',
+		'SynchroAttribute',
+		'SynchroReplica',
+		'SynchroLog',
+	];
+
+	/** The convention the whole synchronisation family is named by. */
+	private const DELEGATING_PREFIX = 'Synchro';
+
+	/**
+	 * The attribute a data source names its target class in, and the one its
+	 * dependent rows name their data source in.
+	 *
+	 * Asked of the datamodel before they are read, never assumed: a branch
+	 * that renames either costs the scope_class half of the rule and nothing
+	 * else, because the outright refusal below it does not depend on them.
+	 */
+	private const SCOPE_ATTRIBUTE = 'scope_class';
+
+	private const SOURCE_ATTRIBUTE = 'sync_source_id';
+
+	/**
 	 * What every write tool says when the instance refuses these classes
 	 * outright, spelled once so they all say the same thing and all name the
 	 * setting that decides it - a model told only "no" retries a variation,
@@ -147,6 +207,29 @@ final class AccessGrants
 	 * setting that would not have helped.
 	 */
 	public const SELF_REFUSAL = 'Class \'%s\' can be administered here, but not for yourself: this call reaches the access you are connected with. Change your own token, account or profiles in the iTop console.';
+
+	/**
+	 * What every write tool says when the instance refuses a synchronisation
+	 * definition.
+	 *
+	 * Names what is actually being refused - a write performed later by
+	 * something else - rather than "access denied", because a model told the
+	 * latter tries a neighbouring class and a model told the former reports
+	 * it.
+	 */
+	public const DELEGATION_REFUSAL = 'Class \'%s\' defines work that iTop\'s synchronisation engine carries out later, with rights this endpoint does not have and without passing through it, so it cannot be written here unless mcp_allow_access_administration is on. Change it in the iTop console. Reading is unaffected.';
+
+	/**
+	 * What they say when the instance allows it and the definition targets a
+	 * class this endpoint may not write anyway.
+	 *
+	 * The setting buys administration of other people's access through *this*
+	 * endpoint, where every write is graded against the caller's own
+	 * credential. A definition handed to the engine is graded against nothing,
+	 * so the one rule no setting lifts - never your own access - would be
+	 * lifted by staging it instead of performing it.
+	 */
+	public const DELEGATED_TARGET_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', which decides who may reach this endpoint. The synchronisation engine writes without the check that keeps an administering call away from your own access, so this target is refused whatever mcp_allow_access_administration says. Do it in the iTop console.';
 
 	/**
 	 * The category iTop files its rights model under.
@@ -216,6 +299,50 @@ final class AccessGrants
 		}
 
 		return self::$aDecided[$sKey] = self::IsNamedGranting($sClass) || self::IsDeclaredGranting($sClass);
+	}
+
+	/**
+	 * Whether $sClass stages work for the synchronisation engine.
+	 *
+	 * Names, descendants and prefix, with no datamodel half: the question is
+	 * not what the class holds but what iTop does with it, and that is not
+	 * something an attribute definition says. Cached with the rest, and
+	 * case-insensitive for the reason {@see IsGranting()} gives.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsDelegating(string $sClass): bool
+	{
+		$sKey = 'delegating:'.strtolower($sClass);
+		if (array_key_exists($sKey, self::$aDecided)) {
+			return self::$aDecided[$sKey];
+		}
+
+		if (stripos($sClass, self::DELEGATING_PREFIX) === 0) {
+			return self::$aDecided[$sKey] = true;
+		}
+
+		foreach (self::DELEGATING_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return self::$aDecided[$sKey] = true;
+			}
+		}
+
+		return self::$aDecided[$sKey] = false;
+	}
+
+	/**
+	 * Whether either barrier has something to say about $sClass.
+	 *
+	 * For the callers that only need to know whether to look - the schema's
+	 * rights block, and the tests that walk the surface - rather than which of
+	 * the two it is.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsBarred(string $sClass): bool
+	{
+		return self::IsGranting($sClass) || self::IsDelegating($sClass);
 	}
 
 	/** The floor: the classes above, their descendants, and the prefix. */
@@ -326,6 +453,33 @@ final class AccessGrants
 	 */
 	public static function RefusalGiven(bool $bAdministrationAllowed, string $sClass, ?int $iId = null, array $aFields = []): ?string
 	{
+		if (self::IsDelegating($sClass)) {
+			if (!$bAdministrationAllowed) {
+				return sprintf(self::DELEGATION_REFUSAL, $sClass);
+			}
+
+			// The setting is on, so administering other people's access
+			// through this endpoint is allowed - and every such call is still
+			// graded against the caller's own credential on the way through.
+			// A definition the engine executes later is graded against
+			// nothing, so the one target that stays shut is the one that would
+			// hand back that grading.
+			$sTarget = self::DelegatedTarget($sClass, $iId, $aFields);
+			if ($sTarget === null) {
+				// Not established, which is not the same as harmless: the
+				// target decides whether this is an ordinary CMDB source or a
+				// staged administrator account, and a rule that shrugs where it
+				// cannot tell is a rule that is answered by not telling it. The
+				// self guard below fails the same way for the same reason.
+				return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, 'a class this call does not settle');
+			}
+			if (self::IsGranting($sTarget)) {
+				return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, $sTarget);
+			}
+
+			return null;
+		}
+
 		if (!self::IsGranting($sClass)) {
 			return null;
 		}
@@ -339,6 +493,103 @@ final class AccessGrants
 		}
 
 		return null;
+	}
+
+	/**
+	 * The class a synchronisation definition would write into, or null when
+	 * this row does not settle one.
+	 *
+	 * Three shapes to cover. A data source names its target in scope_class,
+	 * and on an update the caller may be changing it or may be leaving it
+	 * alone - so the values being written are asked first and the stored row
+	 * second, the same order {@see ReachesTheCaller()} uses and for the same
+	 * reason. Everything else in the family - the attribute mappings, the
+	 * staged replicas - hangs off a data source, so the question is passed up
+	 * to it.
+	 *
+	 * Null means "this row does not say", not "nothing". The outright refusal
+	 * above already covers the instance that never opted in; this only ever
+	 * adds a refusal where the answer is known and is a granting class.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function DelegatedTarget(string $sClass, ?int $iId, array $aFields): ?string
+	{
+		// Asked of the values first, and without a datamodel: a caller naming
+		// its own target has settled the question, and needing MetaModel to
+		// read a key out of an array is how this rule came to not apply in the
+		// one suite that runs without one.
+		foreach ([self::SCOPE_ATTRIBUTE => null, self::SOURCE_ATTRIBUTE => 'source'] as $sAttCode => $sKind) {
+			if (!array_key_exists($sAttCode, $aFields)) {
+				continue;
+			}
+
+			if ($sKind === null) {
+				$sScope = trim((string) $aFields[$sAttCode]);
+
+				return $sScope === '' ? null : $sScope;
+			}
+
+			return self::ScopeOfSource((int) $aFields[$sAttCode]);
+		}
+
+		if (!class_exists('MetaModel')) {
+			return null;
+		}
+
+		try {
+			if (!MetaModel::IsValidClass($sClass)) {
+				return null;
+			}
+
+			$oRow = ($iId !== null && $iId > 0) ? MetaModel::GetObject($sClass, $iId, false, true) : null;
+			if ($oRow === null) {
+				return null;
+			}
+
+			if (MetaModel::IsValidAttCode($sClass, self::SCOPE_ATTRIBUTE)) {
+				$sScope = trim((string) $oRow->Get(self::SCOPE_ATTRIBUTE));
+
+				return $sScope === '' ? null : $sScope;
+			}
+
+			// A mapping or a replica: the target is whatever its data source
+			// says, so ask that row the question instead.
+			if (!MetaModel::IsValidAttCode($sClass, self::SOURCE_ATTRIBUTE)) {
+				return null;
+			}
+
+			return self::ScopeOfSource((int) $oRow->Get(self::SOURCE_ATTRIBUTE));
+		} catch (Throwable) {
+			return null;
+		}
+	}
+
+	/**
+	 * The class a data source is pointed at, read from the source itself.
+	 *
+	 * Null whenever it cannot be established, which the caller refuses on: an
+	 * id that names no source, a datamodel that will not answer, a source with
+	 * no scope set.
+	 */
+	private static function ScopeOfSource(int $iSourceId): ?string
+	{
+		if ($iSourceId < 1 || !class_exists('MetaModel')) {
+			return null;
+		}
+
+		try {
+			$oSource = MetaModel::GetObject('SynchroDataSource', $iSourceId, false, true);
+			if ($oSource === null) {
+				return null;
+			}
+
+			$sScope = trim((string) $oSource->Get(self::SCOPE_ATTRIBUTE));
+
+			return $sScope === '' ? null : $sScope;
+		} catch (Throwable) {
+			return null;
+		}
 	}
 
 	/**

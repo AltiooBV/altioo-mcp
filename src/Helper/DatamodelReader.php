@@ -631,11 +631,12 @@ final class DatamodelReader
 	private static function narrowedByTheBarrier(array $aRights, string $sClass): array
 	{
 		try {
-			if (!AccessGrants::IsGranting($sClass)) {
+			if (!AccessGrants::IsBarred($sClass)) {
 				return $aRights + ['restricted' => null];
 			}
 
 			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
+			$bDelegating            = AccessGrants::IsDelegating($sClass);
 		} catch (\Throwable $e) {
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
@@ -646,6 +647,28 @@ final class DatamodelReader
 			$aRights[$sGate] = $bAdministrationAllowed
 				? self::stricter($aRights[$sGate], 'depends')
 				: 'no';
+		}
+
+		if ($bDelegating) {
+			// 'depends' rather than 'yes' on the permitted side for the reason
+			// the grade exists: whether the write is allowed is a question
+			// about the row - which class this definition would be pointed at
+			// - and that is not answerable from the class alone.
+			$aRights['restricted'] = $bAdministrationAllowed
+				? sprintf(
+					'%s defines work iTop\'s synchronisation engine carries out later, with rights this endpoint does not have. '
+					.'mcp_allow_access_administration is on, so it may be written - except pointed at a class that decides who may reach this endpoint, '
+					.'which no setting permits, because the engine writes without the check that keeps an administering call away from your own access.',
+					$sClass
+				)
+				: sprintf(
+					'%s defines work iTop\'s synchronisation engine carries out later, with rights this endpoint does not have and without passing through it, '
+					.'so it cannot be written here at all, whatever your profile says. Turn on mcp_allow_access_administration, or use the iTop console. '
+					.'Reading is unaffected.',
+					$sClass
+				);
+
+			return $aRights;
 		}
 
 		$aRights['restricted'] = $bAdministrationAllowed
