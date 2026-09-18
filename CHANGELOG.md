@@ -323,6 +323,16 @@ published archive was installed and exercised on into this line; the README and
   forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
   bulk call is handed its ids explicitly and answers per row.
 
+- **`core_object_attach` no longer reports a stored file as a failure.** A real attach stored the
+  document and answered "Error while executing tool" — the SDK's fixed string, no reference, no id,
+  with the row in the database, so the reasonable next move was to attach it again. Two causes, and
+  the structural one matters more than the typo: `DBInsert()` commits and then returns, and the
+  response was built *outside* the try, where a failure in it could not be caught at all. Both
+  branches now build the answer inside the catch, and a stored attachment whose description failed
+  comes back as the success it is with the failure under `warning`. The trigger was
+  `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
+  the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
+
 - **A refused deletion names the way that is open.** A profile that may not delete is the normal
   case — service desks retire tickets through the lifecycle, and deletion belongs to
   administrators — but the refusal said only that the door was shut, so a caller had to know the
