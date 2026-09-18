@@ -323,6 +323,16 @@ published archive was installed and exercised on into this line; the README and
   forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
   bulk call is handed its ids explicitly and answers per row.
 
+- **A write's `after.applied` answers about the fields that were sent.** It was being handed the
+  attributes the *write changed*, and on a creation those are every attribute of the new object —
+  so a dry run that set five fields answered with a seventy-attribute object twice, once under
+  `changes` and once under `after.applied`.
+
+- **`output_fields` states everything it always returns.** The id, and whether the object is
+  archived or obsolete — a row described by the fields a caller named looks the same whether it is
+  live or soft-deleted, which is why the flags are always there. A contract that named one
+  exception and kept three is one a caller stops trusting.
+
 - **A write describes the object it left behind.** `changes` is taken before the write and has to
   be — `DBInsert()` clears the pending values — so it reports what was asked for and what
   `DoComputeValues()` rewrote, and nothing the write itself did: an `AfterInsert` hook, an event
@@ -736,7 +746,8 @@ published archive was installed and exercised on into this line; the README and
   `getMessage()` and discards an `UnknownClassOqlException` whose `GetUserFriendlyDescription()`
   already runs a closest-match search, over candidates its constructor filtered by read rights. The
   parse is now done here so the exception survives. Every other OQL error keeps `getMessage()`,
-  which carries the position and the offending token.
+  which carries the position and the offending token — minus the trailing "I would suggest to use
+  ''" that `OQLException` appends whenever the parser had expectations, even when none was close.
 
 - **`core_class_schema` answers a subset of itself when asked.** A stock `UserRequest` describes
   about forty writable attributes, thirty derived ones, its relations and its whole lifecycle
