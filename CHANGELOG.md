@@ -323,6 +323,18 @@ published archive was installed and exercised on into this line; the README and
   forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
   bulk call is handed its ids explicitly and answers per row.
 
+- **A bad external key is answered rather than deferred.** `org_id: 999999` on an instance with no
+  such organisation came back as "iTop refused it, the reason is in the log under reference X,
+  quote that reference" — opaque about a reason that is knowable and harmless, and pointing at a
+  log **nothing on this server reads**. The value is now checked before it reaches the ORM and the
+  refusal names the class to search and the tools that search it. Missing and unreadable share one
+  sentence, so a caller cannot enumerate what it may not see.
+
+- **The opaque refusal points somewhere the caller can go.** It said "quote that reference"; the
+  reference indexes iTop's log, which no tool here reads. It now says to check the attribute
+  against `core_class_schema`, keeps the reference for the user, and states that nothing here
+  reads that log.
+
 - **A stimulus dry run says the state will move.** It answered `valid: true` and `would_move_to`
   with `changes`, `overridden` and `defaulted` all empty — so the one change a transition is
   guaranteed to make appeared in no diff at all, on the tool whose whole purpose is to move a
