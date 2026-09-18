@@ -691,10 +691,13 @@ class AccessGrantsTest extends TestCase
 	public function automationClassProvider(): array
 	{
 		return [
-			'the trigger root'       => ['Trigger'],
-			'the action root'        => ['Action'],
-			'the connection'         => ['RemoteApplicationConnection'],
-			'case is not a way past' => ['trigger'],
+			'the trigger root'        => ['Trigger'],
+			'the action root'         => ['Action'],
+			// Listed by name, not left to descent: its datamodel parent is
+			// cmdbAbstractObject, and only its php_parent reaches Action.
+			'the webhook action root' => ['ActionWebhook'],
+			'the connection'          => ['RemoteApplicationConnection'],
+			'case is not a way past'  => ['trigger'],
 		];
 	}
 

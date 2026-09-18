@@ -218,17 +218,38 @@ final class AccessGrants
 	 * exist already - but it is "call any loaded public static method by name",
 	 * and what is loaded depends on which extensions an instance has.
 	 *
-	 * Trigger and Action are iTop root classes and are matched by descent, so
-	 * every kind of trigger and every kind of action is covered, including the
-	 * ones a pack adds. RemoteApplicationConnection is a named floor: deriving
-	 * it from "a class an Action points at" would refuse whatever else an
-	 * action happens to reference, and a barrier that makes Contact read-only
-	 * by inference is worse than one that misses a connection class a future
-	 * branch adds.
+	 * Trigger and Action are iTop root classes, matched by descent - and
+	 * ActionWebhook is listed beside them for a reason worth writing down,
+	 * because it is not obvious and it was checked rather than assumed. In
+	 * combodo-webhook-integration's datamodel, ActionWebhook declares
+	 * <parent>cmdbAbstractObject</parent>: in iTop's own class hierarchy it is
+	 * not an Action at all. What makes is_a() answer yes is its <php_parent>,
+	 * _ActionWebhook, which extends ActionNotification, which extends Action -
+	 * and the compiler takes php_parent over parent when it emits the class
+	 * (compiler.class.inc.php, GetUniqueElement('php_parent')). So the descent
+	 * match works, through a declaration in a module this one does not own.
+	 * Listing the name as well costs nothing and removes the dependence.
+	 *
+	 * RemoteApplicationConnection is a named floor and is load-bearing:
+	 * verified to declare <parent>Typology</parent>, so no Action or Trigger
+	 * descent reaches it. Its three subclasses - RemoteiTopConnection,
+	 * RemoteiTopConnectionToken, RemoteOauthConnection - come with it by
+	 * descent. Deriving it instead from "a class an Action points at" would
+	 * refuse whatever else an action happens to reference, and a barrier that
+	 * makes Contact read-only by inference is worse than one that misses a
+	 * connection class a future branch adds.
+	 *
+	 * Not listed, and a deliberate gap: Oauth2Client, which
+	 * RemoteOauthConnection points at and which holds an outbound client
+	 * secret. Outbound secrets are stored in the recoverable attribute types
+	 * this module deliberately does not treat as credentials - see
+	 * CREDENTIAL_ATTRIBUTE - and widening that here would be a different
+	 * restriction wearing this one's name.
 	 */
 	private const AUTOMATION_ROOTS = [
 		'Trigger',
 		'Action',
+		'ActionWebhook',
 		'RemoteApplicationConnection',
 	];
 

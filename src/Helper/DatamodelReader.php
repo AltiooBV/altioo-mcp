@@ -722,7 +722,7 @@ final class DatamodelReader
 			}
 
 			$aRights['restricted'] = sprintf(
-				'%s defines work iTop\'s synchronisation engine carries out later, and the engine consults no rights at all. '
+				'%s defines work iTop\'s synchronisation engine carries out later, and the engine checks no rights on what it writes. '
 				.'So a definition may be written here only for a class you could write yourself - create, modify and delete, in bulk - '
 				.'and never for one that decides who may reach this endpoint, which no setting permits, because the engine also writes '
 				.'without the check that keeps an administering call away from your own access. Name the target (scope_class, or '

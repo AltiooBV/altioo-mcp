@@ -178,10 +178,21 @@ above is about classes that decide what this endpoint may do. A `SynchroDataSour
 nothing of the kind and carries no credential — the rule by attribute type passes it by,
 deliberately. What it is, is a standing instruction to iTop's synchronisation engine:
 `scope_class` names any class in the datamodel, the attribute mapping names the fields to
-overwrite, and the engine applies it later from cron or from a console button, as a trusted
-internal process. It never passes through this endpoint, and it **consults no `UserRights` at
-all**. So a definition is a write with the rights check removed, and three rules follow from
-that.
+overwrite, and the engine applies it later — through `synchro/synchro_exec.php`, from the
+console, or from whatever external scheduler feeds the source. It never passes through this
+endpoint.
+
+Being precise about what the engine does and does not check, since it decides how the rules
+below are drawn. `SynchroExecution::PrepareProcessing()` *does* gate **who may run** a source:
+an administrator, or the account named in the source's own `user_id`. What it does not do
+anywhere is check rights on **what it writes** — `CreateObjectFromReplica()` is
+`MetaModel::NewObject()`, `Set()`, `DBInsert()`, with no `UserRights` call in the path at all
+(the only two in that file guard a console display). And `user_id` is an attribute on the same
+row a caller stages, while `synchro_exec.php` accepts an ordinary web login — so an attacker
+names themselves as the owner and triggers their own definition, no administrator and no cron
+required. iTop ships no background process that runs data sources on its own.
+
+So a definition is a write with the *object* rights check removed, and three rules follow.
 
 A definition pointed at a class behind the barrier above is refused, and **no setting lifts
 it** — not `mcp_allow_access_administration`, which buys administration of *other* people's
@@ -275,7 +286,7 @@ reference.
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
-| An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by cron with rights this endpoint does not have | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves, since the engine consults no rights at all; one that names no target is refused. Per-attribute rights are not covered — see above |
+| An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by the synchro engine, which checks no rights on what it writes and can be triggered by the account the source names as its owner | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves; one that names no target is refused. Per-attribute rights are not covered — see above |
 | An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_automation_administration` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |

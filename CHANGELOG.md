@@ -380,11 +380,17 @@ published archive was installed and exercised on into this line; the README and
   credential, so the rule by attribute type passes it by, deliberately and with a note saying so.
   What it is, is a standing instruction to the synchronisation engine: `scope_class` takes any
   class in the datamodel, iTop fills the attribute mapping in for you — `password` and
-  `profile_list` included, `update:true` by default — and the engine applies it later from cron or
-  a console button, as a trusted internal process that never passes through this endpoint and
-  **consults no `UserRights` at all**. A caller that may not write `UserLocal` could therefore
-  stage an administrator account with a chosen password and wait, and nothing in the call that
-  staged it touched a refused class. So a definition is a write with the rights check removed, and
+  `profile_list` included, `update:true` by default — and the engine applies it later through
+  `synchro_exec.php` or the console, never through this endpoint. It **checks no rights on what it
+  writes**: `CreateObjectFromReplica()` is `NewObject()`, `Set()`, `DBInsert()`, with no
+  `UserRights` call anywhere in that path. What it does gate is who may *run* a source — an
+  administrator, or the account named in the source's own `user_id` — and that is not much of a
+  gate here, because `user_id` is an attribute on the row the caller stages and `synchro_exec.php`
+  accepts an ordinary web login: the attacker names itself the owner and triggers its own
+  definition. No administrator, and no cron, which iTop ships no background process for anyway. So
+  a caller that may not write `UserLocal` could stage an administrator account with a chosen
+  password and run it, and nothing in the call that staged it touched a refused class. A
+  definition is a write with the object rights check removed, and
   it is graded as one: pointed at a class behind the barrier it is refused and **no setting lifts
   it**, because the engine is graded against nothing and staging must not be the way past the
   self-guard; pointed at anything else it is allowed only where the caller holds create, modify,
