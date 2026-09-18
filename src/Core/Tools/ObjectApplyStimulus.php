@@ -362,7 +362,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
-					'after'         => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
+					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => $aChanges,
 					'overridden'    => $aOverridden,
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
@@ -397,7 +397,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
+				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => $aChanges,
 				'overridden'    => $aOverridden,
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
