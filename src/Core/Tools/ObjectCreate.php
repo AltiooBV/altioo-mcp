@@ -217,8 +217,8 @@ class ObjectCreate extends AbstractMCPTool
 					'simulated'  => true,
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => $aChanges,
-					'overridden' => $aOverridden,
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
@@ -236,8 +236,8 @@ class ObjectCreate extends AbstractMCPTool
 					'simulated'  => false,
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => $aChanges,
-					'overridden' => $aOverridden,
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		} catch (\Throwable $e) {
@@ -268,8 +268,8 @@ class ObjectCreate extends AbstractMCPTool
 					'simulated'  => false,
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => $aChanges,
-					'overridden' => $aOverridden,
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 					'warning'    => MCPHelper::OpaqueFailure(
 						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
