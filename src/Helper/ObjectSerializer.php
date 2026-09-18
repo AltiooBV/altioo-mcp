@@ -113,19 +113,27 @@ final class ObjectSerializer
 		// nothing for the query.
 		$oInstanceSet = null;
 
-		// Whether this object is archived, on every read that returns it.
+		// Whether this object is out of circulation, on every read that
+		// returns it.
 		//
-		// Archived is soft-deleted: the object is out of circulation but still
-		// there, and a search made under archive mode - which this endpoint
-		// reaches, since iTop reads `with_archive` through utils::ReadParam -
-		// returns archived objects beside live ones. The default field list is
-		// id and friendlyname, which describe both identically.
+		// Two answers, because iTop has two notions. Archived is soft
+		// deletion, declared per class hierarchy and hidden unless the call
+		// asks for it. Obsolete is a condition the datamodel evaluates - a
+		// FunctionalCI whose status is 'obsolete' - and it is the one a stock
+		// instance actually uses, which makes it the one a set is most likely
+		// to be carrying.
 		//
-		// Not conditional on the mode. Whether the caller can currently *see*
-		// archived objects and whether the object in hand *is* one are two
-		// questions, and answering the second only while the answer is
-		// interesting is how a payload teaches a reader to stop looking.
-		$aFields = self::withArchiveFlag($sClass, $aFields);
+		// Both matter here for the same reason: the default field list is id
+		// and friendlyname, which describe a live object, an archived one and
+		// an obsolete one identically. A caller that asked to see them and
+		// cannot tell them apart is worse off than one that never saw them.
+		//
+		// Neither is conditional on the mode or the preference that let the
+		// object into the set. Whether a caller can currently see such objects
+		// and whether the object in hand is one are two questions, and
+		// answering the second only while the answer is interesting is how a
+		// payload teaches a reader to stop looking.
+		$aFields = self::withStateFlags($sClass, $aFields);
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
 			if ($aFields !== null && !in_array($sAttCode, $aFields, true)) {
@@ -149,21 +157,24 @@ final class ObjectSerializer
 			}
 		}
 
-		// Three states, because there are three answers.
+		// Three states each, because there are three answers.
 		//
 		// true and false are iTop's own, on a class that declares the flag. A
-		// class that declares none is not "not archived": archiving is a
-		// property of a class hierarchy, and a Person or a Team has no such
-		// notion at all - reporting false there would be answering a question
-		// the datamodel never asked, and a caller filtering on it would drop
-		// objects that were never candidates. null says the question does not
-		// apply here, the same way the lifecycle block answers null for a class
-		// with no states rather than an empty list of transitions.
+		// class that declares neither is not "not archived" and not "not
+		// obsolete": archiving is a property of a class hierarchy and
+		// obsolescence is a condition the datamodel declares, so a Person or a
+		// Team may have no such notion at all - reporting false there would
+		// answer a question nobody asked, and a caller filtering on it would
+		// drop objects that were never candidates. null says the question does
+		// not apply here, the same way the lifecycle block answers null for a
+		// class with no states rather than an empty list of transitions.
 		//
 		// Never overwrites what the loop found, so an attribute the caller may
 		// not read keeps whatever the rights layer decided about it.
-		if (!array_key_exists(self::ARCHIVE_FLAG, $aData) && !self::HasArchiveFlag($sClass)) {
-			$aData[self::ARCHIVE_FLAG] = null;
+		foreach (self::STATE_FLAGS as $sFlag) {
+			if (!array_key_exists($sFlag, $aData) && !self::HasAttribute($sClass, $sFlag)) {
+				$aData[$sFlag] = null;
+			}
 		}
 
 		if (!empty($aUnreadable)) {
@@ -344,48 +355,59 @@ final class ObjectSerializer
 		return ($sLeft === 'depends' || $sRight === 'depends') ? 'depends' : 'yes';
 	}
 
-	/** iTop's own flag for a soft-deleted object, on the classes that declare one. */
+	/**
+	 * iTop's own answers about an object being out of circulation, on the
+	 * classes that declare them.
+	 *
+	 * Two different notions and two different mechanisms: archived is soft
+	 * deletion, declared per class hierarchy; obsolete is a condition the
+	 * datamodel evaluates - "status = 'obsolete'" on a FunctionalCI - and it
+	 * is the one a stock instance actually uses.
+	 */
 	private const ARCHIVE_FLAG = 'archive_flag';
+	private const OBSOLESCENCE_FLAG = 'obsolescence_flag';
+
+	private const STATE_FLAGS = [self::ARCHIVE_FLAG, self::OBSOLESCENCE_FLAG];
 
 	/**
-	 * The archive flag, added to a narrowed field list.
+	 * The archive and obsolescence flags, added to a narrowed field list.
 	 *
-	 * A caller that asked for every attribute already has it, and one that
-	 * named it already has it. This is for the default - id and friendlyname -
-	 * which describes an archived object and a live one identically.
+	 * A caller that asked for every attribute already has them, and one that
+	 * named them already has them. This is for the default - id and
+	 * friendlyname - which describes a live object, an archived one and an
+	 * obsolete one identically.
 	 *
-	 * Guarded, because a read must not fail over a question about the class.
-	 *
-	 * @param array<int, string>|null $aFields Null means every attribute, which already includes the flag.
+	 * @param array<int, string>|null $aFields Null means every attribute, which already includes both.
 	 *
 	 * @return array<int, string>|null
 	 */
-	private static function withArchiveFlag(string $sClass, ?array $aFields): ?array
+	private static function withStateFlags(string $sClass, ?array $aFields): ?array
 	{
-		if ($aFields === null || in_array(self::ARCHIVE_FLAG, $aFields, true)) {
+		if ($aFields === null) {
 			return $aFields;
 		}
 
-		if (!self::HasArchiveFlag($sClass)) {
-			return $aFields;
+		foreach (self::STATE_FLAGS as $sFlag) {
+			if (!in_array($sFlag, $aFields, true) && self::HasAttribute($sClass, $sFlag)) {
+				$aFields[] = $sFlag;
+			}
 		}
-
-		$aFields[] = self::ARCHIVE_FLAG;
 
 		return $aFields;
 	}
 
 	/**
-	 * Whether this class has an archived state at all.
+	 * Whether this class declares an attribute at all.
 	 *
 	 * Guarded: a question about the datamodel must not cost the read that
-	 * asked it, and answering "no" leaves the payload exactly as it was before
-	 * the flag existed.
+	 * asked it, and answering "no" leaves the payload as it was before the
+	 * flag existed - which for these two means the null that says the question
+	 * does not apply here.
 	 */
-	private static function HasArchiveFlag(string $sClass): bool
+	private static function HasAttribute(string $sClass, string $sAttCode): bool
 	{
 		try {
-			return MetaModel::IsValidAttCode($sClass, self::ARCHIVE_FLAG);
+			return MetaModel::IsValidAttCode($sClass, $sAttCode);
 		} catch (Throwable $e) {
 			return false;
 		}
