@@ -239,6 +239,38 @@ class SchemaToolsContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * A refused date says which string iTop would have taken.
+	 *
+	 * Y-m-d H:i:s is a space and no offset, and every other system a model has
+	 * met uses RFC 3339, so the ISO form is what a first attempt sends. The
+	 * pattern was already in the schema and a refusal still cost a round trip
+	 * to go and read it.
+	 *
+	 * Suggested, never applied: an offset-bearing value is an instant and iTop
+	 * stores wall-clock time, so the conversion is shown to the caller rather
+	 * than made on its behalf.
+	 */
+	public function testTheDateHintIsAdviceAndNotAConversion(): void
+	{
+		$sBody = $this->methodBody(DatamodelReader::class, 'ValueHint');
+
+		$this->assertStringContainsString('GetInternalFormat', $sBody, 'the format has to be read off the branch');
+		$this->assertStringContainsString('AttributeDateTime', $sBody, 'only a date attribute gets this hint');
+		$this->assertStringContainsString('return \'\';', $sBody, 'anything else has to answer with nothing');
+
+		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
+			$sSource = (string) file_get_contents(
+				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
+			);
+			$this->assertStringContainsString(
+				'DatamodelReader::ValueHint',
+				$sSource,
+				"{$sTool} refuses a value without saying what would have worked"
+			);
+		}
+	}
+
 	/** Nothing recognised is not the same as nothing wanted. */
 	public function testAnUnknownBlockNameDoesNotEmptyTheAnswer(): void
 	{
