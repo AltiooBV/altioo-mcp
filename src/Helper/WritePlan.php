@@ -263,7 +263,7 @@ final class WritePlan
 	{
 		$aAfter = [
 			'friendlyname' => null,
-			'applied'      => [],
+			'applied'      => self::Map([]),
 			'obsolescence' => ['flag' => null, 'condition' => null, 'hidden_from_searches' => false],
 		];
 
@@ -291,7 +291,7 @@ final class WritePlan
 				// read. An attribute the caller may write and may not read
 				// comes back masked rather than echoed.
 				$aSerialized = ObjectSerializer::Serialize($oObject, $sClass, $aAttCodes);
-				$aAfter['applied'] = array_intersect_key($aSerialized, array_flip($aAttCodes));
+				$aAfter['applied'] = self::Map(array_intersect_key($aSerialized, array_flip($aAttCodes)));
 			}
 
 			if (MetaModel::IsObsoletable($sClass)) {
@@ -305,6 +305,29 @@ final class WritePlan
 		}
 
 		return $aAfter;
+	}
+
+	/**
+	 * A map that stays a map once it is empty.
+	 *
+	 * `changes`, `overridden` and `applied` are attribute code => value, and
+	 * PHP's empty array is a list as far as json_encode is concerned - so a
+	 * write that changed nothing answered `[]` where one that changed
+	 * something answered `{}`. A caller with a typed reader breaks on the
+	 * emptier of the two answers, which is the one it is least likely to have
+	 * tested against.
+	 *
+	 * The cast is what keeps the keys: an array cast alone does not, since PHP
+	 * folds a numeric-string key straight back to an int - attribute codes are
+	 * never numeric, but the same rule bit the schema's allowed values, and
+	 * doing it the same way here means one habit rather than two.
+	 *
+	 * @param array<string, mixed> $aMap
+	 * @since 1.0.0
+	 */
+	public static function Map(array $aMap): \stdClass
+	{
+		return (object) $aMap;
 	}
 
 	/**
