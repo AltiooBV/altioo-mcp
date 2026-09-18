@@ -260,6 +260,7 @@ final class ObjectHistory
 				continue;
 			}
 
+			$aEntry = self::masked($aEntry, $sClass);
 			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
 
 			$aEntries[] = $aEntry;
@@ -277,6 +278,61 @@ final class ObjectHistory
 			'total'     => $iTotal,
 			'entries'   => $aEntries,
 		];
+	}
+
+	/**
+	 * A secret does not come back through the change log either.
+	 *
+	 * A read masks an attribute whose type iTop marks secret - the password and
+	 * encrypted types implement iAttributeNoGroupBy, and ObjectSerializer
+	 * returns the mask before any conversion. The change log is a second copy
+	 * of the same values and was not masked: AttributeDefinition records
+	 * oldvalue and newvalue generically, and AttributePassword does not
+	 * override GetChangeRecordAdditionalData(), so changing an OAuth client's
+	 * secret writes the old one and the new one into a CMDBChangeOpSetAttribute
+	 * row. This tool then read them back for anyone allowed the attribute.
+	 *
+	 * Rights were checked and sensitivity was not, which is the gap: those are
+	 * different questions, and iTop answers the second by type rather than by
+	 * profile. SECURITY.md is explicit that a secret in a tracked attribute is
+	 * a secret in five more places; this is one of the five.
+	 *
+	 * The row is kept, so the history still says the attribute changed, when,
+	 * and by whom - which is the part an auditor needs and the part that
+	 * discloses nothing.
+	 *
+	 * @param array<string, mixed> $aEntry
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function masked(array $aEntry, string $sClass): array
+	{
+		$sAttCode = (string)($aEntry['attribute'] ?? '');
+		if ($sAttCode === '') {
+			return $aEntry;
+		}
+
+		try {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+				// An attribute the datamodel no longer declares: nothing can
+				// say whether it was a secret, so it is treated as one.
+				$aEntry['from'] = $aEntry['from'] === null ? null : ObjectSerializer::MASK;
+				$aEntry['to'] = $aEntry['to'] === null ? null : ObjectSerializer::MASK;
+
+				return $aEntry;
+			}
+
+			if (!ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sAttCode))) {
+				return $aEntry;
+			}
+		} catch (\Throwable $e) {
+			MCPHelper::LogError('Could not grade '.$sClass.'::'.$sAttCode.' for the history: '.$e->getMessage());
+		}
+
+		$aEntry['from'] = $aEntry['from'] === null ? null : ObjectSerializer::MASK;
+		$aEntry['to'] = $aEntry['to'] === null ? null : ObjectSerializer::MASK;
+
+		return $aEntry;
 	}
 
 	/**
