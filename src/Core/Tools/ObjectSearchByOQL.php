@@ -98,11 +98,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 		self::refuseUnattributablePage($audit, $limit, $actions);
 
-		require_once(APPROOT.'core/oql/check_oql.php');
-		$aCheck = CheckOQL($oql, new \ModelReflectionRuntime());
-		if ($aCheck['status'] === 'error') {
-			throw new ToolCallException("Invalid OQL query. Reason: {$aCheck['message']}".self::orderByHint($oql));
-		}
+		self::checkQuery($oql);
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
@@ -170,6 +166,53 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));
+		}
+	}
+
+	/**
+	 * Parses the query, and refuses it the way iTop would explain it to a
+	 * person.
+	 *
+	 * CheckOQL() does the same two steps and then throws the exception away,
+	 * keeping only getMessage() - and for an unknown class that message ends in
+	 * every class the instance has. A single typo answered with an alphabetical
+	 * list of a few hundred class names is an expensive way to say "no", and it
+	 * says nothing about which one was meant.
+	 *
+	 * iTop already knows: UnknownClassOqlException::GetUserFriendlyDescription()
+	 * runs FindClosestString() over the candidates and answers "did you mean X",
+	 * and the candidate list it searches has already been filtered by read
+	 * rights in the constructor - so the suggestion cannot name a class this
+	 * caller may not see. Keeping the exception rather than its message is all
+	 * that was needed to reach it.
+	 *
+	 * Any other OQL error keeps getMessage(), which is where the position and
+	 * the offending token live, and where a caller fixes its own query from.
+	 *
+	 * @throws ToolCallException When the query does not parse or does not match the datamodel.
+	 */
+	private static function checkQuery(string $oql): void
+	{
+		require_once(APPROOT.'core/oql/check_oql.php');
+
+		try {
+			$oInterpreter = new \OqlInterpreter($oql);
+			$oQuery = $oInterpreter->ParseQuery();
+			$oQuery->Check(new \ModelReflectionRuntime(), $oql);
+		} catch (\OQLException $e) {
+			$sReason = method_exists($e, 'GetUserFriendlyDescription')
+				? (string)$e->GetUserFriendlyDescription()
+				: $e->getMessage();
+
+			if (trim($sReason) === '') {
+				$sReason = $e->getMessage();
+			}
+
+			throw new ToolCallException('Invalid OQL query. Reason: '.$sReason.self::orderByHint($oql));
+		} catch (\Throwable $e) {
+			// Not an OQL problem at all - a datamodel that will not reflect, or
+			// something under it. The caller cannot act on that one.
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Could not check the OQL query', $e));
 		}
 	}
 
