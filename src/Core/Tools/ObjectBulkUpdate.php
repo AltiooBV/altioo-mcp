@@ -194,6 +194,6 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		// An entry that failed before anything was set still reports changes,
 		// empty: the schema promises it on every entry.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => [], 'overridden' => []]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([])]));
 	}
 }
