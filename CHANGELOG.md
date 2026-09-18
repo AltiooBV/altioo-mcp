@@ -333,6 +333,26 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
+- **The endpoint does not hand a write to something that writes for it.** The access barrier is
+  built on one sentence — this endpoint never writes the things that decide what it may write —
+  and a red-team pass against a live instance found the half that sentence does not cover. A
+  `SynchroDataSource` decides nothing about this endpoint's rights and carries no credential, so
+  the rule by attribute type passes it by, deliberately and with a note saying so. What it is, is
+  a standing instruction to iTop's synchronisation engine: `scope_class` takes any class in the
+  datamodel, iTop fills the attribute mapping in for you — `password` and `profile_list` included,
+  `update:true` by default — and the engine applies it later from cron or a console button, as a
+  trusted internal process that never passes through this endpoint. A caller that may not write
+  `UserLocal` could therefore stage an administrator account with a chosen password and wait, and
+  nothing in the call that staged it touched a refused class. `SynchroDataSource`,
+  `SynchroAttribute`, `SynchroReplica`, `SynchroLog`, their descendants and anything else named
+  `Synchro*` are now refused by every write tool under `mcp_allow_access_administration`, with a
+  refusal that names what is being refused rather than saying "access denied". Where an operator
+  turns the setting on, one target stays shut regardless: a definition pointed at a class behind
+  the barrier, or at a class the call does not settle, since the engine writes without the
+  self-guard that grades every administering call made through this endpoint — staging the
+  escalation must not be the way to perform it. Reading is unaffected, as it is for the classes
+  the barrier already covered, and `core_class_schema`'s `restricted` line says which of the two
+  refusals a class is under, because they are fixed by different people.
 - **A bulk creation that worked says so.** The third crossing of the same boundary, and the one
   that cost the most: `AbstractBulkTool::outcome()` declared `?int` for the id, and
   `core_object_bulk_create` hands it what `DBInsert()` returned — the key as a string. Under
@@ -346,6 +366,16 @@ published archive was installed and exercised on into this line; the README and
   through `WritePlan::AsId()`, so the widening is done once at the boundary the three bulk tools
   share rather than at each call site — and a unit test pins the signature, beside the two that
   already pin `WritePlan::Identity()` and `DocumentAccess::Describe()`.
+- **A deletion that happened is reported as one.** The creation paths ask "is there a row" after a
+  throw, because `DBInsert()` commits and then keeps going; `DBDelete()` has the same shape and
+  `core_object_delete` asked nothing, turning every throw into an outright failure — including the
+  ones that arrive with the row already gone. The case that found it was a red-team pass cleaning
+  up its own proof-of-concept object: an operator removing something on purpose is told the
+  removal did not work, and goes looking for a record that is not there. `WritePlan::IsGone()` now
+  asks, and a deletion that happened comes back as the success it is with the failure under
+  `warning`. It answers the opposite way to the creation rule on purpose: only positive evidence
+  of absence counts, because saying a thing is gone when it is not is the worse mistake here,
+  while retrying a deletion that worked costs nothing.
 - **`changes` says when it was read.** It is taken before the write and has to be, so an
   attribute the write itself fills is empty there rather than wrong — a ticket answers `""` for
   `ref` and `friendlyname`, which are assigned as the row is inserted, while `after` carries
