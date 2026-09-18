@@ -197,8 +197,61 @@ class SchemaToolsContractTest extends TestCase
 		$aSchema = (new ClassSchema())->getInputSchema();
 
 		$this->assertArrayHasKey('class', $aSchema['properties']);
-		$this->assertSame(['class'], $aSchema['required']);
-		$this->assertSame(['class'], array_keys($this->parameters(ClassSchema::class)));
+		$this->assertSame(['class'], $aSchema['required'], 'only the class is mandatory');
+		$this->assertSame(
+			['class', 'include', 'attributes', 'required_only'],
+			array_keys($this->parameters(ClassSchema::class)),
+			'the signature and the schema have to offer the same narrowings'
+		);
+	}
+
+	/**
+	 * A narrowed answer says what it was narrowed to.
+	 *
+	 * "This class has no relations" and "you did not ask for relations" are
+	 * different claims, and an absent block cannot tell them apart - which is
+	 * the same failure the withheld block in the relation walk exists to
+	 * prevent, one surface along.
+	 */
+	public function testEveryNarrowingIsEchoedBack(): void
+	{
+		$aDefaults = [];
+		foreach ($this->parameters(ClassSchema::class) as $sName => $oParameter) {
+			if ($sName !== 'class') {
+				$aDefaults[$sName] = $oParameter->getDefaultValue();
+			}
+		}
+
+		$this->assertSame(
+			[
+				'include'       => DatamodelReader::BLOCKS_ALL,
+				'attributes'    => DatamodelReader::ATTRIBUTES_ALL,
+				'required_only' => false,
+			],
+			$aDefaults,
+			'a default that narrows anything makes the unnarrowed call impossible to spell'
+		);
+
+		$this->assertStringContainsString(
+			"'reported'",
+			$this->methodBody(DatamodelReader::class, 'Describe'),
+			'the answer does not say what it left out'
+		);
+	}
+
+	/** Nothing recognised is not the same as nothing wanted. */
+	public function testAnUnknownBlockNameDoesNotEmptyTheAnswer(): void
+	{
+		$oBlocks = new ReflectionMethod(DatamodelReader::class, 'requestedBlocks');
+
+		$this->assertSame(DatamodelReader::BLOCKS, $oBlocks->invoke(null, 'no-such-block'));
+		$this->assertSame(DatamodelReader::BLOCKS, $oBlocks->invoke(null, '*'));
+		$this->assertSame(['attributes'], $oBlocks->invoke(null, 'attributes'));
+		$this->assertSame(
+			['rights', 'attributes'],
+			$oBlocks->invoke(null, 'attributes, rights, nonsense'),
+			'the known ones are kept, in the order the payload writes them'
+		);
 	}
 
 	/**
