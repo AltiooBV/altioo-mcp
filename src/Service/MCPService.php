@@ -103,7 +103,8 @@ final class MCPService
 			->setInstructions(ServerInstructions::Text(
 				$oPolicy,
 				self::internalFormatOf(\AttributeDateTime::class),
-				self::internalFormatOf(\AttributeDate::class)
+				self::internalFormatOf(\AttributeDate::class),
+				self::servedPromptNames($oPolicy)
 			))
 			->setPaginationLimit(MCPHelper::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
@@ -310,6 +311,30 @@ final class MCPService
 	}
 
 	/**
+	 * The prompts this caller can actually fetch.
+	 *
+	 * Asked the same way registration asks, so the instructions cannot name a
+	 * prompt tools/list would withhold - the rule the whole block follows.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function servedPromptNames(AccessPolicy $oPolicy): array
+	{
+		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+		$aNames = [];
+
+		foreach (MCPRegistry::GetPrompts() as $sName => $oPrompt) {
+			if (!self::isHidden((string)$sName, $oPrompt, $aDisabled, $oPolicy)) {
+				$aNames[] = (string)$sName;
+			}
+		}
+
+		sort($aNames);
+
+		return $aNames;
+	}
+
+	/**
 	 * @param array<int, string> $aDisabled
 	 */
 	private static function registerResourceTemplates(Builder $builder, array $aDisabled, AccessPolicy $oPolicy): Builder
@@ -476,6 +501,13 @@ final class MCPService
 		return [
 			'toolsets'     => $aNames,
 			'capabilities' => $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES,
+			// Named here as well as in the instructions, for the same reason
+			// the class schema is served as a tool as well as a resource: a
+			// client that never calls prompts/list leaves its model unable to
+			// discover a recipe written for exactly the question it is being
+			// asked. This block is already where a model looks when something
+			// seems to be missing.
+			'prompts'      => self::servedPromptNames($oPolicy),
 		];
 	}
 
