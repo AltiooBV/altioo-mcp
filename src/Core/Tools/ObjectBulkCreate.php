@@ -13,6 +13,8 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use DBObject;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -73,6 +75,12 @@ class ObjectBulkCreate extends AbstractBulkTool
 				'description'          => 'Attribute code => the value this write set, or would set.',
 			],
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'applied'    => [
+				'type'                 => 'object',
+				'additionalProperties' => true,
+				'description'          => 'The attributes this row supplied, as the object holds them after the write - so a value a computed attribute changed is the value you see. Unlike the single-object tools, this is not re-read from the database: a hundred rows would be a hundred queries.',
+			],
+			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -149,7 +157,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// Through report() like the other two, rather than a hand-rolled copy
 		// of it: the defaults it applies are what make every entry carry the
 		// keys the schema promises.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([])]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([]), 'applied' => WritePlan::Map([]), 'defaulted' => []]));
 	}
 
 	/**
@@ -216,14 +224,24 @@ class ObjectBulkCreate extends AbstractBulkTool
 
 			if ($bSimulate) {
 				return self::outcome(null, $iRow, true, 'Would be created.')
-					+ ['changes' => WritePlan::Map($aChanges), 'overridden' => WritePlan::Map($aOverridden)];
+					+ [
+						'changes'    => WritePlan::Map($aChanges),
+						'overridden' => WritePlan::Map($aOverridden),
+						'applied'    => WritePlan::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
+						'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValues)),
+					];
 			}
 
 			$iId = $oObject->DBInsert();
 
 			return self::outcome($iId, $iRow, true, 'Created.')
 				+ WritePlan::Identity($sClass, $iId)
-				+ ['changes' => WritePlan::Map($aChanges), 'overridden' => WritePlan::Map($aOverridden)];
+				+ [
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'applied'    => WritePlan::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValues)),
+				];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
 			return self::outcome(null, $iRow, false, $e->getMessage());
@@ -264,6 +282,40 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// refusals, which are what the caller fixes the row with. This one
 			// carries the ORM's, which it does not.
 			return self::outcome(null, $iRow, false, MCPHelper::OpaqueFailure("Row {$iRow} could not be created", $e));
+		}
+	}
+
+	/**
+	 * What this row supplied, as the object holds it.
+	 *
+	 * The single-object tools answer this by re-reading the row, which costs
+	 * one query and tells the caller what a trigger did. A hundred rows is a
+	 * hundred queries for a report nobody asked for row by row, so this reads
+	 * the object in hand instead: after DBInsert() that object carries what was
+	 * written, including whatever CheckToWrite() computed on the way, and stops
+	 * short only of what an AfterInsert hook changed behind it.
+	 *
+	 * Through the serializer, so the per-attribute read rights, the clipping
+	 * and the masking apply exactly as they do on a read.
+	 *
+	 * @param array<int, string> $aAttCodes The attributes this row supplied.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function suppliedValues(DBObject $oObject, string $sClass, array $aAttCodes): array
+	{
+		if ($aAttCodes === []) {
+			return [];
+		}
+
+		try {
+			return array_intersect_key(
+				ObjectSerializer::Serialize($oObject, $sClass, $aAttCodes),
+				array_flip($aAttCodes)
+			);
+		} catch (\Throwable $e) {
+			// A row that cannot be described is still a row that was written.
+			return [];
 		}
 	}
 }
