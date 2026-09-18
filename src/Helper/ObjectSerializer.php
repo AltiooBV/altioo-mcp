@@ -20,6 +20,7 @@ use MetaModel;
 use ormDocument;
 use Throwable;
 use UserRights;
+use utils;
 use iAttributeNoGroupBy;
 
 /**
@@ -111,6 +112,19 @@ final class ObjectSerializer
 		// an install whose addon never does - the shipped one never does - pays
 		// nothing for the query.
 		$oInstanceSet = null;
+
+		// What a session in archive mode is not otherwise told, per object.
+		//
+		// Archive mode is a view: iTop reads `with_archive` off the request, and
+		// under it a search returns archived objects beside live ones. The
+		// searches default to id and friendlyname, so an archived ticket comes
+		// back looking exactly like an open one - and a soft-deleted object
+		// reported as current is the silent wrong answer the withheld block and
+		// the truncated flag exist to prevent, one surface along.
+		//
+		// Only in that mode, and only on a class carrying the flag: an ordinary
+		// session pays nothing and its payloads do not change.
+		$aFields = self::withArchiveFlag($sClass, $aFields);
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
 			if ($aFields !== null && !in_array($sAttCode, $aFields, true)) {
@@ -310,6 +324,42 @@ final class ObjectSerializer
 		}
 
 		return ($sLeft === 'depends' || $sRight === 'depends') ? 'depends' : 'yes';
+	}
+
+	/** iTop's own flag for a soft-deleted object, on the classes that declare one. */
+	private const ARCHIVE_FLAG = 'archive_flag';
+
+	/**
+	 * The archive flag, added to a narrowed field list while the session is
+	 * reading archived objects.
+	 *
+	 * A caller that asked for every attribute already has it, and a caller that
+	 * named it already has it. This is for the default: id and friendlyname,
+	 * which describe an archived object and a live one identically.
+	 *
+	 * Guarded, because a read must not fail over the mode it is being read in.
+	 *
+	 * @param array<int, string>|null $aFields Null means every attribute, which already includes the flag.
+	 *
+	 * @return array<int, string>|null
+	 */
+	private static function withArchiveFlag(string $sClass, ?array $aFields): ?array
+	{
+		if ($aFields === null || in_array(self::ARCHIVE_FLAG, $aFields, true)) {
+			return $aFields;
+		}
+
+		try {
+			if (!utils::IsArchiveMode() || !MetaModel::IsValidAttCode($sClass, self::ARCHIVE_FLAG)) {
+				return $aFields;
+			}
+		} catch (Throwable $e) {
+			return $aFields;
+		}
+
+		$aFields[] = self::ARCHIVE_FLAG;
+
+		return $aFields;
 	}
 
 	/**
