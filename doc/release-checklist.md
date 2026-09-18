@@ -19,7 +19,7 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       [SECURITY.md](../SECURITY.md) already points at
       `/security/advisories/new` and commits to 5 working days to acknowledge and 90 days to a
       fix; the link 404s until the setting is on.
-- [x] **Create `security@altioo.com`** — done (2026-08-18). It is published in
+- [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
