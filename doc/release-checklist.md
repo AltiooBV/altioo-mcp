@@ -5,12 +5,13 @@ The unchecked items below are the ones that cannot be closed inside the reposito
 
 ## Still open before the first publication
 
-- [ ] **Publish the repository.** `https://github.com/altioo/mcp-server-extension` currently
+- [ ] **Publish the repository.** `https://github.com/AltiooBV/itop-mcp-server-extension` currently
       404s, and it is the value of `more_info_url` in `extension.xml`, of `homepage` and
       `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
-      module declaration, and of the link line at the top of the README. One dead link is the
-      first thing an evaluator clicks. If the final URL differs, change it in those five
-      places — `ModuleMetadataTest` asserts they agree. Once the URL resolves, add the
+      module declaration, of the link line at the top of the README, and of
+      `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer served to callers. One dead
+      link is the first thing an evaluator clicks. If the final URL differs, change it in those
+      six places — `ModuleMetadataTest` asserts they agree. Once the URL resolves, add the
       `[Unreleased]` and `[x.y.z]` link-reference definitions to the foot of
       [CHANGELOG.md](../CHANGELOG.md); until then the headings render their brackets literally,
       which is preferable to shipping compare links that 404. The brackets themselves are not

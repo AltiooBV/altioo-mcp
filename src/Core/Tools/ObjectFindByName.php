@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -292,14 +293,14 @@ class ObjectFindByName extends AbstractMCPTool
 			$aCandidates = MetaModel::GetClasses('searchable');
 		} else {
 			if (!MetaModel::IsValidClass($sClass)) {
-				throw new ToolCallException("Unknown class '{$sClass}'.");
+				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
 			}
 
 			if (ObjectHistory::IsReserved($sClass)) {
 				throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists
+				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 			}
 
 			$aCandidates = MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL);

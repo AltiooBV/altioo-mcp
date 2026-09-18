@@ -594,6 +594,22 @@ published archive was installed and exercised on into this line; the README and
   declined deliberately: a token is portable and works against iTop's other APIs, outside every
   gate on this one, so handing it back through a tool result would put a live secret in a model's
   context, in the transport, and in this endpoint's own audit row.
+- **"Unknown class" stopped asserting something false half the time.** Reported in review after a
+  table of `URP_UserProfile` writes: a self-refusal for one profile id, `Unknown class
+  'URP_UserProfile'` for the others. The diagnosis offered was that the tool collapses an
+  unresolvable external key into a class error — it does not, and the difference matters. The
+  refusals run in order: `AccessGrants` first, the class-level read right after. A profile id the
+  caller holds fires the self-guard and returns before the read check; anything else falls through
+  to it, and a non-administrator may not read `URP_UserProfile` at all, because iTop answers
+  `UR_ALLOWED_NO` for every action on a class that is neither `bizmodel` nor `grant_by_profile`.
+  The external key never entered into it. What was wrong was the sentence: the class is not
+  unknown, and a reviewer reading it reasonably went looking for why the datamodel was missing a
+  class it was not missing. Both cases must still answer **identically** — telling them apart is a
+  class enumerator for a datamodel whose class names are information — so the fix is not to
+  disclose but to stop claiming: the answer now names both possibilities and settles neither. Every
+  refusal site routes through one helper, so the two cases are the same sentence by construction
+  rather than by two literals somebody keeps in step; the existing anti-enumeration test now pins
+  that structure instead of counting occurrences.
 - **Maintenance mode is named instead of blamed on your profile.** `access_mode` withholds writing
   from everyone (`ACCESS_READONLY`) or from everyone but administrators (`ACCESS_ADMIN_WRITE`, the
   value `2`), and `UserRights::IsActionAllowed()` answers `UR_ALLOWED_NO` for every writing action

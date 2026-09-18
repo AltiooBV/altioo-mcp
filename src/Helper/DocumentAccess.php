@@ -235,7 +235,7 @@ final class DocumentAccess
 	public static function Fetch(string $sClass, int $iId, string $sAttCode): ormDocument
 	{
 		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new MCPDocumentException("Unknown class '{$sClass}'."); // hide that the class exists
+			throw new MCPDocumentException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 		if ($iId < 1) {
 			throw new MCPDocumentException('Invalid ID. Please specify a valid object ID.');

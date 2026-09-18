@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -106,10 +107,22 @@ class FindByNameRightsTest extends TestCase
 	}
 
 	/**
-	 * The anti-enumeration wording is untouched.
+	 * The anti-enumeration property is untouched, and is now structural.
 	 *
 	 * Naming a class the caller may not read still has to be indistinguishable
-	 * from naming one that does not exist.
+	 * from naming one that does not exist: telling them apart is a class
+	 * enumerator for a datamodel whose class names are themselves information.
+	 *
+	 * It used to be two identical string literals, kept identical by whoever
+	 * edited them. Both paths now call the one helper, so they answer the same
+	 * sentence by construction and cannot drift by being written twice - which
+	 * is the stronger version of what this test was counting.
+	 *
+	 * What the helper says changed, and that is not this property: it used to
+	 * assert "Unknown class 'X'." flatly, which is false half the time and sent
+	 * a reviewer looking for why URP_UserProfile was missing from the datamodel
+	 * when it was simply not theirs to read. It names both possibilities now.
+	 * A caller still cannot tell which one it hit.
 	 */
 	public function testAnUnreadableClassIsStillIndistinguishableFromAnAbsentOne(): void
 	{
@@ -117,10 +130,17 @@ class FindByNameRightsTest extends TestCase
 
 		$this->assertSame(
 			2,
-			substr_count($sBody, "Unknown class"),
-			'Both the invalid class and the unreadable one must answer "Unknown class";'
+			substr_count($sBody, 'MCPHelper::UnreadableClassRefusal'),
+			'Both the invalid class and the unreadable one must answer with the one helper;'
 			.' splitting them hands an unprivileged caller a class enumerator.'
 		);
+
+		// And the helper itself must not give the two cases away.
+		$sRefusal = MCPHelper::UnreadableClassRefusal('SomeClass');
+		$this->assertStringContainsString('either this datamodel has no such class, or this account may not read it', $sRefusal,
+			'the refusal settles which of the two happened, which is the oracle this rule closes');
+		$this->assertStringNotContainsString('exists', $sRefusal,
+			'the refusal confirms the class exists');
 	}
 
 	/**

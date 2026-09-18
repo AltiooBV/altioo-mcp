@@ -1,22 +1,22 @@
 {
-  "name": "altioo/mcp-server-extension",
+  "name": "altioo/itop-mcp-server-extension",
   "type": "itop-extension",
   "description": "Model Context Protocol server for iTop: search, read and update CMDB and ticketing objects through the authenticated user's own permissions.",
   "keywords": ["itop", "mcp", "model-context-protocol", "itsm", "cmdb", "ai"],
   "license": "AGPL-3.0-or-later",
-  "homepage": "https://github.com/altioo/mcp-server-extension",
+  "homepage": "https://github.com/AltiooBV/itop-mcp-server-extension",
   "authors": [
     {
       "name": "Altioo",
-      "homepage": "https://github.com/altioo",
+      "homepage": "https://github.com/AltiooBV",
       "role": "Maintainer"
     }
   ],
   "support": {
-    "issues": "https://github.com/altioo/mcp-server-extension/issues",
-    "source": "https://github.com/altioo/mcp-server-extension",
-    "docs": "https://github.com/altioo/mcp-server-extension/blob/main/README.md",
-    "security": "https://github.com/altioo/mcp-server-extension/blob/main/SECURITY.md",
+    "issues": "https://github.com/AltiooBV/itop-mcp-server-extension/issues",
+    "source": "https://github.com/AltiooBV/itop-mcp-server-extension",
+    "docs": "https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/README.md",
+    "security": "https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/SECURITY.md",
     "email": "security@altioo.com"
   },
   "require": {

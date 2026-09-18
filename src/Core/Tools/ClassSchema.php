@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
@@ -123,7 +124,7 @@ class ClassSchema extends AbstractMCPTool
 		// Unknown and forbidden answer alike, so calling this tool cannot map
 		// out the classes the caller is not allowed to see.
 		if (!DatamodelReader::IsReadable($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		return ToolOutput::Json(DatamodelReader::Describe($class, $include, $attributes, $required_only));

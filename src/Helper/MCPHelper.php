@@ -69,7 +69,7 @@ class MCPHelper
 	 * @since 1.0.0
 	 */
 	const LICENSE = 'AGPL-3.0-or-later';
-	const SOURCE_URL = 'https://github.com/altioo/mcp-server-extension';
+	const SOURCE_URL = 'https://github.com/AltiooBV/itop-mcp-server-extension';
 
 	const MODULE_SETTING_SOURCE_URL = 'mcp_source_url';
 
@@ -145,6 +145,35 @@ class MCPHelper
 	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
 	 * self-guard is unconditional and this setting cannot reach it.
 	 */
+	/**
+	 * What a tool says when it will not act on the class it was given.
+	 *
+	 * One sentence for two cases, and deliberately: a class that does not
+	 * exist and a class this account may not read answer identically, because
+	 * telling them apart is a class enumerator for a customer datamodel whose
+	 * class names are themselves information.
+	 *
+	 * What changed is the claim, not the discretion. "Unknown class 'X'." on
+	 * its own asserts something false half the time - a reviewer reading it
+	 * for URP_UserProfile concluded the class was absent from the datamodel and
+	 * went looking for why, when the truth was that iTop reserves its rights
+	 * model for administrators and no profile would ever have changed it. The
+	 * answer now names both possibilities, which costs the oracle nothing: a
+	 * caller learns the same thing in both cases, and learns which two things
+	 * that is.
+	 *
+	 * Used by every site that refuses a class, so the two cases cannot drift
+	 * into different wording by being written twice.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function UnreadableClassRefusal(string $sClass): string
+	{
+		return "Unknown class '{$sClass}': either this datamodel has no such class, or this account may not read it. "
+			."iTop reserves its rights model, its credentials and its automation for administrators, so if you named one "
+			."of those, no profile you can be granted changes this. core_class_list shows the classes you can reach.";
+	}
+
 	/**
 	 * The JSON Schema type of an input property that is a key/value map.
 	 *

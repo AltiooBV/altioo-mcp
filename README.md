@@ -3,7 +3,7 @@
 Turns an iTop instance into an MCP server, so assistants (Claude, and any other Model
 Context Protocol client) can search, read and update CMDB and ticketing objects.
 
-[Repository](https://github.com/altioo/mcp-server-extension) ·
+[Repository](https://github.com/AltiooBV/itop-mcp-server-extension) ·
 [Changelog](CHANGELOG.md) ·
 [Security](SECURITY.md) ·
 [Client setup](doc/clients.md) ·
@@ -41,7 +41,7 @@ down to individual attributes and lifecycle stimuli.
 
 Those two rows are a claim about what CI actually installs and tests, and the claim is declared
 once, in
-[`.github/itop-support.json`](https://github.com/altioo/mcp-server-extension/blob/main/.github/itop-support.json)
+[`.github/itop-support.json`](https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/.github/itop-support.json)
 for the branches and in `composer.json` for the PHP range. The CI matrix is computed from that
 file, the Hub listing is filled from it, and a test fails if the rows above stop agreeing with
 it — so there is one place to change when a branch is added or retired, and nothing that can
@@ -852,7 +852,7 @@ tools — see [Security](#security).
 The core is free and AGPL, and it stays generic on purpose. Domain-specific tool packs — ITSM
 workflows, your own datamodel extensions, integrations with the rest of your estate — sit on
 top of it. Build your own with the extension points above, or have
-[Altioo](https://github.com/altioo) build and maintain one for you.
+[Altioo](https://github.com/AltiooBV) build and maintain one for you.
 
 ## Data flow and privacy
 
@@ -905,8 +905,8 @@ The extension is free and maintained in the open. What that means concretely:
 
 | | |
 |---|---|
-| **Bugs and questions** | [GitHub issues](https://github.com/altioo/mcp-server-extension/issues). Include the iTop version, the extension version, the PHP version, and the request that reproduces it — see [Troubleshooting](#troubleshooting) for where those come from |
-| **Security** | Not via a public issue. [Report a vulnerability](https://github.com/altioo/mcp-server-extension/security/advisories/new) privately, or email <security@altioo.com>. Acknowledged within 5 working days — the full commitment is in [SECURITY.md](SECURITY.md) |
+| **Bugs and questions** | [GitHub issues](https://github.com/AltiooBV/itop-mcp-server-extension/issues). Include the iTop version, the extension version, the PHP version, and the request that reproduces it — see [Troubleshooting](#troubleshooting) for where those come from |
+| **Security** | Not via a public issue. [Report a vulnerability](https://github.com/AltiooBV/itop-mcp-server-extension/security/advisories/new) privately, or email <security@altioo.com>. Acknowledged within 5 working days — the full commitment is in [SECURITY.md](SECURITY.md) |
 | **Response** | **Best effort, with no service commitment.** Issues are read and triaged as time allows. The security channel above is the one thing on this page that carries a stated response time, and it carries one because a vulnerability report cannot wait on goodwill |
 | **Paid support, custom tool packs, integration work** | Available from Altioo — see [Custom work](#custom-work) |
 

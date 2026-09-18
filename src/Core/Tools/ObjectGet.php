@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -100,7 +101,7 @@ class ObjectGet extends AbstractMCPTool
 		}
 
 		if (!MetaModel::IsValidClass($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
@@ -108,7 +109,7 @@ class ObjectGet extends AbstractMCPTool
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object

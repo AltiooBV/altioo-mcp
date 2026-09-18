@@ -131,7 +131,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	protected static function checkBulkAllowed(string $sClass, int $iBulkAction, int $iSingleAction, string $sVerb): void
 	{
 		if (!MetaModel::IsValidClass($sClass)) {
-			throw new ToolCallException("Unknown class '{$sClass}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
 		}
 
 		if (ObjectHistory::IsReserved($sClass)) {
@@ -142,7 +142,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 		if (MetaModel::DBIsReadOnly()) {
 			throw new ToolCallException("The database is in read-only mode, cannot {$sVerb} objects.");

@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Mcp\Exception\ToolCallException;
@@ -136,10 +137,10 @@ class ObjectHistory extends AbstractMCPTool
 		}
 
 		if (!MetaModel::IsValidClass($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
 		// The object gate before the object is read, so that a history request

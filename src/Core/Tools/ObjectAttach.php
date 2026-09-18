@@ -213,7 +213,7 @@ class ObjectAttach extends AbstractMCPTool
 			throw new ToolCallException('Invalid ID. Please specify a valid object ID.');
 		}
 		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$sClass}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 
 		if (ObjectHistory::IsReserved($sClass)) {

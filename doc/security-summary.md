@@ -57,7 +57,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 | **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
-| **Authenticity** | a [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) signed by the workflow. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo altioo/mcp-server-extension` |
+| **Authenticity** | a [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) signed by the workflow. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo AltiooBV/itop-mcp-server-extension` |
 | **Refused at build time** | a tag that disagrees with `extension.xml`; a changelog with no dated heading for that version, or with entries left under `[Unreleased]`; a failing `composer validate --strict`; a `composer audit --locked` advisory; a red unit suite; a file in the zip granting a licence other than AGPL-3.0-or-later |
 
 The checksum answers *"is this the file I downloaded"*, which is a question about the wire.
@@ -66,7 +66,7 @@ unzipping into a privileged directory of a live instance actually has. Both are 
 because either alone is answerable by anyone who can host a zip.
 
 **Who can publish.** A release happens only on a `v*` tag pushed to
-`altioo/mcp-server-extension`; nothing is uploaded by hand, and no credential outside GitHub
+`AltiooBV/itop-mcp-server-extension`; nothing is uploaded by hand, and no credential outside GitHub
 Actions is involved. Tag-push rights are held by the repository's maintainers, listed on the
 repository — **the named list is written into this row at first publication**
 ([doc/release-checklist.md](release-checklist.md) carries the step). A compromised release

@@ -116,14 +116,14 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		self::refuseUnattributablePage($audit, $limit, $actions);
 
 		if (!MetaModel::IsValidClass($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_BULK_READ)) {

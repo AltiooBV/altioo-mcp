@@ -163,7 +163,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 
 		if (!MetaModel::IsValidClass($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
@@ -174,7 +174,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {

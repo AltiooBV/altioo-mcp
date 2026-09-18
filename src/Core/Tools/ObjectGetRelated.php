@@ -143,7 +143,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		if (!MetaModel::IsValidClass($class)) {
-			throw new ToolCallException("Unknown class '{$class}'.");
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
@@ -151,7 +151,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException("Unknown class '{$class}'."); // hide that the class exists
+			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
 		if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
