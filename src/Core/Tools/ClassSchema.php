@@ -50,6 +50,7 @@ class ClassSchema extends AbstractMCPTool
 	{
 		return 'Describe one iTop class: attributes, relations, lifecycle states and stimuli, and what this user may do with it. '
 			.'Attributes arrive in two blocks: "attributes" can be written - that is what a create or an update needs - and "derived" cannot - computed or structural, including the _friendlyname each external key carries - which on a class with many of them is most of the payload. '
+			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply. '
 			.'"rights" grades read, bulkRead, create, bulkCreate, modify, bulkModify, delete and bulkDelete as "yes", "no" or "depends", and each attribute carries the same grade under "modify". '
 			.'"no" is refused outright: do not attempt it. "yes" means the class check passes and the object may still refuse. "depends" is answered per object. '
 			.'Attributes carry a JSON Schema "format" and "pattern" where one applies; a date or date-time must match the pattern, since iTop rejects the RFC 3339 form. '
@@ -89,7 +90,7 @@ class ClassSchema extends AbstractMCPTool
 				],
 				'required_only' => [
 					'type'        => 'boolean',
-					'description' => 'Keep only the attributes a write must set. Answers "what is mandatory here" without the rest of the class.',
+					'description' => 'Keep only the attributes a write must set, and drop the derived ones - nothing can set those. Answers "what is mandatory here" without the rest of the class.',
 					'default'     => false,
 				],
 			],
