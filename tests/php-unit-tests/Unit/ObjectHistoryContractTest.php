@@ -41,6 +41,46 @@ require_once __DIR__.'/../bootstrap.php';
 class ObjectHistoryContractTest extends TestCase
 {
 	/**
+	 * A secret does not come back through the change log.
+	 *
+	 * A read masks an attribute whose type iTop marks secret. The change log
+	 * is a second copy of the same values, and it was not masked:
+	 * AttributeDefinition records oldvalue and newvalue generically and
+	 * AttributePassword does not override that, so changing an OAuth client's
+	 * secret writes the old and the new one into a CMDBChangeOpSetAttribute
+	 * row - which this tool then read back for anyone allowed the attribute.
+	 *
+	 * Rights were checked and sensitivity was not. They are different
+	 * questions: iTop answers the second by attribute type, not by profile,
+	 * and SECURITY.md says in as many words that a secret in a tracked
+	 * attribute is a secret in five more places.
+	 *
+	 * The row survives - when, who and which attribute is what an auditor
+	 * needs and discloses nothing - and an attribute the datamodel no longer
+	 * declares is masked too, since nothing left can say whether it was a
+	 * secret.
+	 */
+	public function testASecretIsNotReadableThroughTheChangeLog(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('ObjectSerializer::IsSensitive', $sBody, 'the history grades by rights alone');
+		$this->assertStringContainsString('ObjectSerializer::MASK', $sBody, 'a sensitive value is dropped or returned, not masked');
+		$this->assertMatchesRegularExpression(
+			'/!MetaModel::IsValidAttCode.*MASK/s',
+			$sBody,
+			'an attribute the datamodel no longer declares is reported in the clear'
+		);
+		$this->assertMatchesRegularExpression(
+			'/self::masked\(.*self::withCaseLogEntry\(/s',
+			$sBody,
+			'the case-log text is resolved before the masking can reach it'
+		);
+	}
+
+	/**
 	 * A work note's history row says what was written.
 	 *
 	 * CMDBChangeOpSetAttributeCaseLog declares lastentry - an integer - and no
