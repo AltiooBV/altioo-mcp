@@ -579,7 +579,7 @@ final class DatamodelReader
 		$sCreate = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE));
 		$sBulkModify = self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_MODIFY));
 
-		return [
+		$aRights = [
 			'read'       => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_READ)),
 			'bulkRead'   => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)),
 			'create'     => $sCreate,
@@ -589,6 +589,80 @@ final class DatamodelReader
 			'delete'     => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_DELETE)),
 			'bulkDelete' => self::grade(UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_DELETE)),
 		];
+
+		return self::narrowedByTheBarrier($aRights, $sClass);
+	}
+
+	/**
+	 * The gates as this endpoint answers them, not only as UserRights does.
+	 *
+	 * The block exists so that a model can pick a call that will succeed
+	 * instead of discovering the refusal by making it - and on the classes
+	 * that decide what this endpoint may do, it was doing the opposite. iTop
+	 * says an administrator may modify UserToken, so the block said
+	 * modify: "yes", and the write was then refused by a barrier the block
+	 * never mentioned. A caller could learn that its own escalation was
+	 * blocked only by attempting one.
+	 *
+	 * So the barrier is asked here as well. It has three answers and the block
+	 * already has three grades to say them with:
+	 *
+	 * - refused outright - mcp_allow_access_administration is off, and no
+	 *   object of the class can be written whatever iTop says: "no", which is
+	 *   documented as final and is exactly that.
+	 * - allowed for other people's access only - the setting is on, and
+	 *   whether this particular row reaches the caller's own credential is a
+	 *   question about the row: "depends", which is what that grade means.
+	 * - not a granting class at all: untouched.
+	 *
+	 * `restricted` says which of those it is in words, because "no" alone
+	 * sends a caller to ask an administrator for a right that no profile can
+	 * grant - the fix is a module setting or the console, and naming it is the
+	 * difference between a refusal and a dead end.
+	 *
+	 * Reads are never narrowed: listing a token to see when it expires is
+	 * useful and discloses nothing, which is why the barrier does not touch
+	 * them either.
+	 *
+	 * @param array<string, string> $aRights
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function narrowedByTheBarrier(array $aRights, string $sClass): array
+	{
+		try {
+			if (!AccessGrants::IsGranting($sClass)) {
+				return $aRights + ['restricted' => null];
+			}
+
+			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
+		} catch (\Throwable $e) {
+			// A question about the barrier must not cost the block. Reporting
+			// iTop's own answer is what this did before the barrier existed.
+			return $aRights + ['restricted' => null];
+		}
+
+		foreach (['create', 'bulkCreate', 'modify', 'bulkModify', 'delete', 'bulkDelete'] as $sGate) {
+			$aRights[$sGate] = $bAdministrationAllowed
+				? self::stricter($aRights[$sGate], 'depends')
+				: 'no';
+		}
+
+		$aRights['restricted'] = $bAdministrationAllowed
+			? sprintf(
+				'%s decides what this endpoint may do, so a write is refused when it reaches the access you are '
+				.'connected with - your own account, your own tokens, a profile link naming you. Everything else is allowed '
+				.'because mcp_allow_access_administration is on.',
+				$sClass
+			)
+			: sprintf(
+				'%s decides what this endpoint may do, so it cannot be written here at all, whatever your profile says. '
+				.'Turn on mcp_allow_access_administration to administer other people\'s access, or use the iTop console. '
+				.'Reading is unaffected.',
+				$sClass
+			);
+
+		return $aRights;
 	}
 
 	/**
