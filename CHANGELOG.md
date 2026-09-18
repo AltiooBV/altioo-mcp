@@ -287,6 +287,16 @@ published archive was installed and exercised on into this line; the README and
   fifty-row search fifty of them. `mcp_max_document_bytes` (5 MB) bounds both directions, and
   the two tools and the template form the `documents` toolset, with an `MCP-toolset-documents`
   token scope.
+- **Every read says whether the object is archived.** `archive_flag` and `archive_date` are magic
+  attributes iTop adds to an archivable class, so a full read always carried them — but the searches
+  default to `id, friendlyname`, which describes a soft-deleted object and a live one identically,
+  and archive mode is reachable here (iTop reads `with_archive` through `utils::ReadParam`). The
+  flag is now in every read, with three states: `true` and `false` are iTop's own, and **`null`
+  means the class has no archived state at all** — a Person or a Team is not "not archived", the
+  question does not apply, and `false` there would have a caller filtering on it drop objects that
+  were never candidates. The same reasoning the lifecycle block follows when it answers `null`
+  rather than an empty list of transitions.
+
 - **`output_fields`** on the reading tools, spelled as iTop's REST API spells it. Searches
   default to `id, friendlyname`; `core_object_get` defaults to `*`.
 - **`order_by` / `order_direction`** on both searches. OQL has no `ORDER BY`, so without them
