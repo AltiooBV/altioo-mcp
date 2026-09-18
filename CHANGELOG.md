@@ -689,6 +689,13 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **A write names the changes the caller never asked for.** `changes` answers "what this write
+  sets", and on a creation that is every attribute — a `lnkContactToTicket` created with a contact
+  and a ticket reports `role_code` too, and nothing separated the default it was handed from the
+  value it sent. `overridden` already drew the neighbouring line (asked for, not kept), so
+  `defaulted` names the third case: not asked for, applied anyway. Codes, not values — the value is
+  in `changes`.
+
 - **A case-log entry's history row says what was written.** `core_object_history` answered
   `from: null, to: null` for every work note. Not the wrong column:
   `CMDBChangeOpSetAttributeCaseLog` declares `lastentry` — an integer — and no `oldvalue` or
