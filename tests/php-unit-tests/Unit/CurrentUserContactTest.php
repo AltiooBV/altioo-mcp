@@ -49,6 +49,28 @@ require_once __DIR__.'/../bootstrap.php';
 class CurrentUserContactTest extends TestCase
 {
 	/**
+	 * archive_mode says what it means, because its two words did not.
+	 *
+	 * iTop's archive mode is a property of the session's view: DBSearch reads
+	 * it at construction, and a query made under it returns archived and
+	 * obsolete objects as well as live ones. "active" and "archive" name that
+	 * correctly and read like neither - a caller is as likely to take it for
+	 * "archiving is switched on" or "this instance is locked read-only", and
+	 * the second has it decline to write on an instance that would have
+	 * accepted the write.
+	 */
+	public function testArchiveModeExplainsItselfRatherThanNamingAState(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\CurrentUserReader::class))->getFileName()
+		);
+
+		$this->assertStringContainsString("'enabled' => utils::IsArchiveMode()", $sBody, 'the flag is no longer the datum');
+		$this->assertStringContainsString('never makes the instance read-only', $sBody, 'the reading that would stop a write is not ruled out');
+		$this->assertStringNotContainsString("? 'archive' : 'active'", $sBody, 'the two ambiguous words are still the whole answer');
+	}
+
+	/**
 	 * Payload() must not reach the silo-scoped accessor.
 	 */
 	public function testThePayloadDoesNotUseTheSiloScopedAccessor(): void
