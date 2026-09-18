@@ -540,7 +540,7 @@ final class AccessGrants
 	 * The mirror of SELF_REFUSAL and deliberately its own sentence: that one
 	 * refuses your own access, this one refuses everyone else's preferences.
 	 */
-	public const NOT_YOURS_REFUSAL = 'Class \'%s\' holds one person\'s own settings, and this row is not yours. iTop\'s own API for it only ever reads and writes the account it is called by, and so does this endpoint. Act on your own row, or use the iTop console.';
+	public const NOT_YOURS_REFUSAL = 'Class \'%s\' holds one person\'s own settings, and this row is not yours. iTop\'s own API for it only ever reads and writes the account it is called by, and so does this endpoint unless mcp_allow_access_administration is on. Act on your own row, ask an operator to turn that setting on, or use the iTop console.';
 
 	/**
 	 * The category iTop files its rights model under.
@@ -932,7 +932,27 @@ final class AccessGrants
 		// Somebody else's personal row, whatever else is true of the class.
 		// Asked first because it is the only rule here that is about the row
 		// alone, and because a class could in principle be both.
-		if (self::IsPersonal($sClass) && !self::IsTheCallersOwnRow($sClass, $iId, $aFields)) {
+		//
+		// Behind the access setting rather than refused outright, which it was
+		// at first. The reasoning that changed it: unlike the audit trail,
+		// which nobody administers an instance by editing, there is a real
+		// full-admin use for this - a service desk resetting a colleague's
+		// broken saved view, or the obsolete-data preference that is hiding
+		// half their console from them - and no other way to reach it here.
+		// Every other barrier on this endpoint is closed-by-default with an
+		// opt-in; this one had no hatch at all, which made it the odd one out
+		// rather than the strict one.
+		//
+		// The setting it sits behind is the access one, because what it
+		// governs is another person's account-scoped data, and an operator who
+		// has said "this endpoint may administer other people's accounts" has
+		// answered this question too. Note the guard runs the opposite way
+		// round from the token rule above: there, the setting opens everyone
+		// else's rows and never your own; here it opens everyone else's rows,
+		// and your own were never in question.
+		if (self::IsPersonal($sClass)
+			&& !$bAdministrationAllowed
+			&& !self::IsTheCallersOwnRow($sClass, $iId, $aFields)) {
 			return sprintf(self::NOT_YOURS_REFUSAL, $sClass);
 		}
 

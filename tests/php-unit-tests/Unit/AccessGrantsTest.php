@@ -889,11 +889,23 @@ class AccessGrantsTest extends TestCase
 		$this->assertTrue(AccessGrants::IsPersonal('appUserPreferences'));
 		$this->assertTrue(AccessGrants::IsBarred('appUserPreferences'));
 
-		// A row named by id, with no UserRights to establish whose it is.
-		$sRefusal = AccessGrants::RefusalGiven(true, 'appUserPreferences', 1, [], true);
+		// A row named by id, with no UserRights to establish whose it is, and
+		// the access setting off: refused.
+		$sRefusal = AccessGrants::RefusalGiven(false, 'appUserPreferences', 1, [], true);
 
 		$this->assertNotNull($sRefusal, "another account's preference row was allowed through");
 		$this->assertStringContainsString('not yours', $sRefusal);
+		$this->assertStringContainsString('mcp_allow_access_administration', $sRefusal,
+			'the refusal does not name the setting that would allow it, so a caller cannot report what to change');
+
+		// And with the setting on, an operator has answered the question: a
+		// service desk resetting a colleague's broken saved view is a real
+		// full-admin use, and this was the one barrier here with no hatch at
+		// all - which made it the odd one out rather than the strict one.
+		$this->assertNull(
+			AccessGrants::RefusalGiven(true, 'appUserPreferences', 1, [], false),
+			"another account's preferences stayed refused with mcp_allow_access_administration on"
+		);
 	}
 
 	/**

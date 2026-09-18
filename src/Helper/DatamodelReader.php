@@ -699,12 +699,18 @@ final class DatamodelReader
 				$aRights[$sGate] = self::stricter($aRights[$sGate], 'depends');
 			}
 
-			$aRights['restricted'] = sprintf(
-				'%s holds one person\'s own settings. A write is allowed on your own row and refused on anyone else\'s, '
-				.'whatever your profile says - iTop\'s own API for these only ever touches the account it is called by, and so does this endpoint. '
-				.'Reading is unaffected.',
-				$sClass
-			);
+			$aRights['restricted'] = $bAdministrationAllowed
+				? sprintf(
+					'%s holds one person\'s own settings. mcp_allow_access_administration is on, so another account\'s row may be written here; '
+					.'with it off, only your own is. Reading is unaffected.',
+					$sClass
+				)
+				: sprintf(
+					'%s holds one person\'s own settings. A write is allowed on your own row and refused on anyone else\'s, whatever your profile says - '
+					.'iTop\'s own API for these only ever touches the account it is called by, and so does this endpoint. '
+					.'Turn on mcp_allow_access_administration to administer other people\'s, or use the iTop console. Reading is unaffected.',
+					$sClass
+				);
 
 			return $aRights;
 		}
