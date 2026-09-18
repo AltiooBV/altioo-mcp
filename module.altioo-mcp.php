@@ -59,8 +59,8 @@ SetupWebPage::AddModule(
 		// installed, so an administrator who inherits the instance has
 		// somewhere to go. The same documentation ships in the archive
 		// (README.md and doc/), which is what answers the question offline.
-		'doc.manual_setup' => 'https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/README.md#installation',
-		'doc.more_information' => 'https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/README.md',
+		'doc.manual_setup' => 'https://github.com/AltiooBV/altioo-mcp/blob/main/README.md#installation',
+		'doc.more_information' => 'https://github.com/AltiooBV/altioo-mcp/blob/main/README.md',
 
 		// Default settings
 		//

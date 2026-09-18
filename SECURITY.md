@@ -13,8 +13,8 @@ install can read what it does before it is on their instance.
 
 Report it privately, through either channel:
 
-- **GitHub** — [Report a vulnerability](https://github.com/AltiooBV/itop-mcp-server-extension/security/advisories/new)
-  on `AltiooBV/itop-mcp-server-extension`. Preferred: it keeps the report, the discussion and the
+- **GitHub** — [Report a vulnerability](https://github.com/AltiooBV/altioo-mcp/security/advisories/new)
+  on `AltiooBV/altioo-mcp`. Preferred: it keeps the report, the discussion and the
   eventual advisory in one place, and it works without you having to trust an email route.
 - **Email** — <security@altioo.com>, if you would rather not use GitHub, or if you cannot
   reach it.

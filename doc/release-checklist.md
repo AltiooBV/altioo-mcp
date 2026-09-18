@@ -5,7 +5,7 @@ The unchecked items below are the ones that cannot be closed inside the reposito
 
 ## Still open before the first publication
 
-- [ ] **Publish the repository.** `https://github.com/AltiooBV/itop-mcp-server-extension` currently
+- [ ] **Publish the repository.** `https://github.com/AltiooBV/altioo-mcp` currently
       404s, and it is the value of `more_info_url` in `extension.xml`, of `homepage` and
       `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
       module declaration, of the link line at the top of the README, and of

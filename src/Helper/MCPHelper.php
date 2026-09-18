@@ -69,7 +69,7 @@ class MCPHelper
 	 * @since 1.0.0
 	 */
 	const LICENSE = 'AGPL-3.0-or-later';
-	const SOURCE_URL = 'https://github.com/AltiooBV/itop-mcp-server-extension';
+	const SOURCE_URL = 'https://github.com/AltiooBV/altioo-mcp';
 
 	const MODULE_SETTING_SOURCE_URL = 'mcp_source_url';
 

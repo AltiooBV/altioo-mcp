@@ -1,14 +1,14 @@
 # Contributing
 
 Issues and pull requests are welcome on
-[AltiooBV/itop-mcp-server-extension](https://github.com/AltiooBV/itop-mcp-server-extension).
+[AltiooBV/altioo-mcp](https://github.com/AltiooBV/altioo-mcp).
 
 **Do not open a public issue for a suspected vulnerability.** [SECURITY.md](SECURITY.md) has
 the private channels and what we commit to.
 
 ## The rules the code is written to
 
-[**AGENTS.md**](https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/AGENTS.md) is the
+[**AGENTS.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/AGENTS.md) is the
 development guide this repository follows, and it is worth reading before the first change
 rather than after the first review comment. It covers what an
 iTop extension may and may not do — never modifying core, the supported extension points,
@@ -21,7 +21,7 @@ Two things about it are worth knowing up front:
   itself — only the copyright notice at the foot carries a year. Everything
   perishable — which PHP goes with which iTop patch, which extension points are deprecated on
   which branch, where a constant lives in the core source — is in
-  [doc/itop-branch-notes.md](https://github.com/AltiooBV/itop-mcp-server-extension/blob/main/doc/itop-branch-notes.md),
+  [doc/itop-branch-notes.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-branch-notes.md),
   which carries its own verification date. If you need to state a version to make a rule clear,
   the rule goes in `AGENTS.md` and the version goes in the branch notes.
 - **When it is wrong, fix it in the same pull request as the work that revealed it.** That is
