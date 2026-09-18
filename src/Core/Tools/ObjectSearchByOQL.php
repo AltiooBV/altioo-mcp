@@ -208,12 +208,37 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				$sReason = $e->getMessage();
 			}
 
-			throw new ToolCallException('Invalid OQL query. Reason: '.$sReason.self::orderByHint($oql));
+			throw new ToolCallException('Invalid OQL query. Reason: '.self::withoutEmptySuggestion($sReason).self::orderByHint($oql));
 		} catch (\Throwable $e) {
 			// Not an OQL problem at all - a datamodel that will not reflect, or
 			// something under it. The caller cannot act on that one.
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Could not check the OQL query', $e));
 		}
+	}
+
+	/**
+	 * Drops iTop's suggestion clause when it suggests nothing.
+	 *
+	 * OQLException builds its message with ", I would suggest to use
+	 * '$sSuggest'" appended whenever the parser had any expectations at all -
+	 * and FindClosestString() answers '' when none of them is close, so a
+	 * refusal can end in "use ''". iTop's own HTML renderer guards that clause
+	 * on the suggestion being non-empty; the plain message it hands an API
+	 * does not.
+	 *
+	 * Removed rather than rewritten: everything before it is the useful half -
+	 * what was found, where, and what was expected - and a caller reading a
+	 * trailing fragment of a sentence learns nothing except that something
+	 * upstream was not finished.
+	 *
+	 * Matched literally, because that string is not translated: the class's
+	 * own GetUserFriendlyDescription() returns getMessage() with a "Todo -
+	 * translate all errors" beside it. A message that does not match is
+	 * returned untouched.
+	 */
+	private static function withoutEmptySuggestion(string $sReason): string
+	{
+		return trim(str_replace(", I would suggest to use ''", '', $sReason));
 	}
 
 	/**
