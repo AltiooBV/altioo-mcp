@@ -350,15 +350,30 @@
       -->
       <mcp_allow_access_administration type="bool">false</mcp_allow_access_administration>
       <!--
-        Whether this endpoint may write iTop's automation - Trigger, Action,
-        the links between them and the RemoteApplicationConnection a webhook
-        calls through. Off by default. A trigger with an action behind it is a
-        standing instruction: it fires on changes made by anyone, from inside
-        iTop's own request handling, long after the session that wrote it has
-        gone - and no tool here can send mail or call a URL directly, so there
-        is no rights answer that makes staging one equivalent to doing it.
-        On, an operator has decided an assistant may wire up notifications and
-        webhooks. Reading is unaffected either way.
+        An escalation switch, not a feature switch. Read this before turning
+        it on.
+
+        Everything this endpoint refuses, it refuses because the caller could
+        not do the same thing directly by calling a tool. The classes this
+        setting governs - Trigger, Action, the links between them, AsyncTask,
+        the RemoteApplicationConnection and OAuth clients a webhook acts
+        through - are refused for that reason taken to its limit: no tool here
+        sends mail, calls a URL, invokes a static method by name, or
+        authenticates outward as this instance, so "could the caller have done
+        this itself" answers no for EVERY caller, administrator included.
+        There is no profile that makes it yes.
+
+        So turning this on is an operator saying "this endpoint may grant more
+        than the credential it was called with". It is not saying "an
+        assistant may manage our notifications", even though the classes are
+        the notification classes, and an operator who reads it that way has
+        enabled something other than they meant.
+
+        It is NOT needed for ordinary automation work. A caller that can
+        already write a class directly does not need this setting to arrange
+        the same writes through a mechanism - that is graded on the caller's
+        own rights and passes or fails on those alone. Off by default.
+        Reading is unaffected either way.
       -->
       <mcp_allow_automation_administration type="bool">false</mcp_allow_automation_administration>
       <!--

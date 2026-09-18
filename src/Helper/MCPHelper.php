@@ -148,16 +148,34 @@ class MCPHelper
 	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
 
 	/**
-	 * Whether this endpoint may write iTop's automation - triggers, actions
-	 * and the connections behind them.
+	 * Whether an operator consents to this endpoint handing out capabilities
+	 * no caller of it holds.
 	 *
-	 * Its own setting rather than a share of the one above, because it answers
-	 * a different question. That one is "may an assistant administer other
-	 * people's access"; this one is "may an assistant leave a standing
-	 * instruction that makes this instance call out on its own, later, on
-	 * changes made by anybody". An operator can reasonably want either without
-	 * the other, and folding them together would have been the mistake of
-	 * refusing one thing under the name of another.
+	 * **This is an escalation switch, not a feature switch.** The name says
+	 * "automation" because the classes it governs are iTop's automation, and
+	 * that reads like "let the assistant manage notifications". It is not what
+	 * turning it on means, and the distinction is the whole reason it exists
+	 * separately.
+	 *
+	 * Everything else this endpoint refuses, it refuses because the caller
+	 * could not do the same thing directly - so permitting it would hand back
+	 * rights the caller does not hold. These classes are refused for the same
+	 * reason taken to its limit: no tool here sends mail, calls a URL, invokes
+	 * a static method by name, or authenticates outward as this instance, so
+	 * "could the caller have done this itself" answers no for **every** caller,
+	 * administrator included. There is no profile that makes it yes.
+	 *
+	 * Turning this on is therefore an operator saying "this endpoint may grant
+	 * more than the credential it was called with". It is not saying "an
+	 * assistant may tidy up the notification rules", and an operator who reads
+	 * it that way has enabled something else than they meant.
+	 *
+	 * What it is emphatically *not* for: managing automation as ordinary work.
+	 * A caller that can already do a thing directly does not need this setting
+	 * to arrange the same thing through a mechanism - that case is graded on
+	 * the caller's own rights and passes or fails on them alone. See
+	 * AccessGrants: the rule is that you cannot arrange what you cannot do,
+	 * and this setting is the one place an operator overrides it.
 	 */
 	const MODULE_SETTING_ALLOW_AUTOMATION_ADMINISTRATION = 'mcp_allow_automation_administration';
 
@@ -529,13 +547,12 @@ class MCPHelper
 	}
 
 	/**
-	 * Whether this instance lets the endpoint write triggers, actions and the
-	 * connections behind them.
+	 * Whether this instance consents to the endpoint granting more than the
+	 * credential it was called with.
 	 *
-	 * Off by default, and the default is the answer for almost every instance:
-	 * nothing an ordinary assistant workflow does needs a webhook wired up,
-	 * and what one buys is a channel that keeps firing after the session that
-	 * created it has gone.
+	 * Off by default, and the default is the answer for almost every instance.
+	 * See the constant above for what turning it on actually means, which is
+	 * not what its name suggests.
 	 *
 	 * @since 1.0.0
 	 */

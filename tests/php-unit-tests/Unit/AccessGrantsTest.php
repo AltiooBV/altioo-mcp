@@ -677,6 +677,40 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * The setting says what it is, because its name does not.
+	 *
+	 * mcp_allow_automation_administration reads as "let the assistant manage
+	 * our notifications", and that is not what turning it on means. Everything
+	 * else this endpoint refuses is refused because the caller could not do
+	 * the same thing directly; these classes are refused because **nobody**
+	 * can - no tool sends mail, calls a URL, invokes a method by name or
+	 * authenticates outward as this instance, and no profile changes that. So
+	 * the setting is an operator consenting to the endpoint granting more than
+	 * the credential it was called with.
+	 *
+	 * Pinned because the misreading is the expensive one: an operator who
+	 * turns it on to tidy up notifications has enabled something else.
+	 */
+	public function testTheSettingSaysItIsAnEscalationAndNotAFeature(): void
+	{
+		foreach ([AccessGrants::AUTOMATION_REFUSAL, AccessGrants::DETECTION_REFUSAL] as $sRefusal) {
+			$this->assertStringContainsString('grant more than the credential it was called with', $sRefusal,
+				'the refusal does not say what turning the setting on actually means');
+			$this->assertStringContainsString('rather than a switch for managing automation', $sRefusal,
+				'the refusal leaves the setting readable as a feature switch');
+		}
+
+		// And the same, where an operator reads it before deciding.
+		foreach (['SECURITY.md', 'README.md', 'datamodel.altioo-mcp.xml'] as $sFile) {
+			$sPath = dirname(__DIR__, 3).'/'.$sFile;
+			$this->assertFileExists($sPath);
+			$this->assertStringContainsString('escalation switch, not a feature switch',
+				(string) file_get_contents($sPath),
+				"{$sFile} describes the setting without saying it is an escalation switch");
+		}
+	}
+
+	/**
 	 * The refusals name different problems, so they are different sentences.
 	 *
 	 * Three now: the access classes, a definition pointed at one, and a

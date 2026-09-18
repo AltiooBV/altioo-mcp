@@ -153,10 +153,36 @@ Three consequences, and they are where the earlier one-family-at-a-time rules ca
   iTop that an addon may grade differently, so an attribute the caller may not set when an object
   is first written is one the engine would set on its behalf.
 - **Where there is no direct equivalent at all, the answer is no.** No tool here sends mail,
-  calls a URL, or invokes a static method by name. So for `Trigger`, `Action`, `AsyncTask` and
-  the credentials they act with, "could the caller have done this itself" has one answer for
-  every caller, always — and `mcp_allow_automation_administration` is an operator **overriding**
-  that, not a grade. Even overridden, a trigger is still graded against the class it watches.
+  calls a URL, invokes a static method by name, or authenticates outward as this instance. So for
+  `Trigger`, `Action`, `AsyncTask` and the credentials they act with, "could the caller have done
+  this itself" has one answer for **every** caller, administrator included — there is no profile
+  that makes it yes — and `mcp_allow_automation_administration` is an operator **overriding** that,
+  not a grade. Even overridden, a trigger is still graded against the class it watches and an email
+  action against the class its recipients select.
+
+**What `mcp_allow_automation_administration` is, said plainly, because its name misleads.** It is
+an **escalation switch, not a feature switch**. Every other refusal here says "you could not do
+this directly, so you may not arrange it"; this setting governs the cases where *nobody* could do
+it directly, so turning it on is an operator consenting to the endpoint granting **more than the
+credential it was called with**. It is not "let the assistant manage our notifications", even
+though the classes it names are the notification classes.
+
+It is also **not required for ordinary automation work**. A caller that can already write a class
+directly — full create, modify, delete and bulk on it, and read and write on every attribute — may
+arrange the same writes through a synchronisation source without this setting, because that is
+graded on its own rights and escalates nothing. Leaving it off does not stop an assistant
+automating things it is already entitled to do; it stops the endpoint handing out what nobody
+asked for it to hand out.
+
+**One thing that is *not* covered by any of this, and is worth knowing before you decide.** A
+mechanism graded as permitted still writes **later, unattended, and under a different actor**. The
+caller could have made those same writes directly, so no privilege is gained and the dry run is no
+real barrier either (the same call with `simulate=false` does it in one step) — but a direct write
+lands in this endpoint's audit row and in iTop's change log attributed to the caller, while an
+engine write lands in a later batch attributed to the run. That is an **attribution** cost, not a
+rights one, and it is the honest residue of the rule. A `SynchroDataSource`'s `status` does not
+help here: `implementation` is the default and `PrepareProcessing()` refuses only `obsolete`, so a
+source runs whether or not anyone has promoted it.
 
 And the same sentence, turned around, for the checks that watch the caller: an `AuditRule` or
 `AuditCategory` that **already exists** cannot be changed or deleted here, because turning a check

@@ -474,6 +474,27 @@ published archive was installed and exercised on into this line; the README and
   rather than less. The audited class is read from the category's `definition_set` OQL, through
   `category_id` for a rule; where it cannot be established the edit is refused, which makes an
   `AuditDomain` — a grouping, with no query of its own — not editable here at all.
+- **`mcp_allow_automation_administration` is an escalation switch, not a feature switch**, and now
+  says so wherever anyone reads it — the refusals a caller gets, the module setting's own comment,
+  the README table and `SECURITY.md`. The name invites exactly the wrong reading. Every other
+  refusal on this endpoint means "you could not do this directly, so you may not arrange it"; the
+  classes behind this one are refused because **nobody** can do them directly — no tool sends mail,
+  calls a URL, invokes a method by name or authenticates outward as this instance, and no profile
+  changes that, administrators included. So turning it on is an operator consenting to the endpoint
+  granting *more than the credential it was called with*, not an operator letting an assistant tidy
+  up the notification rules. It is also **not needed for ordinary automation work**: a caller that
+  can already write a class directly may arrange the same writes through a synchronisation source
+  without it, graded on its own rights, because that escalates nothing. Leaving it off does not
+  stop an assistant automating what it is already entitled to do. A unit test pins the wording in
+  all four places, since the misreading is the expensive one.
+- **What the rule does not cover, stated rather than implied.** A mechanism graded as permitted
+  still writes later, unattended, under a different actor. No privilege is gained — the caller
+  could have made those writes directly — and the dry run is no real barrier either, since the same
+  call with `simulate=false` does it in one step. What is lost is **attribution**: a direct write
+  lands in this endpoint's audit row and in iTop's change log as the caller, while an engine write
+  lands in a later batch attributed to the run. A data source's `status` is no help there —
+  `implementation` is the default and `PrepareProcessing()` refuses only `obsolete`, so a source
+  runs whether or not anyone promoted it to production.
 - **All of this is deliberately stricter than the console and the REST API**, which permit every
   one of these paths. Recorded in `SECURITY.md` as a decision rather than left as a discrepancy for
   someone to reconcile: the caller here is a model acting on instructions that may have come from

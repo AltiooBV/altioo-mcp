@@ -511,7 +511,7 @@ final class AccessGrants
 	 * Trigger rows" but "may an assistant leave standing instructions that
 	 * make this instance call out on its own".
 	 */
-	public const AUTOMATION_REFUSAL = 'Class \'%s\' is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, on changes made by anyone, and outside this endpoint entirely. Nothing here can send mail or call a URL directly, so staging one cannot be graded against what you may do, and it is refused unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
+	public const AUTOMATION_REFUSAL = 'Class \'%s\' arranges something no tool here can do at all - sending mail, calling a URL, invoking a method by name, or authenticating outward as this instance - so it is not refused for want of a right you might be granted: no caller of this endpoint has one, administrators included. Writing it is refused unless mcp_allow_automation_administration is on, which is an operator allowing this endpoint to grant more than the credential it was called with, rather than a switch for managing automation. Do it in the iTop console. Reading is unaffected.';
 
 	/**
 	 * What every write tool says about the record of what happened.
@@ -532,7 +532,7 @@ final class AccessGrants
 
 	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_automation_administration says. Use the iTop console.';
 
-	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - so it is not something this endpoint changes on its own initiative, and it cannot be written here unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
+	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - not something this endpoint changes on its own initiative. It is refused unless mcp_allow_automation_administration is on, which is an operator allowing this endpoint to grant more than the credential it was called with rather than a switch for managing automation. Change it in the iTop console. Reading is unaffected.';
 
 	/**
 	 * What they say when a write reaches somebody else's personal row.
