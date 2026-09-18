@@ -746,6 +746,18 @@ published archive was installed and exercised on into this line; the README and
   promises a user it will be told waits forever. Beside it: each call stands alone, so what
   persists does so because it was written into iTop.
 
+- **A bulk-created row says what it supplied and what was defaulted.** The single-object create
+  answers with `applied` and `defaulted` beside `changes`; the bulk one answered with `changes` and
+  `overridden` alone, so on the tool most likely to be creating objects from assembled data there
+  was no way to tell what the caller set from what iTop filled in. Read from the object in hand
+  rather than re-read — a hundred rows must not become a hundred queries.
+
+- **`core_object_find_by_name` says what a truncated scan cost.** The limit is filled class by
+  class in datamodel order, not by relevance — iTop's full-text search has no score to rank by — so
+  a common word fills the page from the first classes searched and never reaches the rest. The
+  answer already carried `truncated: true`; it now also carries a note saying how many classes were
+  reached and the two ways round it, and the description says so before the call.
+
 - **A write names the changes the caller never asked for.** `changes` answers "what this write
   sets", and on a creation that is every attribute — a `lnkContactToTicket` created with a contact
   and a ticket reports `role_code` too, and nothing separated the default it was handed from the
