@@ -365,21 +365,54 @@ class ObjectAttach extends AbstractMCPTool
 
 		ChangeTracking::Explain($sComment);
 
+		// The answer is built inside the catch, not after it.
+		//
+		// DBInsert() commits and then returns, so everything below it runs with
+		// the row already written - and a failure there is not a failed write,
+		// it is a write nobody described. Left outside, a TypeError in the
+		// description reached the SDK as an unhandled error: the caller was
+		// told "Error while executing tool", with no reference and no id, for
+		// an attachment that was sitting in the database. The reasonable next
+		// move on that answer is to attach the file again.
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
-		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
-		}
 
-		return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-			+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
-			+ [
-				'simulated'   => false,
-				'valid'       => true,
-				'attached_to' => ['class' => $sClass, 'id' => $iId],
-				'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, $iAttachmentId, 'contents'),
-			]
-			+ self::mimeTypeNote($sMimeTypeNote));
+			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
+				+ [
+					'simulated'   => false,
+					'valid'       => true,
+					'attached_to' => ['class' => $sClass, 'id' => $iId],
+					'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, $iAttachmentId, 'contents'),
+				]
+				+ self::mimeTypeNote($sMimeTypeNote));
+		} catch (\Throwable $e) {
+			// Committed or not, asked the same way core_object_create asks: an
+			// unsaved object carries a negative temporary key, so a positive
+			// one means the row reached the database.
+			$iCommittedId = WritePlan::CommittedId($oAttachment);
+			if ($iCommittedId === null) {
+				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
+			}
+
+			// Stored, and the description of it is what failed. Reported as the
+			// success it is, with the failure attached rather than substituted
+			// for it - the file is not attached twice because the answer was
+			// hard to build.
+			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
+				+ [
+					'simulated'   => false,
+					'valid'       => true,
+					'attached_to' => ['class' => $sClass, 'id' => $iId],
+					'document'    => ['filename' => $oDocument->GetFileName(), 'mimetype' => $oDocument->GetMimeType()],
+					'warning'     => MCPHelper::OpaqueFailure(
+						"The document was attached as {$iCommittedId}, but the call failed while describing it",
+						$e
+					),
+				]
+				+ self::mimeTypeNote($sMimeTypeNote));
+		}
 	}
 
 	/**
@@ -430,20 +463,25 @@ class ObjectAttach extends AbstractMCPTool
 
 		ChangeTracking::Explain($sComment);
 
+		// Inside the catch for the same reason as the attachment branch: this
+		// one updates an object that already exists, so "did it write" cannot
+		// be answered from a key - but a failure while describing the write is
+		// still not a failed write, and answering as though it were sends the
+		// caller to store the file a second time.
 		try {
 			$oTarget->DBUpdate();
+
+			return ToolOutput::Structured(['class' => $sClass]
+				+ WritePlan::Identity($sClass, $iId)
+				+ [
+					'simulated'   => false,
+					'valid'       => true,
+					'attached_to' => ['class' => $sClass, 'id' => $iId],
+					'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
+				]
+				+ self::mimeTypeNote($sMimeTypeNote));
 		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
 		}
-
-		return ToolOutput::Structured(['class' => $sClass]
-			+ WritePlan::Identity($sClass, $iId)
-			+ [
-				'simulated'   => false,
-				'valid'       => true,
-				'attached_to' => ['class' => $sClass, 'id' => $iId],
-				'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
-			]
-			+ self::mimeTypeNote($sMimeTypeNote));
 	}
 }
