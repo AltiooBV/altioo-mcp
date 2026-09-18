@@ -203,6 +203,68 @@ class WriteFailureReportingContractTest extends TestCase
 	}
 
 	/**
+	 * The answer is built where a failure in it can still be caught.
+	 *
+	 * The same defect as the create one, found again in core_object_attach: the
+	 * insert was wrapped and the response was not, so a TypeError while
+	 * describing the stored document escaped to the SDK - "Error while
+	 * executing tool", no reference, no id - with the attachment already in the
+	 * database. A caller told that reasonably attaches the file again.
+	 *
+	 * DBInsert() and DBUpdate() commit and then return, so everything after
+	 * them runs with the row written. A failure there is not a failed write; it
+	 * is a write nobody described, and the two must not answer the same way.
+	 */
+	public function testTheAnswerIsBuiltInsideTheCatchThatCoversTheWrite(): void
+	{
+		$sSource = (string) file_get_contents(
+			(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectAttach'))->getFileName()
+		);
+
+		// Both branches: the attachment object, and the blob attribute.
+		$this->assertSame(
+			2,
+			preg_match_all('/try \{\s*(?:\$\w+ = )?\$\w+->(?:DBInsert|DBUpdate)\(\);\s*return ToolOutput::Structured/s', $sSource),
+			'a write is wrapped and the answer describing it is not'
+		);
+
+		$this->assertStringContainsString(
+			'WritePlan::CommittedId($oAttachment)',
+			$sSource,
+			'a committed attachment can still be reported as a failure'
+		);
+		$this->assertStringContainsString("'warning'", $sSource, 'the failure replaces the success rather than riding with it');
+	}
+
+	/**
+	 * An id crossing this boundary is taken as iTop reports it.
+	 *
+	 * DBInsert() answers with the key as a string, so an int parameter on
+	 * anything a write path hands it throws under strict_types - after the
+	 * commit, which is what makes it expensive. WritePlan::Identity() was
+	 * corrected for this once; DocumentAccess::Describe() had the same
+	 * signature and was reached by the same call.
+	 */
+	public function testTheDocumentDescriberTakesTheIdAsITopReportsIt(): void
+	{
+		$oMethod = new ReflectionMethod(
+			'Altioo\\iTop\\Extension\\MCP\\Helper\\DocumentAccess',
+			'Describe'
+		);
+		$sType = (string) $oMethod->getParameters()[2]->getType();
+
+		$this->assertStringContainsString('string', $sType, sprintf(
+			'DBInsert() returns the key as a string, so a %s parameter throws once the row is already written.',
+			$sType
+		));
+		$this->assertStringContainsString(
+			'WritePlan::AsId',
+			$this->methodBody('Altioo\\iTop\\Extension\\MCP\\Helper\\DocumentAccess', 'Describe'),
+			'the id is used without going through the one normaliser'
+		);
+	}
+
+	/**
 	 * The TypeError that started this: DBInsert() returns the key as a string,
 	 * and a ?int parameter under strict_types rejects it *after* the commit.
 	 * Every create path hands this method an id straight out of the ORM.
