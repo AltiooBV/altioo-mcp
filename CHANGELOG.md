@@ -287,6 +287,16 @@ published archive was installed and exercised on into this line; the README and
   fifty-row search fifty of them. `mcp_max_document_bytes` (5 MB) bounds both directions, and
   the two tools and the template form the `documents` toolset, with an `MCP-toolset-documents`
   token scope.
+- **The searches honour the account's "Show obsolete data" preference.** It is stored against the
+  user, not the session — `utils::ShowObsoleteData()` reads `appUserPreferences` and falls back to
+  `obsolescence.show_obsolete_data` — and a search honours it only if the surface asks, which is why
+  iTop's own export service and portal call `UpdateContextFromUser()`. `core_object_search_by_class`
+  and `core_object_search_by_oql` never did, so one user asking one question got three answers:
+  obsolete objects from those two, none from `core_object_find_by_name`, and none in the console.
+  **Operators:** searches now return fewer objects for an account whose preference is off, which is
+  the default — the same set the console shows. A read by id is unaffected and still returns an
+  obsolete object.
+
 - **Archived objects are a per-call choice on both searches.** `archived` takes `exclude` (the
   default), `include` or `only`. Seeing them used to be a property of the connection — iTop reads
   `with_archive` off the request and `DBSearch` takes archive mode from it at construction — so two
