@@ -70,7 +70,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			.'Relations are declared per class and per direction, so read the "relations" block of core_class_schema for this class first; a code it does not have is refused with the list of the ones it does. '
 			.'The answer is a graph, not a tree: "objects" maps "<Class>::<id>" to class, id and friendlyname, "relations" is a flat list of {from, to} over those keys, "summary" counts per class. '
 			.'The source object is not in it and an object reached twice appears once. '
-			.'A "withheld" block means a class was held back for want of bulk read on it: what came back is what you may see, not what exists.';
+			.'"truncated" is true when a class was held back for want of bulk read on it, and "withheld" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -338,6 +338,13 @@ class ObjectGetRelated extends AbstractMCPTool
 			'objects'   => $aObjects,
 			'relations' => $aRelations,
 			'summary'   => implode(', ', $aSummaryParts),
+			// Always present, and false on the ordinary answer. `withheld` says
+			// what was held back and why, but a caller has to look for it to
+			// find out there is anything to look for - and a graph quietly
+			// missing a class reads as a whole one, which is how "nothing
+			// related" reaches a user as fact. A flag beside summary is read by
+			// anyone parsing the answer at all.
+			'truncated' => $aWithheld !== [],
 		];
 
 		if ($aWithheld !== []) {
