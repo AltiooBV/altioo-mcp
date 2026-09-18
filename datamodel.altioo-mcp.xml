@@ -153,14 +153,23 @@
           a read, a handshake, anything that is not a write tool.
         -->
         <field id="simulate" xsi:type="AttributeEnum">
-          <values>
-            <value id="yes">yes</value>
-            <value id="no">no</value>
-            <value id="n/a">n/a</value>
-          </values>
           <sql>simulate</sql>
           <default_value>n/a</default_value>
           <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="yes">
+              <code>yes</code>
+              <rank>10</rank>
+            </value>
+            <value id="no">
+              <code>no</code>
+              <rank>20</rank>
+            </value>
+            <value id="n/a">
+              <code>n/a</code>
+              <rank>30</rank>
+            </value>
+          </values>
         </field>
 
         <!-- Wall-clock duration of the whole request, in milliseconds -->
