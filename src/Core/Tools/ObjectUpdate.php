@@ -76,6 +76,7 @@ class ObjectUpdate extends AbstractMCPTool
 			'after' => WritePlan::AfterSchemaProperty(),
 			'changes'    => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -290,6 +291,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
@@ -308,6 +310,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		} catch (\Throwable $e) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to update {$class}::{$id}", $e));
