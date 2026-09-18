@@ -55,7 +55,19 @@ final class CurrentUserReader
 			'current_contact_id' => UserRights::GetContactId(),
 			'current_id' => UserRights::GetUserId(),
 			'current_user_language' => UserRights::GetUserLanguage(),
-			'archive_mode' => utils::IsArchiveMode() ? 'archive' : 'active',
+			// Not a lock, and not a feature flag. iTop's archive mode is a
+			// property of the session's *view*: DBSearch reads it at
+			// construction and a query made under it returns archived and
+			// obsolete objects as well as live ones. "active" and "archive"
+			// named that correctly and read like neither - a caller is as
+			// likely to take it for "archiving is switched on" or "this
+			// instance is read-only", and the second would have it decline to
+			// write on a perfectly writable instance. So the answer says what
+			// it means, in the one place a model asks who it is.
+			'archive_mode' => [
+				'enabled' => utils::IsArchiveMode(),
+				'means'   => 'A view, not a lock: when enabled, searches also return archived and obsolete objects. It never makes the instance read-only.',
+			],
 		];
 	}
 
