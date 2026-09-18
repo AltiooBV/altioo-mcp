@@ -246,6 +246,13 @@ final class WritePlan
 	 * On a real write the object is asked again, which costs one read of one
 	 * row and only on a class that has the notion at all.
 	 *
+	 * The attributes re-read are the ones the *caller supplied*, not the ones
+	 * the write changed. On a create those are not the same list at all:
+	 * `changes` holds every attribute of the new object, so echoing that back
+	 * here returned a seventy-attribute object twice in one answer, and the
+	 * block meant to say "here is what became of what you sent" said "here is
+	 * everything". What a caller wants confirmed is what it asked for.
+	 *
 	 * @param DBObject           $oObject   The object the write acted on.
 	 * @param array<int, string> $aAttCodes The attributes the caller supplied, re-read so that what a hook changed is visible.
 	 *
