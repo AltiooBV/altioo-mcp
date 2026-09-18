@@ -730,7 +730,7 @@ final class ObjectSerializer
 	{
 		return [
 			'type'        => 'string',
-			'description' => 'Comma-separated attribute codes to return, e.g. "title, status, agent_id". "'.self::ALL_FIELDS.'" returns every readable attribute, which is large - ask for what you need. Call core_class_schema for the codes. The id is always returned.',
+			'description' => 'Comma-separated attribute codes to return, e.g. "title, status, agent_id". "'.self::ALL_FIELDS.'" returns every readable attribute, which is large - ask for what you need. Call core_class_schema for the codes. Always returned whatever you ask for: the id, and whether the object is archived or obsolete - a row described by the fields you named would otherwise look the same whether it is live or soft-deleted.',
 			'default'     => $sDefault,
 		];
 	}
