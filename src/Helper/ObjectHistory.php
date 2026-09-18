@@ -322,7 +322,7 @@ final class ObjectHistory
 				return $aEntry;
 			}
 
-			if (!ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sAttCode))) {
+			if (!ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sAttCode), $sClass)) {
 				return $aEntry;
 			}
 		} catch (\Throwable $e) {

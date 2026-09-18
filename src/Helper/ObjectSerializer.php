@@ -469,7 +469,7 @@ final class ObjectSerializer
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
 
-		if (self::IsSensitive($oAttDef)) {
+		if (self::IsSensitive($oAttDef, $sClass)) {
 			// Masked before any conversion, so no code path can read the real
 			// value into the response.
 			return self::MASK;
@@ -579,7 +579,7 @@ final class ObjectSerializer
 					continue;
 				}
 
-				if (self::IsSensitive(MetaModel::GetAttributeDef($sRowClass, $sLnkAttCode))) {
+				if (self::IsSensitive(MetaModel::GetAttributeDef($sRowClass, $sLnkAttCode), $sRowClass)) {
 					$value[$iRow][$sLnkAttCode] = self::MASK;
 				}
 			}
@@ -752,11 +752,26 @@ final class ObjectSerializer
 	 * every caller gets it, including the schema tool that reports which
 	 * attributes are sensitive.
 	 *
-	 * @since 1.0.0
+	 * $sClass is optional only so that the signature stayed compatible; pass it
+	 * wherever it is known, because without it the outbound-token case below
+	 * cannot be asked and the value goes out unmasked.
+	 *
+	 * @since 1.0.0 Takes the class too, for the attributes iTop stores a secret in without using a secret type.
 	 */
-	public static function IsSensitive(AttributeDefinition $oAttDef): bool
+	public static function IsSensitive(AttributeDefinition $oAttDef, ?string $sClass = null): bool
 	{
 		if ($oAttDef instanceof iAttributeNoGroupBy) {
+			return true;
+		}
+
+		// The one case the type does not answer. iTop's two OAuth datamodels
+		// store the same secrets in different types: Oauth2Client uses
+		// AttributeEncryptedPassword, which is caught above, while OAuthClient
+		// keeps refresh_token and token in AttributeText - so a live token
+		// this instance authenticates to a mail provider with was reported in
+		// clear. AccessGrants names the classes and the attributes; see
+		// OUTBOUND_SECRET_ATTRIBUTES for why that is a list and not a pattern.
+		if ($sClass !== null && AccessGrants::IsOutboundSecret($sClass, $oAttDef->GetCode())) {
 			return true;
 		}
 

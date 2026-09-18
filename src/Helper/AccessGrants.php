@@ -272,8 +272,44 @@ final class AccessGrants
 		// covers a device password and does not cover a token this instance
 		// authenticates to a third party with, which a caller can steal by
 		// reading it back out through a webhook or replace with its own.
+	];
+
+	/**
+	 * The subset of the above that stores a secret rather than performing an
+	 * action, kept apart because the read side needs to name it.
+	 *
+	 * Gated with the automation family - they are the credentials it acts
+	 * with - but also asked about by {@see ObjectSerializer::IsSensitive()},
+	 * which is a question about reading and not about writing.
+	 */
+	private const OUTBOUND_CREDENTIAL_ROOTS = [
 		'Oauth2Client',
 		'OAuthClient',
+	];
+
+	/**
+	 * The attributes on those classes that hold the secret itself.
+	 *
+	 * A list, and it is a list on purpose. iTop's two OAuth datamodels store
+	 * the same four things in four different types: Oauth2Client puts
+	 * client_secret, refresh_token and access_token in
+	 * AttributeEncryptedPassword, which implements iAttributeNoGroupBy and is
+	 * therefore already masked - while OAuthClient puts client_secret in
+	 * AttributePassword (masked) but refresh_token and token in **AttributeText**,
+	 * which is not sensitive by type and came back in clear. The type is the
+	 * rule everywhere else on this endpoint and stays the rule; this covers
+	 * the case where iTop's own datamodel does not use one.
+	 *
+	 * Matched exactly rather than by substring, so that
+	 * refresh_token_expiration stays readable: "this token expires on Friday"
+	 * is the kind of thing an assistant is useful for, and masking a date
+	 * would be masking the answer rather than the secret.
+	 */
+	private const OUTBOUND_SECRET_ATTRIBUTES = [
+		'client_secret',
+		'refresh_token',
+		'access_token',
+		'token',
 	];
 
 	/**
@@ -623,13 +659,39 @@ final class AccessGrants
 			return self::$aDecided[$sKey];
 		}
 
-		foreach (self::AUTOMATION_ROOTS as $sRoot) {
+		foreach (array_merge(self::AUTOMATION_ROOTS, self::OUTBOUND_CREDENTIAL_ROOTS) as $sRoot) {
 			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
 				return self::$aDecided[$sKey] = true;
 			}
 		}
 
 		return self::$aDecided[$sKey] = self::PointsAtAnyOf($sClass, ['Trigger', 'Action']);
+	}
+
+	/**
+	 * Whether reading $sClass::$sAttCode would report a secret this instance
+	 * authenticates to somebody else with.
+	 *
+	 * The read-side half of the outbound-credential rule. Everywhere else the
+	 * type decides - see {@see ObjectSerializer::IsSensitive()} - and this
+	 * covers the classes where iTop's own datamodel keeps a live token in a
+	 * type that says nothing about it.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsOutboundSecret(string $sClass, string $sAttCode): bool
+	{
+		if (!in_array(strtolower($sAttCode), self::OUTBOUND_SECRET_ATTRIBUTES, true)) {
+			return false;
+		}
+
+		foreach (self::OUTBOUND_CREDENTIAL_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

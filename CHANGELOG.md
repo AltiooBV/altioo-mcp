@@ -359,6 +359,20 @@ published archive was installed and exercised on into this line; the README and
   this instance authenticates to a third party with. `AuditRule`, `AuditCategory` and `AuditDomain`
   are behind the same setting: not an escalation, but the other half of covering your tracks, since
   deleting the rule that would have flagged a mess makes the mess look like the data.
+- **A live outbound token is masked even where iTop stored it in a plain-text attribute.** Asked
+  for as a follow-up and worth its own entry, because the answer was "half of them". Masking here
+  keys off `iAttributeNoGroupBy`, the interface iTop's own code tests for, and the two OAuth
+  datamodels disagree about which type to use: `Oauth2Client` keeps `client_secret`,
+  `refresh_token` and `access_token` in `AttributeEncryptedPassword`, which implements it and was
+  already masked, while `OAuthClient` keeps `client_secret` in `AttributePassword` (masked) and
+  `refresh_token` and `token` in **`AttributeText`**, which is not sensitive by type — so a live
+  refresh token this instance authenticates to a mail provider with was reported in clear. The type
+  stays the rule everywhere else; those four attribute codes on those two hierarchies are masked
+  regardless of it, matched exactly rather than by pattern so `refresh_token_expiration` stays
+  readable, since "this token expires on Friday" is the useful half. `ObjectSerializer::IsSensitive()`
+  now takes the class alongside the attribute, and a test fails if any call site drops it — the
+  change history and the schema's `isSensible` flag included, a secret leaked through either being
+  leaked just the same.
 - **The barrier is now checked against this module's own datamodel, by a test.** The structural
   criticism behind all of the above, in the reviewer's words: the gate is "an allowlist of blocked
   classes, not a security property" — a class is "writable because nobody added it to the

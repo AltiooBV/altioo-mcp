@@ -284,6 +284,21 @@ behind `mcp_allow_automation_administration` with the rest of the outbound machi
 question — every class holding any recoverable secret — is deliberately still open, and the
 recoverable-type exclusion above still stands for the cases it was written for.
 
+That barrier is about writing them. **Reading them turned out to be half-open**, which is worth
+stating plainly because it was checked in response to this review rather than known. Masking on
+this endpoint keys off `iAttributeNoGroupBy`, the interface iTop's own code tests for, and the
+two OAuth datamodels do not agree on which type to use: `Oauth2Client` puts `client_secret`,
+`refresh_token` and `access_token` in `AttributeEncryptedPassword`, which implements it and was
+already masked — while `OAuthClient`, the mailbox side, puts `client_secret` in
+`AttributePassword` (also masked) but `refresh_token` and `token` in **`AttributeText`**, which
+is not sensitive by type. A live refresh token the instance authenticates to a mail provider
+with came back in clear. The type remains the rule everywhere else; those four attribute codes
+on those two class hierarchies are now masked regardless of it, matched exactly so that
+`refresh_token_expiration` stays readable — the expiry is the useful half and not the secret.
+The mask applies to reads, to the change history, and to the `isSensible` flag the schema
+reports, since a secret leaked through the history or advertised as ordinary is leaked just the
+same.
+
 **And it does not switch off what a person would be shown.** `AuditRule`, `AuditCategory` and
 `AuditDomain` are iTop's data-quality audit, separate from the change log. Nothing there grants
 access to anything; it is the other half of covering your tracks, since an agent that has made a

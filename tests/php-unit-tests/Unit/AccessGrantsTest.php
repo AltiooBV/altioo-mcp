@@ -965,6 +965,109 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * A live token is masked on read even where iTop did not use a secret type.
+	 *
+	 * The reviewer asked for a follow-up on whether these fields are masked
+	 * the way passwords are. Half of them were. Oauth2Client keeps
+	 * client_secret, refresh_token and access_token in
+	 * AttributeEncryptedPassword, which implements iAttributeNoGroupBy and was
+	 * already masked by type. OAuthClient - the mailbox side - keeps
+	 * client_secret in AttributePassword, also masked, but refresh_token and
+	 * token in **AttributeText**, which is not sensitive by type: a live
+	 * refresh token this instance authenticates to a mail provider with came
+	 * back in clear.
+	 *
+	 * The type stays the rule everywhere else. This covers the case where
+	 * iTop's own datamodel does not use one, and it is an exact list of
+	 * attribute codes rather than a pattern so that refresh_token_expiration
+	 * stays readable - "this token expires on Friday" is the useful half.
+	 */
+	public function testALiveOutboundTokenIsMaskedEvenInAPlainTextAttribute(): void
+	{
+		foreach (['client_secret', 'refresh_token', 'access_token', 'token'] as $sAttCode) {
+			$this->assertTrue(AccessGrants::IsOutboundSecret('OAuthClient', $sAttCode), "OAuthClient::{$sAttCode} is reported in clear");
+			$this->assertTrue(AccessGrants::IsOutboundSecret('Oauth2Client', $sAttCode));
+		}
+
+		// The expiry is not the secret, and masking it would mask the answer.
+		$this->assertFalse(AccessGrants::IsOutboundSecret('OAuthClient', 'refresh_token_expiration'));
+		$this->assertFalse(AccessGrants::IsOutboundSecret('Oauth2Client', 'scope'));
+
+		// And the rule is scoped to those classes, not to the attribute name.
+		$this->assertFalse(AccessGrants::IsOutboundSecret('UserRequest', 'token'));
+	}
+
+	/**
+	 * The serializer asks the question, and every caller hands it the class.
+	 *
+	 * Without the class the outbound-token case cannot be asked and the value
+	 * goes out unmasked, so this pins that no call site drops it - the history
+	 * and the schema's isSensible flag included, since a token leaked through
+	 * the change log or advertised as non-sensitive is leaked just the same.
+	 */
+	public function testEveryCallerHandsTheClassToTheSensitivityCheck(): void
+	{
+		$sSrc = dirname(__DIR__, 3).'/src';
+		$aBare = [];
+
+		$oIt = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($sSrc));
+		foreach ($oIt as $oFile) {
+			if (!$oFile->isFile() || $oFile->getExtension() !== 'php') {
+				continue;
+			}
+
+			// Comments out first: every docblock that points at this method
+			// writes it as IsSensitive(), which is not a call.
+			$sCode = '';
+			foreach (token_get_all((string) file_get_contents($oFile->getPathname())) as $mToken) {
+				if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+					continue;
+				}
+				$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
+			}
+
+			$sRel = substr($oFile->getPathname(), strlen($sSrc) + 1);
+			$iFrom = 0;
+			while (($iAt = strpos($sCode, 'IsSensitive(', $iFrom)) !== false) {
+				$iFrom = $iAt + 1;
+
+				// The declaration is not a call.
+				if (str_contains(substr($sCode, max(0, $iAt - 20), 20), 'function ')) {
+					continue;
+				}
+
+				// Walk the argument list, balancing parentheses, and look for
+				// a comma at depth one.
+				$iDepth = 0;
+				$bComma = false;
+				for ($i = $iAt + strlen('IsSensitive('); $i < strlen($sCode); $i++) {
+					$c = $sCode[$i];
+					if ($c === '(') {
+						$iDepth++;
+					} elseif ($c === ')') {
+						if ($iDepth === 0) {
+							break;
+						}
+						$iDepth--;
+					} elseif ($c === ',' && $iDepth === 0) {
+						$bComma = true;
+					}
+				}
+
+				if (!$bComma) {
+					$aBare[] = $sRel.' at offset '.$iAt;
+				}
+			}
+		}
+		sort($aBare);
+
+		$this->assertSame([], $aBare, sprintf(
+			"IsSensitive() called without the class, so the outbound-token case cannot be asked there: %s",
+			implode(', ', $aBare)
+		));
+	}
+
+	/**
 	 * The rules that decide what a person is shown as wrong.
 	 *
 	 * Not an escalation - nothing here grants access to anything - but the

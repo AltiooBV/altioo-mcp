@@ -887,7 +887,7 @@ final class DatamodelReader
 				'nullable'      => $oAttDef->IsNullAllowed(),
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
-				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef),
+				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef, $sClass),
 			] + self::allowedValues($oAttDef) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
