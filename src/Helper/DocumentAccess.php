@@ -344,7 +344,7 @@ final class DocumentAccess
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function Describe(ormDocument $oDocument, string $sClass, int $iId, string $sAttCode): array
+	public static function Describe(ormDocument $oDocument, string $sClass, int|string|null $mId, string $sAttCode): array
 	{
 		$aDescription = [
 			'filename' => $oDocument->GetFileName(),
@@ -352,7 +352,23 @@ final class DocumentAccess
 			'size'     => strlen((string)$oDocument->GetData()),
 		];
 
-		if ($iId > 0) {
+		// Taken as iTop reports it, not as an id ought to look.
+		//
+		// DBInsert() returns the key as a string - DBInsertSingleTable()
+		// assigns it "$iNewKey" - so an int parameter here threw a TypeError
+		// on the one call that matters: the one describing a document that had
+		// just been written. Thrown while building the answer rather than
+		// while writing, it escaped the write's own catch, reached the SDK as
+		// an unhandled error, and told the caller the attachment had failed
+		// after storing it.
+		//
+		// Same lesson as WritePlan::Identity(), which was corrected for the
+		// same reason: a declared type is a claim about the source, and ?int
+		// for an identifier is what an id ought to be rather than what the ORM
+		// hands over. Normalised in one place instead.
+		$iId = WritePlan::AsId($mId);
+
+		if ($iId !== null) {
 			$aDescription['uri'] = self::Uri($sClass, $iId, $sAttCode);
 		}
 
