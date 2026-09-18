@@ -59,7 +59,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 					'description'          => 'The OQL query to execute. OQL has no ORDER BY clause; sort with order_by instead. '
 						.'SELECT on a parent class covers its children - SELECT Ticket answers across UserRequest, Incident and any other subclass - and each row reports the class it actually is.',
 				],
-			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties() + self::actionsSchemaProperties(),
+			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::archivedSchemaProperty() + self::auditSchemaProperties() + self::actionsSchemaProperties(),
 			'required' => ['oql'],
 		];
 	}
@@ -73,6 +73,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 	 * @param string $output_fields Comma-separated attribute codes to return, or '*' for all of them
 	 * @param bool $audit Also report when each object was created and last changed, and by whom; limited to a page of ObjectHistory::MAX_AUDIT_PAGE objects
 	 * @param bool $actions Also report, per object, the write gates answered for that object and the stimuli its state accepts; same page limit
+	 * @param string $archived 'exclude' (default), 'include' or 'only'
 	 * @return array An array containing the class, total count, limit, offset, and list of matching objects with their attributes
 	 * @throws ToolCallException if the OQL query is invalid, if the class is unknown, or if access is denied.
 	 */
@@ -85,6 +86,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		string $output_fields = ObjectSerializer::DEFAULT_LIST_FIELDS,
 		bool   $audit = false,
 		bool   $actions = false,
+		string $archived = self::DEFAULT_ARCHIVED,
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
@@ -104,6 +106,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
+		self::applyArchived($oSearch, $class, $archived);
 
 		// The class comes from the query rather than from an argument, which is
 		// exactly why this one matters: "SELECT CMDBChangeOpSetAttributeScalar"
