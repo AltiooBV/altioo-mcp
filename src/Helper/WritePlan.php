@@ -308,6 +308,73 @@ final class WritePlan
 	}
 
 	/**
+	 * Why an external key cannot point where the caller aimed it, said plainly.
+	 *
+	 * The case: org_id = 999999 on an instance with no such organisation. iTop
+	 * refuses it from inside RestUtils::MakeValue(), and what comes back here
+	 * is a CoreException whose message routinely carries SQL, table names and
+	 * the context array folded in - so this module answers it opaquely, with a
+	 * log reference, as it does for every ORM failure it cannot vouch for.
+	 *
+	 * That was the wrong answer to this particular question, twice over. The
+	 * reason is knowable and harmless - no object of that class has that id -
+	 * and the advice was a dead end: the reference points into iTop's log, and
+	 * nothing in this server reads it. An agent was told to quote an
+	 * identifier at a system it has no path to, for a mistake it could have
+	 * corrected itself.
+	 *
+	 * Asked before the value reaches the ORM, so the refusal replaces the
+	 * opaque one rather than decorating it. Missing and unreadable answer the
+	 * same sentence: telling them apart would let a caller enumerate the
+	 * objects it may not see, which is the oracle SECURITY.md closes
+	 * everywhere else.
+	 *
+	 * Only a plain id. A string is OQL to FindObjectFromKey() and an array is
+	 * search criteria; both are the ORM's business, and a caller that sent one
+	 * is not the caller this is for.
+	 *
+	 * @param mixed $value As the caller sent it.
+	 *
+	 * @return string|null The refusal, or null when there is nothing to object to.
+	 * @since 1.0.0
+	 */
+	public static function RefusalForExternalKey(string $sClass, string $sAttCode, mixed $value): ?string
+	{
+		if (!is_int($value) && !(is_string($value) && ctype_digit($value))) {
+			return null;
+		}
+
+		try {
+			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if (!$oAttDef->IsExternalKey()) {
+				return null;
+			}
+
+			$sTarget = $oAttDef->GetTargetClass();
+			if ((int) $value === 0 && $oAttDef->IsNullAllowed()) {
+				// 0 is how iTop spells "no target" on a key that allows one.
+				return null;
+			}
+
+			if (MetaModel::GetObject($sTarget, (int) $value, false) !== null) {
+				return null;
+			}
+
+			return sprintf(
+				"No %s has id %s, or it is not one you may read. Search %s for the object you want and pass its id: "
+				."core_object_find_by_name finds it by name, core_object_search_by_class by attribute.",
+				$sTarget,
+				(string) $value,
+				$sTarget
+			);
+		} catch (Throwable $e) {
+			// A question about the datamodel must not become the refusal. The
+			// ORM still gets its say, which is where this started.
+			return null;
+		}
+	}
+
+	/**
 	 * A map that stays a map once it is empty.
 	 *
 	 * `changes`, `overridden` and `applied` are attribute code => value, and
