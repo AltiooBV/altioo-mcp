@@ -303,6 +303,35 @@ class SchemaToolsContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * An attribute computed from others says which ones.
+	 *
+	 * A UserRequest's priority is writable, mandatory, and reported as both -
+	 * and every value a caller sets is thrown away, because the class derives
+	 * it from urgency and impact on every write. A model reading the schema
+	 * literally, which this tool tells it to do, sets priority and learns
+	 * otherwise from the `overridden` block afterwards. The schema knew: the
+	 * class XML declares <dependencies> on that field.
+	 *
+	 * Read from the attribute rather than listed here, so a pack deriving
+	 * something this module has never heard of reports it the same way, and a
+	 * class that stops deriving stops saying so with no edit here.
+	 */
+	public function testAnAttributeDerivedFromOthersNamesThem(): void
+	{
+		$sBody = $this->methodBody(DatamodelReader::class, 'dependsOn');
+
+		$this->assertStringContainsString('GetPrerequisiteAttributes', $sBody, 'the declaration is not read from the attribute');
+		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'a question about the datamodel must not cost the schema');
+		$this->assertStringNotContainsString('priority', $sBody, 'the answer is hardcoded for one datamodel');
+
+		$this->assertStringContainsString(
+			'dependsOn',
+			(string) (new ClassSchema())->getDescription(),
+			'nothing tells a reader what dependsOn means for a write'
+		);
+	}
+
 	/** Nothing recognised is not the same as nothing wanted. */
 	public function testAnUnknownBlockNameDoesNotEmptyTheAnswer(): void
 	{
