@@ -64,6 +64,14 @@ final class CurrentUserReader
 			// instance is read-only", and the second would have it decline to
 			// write on a perfectly writable instance. So the answer says what
 			// it means, in the one place a model asks who it is.
+			// The user's own "Show obsolete data", which decides what a search
+			// returns and is stored against the account rather than the
+			// session - so two people running the same query here get
+			// different sets, legitimately, and neither could tell why.
+			'obsolete_data' => [
+				'visible' => utils::ShowObsoleteData(),
+				'means'   => 'Your own console preference, which the searches honour: when false, obsolete objects are left out of result sets. A read by id returns the object either way.',
+			],
 			'archive_mode' => [
 				'enabled' => utils::IsArchiveMode(),
 				'means'   => 'A view, not a lock: when enabled, searches also return archived and obsolete objects. It never makes the instance read-only.',
