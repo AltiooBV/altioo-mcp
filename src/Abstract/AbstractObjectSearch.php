@@ -18,6 +18,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use utils;
 
 /**
  * Paging, ordering and serialization for a tool that returns a set of objects.
@@ -130,6 +131,27 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		if ($sArchived === self::ARCHIVED_ONLY) {
 			$oSearch->AddCondition(self::ARCHIVE_FLAG, 1, '=');
 		}
+
+		// The user's own answer about obsolete objects, which is a different
+		// question and a different mechanism.
+		//
+		// utils::ShowObsoleteData() reads appUserPreferences - "Show obsolete
+		// data" in the console, stored against the account rather than the
+		// session - falling back to obsolescence.show_obsolete_data in the
+		// configuration. A search only honours it if the surface asks:
+		// DBSearch starts with m_bShowObsoleteData true, and iTop's own export
+		// service and portal call UpdateContextFromUser() for exactly this
+		// reason.
+		//
+		// These two did not ask, so the same user saw obsolete objects here
+		// and not in the console, and not through core_object_find_by_name
+		// either, which has always asked. Three answers to one question, and
+		// none of them said which one you were getting.
+		//
+		// Not applied to a read by id: fetching a named object must return it
+		// whether or not it has gone obsolete. This is about which objects a
+		// *set* contains.
+		$oSearch->SetShowObsoleteData(utils::ShowObsoleteData());
 	}
 
 	/**
