@@ -98,6 +98,7 @@ class ObjectUpdate extends AbstractMCPTool
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),
+				'obsolete_ok' => WritePlan::ObsoleteOkSchemaProperty('update'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the change is being made'),
 			],
 			'required' => ['class', 'id', 'fields'],
@@ -109,6 +110,7 @@ class ObjectUpdate extends AbstractMCPTool
 	 * @param int $id The ID of the object to update, e.g. 123
 	 * @param array $fields An array of attribute => value pairs to update
 	 * @param bool $simulate When true (default), the change is validated and described but not written
+	 * @param bool $obsolete_ok Act on an obsolete object even though this account hides them
 	 * @param string|null $comment Why the change is being made, recorded in the object's history
 	 * @return array The class and ID of the object, and the attributes the call changes or would change
 	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
@@ -119,6 +121,7 @@ class ObjectUpdate extends AbstractMCPTool
 		array   $fields,
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
+		bool    $obsolete_ok = false,
 	): mixed
 	{
 		if ($id < 1) {
@@ -192,6 +195,10 @@ class ObjectUpdate extends AbstractMCPTool
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot update object.");
 		}
+
+		// Before anything is validated: an object this account cannot see in
+		// its own searches is one it is probably acting on from a stale id.
+		WritePlan::RefuseHiddenObsolete($oObject, $sFinalClass, $obsolete_ok, 'update');
 
 		// A set holding this object and nothing else, built fresh: $oSet has
 		// been Fetch()ed above and its cursor is spent, and the rights addon is
