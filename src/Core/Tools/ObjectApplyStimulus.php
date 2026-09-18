@@ -353,7 +353,26 @@ class ObjectApplyStimulus extends AbstractMCPTool
 
 		$aChanges = WritePlan::Changes($oObject, $class);
 
+		// The one change a transition is guaranteed to make, which nothing else
+		// here can see.
+		//
+		// A dry run does not apply the stimulus - that is the point of it - so
+		// the state has not moved in memory and ListChangedValues() reports
+		// nothing about it. The caller was left with would_move_to and a
+		// `changes` block that said the transition changes nothing, on the tool
+		// whose whole purpose is to move a state: a user shown "here is what
+		// will happen" saw an empty list.
+		//
+		// Added from the lifecycle rather than from the object, since the
+		// object has not been touched. On the real call it is already there,
+		// put in by ApplyStimulus(), and writing it again would be reporting
+		// the same fact twice.
 		if ($simulate) {
+			$sStateAttCode = MetaModel::GetStateAttributeCode($class);
+			if ($sStateAttCode !== '' && $sTargetState !== '' && !array_key_exists($sStateAttCode, $aChanges)) {
+				$aChanges[$sStateAttCode] = $sTargetState;
+			}
+
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $id)
 				+ [
@@ -363,8 +382,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
 					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => $aChanges,
-					'overridden'    => $aOverridden,
+					'changes'       => WritePlan::Map($aChanges),
+					'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
@@ -398,8 +417,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// the transition happened.
 				'would_move_to' => $sTargetState,
 				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => $aChanges,
-				'overridden'    => $aOverridden,
+					'changes'       => WritePlan::Map($aChanges),
+				'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]);
 	}
