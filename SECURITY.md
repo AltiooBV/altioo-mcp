@@ -173,22 +173,45 @@ document answers; what matters here is that **this** endpoint will not be the on
 that the self-guard keeps holding when `mcp_allow_access_administration` is on — a profile link
 naming the caller, and a grant on a profile the caller holds, stay refused.
 
-**The endpoint also declines to hand a write to something that writes for it.** The barrier above
-is about classes that decide what this endpoint may do. A `SynchroDataSource` decides nothing of
-the kind and carries no credential — the rule by attribute type passes it by, deliberately. What
-it is, is a standing instruction to iTop's synchronisation engine: `scope_class` names any class
-in the datamodel, the attribute mapping names the fields to overwrite, and the engine applies it
-later from cron or from a console button, as a trusted internal process that never passes through
-this endpoint and so never meets the barrier. A caller that may not write `UserLocal` could stage
-a source pointed at it — iTop fills the mapping in for you, `password` and `profile_list`
-included, `update:true` by default — and wait for an administrator account of its choosing to
-appear. So `SynchroDataSource`, `SynchroAttribute`, `SynchroReplica`, `SynchroLog`, anything
-descending from them and anything else named `Synchro*` are refused by every write tool under the
-same setting. Reading them is not refused. And where an operator turns the setting on, one target
-stays shut whatever it says: a definition pointed at a class behind the barrier above, or at a
-class this call does not settle, because the engine writes without the self-guard that every
-administering call through this endpoint is graded by — staging the escalation would otherwise be
-the way to perform it. Found by a red-team pass against a live instance, not by this document.
+**A write handed to something that writes for you is graded on where it lands.** The barrier
+above is about classes that decide what this endpoint may do. A `SynchroDataSource` decides
+nothing of the kind and carries no credential — the rule by attribute type passes it by,
+deliberately. What it is, is a standing instruction to iTop's synchronisation engine:
+`scope_class` names any class in the datamodel, the attribute mapping names the fields to
+overwrite, and the engine applies it later from cron or from a console button, as a trusted
+internal process. It never passes through this endpoint, and it **consults no `UserRights` at
+all**. So a definition is a write with the rights check removed, and three rules follow from
+that.
+
+A definition pointed at a class behind the barrier above is refused, and **no setting lifts
+it** — not `mcp_allow_access_administration`, which buys administration of *other* people's
+access through this endpoint, where every such call is graded against the caller's own
+credential on the way past. The engine is graded against nothing, so permitting this would
+hand back the self-escalation that has no switch: a caller that may not write `UserLocal`
+could otherwise stage a source pointed at it (iTop fills the mapping in for you, `password`
+and `profile_list` included, `update:true` by default) and wait for an administrator account
+of its choosing to appear.
+
+A definition pointed at any other class is allowed **only if the caller could have written
+that class itself** — create, modify and delete, and the bulk forms, all five, because a data
+source does all of them and its own `delete_policy` decides the last. Staging a write you
+could have performed is a scheduling decision; staging one you were refused is the bypass.
+Rights that cannot be established are a refusal.
+
+A definition that does not say where it lands is refused, because the target is the entire
+basis on which the other two rules grade it.
+
+The family is `SynchroDataSource` and anything descending from it, plus any class carrying an
+external key to one — which is what the attribute mappings, the staged replicas and the run
+logs all are. It is not matched by name prefix: a customer class called `SynchroWidget` stages
+nothing and is nobody's business here. Reading is unaffected throughout, and
+`core_class_schema` grades these classes `depends` with a `restricted` line saying what would
+settle it. Found by a red-team pass against a live instance, not by this document.
+
+**What this does not cover.** Per-attribute rights. iTop populates a new source's mapping
+itself, every attribute at `update:true`, without any call reaching this endpoint — so there is
+no write here to refuse. A caller who may modify a class but not one of its attributes can have
+that attribute overwritten by the engine. The rule is honestly a class-level one.
 
 **No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
 bulk tools all default to `simulate: true` and return what the call *would* change, having run
@@ -215,7 +238,7 @@ reference.
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
-| An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by cron with rights this endpoint does not have | `Synchro*` classes are read-only through this endpoint under the same `mcp_allow_access_administration` setting; with the setting on, a definition pointed at a class behind the barrier above — or at one the call does not settle — is refused regardless, since the engine writes without the self-guard |
+| An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by cron with rights this endpoint does not have | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves, since the engine consults no rights at all; one that names no target is refused. Per-attribute rights are not covered — see above |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |

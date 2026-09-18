@@ -173,8 +173,18 @@ final class AccessGrants
 		'SynchroLog',
 	];
 
-	/** The convention the whole synchronisation family is named by. */
-	private const DELEGATING_PREFIX = 'Synchro';
+	/**
+	 * The external key every dependent row of the family points back with.
+	 *
+	 * This is the datamodel half, and it replaces the name prefix that stood
+	 * here first. A prefix is the wrong instrument twice over: it refuses a
+	 * customer class called SynchroWidget that stages nothing, and it misses a
+	 * class that stages something without being named for it. What actually
+	 * makes a row part of the family is that it hangs off a data source - the
+	 * attribute mappings, the staged replicas, the run logs all do - and that
+	 * is a question the datamodel answers about the class in front of it.
+	 */
+	private const SOURCE_KEY_TARGET = 'SynchroDataSource';
 
 	/**
 	 * The attribute a data source names its target class in, and the one its
@@ -217,7 +227,7 @@ final class AccessGrants
 	 * latter tries a neighbouring class and a model told the former reports
 	 * it.
 	 */
-	public const DELEGATION_REFUSAL = 'Class \'%s\' defines work that iTop\'s synchronisation engine carries out later, with rights this endpoint does not have and without passing through it, so it cannot be written here unless mcp_allow_access_administration is on. Change it in the iTop console. Reading is unaffected.';
+	public const DELEGATION_REFUSAL = 'Class \'%s\' defines work that iTop\'s synchronisation engine carries out later, and this call does not settle which class it would be carried out on. Name the target - scope_class on the data source, sync_source_id on a row that hangs off one - so the write can be graded against it.';
 
 	/**
 	 * What they say when the instance allows it and the definition targets a
@@ -230,6 +240,20 @@ final class AccessGrants
 	 * lifted by staging it instead of performing it.
 	 */
 	public const DELEGATED_TARGET_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', which decides who may reach this endpoint. The synchronisation engine writes without the check that keeps an administering call away from your own access, so this target is refused whatever mcp_allow_access_administration says. Do it in the iTop console.';
+
+	/**
+	 * What they say when the definition targets an ordinary class the caller
+	 * could not have written itself.
+	 *
+	 * The rule the whole barrier reduces to, once the escalation above is
+	 * shut: staging a write must not be a way to perform one you were refused.
+	 * The engine runs as a trusted internal process and consults no
+	 * UserRights, so the rights are asked here, once, about the class the
+	 * definition points at - and all five of them, because a data source can
+	 * create, can modify, and depending on its own delete_policy can delete,
+	 * in bulk.
+	 */
+	public const DELEGATED_RIGHTS_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', and the synchronisation engine writes without consulting anyone\'s rights - so a definition may only be written here for a class you could write yourself. %s Ask an administrator for the right on \'%s\', or define the source in the iTop console.';
 
 	/**
 	 * The category iTop files its rights model under.
@@ -318,17 +342,55 @@ final class AccessGrants
 			return self::$aDecided[$sKey];
 		}
 
-		if (stripos($sClass, self::DELEGATING_PREFIX) === 0) {
-			return self::$aDecided[$sKey] = true;
-		}
-
 		foreach (self::DELEGATING_ROOTS as $sRoot) {
 			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
 				return self::$aDecided[$sKey] = true;
 			}
 		}
 
-		return self::$aDecided[$sKey] = false;
+		return self::$aDecided[$sKey] = self::PointsAtADataSource($sClass);
+	}
+
+	/**
+	 * Whether this class hangs off a synchronisation data source.
+	 *
+	 * The datamodel half of the family, asked of the class rather than of its
+	 * spelling: a row that carries an external key to a SynchroDataSource is
+	 * part of a definition the engine will execute, whatever it is called and
+	 * whoever added it. The named floor above catches the four iTop ships; this
+	 * catches the fifth.
+	 *
+	 * Never raises, and answers false for everything when there is no
+	 * MetaModel - the floor is what holds then, exactly as it does for the
+	 * granting family.
+	 */
+	private static function PointsAtADataSource(string $sClass): bool
+	{
+		if (!class_exists('MetaModel')) {
+			return false;
+		}
+
+		try {
+			if (!MetaModel::IsValidClass($sClass)) {
+				return false;
+			}
+
+			foreach (MetaModel::ListAttributeDefs($sClass) as $oAttDef) {
+				if (!$oAttDef->IsExternalKey()) {
+					continue;
+				}
+
+				$sTarget = (string) $oAttDef->GetTargetClass();
+				if ($sTarget !== ''
+					&& (strcasecmp($sTarget, self::SOURCE_KEY_TARGET) === 0 || is_a($sTarget, self::SOURCE_KEY_TARGET, true))) {
+					return true;
+				}
+			}
+		} catch (Throwable) {
+			return false;
+		}
+
+		return false;
 	}
 
 	/**
@@ -454,30 +516,31 @@ final class AccessGrants
 	public static function RefusalGiven(bool $bAdministrationAllowed, string $sClass, ?int $iId = null, array $aFields = []): ?string
 	{
 		if (self::IsDelegating($sClass)) {
-			if (!$bAdministrationAllowed) {
-				return sprintf(self::DELEGATION_REFUSAL, $sClass);
-			}
-
-			// The setting is on, so administering other people's access
-			// through this endpoint is allowed - and every such call is still
-			// graded against the caller's own credential on the way through.
-			// A definition the engine executes later is graded against
-			// nothing, so the one target that stays shut is the one that would
-			// hand back that grading.
+			// Graded on where the definition points, not on the fact that it is
+			// one. A synchronisation source over a CMDB class is ordinary work,
+			// and refusing all of it behind a setting called
+			// mcp_allow_access_administration refused the ordinary case under a
+			// name that does not describe it. What the engine actually removes
+			// is the rights check, so the rights are what this asks about.
 			$sTarget = self::DelegatedTarget($sClass, $iId, $aFields);
 			if ($sTarget === null) {
 				// Not established, which is not the same as harmless: the
-				// target decides whether this is an ordinary CMDB source or a
+				// target decides whether this is a source over the CMDB or a
 				// staged administrator account, and a rule that shrugs where it
 				// cannot tell is a rule that is answered by not telling it. The
 				// self guard below fails the same way for the same reason.
-				return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, 'a class this call does not settle');
+				return sprintf(self::DELEGATION_REFUSAL, $sClass);
 			}
+
+			// The escalation, and the one answer no setting reaches: the engine
+			// writes without the check that keeps an administering call away
+			// from the caller's own access, so staging must not be the way to
+			// get past it.
 			if (self::IsGranting($sTarget)) {
 				return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, $sTarget);
 			}
 
-			return null;
+			return self::RightsRefusalForTarget($sClass, $sTarget);
 		}
 
 		if (!self::IsGranting($sClass)) {
@@ -563,6 +626,99 @@ final class AccessGrants
 		} catch (Throwable) {
 			return null;
 		}
+	}
+
+	/**
+	 * Whether the caller could have written the target class itself.
+	 *
+	 * This is what is left of the barrier once the escalation is shut, and it
+	 * is the whole of it: the engine runs as a trusted internal process and
+	 * consults no UserRights at all, so a definition is a write with the
+	 * rights check removed. Removing a check the caller would have passed is
+	 * a scheduling decision. Removing one it would have failed is the bypass.
+	 *
+	 * All five actions, because a data source does all of them. It creates the
+	 * objects it finds, modifies the ones it matches, and - depending on the
+	 * delete_policy it carries, which is an attribute the same caller writes -
+	 * deletes the ones that have gone. In bulk, by construction. Asking only
+	 * about the one the caller happens to be doing today would be asking about
+	 * the wrong call.
+	 *
+	 * Refuses whenever it cannot ask. No UserRights, no constants, a class the
+	 * rights model will not answer for: every one of those is a refusal, for
+	 * the reason the self guard gives - the cost of being wrong this way is a
+	 * refusal an administrator can satisfy, and the cost the other way is the
+	 * bypass this exists to close.
+	 *
+	 * What it does not cover, and cannot: per-attribute rights. iTop fills a
+	 * new source's mapping in itself, every attribute at update:true, without
+	 * any call reaching this endpoint - so there is no write here to refuse.
+	 * A caller who may modify a class but not one of its attributes can
+	 * therefore have that attribute overwritten by the engine. The honest
+	 * scope of this rule is the class, and {@see SECURITY.md} says so.
+	 */
+	private static function RightsRefusalForTarget(string $sClass, string $sTarget): ?string
+	{
+		$aNeeded = [
+			'create'      => 'UR_ACTION_CREATE',
+			'modify'      => 'UR_ACTION_MODIFY',
+			'delete'      => 'UR_ACTION_DELETE',
+			'modify in bulk' => 'UR_ACTION_BULK_MODIFY',
+			'delete in bulk' => 'UR_ACTION_BULK_DELETE',
+		];
+
+		if (!class_exists('UserRights') || !class_exists('MetaModel')) {
+			return sprintf(
+				self::DELEGATED_RIGHTS_REFUSAL,
+				$sClass,
+				$sTarget,
+				'Your rights on it could not be established here.',
+				$sTarget
+			);
+		}
+
+		$aRefused = [];
+
+		try {
+			if (!MetaModel::IsValidClass($sTarget)) {
+				return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, "'{$sTarget}' is not a class this instance knows.", $sTarget);
+			}
+
+			foreach ($aNeeded as $sWhat => $sConstant) {
+				if (!defined($sConstant)) {
+					return sprintf(
+						self::DELEGATED_RIGHTS_REFUSAL,
+						$sClass,
+						$sTarget,
+						'Your rights on it could not be established here.',
+						$sTarget
+					);
+				}
+				if (!UserRights::IsActionAllowed($sTarget, constant($sConstant))) {
+					$aRefused[] = $sWhat;
+				}
+			}
+		} catch (Throwable) {
+			return sprintf(
+				self::DELEGATED_RIGHTS_REFUSAL,
+				$sClass,
+				$sTarget,
+				'Your rights on it could not be established here.',
+				$sTarget
+			);
+		}
+
+		if ($aRefused === []) {
+			return null;
+		}
+
+		return sprintf(
+			self::DELEGATED_RIGHTS_REFUSAL,
+			$sClass,
+			$sTarget,
+			'You may not '.implode(', ', $aRefused)." objects of '{$sTarget}', and the engine would.",
+			$sTarget
+		);
 	}
 
 	/**

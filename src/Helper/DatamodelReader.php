@@ -630,45 +630,52 @@ final class DatamodelReader
 	 */
 	private static function narrowedByTheBarrier(array $aRights, string $sClass): array
 	{
+		$aGates = ['create', 'bulkCreate', 'modify', 'bulkModify', 'delete', 'bulkDelete'];
+
 		try {
 			if (!AccessGrants::IsBarred($sClass)) {
 				return $aRights + ['restricted' => null];
 			}
 
-			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
+			$bGranting              = AccessGrants::IsGranting($sClass);
 			$bDelegating            = AccessGrants::IsDelegating($sClass);
+			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
 		} catch (\Throwable $e) {
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
 			return $aRights + ['restricted' => null];
 		}
 
-		foreach (['create', 'bulkCreate', 'modify', 'bulkModify', 'delete', 'bulkDelete'] as $sGate) {
+		// The delegating half first, and only where the granting half has
+		// nothing to say: a class that is both is refused by the stricter of
+		// the two, and that is the one below.
+		if ($bDelegating && !$bGranting) {
+			// Always 'depends', never 'no': this half settles nothing from the
+			// class alone. Whether the write is allowed is a question about the
+			// row - which class the definition points at, and what this caller
+			// may do to that class - and 'depends' is the grade that says
+			// exactly that. The setting is not consulted, because this half
+			// does not read it.
+			foreach ($aGates as $sGate) {
+				$aRights[$sGate] = self::stricter($aRights[$sGate], 'depends');
+			}
+
+			$aRights['restricted'] = sprintf(
+				'%s defines work iTop\'s synchronisation engine carries out later, and the engine consults no rights at all. '
+				.'So a definition may be written here only for a class you could write yourself - create, modify and delete, in bulk - '
+				.'and never for one that decides who may reach this endpoint, which no setting permits, because the engine also writes '
+				.'without the check that keeps an administering call away from your own access. Name the target (scope_class, or '
+				.'sync_source_id on a row hanging off a source) so the call can be graded. Reading is unaffected.',
+				$sClass
+			);
+
+			return $aRights;
+		}
+
+		foreach ($aGates as $sGate) {
 			$aRights[$sGate] = $bAdministrationAllowed
 				? self::stricter($aRights[$sGate], 'depends')
 				: 'no';
-		}
-
-		if ($bDelegating) {
-			// 'depends' rather than 'yes' on the permitted side for the reason
-			// the grade exists: whether the write is allowed is a question
-			// about the row - which class this definition would be pointed at
-			// - and that is not answerable from the class alone.
-			$aRights['restricted'] = $bAdministrationAllowed
-				? sprintf(
-					'%s defines work iTop\'s synchronisation engine carries out later, with rights this endpoint does not have. '
-					.'mcp_allow_access_administration is on, so it may be written - except pointed at a class that decides who may reach this endpoint, '
-					.'which no setting permits, because the engine writes without the check that keeps an administering call away from your own access.',
-					$sClass
-				)
-				: sprintf(
-					'%s defines work iTop\'s synchronisation engine carries out later, with rights this endpoint does not have and without passing through it, '
-					.'so it cannot be written here at all, whatever your profile says. Turn on mcp_allow_access_administration, or use the iTop console. '
-					.'Reading is unaffected.',
-					$sClass
-				);
-
-			return $aRights;
 		}
 
 		$aRights['restricted'] = $bAdministrationAllowed

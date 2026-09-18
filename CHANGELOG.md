@@ -333,39 +333,31 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
-- **The endpoint does not hand a write to something that writes for it.** The access barrier is
-  built on one sentence — this endpoint never writes the things that decide what it may write —
-  and a red-team pass against a live instance found the half that sentence does not cover. A
-  `SynchroDataSource` decides nothing about this endpoint's rights and carries no credential, so
-  the rule by attribute type passes it by, deliberately and with a note saying so. What it is, is
-  a standing instruction to iTop's synchronisation engine: `scope_class` takes any class in the
-  datamodel, iTop fills the attribute mapping in for you — `password` and `profile_list` included,
-  `update:true` by default — and the engine applies it later from cron or a console button, as a
-  trusted internal process that never passes through this endpoint. A caller that may not write
-  `UserLocal` could therefore stage an administrator account with a chosen password and wait, and
-  nothing in the call that staged it touched a refused class. `SynchroDataSource`,
-  `SynchroAttribute`, `SynchroReplica`, `SynchroLog`, their descendants and anything else named
-  `Synchro*` are now refused by every write tool under `mcp_allow_access_administration`, with a
-  refusal that names what is being refused rather than saying "access denied". Where an operator
-  turns the setting on, one target stays shut regardless: a definition pointed at a class behind
-  the barrier, or at a class the call does not settle, since the engine writes without the
-  self-guard that grades every administering call made through this endpoint — staging the
-  escalation must not be the way to perform it. Reading is unaffected, as it is for the classes
-  the barrier already covered, and `core_class_schema`'s `restricted` line says which of the two
-  refusals a class is under, because they are fixed by different people.
-- **A bulk creation that worked says so.** The third crossing of the same boundary, and the one
-  that cost the most: `AbstractBulkTool::outcome()` declared `?int` for the id, and
-  `core_object_bulk_create` hands it what `DBInsert()` returned — the key as a string. Under
-  `strict_types` that is a `TypeError`, raised after the row was committed and inside the catch
-  that exists precisely for a throw landing there, so **every** successful row of a real bulk
-  create came back "Created, but the call failed after the write" with a warning telling the
-  caller to report the reference rather than retry. The objects were correct and complete; only
-  the report was wrong, which is the version of this bug a caller is least likely to check.
-  Bulk update and bulk delete never showed it, because `checkIds()` had already made an int of
-  every id they pass. The parameter now takes the id as iTop reports it and normalises it
-  through `WritePlan::AsId()`, so the widening is done once at the boundary the three bulk tools
-  share rather than at each call site — and a unit test pins the signature, beside the two that
-  already pin `WritePlan::Identity()` and `DocumentAccess::Describe()`.
+- **A write handed to iTop's synchronisation engine is graded on where it lands.** The access
+  barrier is built on one sentence — this endpoint never writes the things that decide what it
+  may write — and a red-team pass against a live instance found the half that sentence does not
+  cover. A `SynchroDataSource` decides nothing about this endpoint's rights and carries no
+  credential, so the rule by attribute type passes it by, deliberately and with a note saying so.
+  What it is, is a standing instruction to the synchronisation engine: `scope_class` takes any
+  class in the datamodel, iTop fills the attribute mapping in for you — `password` and
+  `profile_list` included, `update:true` by default — and the engine applies it later from cron or
+  a console button, as a trusted internal process that never passes through this endpoint and
+  **consults no `UserRights` at all**. A caller that may not write `UserLocal` could therefore
+  stage an administrator account with a chosen password and wait, and nothing in the call that
+  staged it touched a refused class. So a definition is a write with the rights check removed, and
+  it is graded as one: pointed at a class behind the barrier it is refused and **no setting lifts
+  it**, because the engine is graded against nothing and staging must not be the way past the
+  self-guard; pointed at anything else it is allowed only where the caller holds create, modify,
+  delete and the bulk rights on that class itself, since staging a write you could have performed
+  is a scheduling decision and staging one you were refused is the bypass; and a definition that
+  names no target is refused, the target being the whole basis on which the other two grade it.
+  The family is `SynchroDataSource`, its descendants, and any class carrying an external key to
+  one — the mappings, the replicas, the run logs — asked of the datamodel rather than matched on a
+  name prefix, so a customer class called `SynchroWidget` stays nobody's business. Reading is
+  unaffected, and `core_class_schema` grades these `depends` with a `restricted` line saying what
+  would settle the call. **Not covered:** per-attribute rights. iTop populates a new source's
+  mapping itself, without any call reaching this endpoint, so there is no write here to refuse —
+  the rule is honestly a class-level one, and `SECURITY.md` says so.
 - **A deletion that happened is reported as one.** The creation paths ask "is there a row" after a
   throw, because `DBInsert()` commits and then keeps going; `DBDelete()` has the same shape and
   `core_object_delete` asked nothing, turning every throw into an outright failure — including the
