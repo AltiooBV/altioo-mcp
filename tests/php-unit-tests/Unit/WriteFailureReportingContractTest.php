@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -362,6 +363,76 @@ class WriteFailureReportingContractTest extends TestCase
 			'a question asked while an exception is being reported may not raise one of its own');
 		$this->assertStringContainsString('return false;', $sGone,
 			'a question it cannot answer has to read as "still there", or a failure becomes a deletion report');
+	}
+
+	/**
+	 * A token pinned to dry runs rehearses whatever the caller passed.
+	 *
+	 * The trust tier between "may read" and "may write": propose changes, show
+	 * a person what they would do, commit nothing. It belongs to the
+	 * credential rather than to the call, because a caller that can choose is
+	 * not restricted - and it lives on the token rather than in a session,
+	 * because this endpoint is stateless and the token is the only thing that
+	 * persists between calls.
+	 *
+	 * Two halves pinned here. The decision itself, which must never turn a
+	 * rehearsal into a write; and the fact that every write tool routes its
+	 * argument through it, since one that reads `simulate` directly is one the
+	 * scope does not reach.
+	 */
+	public function testAnAdvisoryTokenRehearsesWhateverTheCallerAsked(): void
+	{
+		AccessPolicy::Forget();
+
+		// No policy remembered: the caller's own answer stands, which is the
+		// state this suite runs in and the only safe direction to fail in.
+		$this->assertTrue(WritePlan::Simulated(true));
+		$this->assertFalse(WritePlan::Simulated(false));
+
+		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write']));
+		$this->assertFalse(WritePlan::Simulated(false), 'an ordinary write token was forced to rehearse');
+
+		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']));
+		$this->assertTrue(WritePlan::Simulated(false), 'an advisory token was allowed to write');
+		$this->assertTrue(WritePlan::Simulated(true));
+
+		// The modifier survives "everything", and narrowing only ever adds it.
+		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP', 'MCP-advisory']));
+		$this->assertTrue(WritePlan::Simulated(false), 'a full-scope token shook the modifier off');
+
+		$oOpen = AccessPolicy::FromScopes(['MCP']);
+		$this->assertTrue(
+			$oOpen->narrowedBy(AccessPolicy::FromScopes(['MCP-advisory']))->isAdvisory(),
+			'narrowing dropped the advisory modifier instead of keeping it'
+		);
+
+		AccessPolicy::Forget();
+	}
+
+	/** Every write tool routes its dry-run argument through the one decision. */
+	public function testEveryWriteToolAsksWhetherItIsRehearsing(): void
+	{
+		$aMissing = [];
+
+		foreach ($this->phpFiles() as $sPath) {
+			$sSource = (string) file_get_contents($sPath);
+			if (!str_contains($sSource, 'bool    $simulate') && !str_contains($sSource, 'bool $simulate')) {
+				continue;
+			}
+			// The helper that defines it, not a caller of it.
+			if (str_contains($sSource, 'public static function Simulated(')) {
+				continue;
+			}
+			if (!str_contains($sSource, 'WritePlan::Simulated($simulate)')) {
+				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
+			}
+		}
+		sort($aMissing);
+
+		$this->assertSame([], $aMissing, sprintf(
+			'These take a dry-run argument and read it directly, so the advisory scope does not reach them: %s',
+			implode(', ', $aMissing)
+		));
 	}
 
 	/** Every id that came out of a write goes through the one normaliser. */

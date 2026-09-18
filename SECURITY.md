@@ -124,6 +124,26 @@ so a browser cookie cannot be replayed against it. Four gates apply, and all of 
 A token scope can only ever make a credential **narrower** than the user's own profiles. It
 never widens anything.
 
+**Scopes are enforced, not labelled.** The policy is decided per request — instance capabilities,
+narrowed by `mcp_read_only`, narrowed by the calling token's scopes — and a tool the result does
+not allow is **never registered on that connection**. It is not hidden from `tools/list` while
+staying callable: on that session it does not exist, and `tools/call` answers accordingly. A token
+whose scopes cannot be read falls back to read-only rather than to everything.
+
+`MCP` everything · `MCP-read` read · `MCP-write` read and write, not delete · `MCP-delete` delete ·
+`MCP-toolset-<name>` that toolset only · **`MCP-advisory`** every write tool it can reach rehearses.
+
+That last one is a modifier rather than a grade, and it is the trust tier between "may read" and
+"may write": a token carrying it may call the write tools its other scopes allow, and every one of
+them forces `simulate` true whatever the caller passed — propose changes, show a person what they
+would do, commit nothing. It belongs to the credential rather than to the call, because a caller
+that can choose is not restricted. It lives on the token rather than in a session because there is
+no session: this endpoint is stateless, and the token record is the only thing that persists
+between calls and is read on every one of them anyway. It survives `MCP` (a token asking for
+everything, as a rehearsal) and narrowing only ever adds it. Every write tool routes its argument
+through one decision, and a unit test fails if one reads `simulate` directly — a tool that does is
+a tool the scope does not reach.
+
 ### The rule the write barriers reduce to
 
 **You cannot arrange what you cannot do.** If this endpoint will not let a caller read, create,
@@ -156,12 +176,16 @@ Three consequences, and they are where the earlier one-family-at-a-time rules ca
   calls a URL, invokes a static method by name, or authenticates outward as this instance. So for
   `Trigger`, `Action`, `AsyncTask` and the credentials they act with, "could the caller have done
   this itself" has one answer for **every** caller, administrator included — there is no profile
-  that makes it yes — and `mcp_allow_automation_administration` is an operator **overriding** that,
+  that makes it yes — and `mcp_allow_privilege_escalation` is an operator **overriding** that,
   not a grade. Even overridden, a trigger is still graded against the class it watches and an email
   action against the class its recipients select.
 
-**What `mcp_allow_automation_administration` is, said plainly, because its name misleads.** It is
-an **escalation switch, not a feature switch**. Every other refusal here says "you could not do
+**What `mcp_allow_privilege_escalation` is, said plainly.** It is an
+**escalation switch, not a feature switch** — named for that rather than for the classes it
+governs, which are
+iTop's automation. Naming it after those read as "let the assistant manage our notifications",
+which is not what turning it on means, and an operator reading a settings table decides from the
+name. Every other refusal here says "you could not do
 this directly, so you may not arrange it"; this setting governs the cases where *nobody* could do
 it directly, so turning it on is an operator consenting to the endpoint granting **more than the
 credential it was called with**. It is not "let the assistant manage our notifications", even
@@ -312,7 +336,7 @@ loaded public static method by name", and what is loaded depends on the instance
 
 So `Trigger`, `Action`, everything descending from either, any class carrying an external key to
 one of them (which is what `lnkTriggerAction` is), and `RemoteApplicationConnection` are refused
-by every write tool unless `mcp_allow_automation_administration` is on. That is **its own
+by every write tool unless `mcp_allow_privilege_escalation` is on. That is **its own
 setting**, not a share of `mcp_allow_access_administration`: "may an assistant administer other
 people's access" and "may an assistant leave a standing instruction that makes this instance call
 out on its own" are decisions an operator can reasonably take separately. Reading is unaffected.
@@ -369,7 +393,7 @@ outside the barrier on the reasoning above — that a recoverable secret is the 
 which is why a device or mailbox password is deliberately not matched. That reasoning covers a
 device password and does not cover a token this instance authenticates to a third party with,
 which a caller can replace with its own or read back through something else it wrote. They sit
-behind `mcp_allow_automation_administration` with the rest of the outbound machinery. The wider
+behind `mcp_allow_privilege_escalation` with the rest of the outbound machinery. The wider
 question — every class holding any recoverable secret — is deliberately still open, and the
 recoverable-type exclusion above still stands for the cases it was written for.
 
@@ -473,11 +497,11 @@ reference.
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
 | An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by the synchro engine, which checks no rights on what it writes and can be triggered by the account the source names as its owner | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves; one that names no target is refused. Per-attribute rights are not covered — see above |
-| An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_automation_administration` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
+| An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_privilege_escalation` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |
 | An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included |
-| Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_automation_administration` |
+| Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
 | Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
 | Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |

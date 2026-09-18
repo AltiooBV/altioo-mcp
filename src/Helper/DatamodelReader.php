@@ -661,7 +661,7 @@ final class DatamodelReader
 			$bDetection             = AccessGrants::IsDetection($sClass);
 			$bPersonal              = AccessGrants::IsPersonal($sClass);
 			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
-			$bAutomationAllowed     = MCPHelper::AllowsAutomationAdministration();
+			$bEscalationAllowed     = MCPHelper::AllowsPrivilegeEscalation();
 		} catch (\Throwable $e) {
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
@@ -683,7 +683,7 @@ final class DatamodelReader
 		if ($bDetection && !$bGranting) {
 			$aRights['restricted'] = sprintf(AccessGrants::DETECTION_REFUSAL, $sClass);
 
-			if (!$bAutomationAllowed) {
+			if (!$bEscalationAllowed) {
 				foreach ($aGates as $sGate) {
 					$aRights[$sGate] = 'no';
 				}
@@ -716,21 +716,21 @@ final class DatamodelReader
 		}
 
 		if ($bAutomation && !$bGranting) {
-			$aRights['restricted'] = $bAutomationAllowed
+			$aRights['restricted'] = $bEscalationAllowed
 				? sprintf(
 					'%s is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, '
-					.'on changes made by anyone. mcp_allow_automation_administration is on, so it may be written here.',
+					.'on changes made by anyone. mcp_allow_privilege_escalation is on, so it may be written here.',
 					$sClass
 				)
 				: sprintf(
 					'%s is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, on changes made by '
 					.'anyone, and outside this endpoint entirely. Nothing here can send mail or call a URL directly, so staging one cannot be graded '
-					.'against what you may do: it is refused at all, whatever your profile says. Turn on mcp_allow_automation_administration, or use '
+					.'against what you may do: it is refused at all, whatever your profile says. Turn on mcp_allow_privilege_escalation, or use '
 					.'the iTop console. Reading is unaffected.',
 					$sClass
 				);
 
-			if (!$bAutomationAllowed) {
+			if (!$bEscalationAllowed) {
 				foreach ($aGates as $sGate) {
 					$aRights[$sGate] = 'no';
 				}

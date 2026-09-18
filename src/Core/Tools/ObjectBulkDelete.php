@@ -97,6 +97,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 		?string $comment = null,
 	): mixed
 	{
+		// The advisory scope, before anything reads it: a token pinned to dry
+		// runs rehearses whatever the caller passed, and normalising here means
+		// every branch and every reported `simulated` below is already right.
+		$simulate = WritePlan::Simulated($simulate);
+
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_DELETE, UR_ACTION_DELETE, 'delete');
 

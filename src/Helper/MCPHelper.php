@@ -151,11 +151,13 @@ class MCPHelper
 	 * Whether an operator consents to this endpoint handing out capabilities
 	 * no caller of it holds.
 	 *
-	 * **This is an escalation switch, not a feature switch.** The name says
-	 * "automation" because the classes it governs are iTop's automation, and
-	 * that reads like "let the assistant manage notifications". It is not what
-	 * turning it on means, and the distinction is the whole reason it exists
-	 * separately.
+	 * **This is an escalation switch, not a feature switch**, and it is named
+	 * for what it does rather than for what it governs. It was
+	 * mcp_allow_automation_administration first, because the classes behind it
+	 * are iTop's automation - and that name read like "let the assistant manage
+	 * our notifications", which is not what turning it on means. An operator
+	 * reading a setting decides from its name, so the name is where the
+	 * sentence had to go.
 	 *
 	 * Everything else this endpoint refuses, it refuses because the caller
 	 * could not do the same thing directly - so permitting it would hand back
@@ -177,7 +179,7 @@ class MCPHelper
 	 * AccessGrants: the rule is that you cannot arrange what you cannot do,
 	 * and this setting is the one place an operator overrides it.
 	 */
-	const MODULE_SETTING_ALLOW_AUTOMATION_ADMINISTRATION = 'mcp_allow_automation_administration';
+	const MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION = 'mcp_allow_privilege_escalation';
 
 	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
@@ -552,13 +554,13 @@ class MCPHelper
 	 *
 	 * Off by default, and the default is the answer for almost every instance.
 	 * See the constant above for what turning it on actually means, which is
-	 * not what its name suggests.
+	 * exactly what the name says.
 	 *
 	 * @since 1.0.0
 	 */
-	public static function AllowsAutomationAdministration(): bool
+	public static function AllowsPrivilegeEscalation(): bool
 	{
-		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_AUTOMATION_ADMINISTRATION, false) === true;
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION, false) === true;
 	}
 
 	/**

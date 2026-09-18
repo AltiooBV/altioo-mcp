@@ -110,6 +110,11 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		?string $comment = null,
 	): mixed
 	{
+		// The advisory scope, before anything reads it: a token pinned to dry
+		// runs rehearses whatever the caller passed, and normalising here means
+		// every branch and every reported `simulated` below is already right.
+		$simulate = WritePlan::Simulated($simulate);
+
 		if (empty($fields)) {
 			throw new ToolCallException('No fields provided for update.');
 		}

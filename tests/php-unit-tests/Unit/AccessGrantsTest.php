@@ -636,7 +636,7 @@ class AccessGrantsTest extends TestCase
 	 * Even with the operator's override, a trigger only reaches what the caller
 	 * reaches.
 	 *
-	 * mcp_allow_automation_administration says an assistant may wire up
+	 * mcp_allow_privilege_escalation says an assistant may wire up
 	 * notifications. It does not say it may wire one up over records it is not
 	 * allowed to read - which is the same sentence as everything else here,
 	 * applied to the class the trigger watches rather than the class a source
@@ -679,7 +679,7 @@ class AccessGrantsTest extends TestCase
 	/**
 	 * The setting says what it is, because its name does not.
 	 *
-	 * mcp_allow_automation_administration reads as "let the assistant manage
+	 * mcp_allow_privilege_escalation reads as "let the assistant manage
 	 * our notifications", and that is not what turning it on means. Everything
 	 * else this endpoint refuses is refused because the caller could not do
 	 * the same thing directly; these classes are refused because **nobody**
@@ -782,7 +782,7 @@ class AccessGrantsTest extends TestCase
 		$sRefusal = AccessGrants::RefusalGiven(true, $sClass, 1, [], false);
 
 		$this->assertNotNull($sRefusal, "{$sClass} makes the instance act on its own and was allowed through");
-		$this->assertStringContainsString('mcp_allow_automation_administration', $sRefusal);
+		$this->assertStringContainsString('mcp_allow_privilege_escalation', $sRefusal);
 	}
 
 	/**

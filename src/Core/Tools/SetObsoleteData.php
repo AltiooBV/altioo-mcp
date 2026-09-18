@@ -135,6 +135,11 @@ class SetObsoleteData extends AbstractMCPTool
 	 */
 	public static function execute(bool $visible, bool $simulate = WritePlan::SIMULATE_BY_DEFAULT): mixed
 	{
+		// The advisory scope, before anything reads it: a token pinned to dry
+		// runs rehearses whatever the caller passed, and normalising here means
+		// every branch and every reported `simulated` below is already right.
+		$simulate = WritePlan::Simulated($simulate);
+
 		// The barrier every write on this endpoint passes, asked about the
 		// class this one writes. appUserPreferences is not a class that grades
 		// access today, and asking rather than assuming is what covers the day

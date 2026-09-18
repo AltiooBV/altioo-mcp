@@ -71,6 +71,7 @@ final class AccessPolicy
 	private function __construct(
 		private readonly ?array $aCapabilities,
 		private readonly ?array $aToolsets,
+		private readonly bool $bAdvisory = false,
 	)
 	{
 	}
@@ -79,6 +80,54 @@ final class AccessPolicy
 	public static function Unrestricted(): self
 	{
 		return new self(null, null);
+	}
+
+	/**
+	 * Whether every write this policy allows must rehearse instead of writing.
+	 *
+	 * A modifier rather than a grade: it does not decide which tools are
+	 * served, it decides what they do when called. See
+	 * MCPContext::SCOPE_ADVISORY.
+	 *
+	 * @since 1.0.0
+	 */
+	public function isAdvisory(): bool
+	{
+		return $this->bAdvisory;
+	}
+
+	/**
+	 * The policy of the request being served, for the code that needs it and
+	 * is not handed it.
+	 *
+	 * Remembered once by the controller rather than recomputed, because
+	 * recomputing reads the token out of the database and a write tool asking
+	 * "am I rehearsing" should not cost a query. Static, and safe to be: this
+	 * endpoint serves one request per process and holds nothing between them.
+	 *
+	 * Null before the controller has decided, which is the state a unit suite
+	 * runs in - and {@see \Altioo\iTop\Extension\MCP\Helper\WritePlan::Simulated()}
+	 * treats null as "no opinion" rather than "not advisory", so nothing here
+	 * quietly turns a rehearsal into a write.
+	 */
+	private static ?self $oCurrent = null;
+
+	/** @since 1.0.0 */
+	public static function Remember(self $oPolicy): void
+	{
+		self::$oCurrent = $oPolicy;
+	}
+
+	/** @since 1.0.0 */
+	public static function Current(): ?self
+	{
+		return self::$oCurrent;
+	}
+
+	/** For tests, and for a runner that serves more than one request. @since 1.0.0 */
+	public static function Forget(): void
+	{
+		self::$oCurrent = null;
 	}
 
 	/**
@@ -131,12 +180,20 @@ final class AccessPolicy
 	public static function FromScopes(array $aScopes): self
 	{
 		$bEverything = false;
+		$bAdvisory = false;
 		$aCapabilities = [];
 		$aToolsets = [];
 
 		foreach ($aScopes as $sScope) {
 			if ($sScope === MCPContext::SCOPE_MCP) {
 				$bEverything = true;
+				continue;
+			}
+			// Read before the grades and independently of them: a token
+			// carrying MCP and MCP-advisory is asking for everything, as a
+			// rehearsal. The modifier narrows, so it survives "everything".
+			if ($sScope === MCPContext::SCOPE_ADVISORY) {
+				$bAdvisory = true;
 				continue;
 			}
 			if (str_starts_with($sScope, MCPContext::SCOPE_TOOLSET_PREFIX)) {
@@ -157,12 +214,13 @@ final class AccessPolicy
 		}
 
 		if ($bEverything) {
-			return self::Unrestricted();
+			return new self(null, null, $bAdvisory);
 		}
 
 		return new self(
 			empty($aCapabilities) ? null : array_values(array_unique($aCapabilities)),
-			empty($aToolsets) ? null : $aToolsets
+			empty($aToolsets) ? null : $aToolsets,
+			$bAdvisory
 		);
 	}
 
@@ -177,7 +235,10 @@ final class AccessPolicy
 	{
 		return new self(
 			self::narrowList($this->aCapabilities, $oOther->aCapabilities),
-			self::narrowList($this->aToolsets, $oOther->aToolsets)
+			self::narrowList($this->aToolsets, $oOther->aToolsets),
+			// Or rather than and: advisory on either side is the narrower
+			// answer, and narrowing is the only thing this method does.
+			$this->bAdvisory || $oOther->bAdvisory
 		);
 	}
 

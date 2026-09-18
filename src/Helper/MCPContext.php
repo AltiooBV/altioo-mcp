@@ -28,6 +28,22 @@ class MCPContext
 	const SCOPE_MCP = self::TAG_MCP;
 
 	/**
+	 * Scope pinning a token to dry runs.
+	 *
+	 * Not a grade and not a toolset: a modifier. A token carrying it may call
+	 * every write tool its other scopes allow, and every one of them rehearses
+	 * - simulate is forced true whatever the caller passes. That is the trust
+	 * tier between "may read" and "may write": propose changes, show a person
+	 * what they would do, commit nothing.
+	 *
+	 * On the token rather than in a session, because there is no session: this
+	 * endpoint is stateless, one request at a time, and the token record is
+	 * the only thing that persists between calls and is read on every one of
+	 * them anyway.
+	 */
+	const SCOPE_ADVISORY = self::SCOPE_MCP.'-advisory';
+
+	/**
 	 * Prefix of a scope naming a toolset, e.g. MCP-toolset-objects.
 	 *
 	 * Spelled out rather than 'MCP-<name>' so that a pack naming a toolset

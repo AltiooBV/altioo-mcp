@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
@@ -98,6 +99,10 @@ final class MCPController
 			// still sitting there would be copied into its server parameters
 			// and live for the rest of the call.
 			$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
+			// Remembered before the token is dropped, because deciding it again
+			// later would need the token back. A write tool asks this to learn
+			// whether it is rehearsing, and asking must not cost a query.
+			AccessPolicy::Remember($oPolicy);
 			MCPHttp::ForgetAuthToken();
 
 			$oKPI->ComputeAndReport('Parameters validated');

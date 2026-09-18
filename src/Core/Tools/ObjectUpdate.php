@@ -125,6 +125,11 @@ class ObjectUpdate extends AbstractMCPTool
 		bool    $obsolete_ok = false,
 	): mixed
 	{
+		// The advisory scope, before anything reads it: a token pinned to dry
+		// runs rehearses whatever the caller passed, and normalising here means
+		// every branch and every reported `simulated` below is already right.
+		$simulate = WritePlan::Simulated($simulate);
+
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
 		}

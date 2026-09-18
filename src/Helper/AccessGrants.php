@@ -542,7 +542,7 @@ final class AccessGrants
 	 * Trigger rows" but "may an assistant leave standing instructions that
 	 * make this instance call out on its own".
 	 */
-	public const AUTOMATION_REFUSAL = 'Class \'%s\' arranges something no tool here can do at all - sending mail, calling a URL, invoking a method by name, or authenticating outward as this instance - so it is not refused for want of a right you might be granted: no caller of this endpoint has one, administrators included. Writing it is refused unless mcp_allow_automation_administration is on, which is an operator allowing this endpoint to grant more than the credential it was called with, rather than a switch for managing automation. Do it in the iTop console. Reading is unaffected.';
+	public const AUTOMATION_REFUSAL = 'Class \'%s\' arranges something no tool here can do at all - sending mail, calling a URL, invoking a method by name, or authenticating outward as this instance - so it is not refused for want of a right you might be granted: no caller of this endpoint has one, administrators included. Writing it is refused unless mcp_allow_privilege_escalation is on, which is an operator allowing this endpoint to grant more than the credential it was called with, rather than a switch for managing automation. Do it in the iTop console. Reading is unaffected.';
 
 	/**
 	 * What every write tool says about the record of what happened.
@@ -561,9 +561,9 @@ final class AccessGrants
 	/** What they say when a recipient query reaches something the caller may not read. */
 	public const RECIPIENT_REFUSAL = 'The \'%2$s\' of this \'%1$s\' is a query over \'%3$s\', and the mailer runs it with rights and silos switched off - so it would collect addresses from every matching row. Refused because %4$s. Narrow the query to a class you can read here, or set the recipients up in the iTop console.';
 
-	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_automation_administration says. Use the iTop console.';
+	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_privilege_escalation says. Use the iTop console.';
 
-	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - not something this endpoint changes on its own initiative. It is refused unless mcp_allow_automation_administration is on, which is an operator allowing this endpoint to grant more than the credential it was called with rather than a switch for managing automation. Change it in the iTop console. Reading is unaffected.';
+	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - not something this endpoint changes on its own initiative. It is refused unless mcp_allow_privilege_escalation is on, which is an operator allowing this endpoint to grant more than the credential it was called with rather than a switch for managing automation. Change it in the iTop console. Reading is unaffected.';
 
 	/**
 	 * What they say when a write reaches somebody else's personal row.
@@ -936,7 +936,7 @@ final class AccessGrants
 			$sClass,
 			$iId,
 			$aFields,
-			MCPHelper::AllowsAutomationAdministration()
+			MCPHelper::AllowsPrivilegeEscalation()
 		);
 	}
 
@@ -957,7 +957,7 @@ final class AccessGrants
 		string  $sClass,
 		?int    $iId = null,
 		array   $aFields = [],
-		bool    $bAutomationAllowed = false,
+		bool    $bEscalationAllowed = false,
 	): ?string
 	{
 		// Somebody else's personal row, whatever else is true of the class.
@@ -1000,7 +1000,7 @@ final class AccessGrants
 		// all, so the rule below yields "refused" for every caller and the
 		// setting is an operator overriding that, not a grade.
 		if (self::IsAutomation($sClass)) {
-			if (!$bAutomationAllowed) {
+			if (!$bEscalationAllowed) {
 				return sprintf(self::AUTOMATION_REFUSAL, $sClass);
 			}
 
@@ -1028,7 +1028,7 @@ final class AccessGrants
 		}
 
 		if (self::IsDetection($sClass)) {
-			if (!$bAutomationAllowed) {
+			if (!$bEscalationAllowed) {
 				return sprintf(self::DETECTION_REFUSAL, $sClass);
 			}
 

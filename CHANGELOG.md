@@ -333,6 +333,22 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
+- **`MCP-advisory`: a token that may call the write tools and never writes.** The trust tier
+  between "may read" and "may write", and the answer to wanting one without inventing a session:
+  this endpoint is stateless, so it lives on the token, where every request reads it anyway. A
+  token carrying the scope may call every write tool its other scopes allow, and each one forces
+  `simulate` true whatever the caller passed — propose changes, show a person what they would do,
+  commit nothing. It is a modifier rather than a grade: it survives `MCP` (a token asking for
+  everything, as a rehearsal) and narrowing only ever adds it, never drops it. Every write tool
+  routes its argument through one decision rather than reading `simulate` directly, and a unit test
+  fails naming any tool that does not — a tool reading it directly is a tool the scope does not
+  reach. With no policy remembered the caller's own answer stands, which is the only direction this
+  can fail in without turning a rehearsal into a write.
+- **`mcp_allow_automation_administration` is now `mcp_allow_privilege_escalation`.** Same switch,
+  named for what it does instead of for the classes it governs. The old name read as "let the
+  assistant manage our notifications", which is not what turning it on means, and an operator
+  reading a settings table decides from the name — so the sentence that had been added to the
+  documentation belongs in the name itself. Nothing is released, so the rename costs nothing.
 - **The endpoint does not write the record of what it did.** The one that undermines the rest, and
   it was this module's own doing. `AltiooEventMCPService` — a row per inbound request, carrying the
   method, the tool, the status and the error — was left writable by the very session it records, so
@@ -400,7 +416,7 @@ published archive was installed and exercised on into this line; the README and
   delegates sending mail, calling a URL and invoking a static method by name, which it grants
   nobody. A rule whose answer is the same for every caller is a refusal. `Trigger`, `Action`,
   their descendants, any class carrying an external key to one of them and
-  `RemoteApplicationConnection` are refused unless **`mcp_allow_automation_administration`** is on
+  `RemoteApplicationConnection` are refused unless **`mcp_allow_privilege_escalation`** is on
   — a new setting rather than a share of the access one, because "may an assistant administer
   other people's access" and "may an assistant make this instance call out on its own" are
   separate decisions. Also worth knowing, though not itself a hole: `ActioniTopWebhook`'s
@@ -483,7 +499,7 @@ published archive was installed and exercised on into this line; the README and
   `Event` or at `AsyncTask` is refused by the rules that refuse `Event` and `AsyncTask` without
   either being listed a second time — a hole the family-by-family version had. Where no direct
   equivalent exists at all — nothing here sends mail, calls a URL, or invokes a static method by
-  name — the rule yields "no" for every caller, and `mcp_allow_automation_administration` is an
+  name — the rule yields "no" for every caller, and `mcp_allow_privilege_escalation` is an
   operator overriding it rather than a grade; even overridden, a trigger is still graded against
   the class it watches.
 - **An email action's recipients are graded as the read they are.** The gap left open when the
@@ -506,7 +522,7 @@ published archive was installed and exercised on into this line; the README and
   rather than less. The audited class is read from the category's `definition_set` OQL, through
   `category_id` for a rule; where it cannot be established the edit is refused, which makes an
   `AuditDomain` — a grouping, with no query of its own — not editable here at all.
-- **`mcp_allow_automation_administration` is an escalation switch, not a feature switch**, and now
+- **`mcp_allow_privilege_escalation` is an escalation switch, not a feature switch**, and now
   says so wherever anyone reads it — the refusals a caller gets, the module setting's own comment,
   the README table and `SECURITY.md`. The name invites exactly the wrong reading. Every other
   refusal on this endpoint means "you could not do this directly, so you may not arrange it"; the

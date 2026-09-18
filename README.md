@@ -486,6 +486,17 @@ credentials of different strength.
 | `MCP-write` | Read, create and modify — **not** delete |
 | `MCP-delete` | Tools that declare `destructiveHint` |
 | `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects`. The base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server` |
+| `MCP-advisory` | **Every write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing |
+
+`MCP-advisory` is a modifier rather than a grade, and it is the trust tier between "may read" and
+"may write": pair it with `MCP-write` and the integration can compute and show exactly what it
+would change, without being able to change anything. It belongs to the credential rather than to
+the call, because a caller that can choose is not restricted; it survives `MCP`, so a token asking
+for everything as a rehearsal gets that; and combining it with anything only ever adds it.
+
+Scopes are **enforced, not labelled**: a tool the resulting policy does not allow is never
+registered on that connection, so it is not merely absent from `tools/list` but absent from the
+session. A token whose scopes cannot be read falls back to read-only rather than to everything.
 
 They combine, and the grades are a union: `MCP-write` is read *and* write, because granting
 write without read describes nothing anyone means by it. `MCP-read` together with
@@ -588,7 +599,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_capabilities' => array(),
     'mcp_read_only' => false,
     'mcp_allow_access_administration' => false,
-    'mcp_allow_automation_administration' => false,
+    'mcp_allow_privilege_escalation' => false,
     'mcp_max_document_bytes' => 5242880,
     'mcp_pagination_limit' => 200,
     'mcp_protected_resource_metadata' => '',
@@ -610,7 +621,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
 | `mcp_allow_access_administration` | `false` | Whether the classes that decide what a caller may do — `PersonalToken`, `UserToken`, `User`, iTop's `URP_*` — may be written here at all. Off, every write tool refuses them whatever the caller's iTop rights say, because a caller able to write them can widen the credential it was handed. On, the caller may administer *other* people's access — onboard a user, retire somebody's token — and still never its own: not the token it authenticated with, not another token of its own, not its own account or profile links. That self-guard is unconditional and this setting does not reach it. Reads are unaffected either way. This setting has nothing to say about iTop's synchronisation classes, which are graded on where the definition points and on your own rights over that class — see [SECURITY.md](SECURITY.md) |
-| `mcp_allow_automation_administration` | `false` | **An escalation switch, not a feature switch.** It governs `Trigger`, `Action` (so `ActionEmail`, whose recipients are OQL queries), the links between them, `AsyncTask` (so `AsyncSendEmail`, the mail queue the cron drains), the `RemoteApplicationConnection` a webhook calls through, the `Oauth2Client`/`OAuthClient` tokens the instance authenticates outward with, and iTop's `AuditRule`/`AuditCategory`/`AuditDomain` checks. Those are refused because no tool here sends mail, calls a URL, invokes a static method by name or authenticates outward as this instance — so "could the caller have done this itself" answers **no for every caller, administrator included**, and there is no profile that makes it yes. Turning it on is an operator consenting to the endpoint granting more than the credential it was called with. It is *not* needed to let an assistant do ordinary automation work: a caller that can already write a class directly may arrange the same writes through a mechanism without this setting, graded on its own rights. Reads are unaffected either way. See [SECURITY.md](SECURITY.md) before turning it on |
+| `mcp_allow_privilege_escalation` | `false` | **An escalation switch, not a feature switch.** It governs `Trigger`, `Action` (so `ActionEmail`, whose recipients are OQL queries), the links between them, `AsyncTask` (so `AsyncSendEmail`, the mail queue the cron drains), the `RemoteApplicationConnection` a webhook calls through, the `Oauth2Client`/`OAuthClient` tokens the instance authenticates outward with, and iTop's `AuditRule`/`AuditCategory`/`AuditDomain` checks. Those are refused because no tool here sends mail, calls a URL, invokes a static method by name or authenticates outward as this instance — so "could the caller have done this itself" answers **no for every caller, administrator included**, and there is no profile that makes it yes. Turning it on is an operator consenting to the endpoint granting more than the credential it was called with. It is *not* needed to let an assistant do ordinary automation work: a caller that can already write a class directly may arrange the same writes through a mechanism without this setting, graded on its own rights. Reads are unaffected either way. See [SECURITY.md](SECURITY.md) before turning it on |
 | `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. This module sets it on every request, so the SDK's own default of 50 never applies. What is past the limit is paged behind a cursor, which a client that ignores `nextCursor` never asks for — those elements then exist, are callable, and are advertised to nobody |
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |

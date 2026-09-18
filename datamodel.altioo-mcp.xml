@@ -371,8 +371,9 @@
       -->
       <mcp_allow_access_administration type="bool">false</mcp_allow_access_administration>
       <!--
-        An escalation switch, not a feature switch. Read this before turning
-        it on.
+        An escalation switch, not a feature switch - named for what it does
+        rather than for the classes it governs. Read this before turning it
+        on.
 
         Everything this endpoint refuses, it refuses because the caller could
         not do the same thing directly by calling a tool. The classes this
@@ -396,7 +397,7 @@
         own rights and passes or fails on those alone. Off by default.
         Reading is unaffected either way.
       -->
-      <mcp_allow_automation_administration type="bool">false</mcp_allow_automation_administration>
+      <mcp_allow_privilege_escalation type="bool">false</mcp_allow_privilege_escalation>
       <!--
         Elements per tools/list, resources/list or prompts/list page. The MCP
         SDK defaults to 50 and pages the rest behind a cursor, which a client

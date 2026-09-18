@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+
 use DBObject;
 use DBObjectSet;
 use DeletionPlan;
@@ -45,6 +47,44 @@ final class WritePlan
 {
 	/** Nothing writes on a first call. */
 	public const SIMULATE_BY_DEFAULT = true;
+
+	/**
+	 * Whether this call is rehearsing, which is not only the caller's to
+	 * decide.
+	 *
+	 * Every write tool takes a `simulate` argument defaulting to true, and
+	 * every one of them asks this instead of reading that argument directly.
+	 * The reason is the advisory scope: a token carrying MCP-advisory may call
+	 * the write tools its other scopes allow and every one of them rehearses,
+	 * whatever it was passed. That is the trust tier between "may read" and
+	 * "may write" - propose changes, show a person what they would do, commit
+	 * nothing - and it belongs to the credential rather than to the call,
+	 * because a caller that can choose is not restricted.
+	 *
+	 * Pinned to the token and not to a session, because there is no session:
+	 * this endpoint is stateless and the token record is the only thing that
+	 * persists between calls. The policy is decided once per request by the
+	 * controller and remembered, so asking here costs nothing.
+	 *
+	 * No policy remembered means no opinion, and the caller's own answer
+	 * stands: that is the state a unit suite runs in, and also a runner that
+	 * never went through the controller. It is the one direction this can fail
+	 * in without turning a rehearsal into a write.
+	 *
+	 * @param bool $bRequested What the caller asked for.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function Simulated(bool $bRequested): bool
+	{
+		if ($bRequested) {
+			return true;
+		}
+
+		$oPolicy = AccessPolicy::Current();
+
+		return $oPolicy !== null && $oPolicy->isAdvisory();
+	}
 
 	/**
 	 * The dry-run property, spelled once so that every writing tool spells it
