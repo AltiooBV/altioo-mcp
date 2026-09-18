@@ -241,6 +241,15 @@ published archive was installed and exercised on into this line; the README and
   decline a write the instance would have accepted. The field carries `enabled` and a sentence
   ruling that reading out.
 
+- **`core_set_obsolete_data`, to switch what searches return.** "Show obsolete data" decides
+  whether obsolete objects reach a result set, and it is a preference on the account — not a session
+  flag and nothing a URL can carry — so the only way to change what searches answered here was to
+  open the console and tick it. The tool writes the caller's own preference and nobody else's:
+  `appUserPreferences::SetPref()` takes no user argument. Dry run by default like every other write,
+  since the preference persists and is the same one the console reads. It reports the previous value
+  as well as the new one, read through `utils::ShowObsoleteData()`, so "already on" is not confused
+  with "nobody ever said" and the config default answers for an account that never expressed one.
+
 - **`core_current_user`: the identity as a tool, and what this session can reach.**
   `itop://core/current-user` answers who the session is authenticated as, and a client that never
   fetches resources never asks: a model looks for a tool, finds none, and concludes the server
