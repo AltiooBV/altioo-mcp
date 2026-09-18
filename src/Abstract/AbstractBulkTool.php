@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Abstract;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
@@ -344,7 +345,8 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				// branches on stdClass. See RestValue.
 				$aValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
 			} catch (\Throwable $e) {
-				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
+				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
+					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
 			}
 		}
 

@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -166,7 +167,8 @@ class ObjectCreate extends AbstractMCPTool
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
 			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e);
+				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
+					.DatamodelReader::ValueHint($class, $sAttCode, $value);
 			}
 		}
 		if (!empty($aIssues)) {
