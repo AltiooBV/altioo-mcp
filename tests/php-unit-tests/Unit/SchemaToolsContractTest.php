@@ -488,10 +488,10 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
 
-		$this->assertSame(1, preg_match('/'.$sPattern.'/', '2026-08-15 18:41:00'));
+		$this->assertSame(1, preg_match('/'.$sPattern.'/', '2026-09-18 07:53:01'));
 		// The very string a model told "date-time" would send, and the one
 		// AttributeDateTime::MakeRealValue() throws on.
-		$this->assertSame(0, preg_match('/'.$sPattern.'/', '2026-08-15T18:41:00Z'));
+		$this->assertSame(0, preg_match('/'.$sPattern.'/', '2026-09-18T07:53:01Z'));
 		$this->assertSame(0, preg_match('/'.$sPattern.'/', 'yesterday'));
 	}
 
