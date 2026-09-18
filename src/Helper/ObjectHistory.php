@@ -60,6 +60,14 @@ final class ObjectHistory
 	/** The subclass that carries attcode, and the one to query when asked about a single attribute. */
 	private const ATTRIBUTE_CLASS = 'CMDBChangeOpSetAttribute';
 
+	/**
+	 * The one operation whose value is not in the change log.
+	 *
+	 * It declares lastentry - an integer - and nothing else of its own, so the
+	 * text of a work note is not recorded here at all. It is on the object.
+	 */
+	private const CASELOG_CLASS = 'CMDBChangeOpSetAttributeCaseLog';
+
 	public const DEFAULT_LIMIT = 50;
 
 	public const MAX_LIMIT = 500;
@@ -244,12 +252,15 @@ final class ObjectHistory
 
 		$aEntries = [];
 		$oInstanceSet = null;
+		$aCaseLogs = [];
 		while ($oOp = $oSet->Fetch()) {
 			$aEntry = self::describe($oOp);
 			$sOn = $aEntry['attribute'];
 			if ($sOn !== null && !ObjectSerializer::MayReadAttribute($oObject, $sClass, $sOn, $oInstanceSet)) {
 				continue;
 			}
+
+			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
 
 			$aEntries[] = $aEntry;
 		}
@@ -266,6 +277,78 @@ final class ObjectHistory
 			'total'     => $iTotal,
 			'entries'   => $aEntries,
 		];
+	}
+
+	/**
+	 * The text of a case-log entry, which the change log does not hold.
+	 *
+	 * CMDBChangeOpSetAttributeCaseLog declares one field of its own -
+	 * lastentry, an integer - and no oldvalue or newvalue, so a row about a
+	 * work note said who wrote one and when and nothing about what it said.
+	 * That is not this module reading the wrong column: iTop never writes the
+	 * text there. It lives in the object's own case log, which is why the
+	 * console renders those entries from the object rather than from the
+	 * history.
+	 *
+	 * So it is read from the object, which the caller has already been
+	 * gated on: this runs after MayReadAttribute() has allowed the attribute,
+	 * and the entry is part of that same attribute's value. One read of the
+	 * case log per attribute, kept for the rest of the page.
+	 *
+	 * Matched on the date and the user rather than on lastentry. The index is
+	 * an offset into a log that later entries push along, and an entry edited
+	 * or removed leaves it pointing at somebody else's words - a wrong
+	 * attribution being much worse here than a missing one, since this is the
+	 * tab an auditor reads. No match answers null, as before.
+	 *
+	 * @param array<string, mixed>                       $aEntry
+	 * @param array<string, array<int, array<string, mixed>>> $aCaseLogs Read once per attribute, by reference.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withCaseLogEntry(array $aEntry, DBObject $oObject, string $sClass, array &$aCaseLogs): array
+	{
+		if ($aEntry['operation'] !== self::CASELOG_CLASS || $aEntry['to'] !== null) {
+			return $aEntry;
+		}
+
+		$sAttCode = (string)$aEntry['attribute'];
+		if ($sAttCode === '') {
+			return $aEntry;
+		}
+
+		try {
+			if (!array_key_exists($sAttCode, $aCaseLogs)) {
+				$oLog = $oObject->Get($sAttCode);
+				$aCaseLogs[$sAttCode] = is_object($oLog) && method_exists($oLog, 'GetAsArray')
+					? $oLog->GetAsArray()
+					: [];
+			}
+
+			foreach ($aCaseLogs[$sAttCode] as $aLogEntry) {
+				if (($aLogEntry['date'] ?? null) !== $aEntry['when']) {
+					continue;
+				}
+
+				$mUser = $aLogEntry['user_id'] ?? null;
+				if ($mUser !== null && $aEntry['user_id'] !== null && (int)$mUser !== (int)$aEntry['user_id']) {
+					continue;
+				}
+
+				$sMessage = (string)($aLogEntry['message'] ?? '');
+				$aEntry['to'] = mb_strlen($sMessage) > self::MAX_VALUE_CHARS
+					? mb_substr($sMessage, 0, self::MAX_VALUE_CHARS).'…'
+					: $sMessage;
+
+				return $aEntry;
+			}
+		} catch (\Throwable $e) {
+			// The row is worth reporting without its text; the history is not
+			// worth losing over one entry that will not render.
+			MCPHelper::LogError('Could not read a case log entry for '.$sClass.'::'.$sAttCode.': '.$e->getMessage());
+		}
+
+		return $aEntry;
 	}
 
 	/**
