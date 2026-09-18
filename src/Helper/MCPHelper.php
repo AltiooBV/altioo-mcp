@@ -440,10 +440,16 @@ class MCPHelper
 			$e->getLine()
 		));
 
+		// The advice is addressed to a model, so it names what a model can
+		// actually do. The reference belongs in iTop's log, which nothing on
+		// this server reads: telling a caller to "quote that reference" sent it
+		// looking for a tool that does not exist. It is worth reporting to the
+		// user, who has a console; it is not a step the caller can take.
 		return sprintf(
-			'%s. iTop refused it, and its reason is recorded in the iTop log under reference %s. '
-			.'The attribute schema is what says which values it accepts; quote that reference if the '
-			.'value looks right.',
+			'%s. iTop refused the value and its reason is in the instance log, not in this answer. '
+			.'Check the attribute against core_class_schema - its type, its allowed values, its pattern - and correct the call. '
+			.'If the value looks right, tell the user it failed and give them this reference for the log: %s. '
+			.'No tool here reads that log.',
 			$sWhat,
 			$sReference
 		);
