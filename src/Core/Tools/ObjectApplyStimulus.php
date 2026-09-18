@@ -81,6 +81,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				'type'        => 'string',
 				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
 			],
+			'after'         => WritePlan::AfterSchemaProperty(),
 			'changes'       => WritePlan::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
 			'overridden'    => WritePlan::OverriddenSchemaProperty(),
 		]);
@@ -360,6 +361,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
+					'after'         => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'       => $aChanges,
 					'overridden'    => $aOverridden,
 				]);
@@ -393,7 +395,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'changes'       => $aChanges,
+				'after'         => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
+					'changes'       => $aChanges,
 				'overridden'    => $aOverridden,
 			]);
 	}
