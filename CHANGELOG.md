@@ -443,7 +443,10 @@ published archive was installed and exercised on into this line; the README and
   every attribute of the class; a per-attribute grant it lacks is one the mechanism would have got
   round. The rule keys on `update`, not on `update_policy`, which is a three-valued enum
   (`master_locked`, `master_unlocked`, `write_if_empty`) describing what happens around the write
-  rather than whether there is one — all three write. And **a target behind any barrier is
+  rather than whether there is one — all three write. Each attribute is graded on **both**
+  `UR_ACTION_MODIFY` and `UR_ACTION_CREATE`, since a source creates what it does not find as well
+  as updating what it does, and those are separate action codes an addon may grade differently:
+  asking only about modify graded the wrong half of what a data source performs. And **a target behind any barrier is
   refused**, asked as `IsBarred()` rather than as the rights model alone, so a source pointed at
   `Event` or at `AsyncTask` is refused by the rules that refuse `Event` and `AsyncTask` without
   either being listed a second time — a hole the family-by-family version had. Where no direct

@@ -1331,7 +1331,7 @@ final class AccessGrants
 			// edit it, whether the engine only fills a blank), not whether
 			// there is one. All three write, so none of them is the question
 			// this rule is asking.
-			$aUnreadable = self::AttributesTheCallerMayNot($sTarget, 'UR_ACTION_READ');
+			$aUnreadable = self::AttributesTheCallerMayNot($sTarget, ['UR_ACTION_READ']);
 			if ($aUnreadable !== []) {
 				return sprintf(
 					self::DELEGATED_RIGHTS_REFUSAL,
@@ -1343,13 +1343,20 @@ final class AccessGrants
 			}
 
 			if ($bWouldWrite) {
-				$aUnwritable = self::AttributesTheCallerMayNot($sTarget, 'UR_ACTION_MODIFY');
+				// Both actions, because the engine does both. UR_ACTION_CREATE
+				// and UR_ACTION_MODIFY are separate codes in iTop (7 and 2) and
+				// an addon is free to grade them differently, so an attribute
+				// the caller may not set when the object is first written is
+				// one the engine would set for it - CreateObjectFromReplica()
+				// is a create, and asking only about modify graded the wrong
+				// half of what a data source does.
+				$aUnwritable = self::AttributesTheCallerMayNot($sTarget, ['UR_ACTION_MODIFY', 'UR_ACTION_CREATE']);
 				if ($aUnwritable !== []) {
 					return sprintf(
 						self::DELEGATED_RIGHTS_REFUSAL,
 						$sClass,
 						$sTarget,
-						'A source fills its own mapping in with every attribute of the class set to update, and you may not write '.self::few($aUnwritable).' here.',
+						'A source fills its own mapping in with every attribute of the class, and it both creates and updates - you may not set '.self::few($aUnwritable).' here.',
 						$sTarget
 					);
 				}
@@ -1373,21 +1380,38 @@ final class AccessGrants
 	 *
 	 * @return array<int, string>
 	 */
-	private static function AttributesTheCallerMayNot(string $sClass, string $sActionConstant): array
+	private static function AttributesTheCallerMayNot(string $sClass, array $aActionConstants): array
 	{
-		if (!defined('UR_ALLOWED_NO') || !defined($sActionConstant)) {
+		if (!defined('UR_ALLOWED_NO')) {
 			return [];
 		}
 
-		$bWriting = $sActionConstant === 'UR_ACTION_MODIFY';
+		$aCodes = [];
+		foreach ($aActionConstants as $sConstant) {
+			if (!defined($sConstant)) {
+				return [];
+			}
+			$aCodes[] = constant($sConstant);
+		}
+
+		// Skipped only where the datamodel says the attribute can never be
+		// written by anyone - a computed value, an external field. That is a
+		// property of the definition and holds on both paths. Per-state flags
+		// are not asked, and cannot be: GetInitialStateAttributeFlags() and
+		// GetAttributeFlags() answer about an object, and a definition staged
+		// for later has no object to ask about.
+		$bWriting = !in_array('UR_ACTION_READ', $aActionConstants, true);
 		$aRefused = [];
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
 			if ($bWriting && !$oAttDef->IsWritable()) {
 				continue;
 			}
-			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, constant($sActionConstant)) === UR_ALLOWED_NO) {
-				$aRefused[] = $sAttCode;
+			foreach ($aCodes as $iAction) {
+				if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, $iAction) === UR_ALLOWED_NO) {
+					$aRefused[] = $sAttCode;
+					continue 2;
+				}
 			}
 		}
 

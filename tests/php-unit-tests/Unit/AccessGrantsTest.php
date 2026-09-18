@@ -597,6 +597,16 @@ class AccessGrantsTest extends TestCase
 		$this->assertStringContainsString('AttributesTheCallerMayNot', $sRule,
 			'only the class is graded, so a per-attribute grant is reachable through the mechanism');
 
+		// And on both write actions. UR_ACTION_CREATE and UR_ACTION_MODIFY are
+		// separate codes in iTop and an addon may grade them differently, so
+		// asking only about modify grades the wrong half of what a data source
+		// does: CreateObjectFromReplica() is a create.
+		$this->assertMatchesRegularExpression(
+			"/AttributesTheCallerMayNot\(\s*\\\$sTarget,\s*\['UR_ACTION_MODIFY',\s*'UR_ACTION_CREATE'\]/",
+			$sRule,
+			'the per-attribute write check asks only one of the two actions the engine performs'
+		);
+
 		$this->assertStringNotContainsString('AllowsAccessAdministration', $sRule,
 			'an ordinary CMDB source is still gated on the access-administration setting');
 	}

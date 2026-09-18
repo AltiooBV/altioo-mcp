@@ -147,7 +147,11 @@ Three consequences, and they are where the earlier one-family-at-a-time rules ca
   round. The rule keys on `update` and not on `update_policy`, which is a three-valued enum
   (`master_locked`, `master_unlocked`, `write_if_empty`, defaulting to the first) describing what
   happens around the write — whether the console may still edit the attribute, whether the engine
-  only fills a blank — rather than whether there is one. All three write.
+  only fills a blank — rather than whether there is one. All three write. And the caller is asked
+  about **both write actions**, not just `UR_ACTION_MODIFY`: a source creates the objects it does
+  not find as well as updating the ones it does, `UR_ACTION_CREATE` is a separate action code in
+  iTop that an addon may grade differently, so an attribute the caller may not set when an object
+  is first written is one the engine would set on its behalf.
 - **Where there is no direct equivalent at all, the answer is no.** No tool here sends mail,
   calls a URL, or invokes a static method by name. So for `Trigger`, `Action`, `AsyncTask` and
   the credentials they act with, "could the caller have done this itself" has one answer for
