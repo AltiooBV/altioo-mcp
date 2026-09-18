@@ -73,6 +73,7 @@ class ObjectCreate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
+			'after' => WritePlan::AfterSchemaProperty(),
 			'changes'    => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
@@ -214,6 +215,7 @@ class ObjectCreate extends AbstractMCPTool
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 				]);
@@ -231,6 +233,7 @@ class ObjectCreate extends AbstractMCPTool
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 				]);
@@ -261,6 +264,7 @@ class ObjectCreate extends AbstractMCPTool
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 					'warning'    => MCPHelper::OpaqueFailure(
