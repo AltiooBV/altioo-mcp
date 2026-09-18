@@ -579,6 +579,27 @@ published archive was installed and exercised on into this line; the README and
   would settle the call. **Not covered:** per-attribute rights. iTop populates a new source's
   mapping itself, without any call reaching this endpoint, so there is no write here to refuse —
   the rule is honestly a class-level one, and `SECURITY.md` says so.
+- **An external key given as a string says what is wrong with it.** The one invalid-value case
+  that still dead-ended: `org_id: "abc"` came back as an opaque reference into the instance log,
+  which no tool here reads, while every other bad value - an enum, a date - is named in full.
+  Reported in review as the one place an agent cannot self-correct. The cause is that a non-numeric
+  string is not a malformed id at all: `FindObjectFromKey()` runs it as **OQL**, so `"abc"` is a
+  malformed query, and the pre-check that catches a bad id returned early on anything non-numeric.
+  It now covers the string form too and names which of the three things is wrong - not OQL at all,
+  OQL selecting the wrong class, or a query matching no object or several where a key needs exactly
+  one - along with the three accepted forms. The caller's own string is quoted back; iTop's
+  exception still is not, for the reason `RejectedValue()` gives.
+- **An empty map is no longer a type error.** `fields: {}` was refused with "Invalid type. Expected
+  `object`, but received `array`" — a type error for a value whose type was right. The cause is
+  PHP's: a JSON body is decoded with `json_decode($sBody, true)`, so `{}` and `[]` are both the
+  empty array, and the SDK's validator converts an array back to an object only when it is
+  non-empty (`SchemaValidator::convertDataForValidator()`). An empty map therefore arrived as a
+  list. `fields: {}` on an update is a caller with nothing to update — an ordinary mistake whose
+  ordinary answer is "No fields provided for update." — so the input maps are declared
+  `MCPHelper::MAP_TYPE` and the empty case reaches the tool that can say that. Output maps are
+  unaffected: they are built by `WritePlan::Map()`, which casts to `stdClass` for this same reason
+  on the way out. Pinned by a test that runs the real validator rather than reading the schema,
+  since the bug was in the conversion and not in what the schema said.
 - **A deletion that happened is reported as one.** The creation paths ask "is there a row" after a
   throw, because `DBInsert()` commits and then keeps going; `DBDelete()` has the same shape and
   `core_object_delete` asked nothing, turning every throw into an outright failure — including the

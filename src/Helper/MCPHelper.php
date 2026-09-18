@@ -145,6 +145,38 @@ class MCPHelper
 	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
 	 * self-guard is unconditional and this setting cannot reach it.
 	 */
+	/**
+	 * The JSON Schema type of an input property that is a key/value map.
+	 *
+	 * `['object', 'array']` rather than `'object'`, for a reason that is
+	 * entirely PHP's and entirely visible to the caller. A JSON body is
+	 * decoded with json_decode($sBody, true), so `{}` and `[]` both become the
+	 * empty PHP array - and the SDK's validator only converts an array back to
+	 * an object when it is non-empty and has non-sequential keys
+	 * (SchemaValidator::convertDataForValidator()). An empty map therefore
+	 * reaches the validator as a list and is refused against `type: object`
+	 * with "Invalid type. Expected `object`, but received `array`."
+	 *
+	 * Which is a type error for a value whose type was right. `fields: {}` on
+	 * an update is a caller with nothing to update - an ordinary mistake with
+	 * an ordinary answer, "No fields provided for update." - and answering it
+	 * with a schema violation sends the caller looking for a shape it already
+	 * sent. Widening the declared type lets the empty case through to the
+	 * tool, which says the useful thing.
+	 *
+	 * The cost is that a genuine list gets through the schema too, and is then
+	 * refused by the tool for naming attributes like "0" - a worse message
+	 * than the validator's, for a call nobody makes by accident, in exchange
+	 * for a better one for the call that is made by accident.
+	 *
+	 * Input only. Output maps stay objects and stay correct, because they are
+	 * built by WritePlan::Map(), which casts to stdClass for this same reason
+	 * on the way out.
+	 *
+	 * @since 1.0.0
+	 */
+	const MAP_TYPE = ['object', 'array'];
+
 	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
 
 	/**

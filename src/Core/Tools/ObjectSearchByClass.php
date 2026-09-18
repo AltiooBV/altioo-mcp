@@ -66,7 +66,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 						.'A parent class searches its children too, so "Ticket" answers across UserRequest, Incident and whatever else a datamodel derives from it, and each result reports the class it actually is - one call rather than one per subclass.',
 				],
 				'filters' => [
-					'type'                 => 'object',
+					'type'                 => MCPHelper::MAP_TYPE,
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory. '
 						.'Every pair is an equality: the value must match in full, so a word out of a title matches nothing. For a substring use core_object_search_by_oql with LIKE, and for text you would have typed into the console\'s search box use core_object_find_by_name. '
 						.'Omit it to search the whole class - an empty filter is {} and never [], which is the shape a language without a distinct empty map will hand you.',

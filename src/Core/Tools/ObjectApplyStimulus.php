@@ -106,7 +106,7 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					'description' => 'Stimulus code to apply (e.g. ev_assign, ev_resolve, ev_close). Call core_class_schema for the stimuli valid in the current state.',
 				],
 				'fields'   => [
-					'type'                 => 'object',
+					'type'                 => MCPHelper::MAP_TYPE,
 					'description'          => 'Optional attribute values to set before applying the stimulus (e.g. agent_id, team_id for ev_assign).',
 					'additionalProperties' => true,
 				],

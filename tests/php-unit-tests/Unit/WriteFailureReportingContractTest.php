@@ -435,6 +435,61 @@ class WriteFailureReportingContractTest extends TestCase
 		));
 	}
 
+	/**
+	 * An empty map reaches the tool, which has something useful to say about
+	 * it.
+	 *
+	 * A JSON body is decoded with json_decode($sBody, true), so `{}` and `[]`
+	 * both become the empty PHP array - and the SDK's validator converts an
+	 * array back to an object only when it is non-empty
+	 * (SchemaValidator::convertDataForValidator()). `fields: {}` therefore
+	 * reached the validator as a list and was refused against `type: object`
+	 * with "Invalid type. Expected `object`, but received `array`": a type
+	 * error for a value whose type was right, sending the caller to look for a
+	 * shape it had already sent.
+	 *
+	 * `fields: {}` on an update is a caller with nothing to update - an
+	 * ordinary mistake with an ordinary answer. Declaring the map as
+	 * MCPHelper::MAP_TYPE lets it through to the tool, which says so.
+	 *
+	 * Checked against the real validator rather than by reading the schema,
+	 * because the bug is in how the validator converts, not in what the schema
+	 * says.
+	 *
+	 * @dataProvider emptyMapPayloadProvider
+	 */
+	public function testAnEmptyMapIsNotATypeError(string $sTool, string $sJson): void
+	{
+		if (!class_exists('Mcp\\Capability\\Discovery\\SchemaValidator')) {
+			$this->markTestSkipped('the MCP SDK validator is not available here.');
+		}
+
+		$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
+		$oTool = new $sClass();
+		$oValidator = new \Mcp\Capability\Discovery\SchemaValidator();
+
+		$aErrors = $oValidator->validateAgainstJsonSchema(json_decode($sJson, true), $oTool->getInputSchema());
+
+		$this->assertSame([], $aErrors ?? [], sprintf(
+			'%s refuses an empty map as a type error instead of letting the tool answer: %s',
+			$sTool,
+			json_encode($aErrors)
+		));
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string}>
+	 */
+	public function emptyMapPayloadProvider(): array
+	{
+		return [
+			'update with no fields'  => ['ObjectUpdate', '{"class":"UserRequest","id":1,"fields":{}}'],
+			'create with no fields'  => ['ObjectCreate', '{"class":"UserRequest","fields":{}}'],
+			'search with no filters' => ['ObjectSearchByClass', '{"class":"UserRequest","filters":{}}'],
+			'a bulk row with none'   => ['ObjectBulkCreate', '{"class":"UserRequest","objects":[{}]}'],
+		];
+	}
+
 	/** Every id that came out of a write goes through the one normaliser. */
 	public function testNoCreatePathCastsTheIdItself(): void
 	{

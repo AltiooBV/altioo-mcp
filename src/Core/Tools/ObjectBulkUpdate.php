@@ -82,7 +82,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			'type'       => 'object',
 			'properties' => self::targetSchemaProperties('apply the change') + [
 				'fields' => [
-					'type'                 => 'object',
+					'type'                 => MCPHelper::MAP_TYPE,
 					'description'          => 'Key/value pairs applied to every listed object. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],

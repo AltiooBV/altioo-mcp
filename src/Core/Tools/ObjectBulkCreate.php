@@ -98,7 +98,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 				'objects' => [
 					'type'        => 'array',
 					'description' => 'One entry per object to create, each a key/value map of attribute codes. Call core_class_schema for the attribute codes of the class and which ones are mandatory.',
-					'items'       => ['type' => 'object', 'additionalProperties' => true],
+					'items'       => ['type' => MCPHelper::MAP_TYPE, 'additionalProperties' => true],
 					'minItems'    => 1,
 					'maxItems'    => self::MAX_OBJECTS,
 				],

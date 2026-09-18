@@ -90,7 +90,7 @@ class ObjectCreate extends AbstractMCPTool
 					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'fields' => [
-					'type'                 => 'object',
+					'type'                 => MCPHelper::MAP_TYPE,
 					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
