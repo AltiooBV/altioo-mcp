@@ -314,6 +314,29 @@ published archive was installed and exercised on into this line; the README and
   rather than answered with an empty set. Note iTop's own coupling: including archived objects
   includes obsolete ones too.
 
+- **A write describes the object it left behind.** `changes` is taken before the write and has to
+  be — `DBInsert()` clears the pending values — so it reports what was asked for and what
+  `DoComputeValues()` rewrote, and nothing the write itself did: an `AfterInsert` hook, an event
+  listener, the `ref` a ticket is given. `obsolescence_flag` is worse: it is not a stored column but
+  an expression the database evaluates when the row is queried, so nothing in memory carries it.
+  Create, update and apply-stimulus now re-read the row once, on the real path only, and answer with
+  an `after` block — friendlyname, the supplied attributes as they now stand, and obsolescence
+  (flag, the condition the datamodel evaluates, and **`hidden_from_searches`**). That last one is
+  the case worth the read: an agent sets a status the datamodel counts as obsolete, the write
+  succeeds, the object leaves every search that account makes, and nothing said so — so it searches
+  for what it wrote, finds nothing, and reports the write as failed.
+
+- **A read by id answers about the object, obsolete or not.** The searches honour the account's
+  preference; a lookup by id is a different question, since the caller has the identifier — usually
+  because it just wrote the object — and "not found" for a row that exists is the wrong answer.
+  Set explicitly rather than left to `DBSearch`'s default, so a guarantee this module makes does not
+  rest on a default it does not own.
+
+- **`core_class_schema` says why an object of the class can be obsolete.** The flag says that one
+  is and never says why, and the stock conditions come in three shapes — a state on the object, a
+  state inherited through an external key, and a date that has passed — so `true` alone leaves a
+  caller unable to tell which it is looking at, or what to change.
+
 - **Every read says whether the object is archived or obsolete.** `archive_flag` and `archive_date` are magic
   attributes iTop adds to an archivable class, so a full read always carried them — but the searches
   default to `id, friendlyname`, which describes a soft-deleted object and a live one identically,
