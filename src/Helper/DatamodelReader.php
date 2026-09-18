@@ -719,6 +719,65 @@ final class DatamodelReader
 	}
 
 	/**
+	 * The value iTop would have accepted, when the refusal is only a format.
+	 *
+	 * A date-time here is `Y-m-d H:i:s` - a space, no offset - and every other
+	 * system a model has met uses RFC 3339, so the ISO form is what a first
+	 * attempt sends. The schema already carries the pattern, and a refusal
+	 * still costs a round trip to read it; this spends one strtotime() to put
+	 * the corrected string in the refusal itself.
+	 *
+	 * Suggested, never applied. An offset-bearing value is an instant, iTop
+	 * stores wall-clock time in the instance's own zone, and silently moving a
+	 * timestamp by an hour is a worse failure than the refusal it replaced -
+	 * so the converted value is shown, and the caller sends it or does not.
+	 *
+	 * Returns '' when there is nothing useful to say, which is most refusals:
+	 * a value that is not a string, an attribute that is not a date, or a
+	 * string no date parser recognises.
+	 *
+	 * @param mixed $value As the caller sent it.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function ValueHint(string $sClass, string $sAttCode, mixed $value): string
+	{
+		if (!is_string($value) || $value === '') {
+			return '';
+		}
+
+		try {
+			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+		} catch (\Throwable $e) {
+			return '';
+		}
+
+		if (!$oAttDef instanceof AttributeDateTime) {
+			// AttributeDate extends it, so this covers both.
+			return '';
+		}
+
+		$sFormat = $oAttDef::GetInternalFormat();
+		$iTimestamp = strtotime($value);
+		if ($iTimestamp === false) {
+			return '';
+		}
+
+		$sCorrected = date($sFormat, $iTimestamp);
+		if ($sCorrected === $value) {
+			// Already in the right shape; whatever iTop refused, it was not
+			// the format.
+			return '';
+		}
+
+		return sprintf(
+			' iTop stores this attribute as %s, not RFC 3339: send "%s".',
+			$sFormat,
+			$sCorrected
+		);
+	}
+
+	/**
 	 * How to write an attribute that is not written the way it reads.
 	 *
 	 * Most attributes take back what a read returned. A case log does not: it
