@@ -323,6 +323,17 @@ published archive was installed and exercised on into this line; the README and
   forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
   bulk call is handed its ids explicitly and answers per row.
 
+- **A stimulus dry run says the state will move.** It answered `valid: true` and `would_move_to`
+  with `changes`, `overridden` and `defaulted` all empty — so the one change a transition is
+  guaranteed to make appeared in no diff at all, on the tool whose whole purpose is to move a
+  state. The dry run does not apply the stimulus, so nothing has moved in memory; the state
+  attribute is taken from the lifecycle instead, on the simulated path only.
+
+- **An empty change map is still a map.** `changes`, `overridden` and `applied` are attribute code
+  => value, and PHP's empty array encodes as a list — so a write that changed nothing answered `[]`
+  where one that changed something answered `{}`, breaking a typed reader on exactly the case it is
+  least likely to have tested.
+
 - **A write's `after.applied` answers about the fields that were sent.** It was being handed the
   attributes the *write changed*, and on a creation those are every attribute of the new object —
   so a dry run that set five fields answered with a seventy-attribute object twice, once under
