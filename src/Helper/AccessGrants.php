@@ -1315,12 +1315,22 @@ final class AccessGrants
 			// And the attributes, which is where the rule bites hardest and
 			// where it was missing. A data source is not a write of the fields
 			// somebody chose: SynchroDataSource fills its own mapping in on
-			// creation, one SynchroAttribute per attribute of the class, every
-			// one of them Set('update', 1) with update_policy master_locked
-			// (synchrodatasource.class.inc.php). Creating the source therefore
-			// hands the engine every attribute of the class, so the caller has
-			// to hold every attribute of the class - a per-attribute grant it
-			// does not hold is one this would have got round.
+			// creation, one SynchroAttribute per attribute of the class, and
+			// the attribute that decides whether the engine writes each one -
+			// `update` - is declared with default_value true and Set(1) on
+			// every row it builds (synchrodatasource.class.inc.php). Creating
+			// the source therefore hands the engine every attribute of the
+			// class, so the caller has to hold every attribute of the class - a
+			// per-attribute grant it does not hold is one this would have got
+			// round.
+			//
+			// Keyed on `update` and deliberately not on `update_policy`, which
+			// is a three-valued enum - master_locked, master_unlocked,
+			// write_if_empty - defaulting to the first. It decides what happens
+			// to the attribute around the write (whether the console may still
+			// edit it, whether the engine only fills a blank), not whether
+			// there is one. All three write, so none of them is the question
+			// this rule is asking.
 			$aUnreadable = self::AttributesTheCallerMayNot($sTarget, 'UR_ACTION_READ');
 			if ($aUnreadable !== []) {
 				return sprintf(

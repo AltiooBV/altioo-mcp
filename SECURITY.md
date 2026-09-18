@@ -140,10 +140,14 @@ Three consequences, and they are where the earlier one-family-at-a-time rules ca
   it may not arrange to have read out — otherwise the mechanism is an export of exactly what the
   read tools would have masked or refused.
 - **Attributes count, not just classes.** A `SynchroDataSource` fills its own mapping in on
-  creation: one `SynchroAttribute` per attribute of the class, every one of them `update = 1`
-  with `update_policy` `master_locked`. Creating the source therefore hands the engine *every*
-  attribute, so the caller must hold every attribute. A per-attribute grant it does not have is
-  one the mechanism would otherwise have got round.
+  creation: one `SynchroAttribute` per attribute of the class, each with `update` set — the flag
+  that decides whether the engine writes that attribute, and whose declared default is `true`.
+  Creating the source therefore hands the engine *every* attribute, so the caller must hold every
+  attribute. A per-attribute grant it does not have is one the mechanism would otherwise have got
+  round. The rule keys on `update` and not on `update_policy`, which is a three-valued enum
+  (`master_locked`, `master_unlocked`, `write_if_empty`, defaulting to the first) describing what
+  happens around the write — whether the console may still edit the attribute, whether the engine
+  only fills a blank — rather than whether there is one. All three write.
 - **Where there is no direct equivalent at all, the answer is no.** No tool here sends mail,
   calls a URL, or invokes a static method by name. So for `Trigger`, `Action`, `AsyncTask` and
   the credentials they act with, "could the caller have done this itself" has one answer for
