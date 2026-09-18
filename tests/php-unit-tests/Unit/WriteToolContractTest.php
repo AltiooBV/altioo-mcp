@@ -147,6 +147,34 @@ class WriteToolContractTest extends TestCase
 	}
 
 	/**
+	 * The tools that write an object, which is what a reason attaches to.
+	 *
+	 * core_set_obsolete_data writes a preference on the caller's own account.
+	 * appUserPreferences is a DBObject and not a CMDBObject, so iTop keeps no
+	 * change log for it and there is nowhere for a reason to land - a comment
+	 * parameter there would be a field the caller fills in and nothing reads.
+	 * Named rather than derived, so that adding a second one is a deliberate
+	 * edit with a reason beside it rather than a tool quietly slipping out of
+	 * the contract.
+	 *
+	 * @return array<int, array{0: string, 1: object}>
+	 */
+	private function objectWritingTools(): array
+	{
+		$aNoObjectHistory = ['core_set_obsolete_data'];
+
+		$aRegistered = array_keys(MCPRegistry::GetTools());
+		foreach ($aNoObjectHistory as $sName) {
+			$this->assertContains($sName, $aRegistered, "{$sName} is excused from a contract it is not in the registry for");
+		}
+
+		return array_values(array_filter(
+			$this->writingTools(),
+			static fn (array $aTool): bool => !in_array($aTool[0], $aNoObjectHistory, true)
+		));
+	}
+
+	/**
 	 * Every write can say why it was made.
 	 *
 	 * The channel is filled in from the request whether anyone asks for it or
@@ -157,7 +185,7 @@ class WriteToolContractTest extends TestCase
 	 */
 	public function testEveryWritingToolCanRecordWhy(): void
 	{
-		foreach ($this->writingTools() as [$sName, $oTool]) {
+		foreach ($this->objectWritingTools() as [$sName, $oTool]) {
 			$aProperties = $oTool->getInputSchema()['properties'];
 
 			$this->assertArrayHasKey('comment', $aProperties, "{$sName} cannot say why it wrote");
@@ -172,7 +200,7 @@ class WriteToolContractTest extends TestCase
 	 */
 	public function testTheReasonIsOptionalOnBothSides(): void
 	{
-		foreach ($this->writingTools() as [$sName, $oTool]) {
+		foreach ($this->objectWritingTools() as [$sName, $oTool]) {
 			$this->assertNotContains('comment', $oTool->getInputSchema()['required'], "{$sName} forces a reason to be invented");
 
 			$aComment = array_values(array_filter(
