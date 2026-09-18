@@ -41,6 +41,39 @@ require_once __DIR__.'/../bootstrap.php';
 class ObjectHistoryContractTest extends TestCase
 {
 	/**
+	 * A work note's history row says what was written.
+	 *
+	 * CMDBChangeOpSetAttributeCaseLog declares lastentry - an integer - and no
+	 * oldvalue or newvalue, so a row about a case log said who wrote one and
+	 * when, and nothing about what it said. That is not the wrong column being
+	 * read: iTop never writes the text there, which is why the console renders
+	 * those entries from the object instead.
+	 *
+	 * So the text is read from the object, after MayReadAttribute() has
+	 * allowed the attribute the entry belongs to, and matched on date and user
+	 * rather than on lastentry - an index that later entries push along, and
+	 * that an edited log leaves pointing at somebody else's words. A wrong
+	 * attribution on the tab an auditor reads is far worse than a missing one,
+	 * so no match answers null.
+	 */
+	public function testACaseLogRowCarriesTheEntryThatWasWritten(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('CMDBChangeOpSetAttributeCaseLog', $sBody, 'the one operation with no value of its own is not recognised');
+		$this->assertStringContainsString('GetAsArray', $sBody, 'the text is not read from the object that holds it');
+		$this->assertStringNotContainsString("Get('lastentry')", $sBody, 'the entry is matched on an index that moves');
+		$this->assertMatchesRegularExpression(
+			'/MayReadAttribute.*withCaseLogEntry/s',
+			$sBody,
+			'the text is read before the attribute rights have allowed it'
+		);
+		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'one unreadable entry costs the whole history');
+	}
+
+	/**
 	 * The object is the gate, and there is no second one.
 	 *
 	 * ActivityPanelHelper reads these same rows for whatever object is on
