@@ -39,6 +39,53 @@ class ObjectDeleteContractTest extends TestCase
 	}
 
 	/**
+	 * An object the account cannot see is refused, with both ways out named.
+	 *
+	 * The case is a stale id: an account that hides obsolete objects - the
+	 * default - acting on an id from before the object became obsolete. It
+	 * cannot find the object, cannot check what it now is, and the write lands
+	 * on something its own view says is gone.
+	 *
+	 * Refused and not forbidden, which is the whole design. Obsolescence is a
+	 * display filter in iTop and not a right: the console opens an obsolete
+	 * object by URL and edits it, and it has to, because modifying the object
+	 * is the only way to stop it being obsolete. A guard with no way past it
+	 * would make un-obsoleting impossible for every account nobody has
+	 * configured, so the refusal names obsolete_ok and core_set_obsolete_data
+	 * rather than ending the conversation.
+	 *
+	 * Single-object only. A bulk call is handed its ids explicitly and reports
+	 * per row, so a hidden-obsolete row there belongs in that row's entry
+	 * rather than in a refusal that stops the other ninety-nine.
+	 */
+	public function testAnObsoleteObjectThisAccountHidesIsRefusedWithAWayOut(): void
+	{
+		$sGuard = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\WritePlan::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('function RefuseHiddenObsolete', $sGuard);
+		$this->assertStringContainsString('obsolete_ok=true', $sGuard, 'the refusal does not say how to proceed');
+		$this->assertStringContainsString('core_set_obsolete_data', $sGuard, 'the other way out is not named');
+		$this->assertStringContainsString('ShowObsoleteData()', $sGuard, 'the guard fires on accounts that can see them too');
+		$this->assertStringContainsString('return;', $sGuard, 'a guard that cannot answer must fail open, not refuse');
+
+		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate::class] as $sTool) {
+			$oTool = new $sTool();
+			$this->assertArrayHasKey('obsolete_ok', $oTool->getInputSchema()['properties'], "{$sTool} offers no way past the guard");
+			$this->assertFalse($oTool->getInputSchema()['properties']['obsolete_ok']['default'], "{$sTool} lets it through by default");
+		}
+
+		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate::class] as $sBulk) {
+			$this->assertArrayNotHasKey(
+				'obsolete_ok',
+				(new $sBulk())->getInputSchema()['properties'],
+				"{$sBulk} carries a single-object guard"
+			);
+		}
+	}
+
+	/**
 	 * Deleting must be the deliberate second call, never what happens when the
 	 * model omits an argument.
 	 */
