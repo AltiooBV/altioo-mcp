@@ -76,6 +76,7 @@ class ObjectCreate extends AbstractMCPTool
 			'after' => WritePlan::AfterSchemaProperty(),
 			'changes'    => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -218,6 +219,7 @@ class ObjectCreate extends AbstractMCPTool
 					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
@@ -236,6 +238,7 @@ class ObjectCreate extends AbstractMCPTool
 					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		} catch (\Throwable $e) {
 			// A throw here does not mean nothing was written. DBInsert()
@@ -267,6 +270,7 @@ class ObjectCreate extends AbstractMCPTool
 					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 					'warning'    => MCPHelper::OpaqueFailure(
 						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
 						$e
