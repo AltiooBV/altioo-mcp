@@ -91,6 +91,58 @@ class SearchPagingContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * Archived objects are a per-call choice, not a property of the URL.
+	 *
+	 * iTop takes archive mode from `with_archive` on the request and DBSearch
+	 * reads it at construction, so "exclude" would otherwise mean "exclude,
+	 * unless the client's URL says otherwise" - a default nobody can see, and
+	 * one that makes two identical calls answer differently depending on how
+	 * the session was connected. Set on every path, so the parameter is the
+	 * authority.
+	 *
+	 * @dataProvider searchToolProvider
+	 */
+	public function testArchivedIsAPerCallChoiceAndDefaultsToExcluding(AbstractObjectSearch $oTool): void
+	{
+		$aProperty = $oTool->getInputSchema()['properties']['archived'];
+
+		$this->assertSame(
+			[AbstractObjectSearch::ARCHIVED_EXCLUDE, AbstractObjectSearch::ARCHIVED_INCLUDE, AbstractObjectSearch::ARCHIVED_ONLY],
+			$aProperty['enum']
+		);
+		$this->assertSame(AbstractObjectSearch::ARCHIVED_EXCLUDE, $aProperty['default'], 'a search that shows soft-deleted objects by default is a search that lies');
+
+		$aParameters = array_map(
+			static fn (\ReflectionParameter $oParameter): string => $oParameter->getName(),
+			(new ReflectionMethod($oTool, 'execute'))->getParameters()
+		);
+		$this->assertContains('archived', $aParameters, 'the schema offers what the signature cannot take');
+	}
+
+	/**
+	 * "only" on a class that has no archived state is refused.
+	 *
+	 * It would otherwise answer with an empty set, and "no archived ones" read
+	 * as "this class cannot have any" is the silent wrong answer this surface
+	 * keeps having to close - archivability is declared per hierarchy, so most
+	 * classes on a stock instance have no such state at all.
+	 */
+	public function testAskingForOnlyArchivedOnAClassWithNoneIsRefused(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(AbstractObjectSearch::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('has no archived state', $sBody, 'the impossible ask is answered rather than refused');
+		$this->assertStringContainsString('SetArchiveMode', $sBody, 'the choice never reaches the search');
+		$this->assertStringContainsString(
+			"AddCondition(self::ARCHIVE_FLAG, 1, '=')",
+			$sBody,
+			'"only" widens the search without narrowing it back to the archived ones'
+		);
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{
