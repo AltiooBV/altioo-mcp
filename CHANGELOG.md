@@ -323,6 +323,12 @@ published archive was installed and exercised on into this line; the README and
   forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
   bulk call is handed its ids explicitly and answers per row.
 
+- **A refused deletion names the way that is open.** A profile that may not delete is the normal
+  case — service desks retire tickets through the lifecycle, and deletion belongs to
+  administrators — but the refusal said only that the door was shut, so a caller had to know the
+  datamodel to find the one that is not. It now names the transitions available from the object's
+  current state, and only those this caller may actually apply.
+
 - **A bad external key is answered rather than deferred.** `org_id: 999999` on an instance with no
   such organisation came back as "iTop refused it, the reason is in the log under reference X,
   quote that reference" — opaque about a reason that is knowable and harmless, and pointing at a
