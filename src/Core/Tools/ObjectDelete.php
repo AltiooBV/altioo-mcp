@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -20,6 +21,7 @@ use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use DBObject;
 use DBObjectSet;
 use DeletionPlan;
 
@@ -184,7 +186,9 @@ class ObjectDelete extends AbstractMCPTool
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
-			throw new ToolCallException("Access denied: cannot delete objects of class '{$class}'.");
+			throw new ToolCallException(
+				"Access denied: cannot delete objects of class '{$class}'.".self::retirementHint($oObject, $sFinalClass)
+			);
 		}
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot delete object.");
@@ -233,5 +237,55 @@ class ObjectDelete extends AbstractMCPTool
 				'valid'        => true,
 				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
 			]);
+	}
+
+	/**
+	 * The other way to retire an object, when deleting it is refused.
+	 *
+	 * A profile that may not delete is the normal case rather than the
+	 * exception - service desks retire tickets and decommission CIs through
+	 * the lifecycle, and deletion is reserved for administrators. The refusal
+	 * said only that the door was shut, so a caller had to know the datamodel
+	 * to find the door that is open, and an agent asked to clean something up
+	 * stopped there.
+	 *
+	 * Only transitions this caller may actually apply: StimuliOn() grades each
+	 * one by UR_ACTION_MODIFY on the object and by IsStimulusAllowed(), and
+	 * offering a transition that would itself be refused replaces one dead end
+	 * with another.
+	 *
+	 * Guarded and silent when there is nothing to say - a class with no
+	 * lifecycle, an object in a state with no way out, a caller who may not
+	 * move it either. A refusal must not fail while explaining itself.
+	 */
+	private static function retirementHint(DBObject $oObject, string $sClass): string
+	{
+		try {
+			$oInstanceSet = null;
+			$aStimuli = ObjectSerializer::StimuliOn($oObject, $sClass, null, $oInstanceSet);
+			if ($aStimuli === null) {
+				return '';
+			}
+
+			$aAllowed = [];
+			foreach ($aStimuli['available'] ?? [] as $aStimulus) {
+				if (($aStimulus['allowed'] ?? 'no') !== 'no') {
+					$aAllowed[] = (string)$aStimulus['stimulus'];
+				}
+			}
+
+			if ($aAllowed === []) {
+				return '';
+			}
+
+			return sprintf(
+				' Retiring an object is usually a transition rather than a deletion: from state "%s" you may apply %s'
+				.' with core_object_apply_stimulus.',
+				(string)($aStimuli['state'] ?? ''),
+				implode(', ', $aAllowed)
+			);
+		} catch (\Throwable $e) {
+			return '';
+		}
 	}
 }
