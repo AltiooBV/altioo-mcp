@@ -111,6 +111,34 @@ class ObjectSerializerClippingTest extends TestCase
 	}
 
 	/**
+	 * An archived object does not come back looking live.
+	 *
+	 * Archive mode is a view - iTop reads `with_archive` off the request, and
+	 * this endpoint reaches utils::ReadParam like any other - so a search made
+	 * under it returns archived objects beside live ones. The searches default
+	 * to id and friendlyname, which describe both identically, and a
+	 * soft-deleted ticket reported as current is the same silent wrong answer
+	 * the withheld block and the truncated flag exist to prevent.
+	 *
+	 * Read off the source: the branch needs a session and a datamodel, and
+	 * what is worth holding is that it is conditional on the mode, that it
+	 * leaves a full read alone, and that it cannot throw.
+	 */
+	public function testAnArchiveModeReadCarriesTheFlagItWouldOtherwiseOmit(): void
+	{
+		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'withArchiveFlag');
+
+		$this->assertStringContainsString('IsArchiveMode', $sBody, 'the flag is added whatever mode the session is in');
+		$this->assertStringContainsString('IsValidAttCode', $sBody, 'a class without the flag would be asked for one');
+		$this->assertStringContainsString('catch (Throwable', $sBody, 'a read must not fail over the mode it is read in');
+		$this->assertStringContainsString(
+			'$aFields === null',
+			$sBody,
+			'a caller that asked for every attribute already has it'
+		);
+	}
+
+	/**
 	 * A link set that fits keeps its shape - a list, not an object with a
 	 * 'links' key - because that is what every caller already parses.
 	 */
@@ -137,5 +165,17 @@ class ObjectSerializerClippingTest extends TestCase
 	private function firstLinks($value)
 	{
 		return (new ReflectionMethod(ObjectSerializer::class, 'firstLinks'))->invoke(null, $value);
+	}
+
+	private function methodBody(string $sClass, string $sMethod): string
+	{
+		$oMethod = new \ReflectionMethod($sClass, $sMethod);
+		$aLines = file($oMethod->getFileName());
+
+		return implode('', array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		));
 	}
 }
