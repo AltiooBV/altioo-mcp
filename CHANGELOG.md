@@ -704,6 +704,16 @@ published archive was installed and exercised on into this line; the README and
   `defaulted` names the third case: not asked for, applied anyway. Codes, not values — the value is
   in `changes`.
 
+- **A secret does not come back through the change log.** A read masks an attribute whose type
+  iTop marks secret — the password and encrypted types implement `iAttributeNoGroupBy` — but the
+  change log is a second copy of the same values and was not masked: `AttributeDefinition` records
+  `oldvalue`/`newvalue` generically and `AttributePassword` does not override it, so changing an
+  OAuth client's secret writes both into a `CMDBChangeOpSetAttribute` row, which
+  `core_object_history` returned to anyone holding read rights on the attribute. Rights were
+  checked and sensitivity was not — different questions, since iTop answers the second by type
+  rather than by profile. The row survives (attribute, when, who); the values are masked, and so
+  are those of an attribute the datamodel no longer declares.
+
 - **A case-log entry's history row says what was written.** `core_object_history` answered
   `from: null, to: null` for every work note. Not the wrong column:
   `CMDBChangeOpSetAttributeCaseLog` declares `lastentry` — an integer — and no `oldvalue` or
