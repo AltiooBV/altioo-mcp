@@ -321,6 +321,45 @@ final class WritePlan
 	}
 
 	/**
+	 * The `defaulted` property, for a tool that takes caller-supplied fields.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function DefaultedSchemaProperty(): array
+	{
+		return [
+			'type'        => 'array',
+			'items'       => ['type' => 'string'],
+			'description' => 'Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call.',
+		];
+	}
+
+	/**
+	 * Which of the reported changes the caller never asked for.
+	 *
+	 * `changes` answers "what this write sets", and on a creation that is every
+	 * attribute - including the ones nobody mentioned. A link created with a
+	 * contact and a ticket comes back reporting role_code too, and a caller
+	 * reading it cannot tell the default it was given from the value it sent.
+	 *
+	 * `overridden` already draws the neighbouring line - what was asked for and
+	 * not kept - so the third case was the one with no name: not asked for, and
+	 * applied anyway. Codes rather than values, because the value is in
+	 * `changes` already and repeating it would double the block that matters.
+	 *
+	 * @param array<string, mixed> $aChanges  As {@see Changes()} reports them.
+	 * @param array<int, string>   $aSupplied The attribute codes the caller sent.
+	 *
+	 * @return array<int, string>
+	 * @since 1.0.0
+	 */
+	public static function Defaulted(array $aChanges, array $aSupplied): array
+	{
+		return array_values(array_diff(array_keys($aChanges), $aSupplied));
+	}
+
+	/**
 	 * The `overridden` property, for a tool that takes caller-supplied fields.
 	 *
 	 * Declared alongside {@see ChangesSchemaProperty()} and reported on every
