@@ -66,6 +66,43 @@ class DerivedAttributeReportingContractTest extends TestCase
 	}
 
 	/**
+	 * A change the caller never asked for says so.
+	 *
+	 * `changes` answers "what this write sets", and on a creation that is
+	 * every attribute - including ones nobody mentioned. A lnkContactToTicket
+	 * created with a contact and a ticket comes back reporting role_code too,
+	 * and a caller reading that cannot tell the default it was given from the
+	 * value it sent.
+	 *
+	 * `overridden` already draws the neighbouring line - asked for, not kept -
+	 * so the case with no name was: not asked for, applied anyway.
+	 */
+	public function testAChangeTheCallerNeverAskedForIsNamed(): void
+	{
+		$this->assertSame(
+			['role_code'],
+			WritePlan::Defaulted(
+				['contact_id' => 1, 'ticket_id' => 3, 'role_code' => 'manual'],
+				['contact_id', 'ticket_id']
+			),
+			'a defaulted attribute is indistinguishable from one the caller set'
+		);
+
+		$this->assertSame(
+			[],
+			WritePlan::Defaulted(['title' => 'x'], ['title']),
+			'a write whose every change was asked for reports none'
+		);
+
+		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
+			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
+			$aProperties = (new $sClass())->getOutputSchema()['properties'];
+			$this->assertArrayHasKey('defaulted', $aProperties, "{$sTool} does not report it");
+			$this->assertContains('defaulted', (new $sClass())->getOutputSchema()['required'], "{$sTool} reports it only sometimes");
+		}
+	}
+
+	/**
 	 * Every tool that takes caller-supplied attribute values and writes them,
 	 * with the method that does it: the single-object tools do it in execute(),
 	 * ObjectBulkCreate in the per-row helper execute() delegates to.
