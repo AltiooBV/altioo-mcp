@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use DBObject;
+use DBObjectSearch;
 use MetaModel;
 use Throwable;
 use UserRights;
@@ -329,6 +330,11 @@ final class AccessGrants
 	 * operator may reasonably delegate - unlike the record of what already
 	 * happened, which is below and has no switch.
 	 */
+	/** The OQL a category is defined by, and the key a rule names its category with. */
+	private const AUDIT_QUERY_ATTRIBUTE = 'definition_set';
+
+	private const AUDIT_CATEGORY_ATTRIBUTE = 'category_id';
+
 	private const DETECTION_ROOTS = [
 		'AuditRule',
 		'AuditCategory',
@@ -403,6 +409,15 @@ final class AccessGrants
 	 */
 	private const SCOPE_ATTRIBUTE = 'scope_class';
 
+	/**
+	 * The attribute a trigger names the class it watches in.
+	 *
+	 * AttributeClass, and its more_values explicitly adds User, UserExternal,
+	 * UserInternal, UserLDAP and UserLocal to the bizmodel category - so a
+	 * trigger can be pointed at the account classes by design.
+	 */
+	private const TARGET_ATTRIBUTE = 'target_class';
+
 	private const SOURCE_ATTRIBUTE = 'sync_source_id';
 
 	/**
@@ -446,7 +461,7 @@ final class AccessGrants
 	 * so the one rule no setting lifts - never your own access - would be
 	 * lifted by staging it instead of performing it.
 	 */
-	public const DELEGATED_TARGET_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', which decides who may reach this endpoint. The synchronisation engine writes without the check that keeps an administering call away from your own access, so this target is refused whatever mcp_allow_access_administration says. Do it in the iTop console.';
+	public const DELEGATED_TARGET_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', which this endpoint does not write directly - so it does not write it through something else either. Whatever refuses \'%2$s\' to a tool refuses it here, and no setting changes that, because the engine performs the write without any of the checks a tool applies. Do it in the iTop console.';
 
 	/**
 	 * What they say when the definition targets an ordinary class the caller
@@ -484,6 +499,11 @@ final class AccessGrants
 	/**
 	 * What they say about the rules that decide what gets flagged.
 	 */
+	/**
+	 * What they say about editing a check that is watching the caller.
+	 */
+	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_automation_administration says. Use the iTop console.';
+
 	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - so it is not something this endpoint changes on its own initiative, and it cannot be written here unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
 
 	/**
@@ -896,14 +916,47 @@ final class AccessGrants
 		}
 
 		// A standing instruction that makes the instance act by itself, or the
-		// credentials it acts with. No target to grade it on, and nothing on
-		// this endpoint it could be graded against - see AUTOMATION_ROOTS.
-		if (self::IsAutomation($sClass) && !$bAutomationAllowed) {
-			return sprintf(self::AUTOMATION_REFUSAL, $sClass);
+		// credentials it acts with. The effect it arranges - mail out, a URL
+		// called, a static method invoked - is one no tool here performs at
+		// all, so the rule below yields "refused" for every caller and the
+		// setting is an operator overriding that, not a grade.
+		if (self::IsAutomation($sClass)) {
+			if (!$bAutomationAllowed) {
+				return sprintf(self::AUTOMATION_REFUSAL, $sClass);
+			}
+
+			// Overridden, but only as far as the caller could reach itself. A
+			// trigger names the class it watches, and firing on a class this
+			// caller may not read is arranging for data out of it to be
+			// carried off - the setting says an assistant may wire up
+			// notifications, not that it may wire one up over records it is
+			// not allowed to see. A class naming no target - an action, a
+			// connection, a token store - has nothing to grade here and the
+			// setting has already decided it.
+			$sWatched = self::DelegatedTarget($sClass, $iId, $aFields);
+
+			return $sWatched === null ? null : self::CouldNotDoItDirectly($sClass, $sWatched, false);
 		}
 
-		if (self::IsDetection($sClass) && !$bAutomationAllowed) {
-			return sprintf(self::DETECTION_REFUSAL, $sClass);
+		if (self::IsDetection($sClass)) {
+			if (!$bAutomationAllowed) {
+				return sprintf(self::DETECTION_REFUSAL, $sClass);
+			}
+
+			// Overridden, but a rule that already exists is a control on the
+			// caller and not a thing the caller configures. Writing one that
+			// watches a class you can change is the loop: turn the rule off,
+			// make the mess it would have flagged, turn it back on. Nobody
+			// sees either edit unless they were already watching the rule
+			// itself, which is the thing that was supposed to do the watching.
+			//
+			// Creating one is not that - a new rule flags more, not less - so
+			// only an existing row is refused.
+			if ($iId !== null) {
+				return self::RuleWatchesSomethingTheCallerCanChange($sClass, $iId, $aFields);
+			}
+
+			return null;
 		}
 
 		if (self::IsDelegating($sClass)) {
@@ -923,15 +976,13 @@ final class AccessGrants
 				return sprintf(self::DELEGATION_REFUSAL, $sClass);
 			}
 
-			// The escalation, and the one answer no setting reaches: the engine
-			// writes without the check that keeps an administering call away
-			// from the caller's own access, so staging must not be the way to
-			// get past it.
-			if (self::IsGranting($sTarget)) {
-				return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, $sTarget);
-			}
-
-			return self::RightsRefusalForTarget($sClass, $sTarget);
+			// The rule, stated once: whatever this would end up doing, the
+			// caller has to be able to do it here, now, by calling a tool.
+			// Anything this endpoint refuses directly it refuses through a
+			// mechanism that would arrange it - including, first of all, a
+			// target behind one of the barriers above, which no setting
+			// reaches.
+			return self::CouldNotDoItDirectly($sClass, $sTarget, true);
 		}
 
 		if (!self::IsGranting($sClass)) {
@@ -973,7 +1024,7 @@ final class AccessGrants
 		// its own target has settled the question, and needing MetaModel to
 		// read a key out of an array is how this rule came to not apply in the
 		// one suite that runs without one.
-		foreach ([self::SCOPE_ATTRIBUTE => null, self::SOURCE_ATTRIBUTE => 'source'] as $sAttCode => $sKind) {
+		foreach ([self::SCOPE_ATTRIBUTE => null, self::TARGET_ATTRIBUTE => null, self::SOURCE_ATTRIBUTE => 'source'] as $sAttCode => $sKind) {
 			if (!array_key_exists($sAttCode, $aFields)) {
 				continue;
 			}
@@ -1001,6 +1052,12 @@ final class AccessGrants
 				return null;
 			}
 
+			if (MetaModel::IsValidAttCode($sClass, self::TARGET_ATTRIBUTE)) {
+				$sTarget = trim((string) $oRow->Get(self::TARGET_ATTRIBUTE));
+
+				return $sTarget === '' ? null : $sTarget;
+			}
+
 			if (MetaModel::IsValidAttCode($sClass, self::SCOPE_ATTRIBUTE)) {
 				$sScope = trim((string) $oRow->Get(self::SCOPE_ATTRIBUTE));
 
@@ -1017,6 +1074,88 @@ final class AccessGrants
 		} catch (Throwable) {
 			return null;
 		}
+	}
+
+	/**
+	 * Whether an existing audit rule watches a class this caller can change.
+	 *
+	 * The audited class is in the category's definition_set, an OQL: a rule
+	 * points at its category, a category names the query. So the question is
+	 * asked of whichever of the two is in front of it, and answered by the
+	 * class that query selects.
+	 *
+	 * Refuses whenever it cannot establish the class, which on an update or a
+	 * delete is the same stance every other rule here takes - and it means an
+	 * AuditDomain, which groups categories rather than naming a query, is not
+	 * editable through this endpoint at all. That is the direction to be wrong
+	 * in: the cost is a refusal an administrator satisfies from the console,
+	 * and the cost the other way is the edit-and-revert loop.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function RuleWatchesSomethingTheCallerCanChange(string $sClass, int $iId, array $aFields): ?string
+	{
+		$sRefusal = sprintf(self::DETECTION_TAMPER_REFUSAL, $sClass);
+
+		if (!class_exists('MetaModel') || !class_exists('UserRights') || !class_exists('DBObjectSearch')) {
+			return $sRefusal;
+		}
+
+		try {
+			$sAudited = self::AuditedClass($sClass, $iId, $aFields);
+			if ($sAudited === null) {
+				return $sRefusal;
+			}
+
+			foreach (['UR_ACTION_MODIFY', 'UR_ACTION_DELETE', 'UR_ACTION_CREATE'] as $sConstant) {
+				if (!defined($sConstant)) {
+					return $sRefusal;
+				}
+				if (UserRights::IsActionAllowed($sAudited, constant($sConstant))) {
+					return sprintf(self::DETECTION_TAMPER_REFUSAL, $sClass).sprintf(' It watches \'%s\', which you may change.', $sAudited);
+				}
+			}
+		} catch (Throwable) {
+			return $sRefusal;
+		}
+
+		return null;
+	}
+
+	/**
+	 * The class an audit rule or category is written about.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function AuditedClass(string $sClass, int $iId, array $aFields): ?string
+	{
+		$sOql = null;
+
+		if (array_key_exists(self::AUDIT_QUERY_ATTRIBUTE, $aFields)) {
+			$sOql = trim((string) $aFields[self::AUDIT_QUERY_ATTRIBUTE]);
+		}
+
+		if ($sOql === null || $sOql === '') {
+			$oRow = MetaModel::GetObject($sClass, $iId, false, true);
+			if ($oRow === null) {
+				return null;
+			}
+
+			if (MetaModel::IsValidAttCode($sClass, self::AUDIT_QUERY_ATTRIBUTE)) {
+				$sOql = trim((string) $oRow->Get(self::AUDIT_QUERY_ATTRIBUTE));
+			} elseif (MetaModel::IsValidAttCode($sClass, self::AUDIT_CATEGORY_ATTRIBUTE)) {
+				$oCategory = MetaModel::GetObject('AuditCategory', (int) $oRow->Get(self::AUDIT_CATEGORY_ATTRIBUTE), false, true);
+				$sOql = $oCategory === null ? '' : trim((string) $oCategory->Get(self::AUDIT_QUERY_ATTRIBUTE));
+			}
+		}
+
+		if ($sOql === null || $sOql === '') {
+			return null;
+		}
+
+		$sAudited = trim((string) DBObjectSearch::FromOQL($sOql)->GetClass());
+
+		return $sAudited === '' ? null : $sAudited;
 	}
 
 	/**
@@ -1102,68 +1241,162 @@ final class AccessGrants
 	 * therefore have that attribute overwritten by the engine. The honest
 	 * scope of this rule is the class, and {@see SECURITY.md} says so.
 	 */
-	private static function RightsRefusalForTarget(string $sClass, string $sTarget): ?string
+	private static function CouldNotDoItDirectly(string $sClass, string $sTarget, bool $bWouldWrite): ?string
 	{
-		$aNeeded = [
-			'create'      => 'UR_ACTION_CREATE',
-			'modify'      => 'UR_ACTION_MODIFY',
-			'delete'      => 'UR_ACTION_DELETE',
-			'modify in bulk' => 'UR_ACTION_BULK_MODIFY',
-			'delete in bulk' => 'UR_ACTION_BULK_DELETE',
-		];
-
-		if (!class_exists('UserRights') || !class_exists('MetaModel')) {
-			return sprintf(
-				self::DELEGATED_RIGHTS_REFUSAL,
-				$sClass,
-				$sTarget,
-				'Your rights on it could not be established here.',
-				$sTarget
-			);
+		// First, the barriers themselves. A mechanism pointed at a class this
+		// endpoint will not write is the plainest form of the thing being
+		// refused: the audit trail, the rights model, another mechanism. Asked
+		// as IsBarred() rather than IsGranting() so that every rule here covers
+		// its own indirect route without being listed again - a source pointed
+		// at Event, or at AsyncTask, is refused by the rule that refuses Event
+		// and AsyncTask.
+		if (self::IsBarred($sTarget)) {
+			return sprintf(self::DELEGATED_TARGET_REFUSAL, $sClass, $sTarget);
 		}
 
-		$aRefused = [];
+		if (!class_exists('UserRights') || !class_exists('MetaModel')) {
+			return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, 'Your rights on it could not be established here.', $sTarget);
+		}
 
 		try {
 			if (!MetaModel::IsValidClass($sTarget)) {
 				return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, "'{$sTarget}' is not a class this instance knows.", $sTarget);
 			}
 
-			foreach ($aNeeded as $sWhat => $sConstant) {
+			// Reading first, and for every mechanism, because every one of them
+			// is a way to get data out. A trigger hands the object it fired on
+			// to an action, and ActionEmail's body takes $this->attribute$
+			// placeholders; a data source mirrors the rows it matches into its
+			// replicas. So a class this caller may not read is a class it may
+			// not arrange to have read out on its behalf - the same sentence as
+			// the write rule, and the half that keeps a mechanism from becoming
+			// an export of what the read tools would have masked or refused.
+			$aActions = [
+				'read'         => 'UR_ACTION_READ',
+				'read in bulk' => 'UR_ACTION_BULK_READ',
+			];
+
+			// And the writing actions, only for a mechanism that writes: a
+			// data source creates what it finds, modifies what it matches and,
+			// under its own delete_policy, deletes what has gone, in bulk by
+			// construction. A trigger writes nothing of its own, so requiring
+			// write on the class it watches would refuse an ordinary
+			// notification for no reason the rule gives.
+			if ($bWouldWrite) {
+				$aActions += [
+					'create'         => 'UR_ACTION_CREATE',
+					'modify'         => 'UR_ACTION_MODIFY',
+					'delete'         => 'UR_ACTION_DELETE',
+					'modify in bulk' => 'UR_ACTION_BULK_MODIFY',
+					'delete in bulk' => 'UR_ACTION_BULK_DELETE',
+				];
+			}
+
+			$aRefused = [];
+			foreach ($aActions as $sWhat => $sConstant) {
 				if (!defined($sConstant)) {
-					return sprintf(
-						self::DELEGATED_RIGHTS_REFUSAL,
-						$sClass,
-						$sTarget,
-						'Your rights on it could not be established here.',
-						$sTarget
-					);
+					return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, 'Your rights on it could not be established here.', $sTarget);
 				}
 				if (!UserRights::IsActionAllowed($sTarget, constant($sConstant))) {
 					$aRefused[] = $sWhat;
 				}
 			}
+
+			if ($aRefused !== []) {
+				return sprintf(
+					self::DELEGATED_RIGHTS_REFUSAL,
+					$sClass,
+					$sTarget,
+					'You may not '.implode(', ', $aRefused)." objects of '{$sTarget}' through this endpoint, and the engine would.",
+					$sTarget
+				);
+			}
+
+			// And the attributes, which is where the rule bites hardest and
+			// where it was missing. A data source is not a write of the fields
+			// somebody chose: SynchroDataSource fills its own mapping in on
+			// creation, one SynchroAttribute per attribute of the class, every
+			// one of them Set('update', 1) with update_policy master_locked
+			// (synchrodatasource.class.inc.php). Creating the source therefore
+			// hands the engine every attribute of the class, so the caller has
+			// to hold every attribute of the class - a per-attribute grant it
+			// does not hold is one this would have got round.
+			$aUnreadable = self::AttributesTheCallerMayNot($sTarget, 'UR_ACTION_READ');
+			if ($aUnreadable !== []) {
+				return sprintf(
+					self::DELEGATED_RIGHTS_REFUSAL,
+					$sClass,
+					$sTarget,
+					'A read here masks '.self::few($aUnreadable).", and nothing masks them once this carries the object out.",
+					$sTarget
+				);
+			}
+
+			if ($bWouldWrite) {
+				$aUnwritable = self::AttributesTheCallerMayNot($sTarget, 'UR_ACTION_MODIFY');
+				if ($aUnwritable !== []) {
+					return sprintf(
+						self::DELEGATED_RIGHTS_REFUSAL,
+						$sClass,
+						$sTarget,
+						'A source fills its own mapping in with every attribute of the class set to update, and you may not write '.self::few($aUnwritable).' here.',
+						$sTarget
+					);
+				}
+			}
 		} catch (Throwable) {
-			return sprintf(
-				self::DELEGATED_RIGHTS_REFUSAL,
-				$sClass,
-				$sTarget,
-				'Your rights on it could not be established here.',
-				$sTarget
-			);
+			return sprintf(self::DELEGATED_RIGHTS_REFUSAL, $sClass, $sTarget, 'Your rights on it could not be established here.', $sTarget);
 		}
 
-		if ($aRefused === []) {
-			return null;
+		return null;
+	}
+
+	/**
+	 * The writable attributes of $sClass this caller is refused.
+	 *
+	 * Only the outright refusals count. IsActionAllowedOnAttribute() is
+	 * tri-state and an addon that grades per object answers DEPENDS, which is
+	 * a question about a row - and a data source has no row to ask about, so
+	 * treating DEPENDS as a refusal would refuse every source on any instance
+	 * whose addon grades that way. UR_ALLOWED_NO is the answer that does not
+	 * depend on anything.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function AttributesTheCallerMayNot(string $sClass, string $sActionConstant): array
+	{
+		if (!defined('UR_ALLOWED_NO') || !defined($sActionConstant)) {
+			return [];
 		}
 
-		return sprintf(
-			self::DELEGATED_RIGHTS_REFUSAL,
-			$sClass,
-			$sTarget,
-			'You may not '.implode(', ', $aRefused)." objects of '{$sTarget}', and the engine would.",
-			$sTarget
-		);
+		$bWriting = $sActionConstant === 'UR_ACTION_MODIFY';
+		$aRefused = [];
+
+		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
+			if ($bWriting && !$oAttDef->IsWritable()) {
+				continue;
+			}
+			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, constant($sActionConstant)) === UR_ALLOWED_NO) {
+				$aRefused[] = $sAttCode;
+			}
+		}
+
+		sort($aRefused);
+
+		return $aRefused;
+	}
+
+	/**
+	 * A few of them by name, and a count for the rest.
+	 *
+	 * @param array<int, string> $aAttCodes
+	 */
+	private static function few(array $aAttCodes): string
+	{
+		$aShown = array_slice($aAttCodes, 0, 5);
+
+		return implode(', ', $aShown)
+			.(count($aAttCodes) > count($aShown) ? ' and '.(count($aAttCodes) - count($aShown)).' more' : '');
 	}
 
 	/**

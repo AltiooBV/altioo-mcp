@@ -124,6 +124,44 @@ so a browser cookie cannot be replayed against it. Four gates apply, and all of 
 A token scope can only ever make a credential **narrower** than the user's own profiles. It
 never widens anything.
 
+### The rule the write barriers reduce to
+
+**You cannot arrange what you cannot do.** If this endpoint will not let a caller read, create,
+update or delete a class directly through a tool, that caller may not use an indirect
+mechanism — a synchronisation source, a trigger, an action, a queued task — to have the same
+thing done on its behalf. Every mechanism is graded as the direct call would be graded: the same
+barriers, the same `UserRights`, class **and** per-attribute, on reads as well as on writes.
+
+Three consequences, and they are where the earlier one-family-at-a-time rules came from:
+
+- **Reads count.** A mechanism is a way to get data out, not only a way to write. A trigger hands
+  the object it fired on to an action whose body takes `$this->attribute$` placeholders; a data
+  source mirrors the rows it matches into its replicas. So a class the caller may not read is one
+  it may not arrange to have read out — otherwise the mechanism is an export of exactly what the
+  read tools would have masked or refused.
+- **Attributes count, not just classes.** A `SynchroDataSource` fills its own mapping in on
+  creation: one `SynchroAttribute` per attribute of the class, every one of them `update = 1`
+  with `update_policy` `master_locked`. Creating the source therefore hands the engine *every*
+  attribute, so the caller must hold every attribute. A per-attribute grant it does not have is
+  one the mechanism would otherwise have got round.
+- **Where there is no direct equivalent at all, the answer is no.** No tool here sends mail,
+  calls a URL, or invokes a static method by name. So for `Trigger`, `Action`, `AsyncTask` and
+  the credentials they act with, "could the caller have done this itself" has one answer for
+  every caller, always — and `mcp_allow_automation_administration` is an operator **overriding**
+  that, not a grade. Even overridden, a trigger is still graded against the class it watches.
+
+And the same sentence, turned around, for the checks that watch the caller: an `AuditRule` or
+`AuditCategory` that **already exists** cannot be changed or deleted here, because turning a check
+off, making the change it would have flagged and turning it back on leaves nothing for anyone to
+notice. Creating one is allowed — a new check flags more, not less.
+
+**This is deliberately stricter than the console and the REST API, which permit all of it.** That
+is not an oversight to be reconciled later: the caller here is a model acting on instructions that
+may have come from outside the organisation, it can make a hundred calls in the time a person
+makes one, and the whole value of a dry run and a rights check is lost if a mechanism will carry
+out later, unwatched, what the tool refused now. A maintainer tempted to relax one of these to
+match iTop's other entry points should read this paragraph first.
+
 **The endpoint never writes the things that decide what the endpoint may write.** The scope
 above is an ordinary attribute on an ordinary object, so a tool able to write `PersonalToken`
 would let a credential widen itself — or mint a second one that is already wider — and writing

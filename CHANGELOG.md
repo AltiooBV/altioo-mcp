@@ -426,6 +426,41 @@ published archive was installed and exercised on into this line; the README and
   is writable, and the same block on a class where the refusal was *not* there would read
   identically. It is also the one entry that narrows the read gates, since the refusal is not "you
   may not change this" but "another tool serves this".
+- **The write barriers reduce to one rule: you cannot arrange what you cannot do.** The rules
+  above were arrived at one family at a time, each closing the path a review had just walked. The
+  rule they were groping towards, and now the rule they are written as: if a caller cannot read,
+  create, update or delete a class directly through a tool, it may not use an indirect mechanism —
+  a synchronisation source, a trigger, an action, a queued task — to have the same thing done for
+  it. Every mechanism is graded as the direct call would be, against the same barriers and the same
+  `UserRights`. Three things follow, and two of them were missing. **Reads count**: a mechanism is
+  a way to get data out as much as a way to write, since a trigger hands its object to an action
+  whose body takes `$this->attribute$` placeholders and a source mirrors the rows it matches — so a
+  class the caller may not read is one it may not arrange to have read out, and the mechanism stops
+  being an export of what the read tools would have masked. **Attributes count**: a
+  `SynchroDataSource` fills its own mapping in on creation, one row per attribute, every one
+  `update = 1` with `update_policy` `master_locked`, so creating it hands the engine every
+  attribute of the class and the caller must hold every attribute of the class — a per-attribute
+  grant it lacks is one the mechanism would have got round. And **a target behind any barrier is
+  refused**, asked as `IsBarred()` rather than as the rights model alone, so a source pointed at
+  `Event` or at `AsyncTask` is refused by the rules that refuse `Event` and `AsyncTask` without
+  either being listed a second time — a hole the family-by-family version had. Where no direct
+  equivalent exists at all — nothing here sends mail, calls a URL, or invokes a static method by
+  name — the rule yields "no" for every caller, and `mcp_allow_automation_administration` is an
+  operator overriding it rather than a grade; even overridden, a trigger is still graded against
+  the class it watches.
+- **A check that already exists is not the caller's to edit.** The same sentence turned around. An
+  `AuditRule` or `AuditCategory` that exists is a control *on* the caller, not a thing the caller
+  configures: turning it off, making the change it would have flagged and turning it back on leaves
+  nothing for anyone to notice, unless somebody was already watching the rule — which is the thing
+  that was supposed to do the watching. Creating one stays allowed, since a new check flags more
+  rather than less. The audited class is read from the category's `definition_set` OQL, through
+  `category_id` for a rule; where it cannot be established the edit is refused, which makes an
+  `AuditDomain` — a grouping, with no query of its own — not editable here at all.
+- **All of this is deliberately stricter than the console and the REST API**, which permit every
+  one of these paths. Recorded in `SECURITY.md` as a decision rather than left as a discrepancy for
+  someone to reconcile: the caller here is a model acting on instructions that may have come from
+  outside the organisation, at a rate no person works at, and a dry run and a rights check are
+  worth nothing if a mechanism will carry out later, unwatched, what the tool refused now.
 - **A write handed to iTop's synchronisation engine is graded on where it lands.** The access
   barrier is built on one sentence — this endpoint never writes the things that decide what it
   may write — and a red-team pass against a live instance found the half that sentence does not

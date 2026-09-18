@@ -558,38 +558,94 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
-	 * An ordinary target is graded on the caller's rights over it, not on a
-	 * setting.
+	 * The rule the whole barrier reduces to: you cannot arrange what you
+	 * cannot do.
 	 *
-	 * The barrier is not a ban on synchronisation, and the first version of it
-	 * was: every definition was refused behind mcp_allow_access_administration,
-	 * which refused ordinary CMDB work under the name of something else. What
-	 * the engine actually removes is the rights check - it runs as a trusted
-	 * internal process and consults nobody - so the rights are what this asks
-	 * about, once, over the class the definition points at. Staging a write
-	 * you could have performed is a scheduling decision. Staging one you were
-	 * refused is the bypass.
+	 * Stated by the reviewer and worth quoting, because it is the sentence the
+	 * earlier categories were groping towards one family at a time: "if by
+	 * tools you cannot do something directly on a class... you shouldn't be
+	 * able to use an alternative (trigger, synchro, ...) to do what you can't",
+	 * and "if you can't read a class, it's also blocked".
 	 *
-	 * All five actions, because a data source does all of them: it creates
-	 * what it finds, modifies what it matches and, under its own
-	 * delete_policy, deletes what has gone - in bulk, by construction.
+	 * So every mechanism is graded against the direct call. Reading always,
+	 * because every one of them is a way to get data out - a trigger hands its
+	 * object to an action whose body takes $this->attribute$ placeholders, a
+	 * source mirrors the rows it matches. Writing for the ones that write. And
+	 * the attributes, not just the class, on both halves.
 	 */
-	public function testAnOrdinaryTargetIsGradedOnTheRightsOverIt(): void
+	public function testAMechanismIsGradedAgainstTheDirectCall(): void
 	{
-		$sRights = $this->body(AccessGrants::class, 'RightsRefusalForTarget');
+		$sRule = $this->body(AccessGrants::class, 'CouldNotDoItDirectly');
 
+		// A target the barrier itself refuses is refused here, by the same
+		// rule rather than by a second list - which is what makes a source
+		// pointed at Event, or at AsyncTask, refused without either being
+		// named again.
+		$this->assertStringContainsString('IsBarred', $sRule,
+			'the mechanism is graded only on rights, so it can be pointed at a class the barrier refuses outright');
+
+		foreach (['UR_ACTION_READ', 'UR_ACTION_BULK_READ'] as $sAction) {
+			$this->assertStringContainsString($sAction, $sRule,
+				"a mechanism is not graded on {$sAction}, so it can carry out data the caller may not read");
+		}
 		foreach (['UR_ACTION_CREATE', 'UR_ACTION_MODIFY', 'UR_ACTION_DELETE', 'UR_ACTION_BULK_MODIFY', 'UR_ACTION_BULK_DELETE'] as $sAction) {
-			$this->assertStringContainsString($sAction, $sRights, "a definition is not graded on {$sAction} over its target");
+			$this->assertStringContainsString($sAction, $sRule, "a writing mechanism is not graded on {$sAction}");
 		}
 
-		$this->assertStringNotContainsString(
-			'AllowsAccessAdministration',
-			$sRights,
-			'an ordinary CMDB source is still gated on the access-administration setting'
-		);
+		// Per attribute, not only per class: a grant the caller does not hold
+		// on one attribute is one the mechanism would have got round.
+		$this->assertStringContainsString('AttributesTheCallerMayNot', $sRule,
+			'only the class is graded, so a per-attribute grant is reachable through the mechanism');
+
+		$this->assertStringNotContainsString('AllowsAccessAdministration', $sRule,
+			'an ordinary CMDB source is still gated on the access-administration setting');
 	}
 
 	/**
+	 * A target behind any barrier is refused, not only one behind the rights
+	 * model.
+	 *
+	 * The hole the principle closes that naming families did not: the check
+	 * used to ask IsGranting(), so a source pointed at Event - the audit trail
+	 * - or at AsyncTask - the mail queue - fell through to the rights check and
+	 * was graded as if it were an ordinary class.
+	 */
+	public function testAMechanismCannotBePointedAtAnythingTheBarrierRefuses(): void
+	{
+		foreach (['URP_UserProfile', 'Event', 'AsyncTask', 'Trigger', 'Oauth2Client', 'appUserPreferences'] as $sTarget) {
+			foreach ([false, true] as $bAdministration) {
+				$this->assertNotNull(
+					AccessGrants::RefusalGiven($bAdministration, 'SynchroDataSource', null, ['scope_class' => $sTarget], true),
+					"a synchronisation source pointed at {$sTarget} was allowed through"
+				);
+			}
+		}
+	}
+
+	/**
+	 * Even with the operator's override, a trigger only reaches what the caller
+	 * reaches.
+	 *
+	 * mcp_allow_automation_administration says an assistant may wire up
+	 * notifications. It does not say it may wire one up over records it is not
+	 * allowed to read - which is the same sentence as everything else here,
+	 * applied to the class the trigger watches rather than the class a source
+	 * writes.
+	 */
+	public function testTheOverrideDoesNotOpenATriggerOnAClassTheCallerCannotRead(): void
+	{
+		// Trigger by its root name, so the family is recognised without a
+		// datamodel; the kinds of trigger are covered by the descent test.
+		// No UserRights here, so the reads cannot be established and the rule
+		// refuses - which is the direction it has to fail in.
+		$sRefusal = AccessGrants::RefusalGiven(true, 'Trigger', null, ['target_class' => 'Server'], true);
+
+		$this->assertNotNull($sRefusal, 'a trigger was allowed over a class whose rights could not be established');
+		$this->assertStringContainsString('Server', $sRefusal);
+	}
+
+	/**
+	 * And where the rights cannot be asked, it is refused.	/**
 	 * And where the rights cannot be asked, it is refused.
 	 *
 	 * This is the failure mode that matters, and the suite runs in it: no
@@ -630,7 +686,7 @@ class AccessGrantsTest extends TestCase
 
 		$this->assertSame(count($aAll), count(array_unique($aAll)), 'two refusals say the same thing');
 		$this->assertStringContainsString('scope_class', AccessGrants::DELEGATION_REFUSAL);
-		$this->assertStringContainsString('decides who may reach this endpoint', AccessGrants::DELEGATED_TARGET_REFUSAL);
+		$this->assertStringContainsString('does not write it through something else', AccessGrants::DELEGATED_TARGET_REFUSAL);
 		$this->assertStringContainsString('you could write yourself', AccessGrants::DELEGATED_RIGHTS_REFUSAL);
 	}
 
@@ -1068,6 +1124,29 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * An existing check is not the caller's to edit, even with the override.
+	 *
+	 * The loop it closes: turn the rule off, make the change it would have
+	 * flagged, turn it back on. Nobody sees either edit unless they were
+	 * already watching the rule, which is the thing that was meant to do the
+	 * watching. Creating a rule is not that - a new one flags more, not less -
+	 * so only an existing row is refused.
+	 */
+	public function testAnExistingCheckCannotBeEditedByTheAccountItWatches(): void
+	{
+		// An existing row: refused whatever the setting says.
+		foreach (['AuditRule', 'AuditCategory', 'AuditDomain'] as $sClass) {
+			$sRefusal = AccessGrants::RefusalGiven(true, $sClass, 7, [], true);
+
+			$this->assertNotNull($sRefusal, "an existing {$sClass} was editable with the override on");
+			$this->assertStringContainsString('turning one off', $sRefusal);
+		}
+
+		// A new one is allowed where the operator opted in.
+		$this->assertNull(AccessGrants::RefusalGiven(false, 'AuditRule', null, [], true));
+	}
+
+	/**
 	 * The rules that decide what a person is shown as wrong.
 	 *
 	 * Not an escalation - nothing here grants access to anything - but the
@@ -1080,8 +1159,12 @@ class AccessGrantsTest extends TestCase
 	{
 		foreach (['AuditRule', 'AuditCategory', 'AuditDomain'] as $sClass) {
 			$this->assertTrue(AccessGrants::IsDetection($sClass));
-			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
-			$this->assertNull(AccessGrants::RefusalGiven(false, $sClass, 1, [], true));
+			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false),
+				"{$sClass} was writable with the automation setting off");
+			// With the override on, a *new* one is allowed; an existing row is
+			// not - see testAnExistingCheckCannotBeEditedByTheAccountItWatches().
+			$this->assertNull(AccessGrants::RefusalGiven(false, $sClass, null, [], true),
+				"a new {$sClass} was refused even with the override on");
 		}
 	}
 
