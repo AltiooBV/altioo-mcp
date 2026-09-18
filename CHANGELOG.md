@@ -689,6 +689,14 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **The instructions say that nothing arrives unasked, and that nothing is kept between calls.**
+  The block already said the *surface* is settled at connect time, which is a statement about
+  `tools/list`. It never said the larger thing: this server answers calls and sends nothing else —
+  no notification when an object changes, no subscription to wait on, no event when a ticket opens
+  or an SLA runs out. A reviewer reading the whole surface could not tell, and an agent that
+  promises a user it will be told waits forever. Beside it: each call stands alone, so what
+  persists does so because it was written into iTop.
+
 - **A write names the changes the caller never asked for.** `changes` answers "what this write
   sets", and on a creation that is every attribute — a `lnkContactToTicket` created with a contact
   and a ticket reports `role_code` too, and nothing separated the default it was handed from the
