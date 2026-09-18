@@ -150,6 +150,43 @@ class WriteFailureReportingContractTest extends TestCase
 	}
 
 	/**
+	 * A write describes the object it left behind, not the one it was handed.
+	 *
+	 * `changes` is taken before the write and has to be - DBInsert() clears the
+	 * pending values - so it reports what was asked for and what
+	 * DoComputeValues() rewrote, and nothing the write itself did: an
+	 * AfterInsert hook, an event listener, the ref a ticket is given, the
+	 * lifecycle filling a field in. And obsolescence_flag is not a stored
+	 * column at all but an expression the database evaluates when the row is
+	 * queried, so nothing in memory carries it.
+	 *
+	 * The case that makes it matter: a status the datamodel counts as obsolete.
+	 * The write succeeds, the object leaves every search that account makes,
+	 * and the report said nothing - so the agent looks for what it wrote, finds
+	 * nothing, and concludes the write failed.
+	 *
+	 * One read, on the real path only, for both halves.
+	 */
+	public function testEveryFieldChangingWriteReportsTheObjectItLeftBehind(): void
+	{
+		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
+			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
+			$sSource = (string) file_get_contents((new ReflectionClass($sClass))->getFileName());
+
+			$this->assertStringContainsString('WritePlan::AfterSchemaProperty()', $sSource, "{$sTool} does not declare it");
+			$this->assertStringContainsString('WritePlan::After(', $sSource, "{$sTool} does not report it");
+		}
+
+		$sAfter = $this->methodBody(WritePlan::class, 'After');
+
+		$this->assertStringContainsString('MetaModel::GetObject', $sAfter, 'nothing is re-read, so a trigger stays invisible');
+		$this->assertStringContainsString('!$bSimulated', $sAfter, 'a dry run reads a row it has not written');
+		$this->assertStringContainsString('ObjectSerializer::Serialize', $sAfter, 'values bypass the read rights and the masking');
+		$this->assertStringContainsString('hidden_from_searches', $sAfter, 'the one consequence a caller cannot see for itself');
+		$this->assertStringContainsString('catch (Throwable', $sAfter, 'describing a write that succeeded must not fail it');
+	}
+
+	/**
 	 * The TypeError that started this: DBInsert() returns the key as a string,
 	 * and a ?int parameter under strict_types rejects it *after* the commit.
 	 * Every create path hands this method an id straight out of the ORM.
