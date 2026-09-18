@@ -442,7 +442,46 @@ class MCPHelper
 	 */
 	public static function NewErrorReference(): string
 	{
-		return bin2hex(random_bytes(8));
+		$sReference = bin2hex(random_bytes(8));
+
+		// Kept so the audit row can carry it. Minted deep inside a tool and
+		// handed to the caller inside a message, a reference used to reach the
+		// iTop log file and nothing else - so the row recording that very call
+		// had error_ref empty, and the identifier the caller was told to quote
+		// resolved to nothing anyone could query. A review found 118 error rows
+		// and not one populated.
+		//
+		// Static, and safe to be: this endpoint serves one request per process
+		// and holds nothing between them. Bounded because a bulk call mints one
+		// per failing row and the column is not a log.
+		if (count(self::$aErrorReferences) < self::MAX_ERROR_REFERENCES) {
+			self::$aErrorReferences[] = $sReference;
+		}
+
+		return $sReference;
+	}
+
+	/** Most references one audit row carries; the log has the rest. */
+	private const MAX_ERROR_REFERENCES = 12;
+
+	/** @var array<int, string> */
+	private static array $aErrorReferences = [];
+
+	/**
+	 * Every reference this request minted, in the order it minted them.
+	 *
+	 * @return array<int, string>
+	 * @since 1.0.0
+	 */
+	public static function MintedErrorReferences(): array
+	{
+		return self::$aErrorReferences;
+	}
+
+	/** For tests, and for a runner that serves more than one request. @since 1.0.0 */
+	public static function ForgetErrorReferences(): void
+	{
+		self::$aErrorReferences = [];
 	}
 
 	/**
@@ -489,7 +528,9 @@ class MCPHelper
 
 		return sprintf(
 			'%s. The cause is server-side and was not something this call could have avoided; '
-			.'it is recorded in the iTop log under reference %s. Report that reference rather than retrying.',
+			.'it is recorded in the iTop log, and on this call\'s own audit row, under reference %s. '
+			.'Report that reference rather than retrying: an account that may read AltiooEventMCPService '
+			.'can find the row with core_object_search_by_class on error_ref.',
 			$sWhat,
 			$sReference
 		);
@@ -543,8 +584,9 @@ class MCPHelper
 		return sprintf(
 			'%s. iTop refused the value and its reason is in the instance log, not in this answer. '
 			.'Check the attribute against core_class_schema - its type, its allowed values, its pattern - and correct the call. '
-			.'If the value looks right, tell the user it failed and give them this reference for the log: %s. '
-			.'No tool here reads that log.',
+			.'If the value looks right, tell the user it failed and give them reference %s: it is in the instance log, and on '
+			.'this call\'s own audit row, which an account that may read AltiooEventMCPService can find with '
+			.'core_object_search_by_class on error_ref.',
 			$sWhat,
 			$sReference
 		);

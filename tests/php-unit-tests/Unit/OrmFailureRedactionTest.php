@@ -89,17 +89,40 @@ class OrmFailureRedactionTest extends TestCase
 	/**
 	 * The opaque refusal points at something the caller can actually do.
 	 *
-	 * It used to say "quote that reference", and the reference is an index
-	 * into iTop's log - which no tool on this server reads. A model was being
-	 * sent to look for a capability that does not exist.
+	 * It used to say "quote that reference", and the reference was an index
+	 * into iTop's log, which no tool on this server reads: a model was being
+	 * sent to look for a capability that does not exist. The message then said
+	 * so - "No tool here reads that log" - which was honest but still a dead
+	 * end.
+	 *
+	 * It is not a dead end any more. Every reference a request mints is written
+	 * to that request's own audit row, so it resolves to a queryable object
+	 * rather than to a line in a file: a review found 118 error rows with
+	 * error_ref empty, because the references were minted inside the tools and
+	 * never reached the controller that writes the row.
+	 *
+	 * What the message must still not do is promise the *caller* can read it -
+	 * AltiooEventMCPService is not readable by an ordinary account - so it says
+	 * which account can, and names the call that finds it.
 	 */
-	public function testTheOpaqueRefusalDoesNotSendTheCallerToALogItCannotRead(): void
+	public function testTheOpaqueRefusalPointsAtSomethingThatResolves(): void
 	{
 		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'RejectedValue');
 
 		$this->assertStringContainsString('core_class_schema', $sBody, 'the caller is told nothing it can check');
-		$this->assertStringContainsString('No tool here reads that log', $sBody, 'the dead end is not named as one');
+		$this->assertStringContainsString('AltiooEventMCPService', $sBody,
+			'the reference is handed out without naming anything that resolves it');
+		$this->assertStringContainsString('core_object_search_by_class', $sBody,
+			'nothing tells the reader how to find the row the reference is on');
 		$this->assertStringNotContainsString('quote that reference', $sBody);
+
+		// And the reference has to reach that row, which is the half that was
+		// missing: minted in the helper, written by the controller.
+		$sController = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Controller\MCPController::class))->getFileName()
+		);
+		$this->assertStringContainsString('MCPHelper::MintedErrorReferences()', $sController,
+			'the audit row records only the controller\'s own reference, so a tool-level one resolves to nothing');
 	}
 
 	/**

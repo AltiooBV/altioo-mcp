@@ -437,6 +437,19 @@ published archive was installed and exercised on into this line; the README and
   fits, since a row of your own is harmless and a row in someone else's name is the whole abuse.
   It declares `user_id` where `appUserPreferences` declares `userid`, so the owner rule now asks
   the datamodel which spelling a class uses instead of assuming one.
+- **The error reference now resolves to something.** A review read 118 error rows in the audit
+  table and found `error_ref` empty on every one — so the identifier a caller is handed and told to
+  quote resolved to nothing, for anyone, anywhere. The cause was two independent mints: the
+  controller's own reference reached `MCPResult` and so reached the row, while the ones minted
+  inside `OpaqueFailure()` and `RejectedValue()` were embedded in the message string and went no
+  further than a line in the iTop log file. Every reference a request mints is now recorded and
+  written to that request's own audit row, so it points at a queryable object instead of a file
+  nothing on this endpoint reads. `error_ref` grew from 32 to 255 characters because a bulk call
+  mints one per failing row and at 32 only the first fitted — a caller quoting the third had
+  nothing to find — and the list is capped at twelve so the column stays a handle and not a log.
+  Both messages say where the reference lives and which call finds it, without promising the caller
+  can: `AltiooEventMCPService` is not readable by an ordinary account, and the message says whose
+  is.
 - **The endpoint's own audit rows say whether the call was a rehearsal.** `AltiooEventMCPService`
   gains `simulate` — `yes`, `no`, or `n/a` where there is no dry run to speak of. Raised in review:
   the row carried status, duration and size but nothing distinguishing a dry run from a real write,

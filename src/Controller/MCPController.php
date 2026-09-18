@@ -759,7 +759,15 @@ final class MCPController
 			if ($oResult->responseBytes !== null) {
 				$oLog->Set('response_bytes', $oResult->responseBytes);
 			}
-			$oLog->Set('error_ref', $oResult->errorReference ?? '');
+			// The controller's own reference first, then every one a tool minted
+			// on the way - which used to reach the iTop log and nothing else,
+			// leaving this column empty on every error row and the identifier
+			// the caller was told to quote resolvable by nobody.
+			$aReferences = MCPHelper::MintedErrorReferences();
+			if ($oResult->errorReference !== null && $oResult->errorReference !== '') {
+				array_unshift($aReferences, $oResult->errorReference);
+			}
+			$oLog->Set('error_ref', self::truncate(implode(' ', array_unique($aReferences)), 255));
 			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
 			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
