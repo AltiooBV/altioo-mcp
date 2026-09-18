@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -337,6 +338,15 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			}
 			if (!MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
 				$aIssues[] = "Attribute '{$sAttCode}' is not writable.";
+				continue;
+			}
+
+			// Asked before the ORM sees it: an id pointing at nothing is a
+			// mistake the caller can correct, and iTop answers it with an
+			// exception this module can only report opaquely.
+			$sBadTarget = WritePlan::RefusalForExternalKey($sClass, $sAttCode, $value);
+			if ($sBadTarget !== null) {
+				$aIssues[] = $sBadTarget;
 				continue;
 			}
 
