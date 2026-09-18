@@ -36,6 +36,61 @@ require_once __DIR__.'/../bootstrap.php';
 class StimulusMandatoryAttributesTest extends TestCase
 {
 	/**
+	 * A stimulus dry run says the state will move.
+	 *
+	 * The dry run does not apply the stimulus - that is the point of it - so
+	 * the state has not moved in memory and ListChangedValues() reports
+	 * nothing about it. The caller was left with would_move_to beside a
+	 * `changes` block saying the transition changes nothing, on the one tool
+	 * whose whole purpose is to move a state: a user shown "here is what will
+	 * happen" saw an empty list.
+	 *
+	 * Taken from the lifecycle, since the object is untouched, and only on the
+	 * simulated path - the real call has it already, put there by
+	 * ApplyStimulus(), and writing it twice would be reporting the same fact
+	 * twice.
+	 */
+	public function testTheDryRunReportsTheStateItWouldMoveTo(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class))->getFileName()
+		);
+
+		$this->assertMatchesRegularExpression(
+			'/if \\(\$simulate\\) \\{\s*\$sStateAttCode = MetaModel::GetStateAttributeCode/s',
+			$sBody,
+			'the state move is added on the real path too, or not at all'
+		);
+		$this->assertStringContainsString(
+			'!array_key_exists($sStateAttCode, $aChanges)',
+			$sBody,
+			'a transition that already reported the state would report it twice'
+		);
+	}
+
+	/**
+	 * An empty map is still a map.
+	 *
+	 * changes, overridden and applied are attribute code => value, and PHP's
+	 * empty array encodes as a list - so a write that changed nothing answered
+	 * [] where one that changed something answered {}. A typed reader breaks
+	 * on the emptier of the two, which is the one it is least likely to have
+	 * tested.
+	 */
+	public function testAnEmptyChangeMapStaysAMap(): void
+	{
+		$this->assertSame('{}', json_encode(\Altioo\iTop\Extension\MCP\Helper\WritePlan::Map([])));
+		$this->assertSame('{"status":"assigned"}', json_encode(\Altioo\iTop\Extension\MCP\Helper\WritePlan::Map(['status' => 'assigned'])));
+
+		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus', 'ObjectBulkCreate', 'ObjectBulkUpdate'] as $sTool) {
+			$sSource = (string) file_get_contents(
+				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
+			);
+			$this->assertStringContainsString('WritePlan::Map(', $sSource, "{$sTool} can answer with a list where a map belongs");
+		}
+	}
+
+	/**
 	 * @param array<int, string>    $aFillable
 	 * @param array<string, string> $aBlocked
 	 */
