@@ -332,6 +332,42 @@ class SchemaToolsContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * A category appears once, and finds the classes that declared it spaced.
+	 *
+	 * A class declares its categories as one string - "core/cmdb,
+	 * grant_by_profile" - and MetaModel explodes it on the comma without
+	 * trimming. So a declaration with a space after the comma registers the
+	 * key " grant_by_profile" and one without registers "grant_by_profile":
+	 * printed in a refusal they look like the same word twice, which is how
+	 * this was noticed.
+	 *
+	 * The duplicate is the cosmetic half. The other half is that GetClasses()
+	 * trims what it is asked for while registration did not trim what it
+	 * stored, so a caller narrowing on that category got the classes declared
+	 * without the space and silently missed the rest - most of iTop's own core
+	 * among them. HasCategory() matches the raw declaration and reaches them,
+	 * and is asked only where the requested name is not part of a longer one,
+	 * since it does not match on a word boundary.
+	 */
+	public function testACategoryIsListedOnceAndFindsSpacedDeclarations(): void
+	{
+		$sCategories = $this->methodBody(DatamodelReader::class, 'Categories');
+
+		$this->assertStringContainsString("array_map('trim'", $sCategories, 'a spaced key is listed as its own category');
+		$this->assertStringContainsString('array_unique', $sCategories, 'the same category can be listed twice');
+
+		$sLookup = $this->methodBody(DatamodelReader::class, 'classesInCategory');
+
+		$this->assertStringContainsString('HasCategory', $sLookup, 'the classes that declared it spaced stay unreachable');
+		$this->assertStringContainsString('str_contains', $sLookup, '"core" would drag in "core/cmdb"');
+		$this->assertStringContainsString(
+			'MetaModel::GetClasses($sCategory)',
+			$sLookup,
+			'the exact lookup is no longer the basis of the answer'
+		);
+	}
+
 	/** Nothing recognised is not the same as nothing wanted. */
 	public function testAnUnknownBlockNameDoesNotEmptyTheAnswer(): void
 	{
