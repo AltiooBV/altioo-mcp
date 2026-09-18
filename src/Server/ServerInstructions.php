@@ -74,7 +74,7 @@ final class ServerInstructions
 	 *
 	 * @since 1.0.0 Narrowed by the caller's access policy; previously took no argument.
 	 */
-	public static function Text(AccessPolicy $oPolicy, ?string $sDateTimeFormat = null, ?string $sDateFormat = null): string
+	public static function Text(AccessPolicy $oPolicy, ?string $sDateTimeFormat = null, ?string $sDateFormat = null, array $aPrompts = []): string
 	{
 		$aParts = [
 			self::PREAMBLE,
@@ -82,11 +82,42 @@ final class ServerInstructions
 			self::readingSection($oPolicy, $sDateTimeFormat, $sDateFormat),
 			self::writingSection($oPolicy),
 			self::historySection($oPolicy),
+			self::promptSection($aPrompts),
 			self::WHATEVER_IS_SERVED,
 			...MCPRegistry::GetInstructions(),
 		];
 
 		return implode("\n\n", array_filter(array_map('trim', $aParts)));
+	}
+
+	/**
+	 * The prompts this caller is served, named where a model will see them.
+	 *
+	 * A prompt is fetched by the client, not by the model: it lands in
+	 * prompts/list, which plenty of clients never call and some do not
+	 * implement at all. So a recipe that exists for the commonest question
+	 * here - the tickets assigned to me, which otherwise costs
+	 * core_current_user, then the contact id out of it, then an OQL query
+	 * built by hand - is invisible to exactly the caller it was written for.
+	 *
+	 * Naming them costs a line and needs no tool per prompt: a model that
+	 * knows the name can ask its user for it, and a client that does list
+	 * prompts loses nothing. Only what is served is named, on the same rule as
+	 * every other section - the caller is handed no name it cannot fetch.
+	 *
+	 * @param array<int, string> $aPrompts Qualified names, already narrowed to this caller.
+	 */
+	private static function promptSection(array $aPrompts): string
+	{
+		if ($aPrompts === []) {
+			return '';
+		}
+
+		return "Prompts\n"
+			.'- This server also offers prompts, which are ready-made recipes for common questions:'
+			."\n".implode(', ', $aPrompts).'.'
+			."\n".'- They are fetched through prompts/get rather than called as tools. If your client'
+			."\n".'does not list them, say the name to the user rather than rebuilding the query by hand.';
 	}
 
 	/**
