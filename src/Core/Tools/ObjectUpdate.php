@@ -73,6 +73,7 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
+			'after' => WritePlan::AfterSchemaProperty(),
 			'changes'    => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
 			'overridden' => WritePlan::OverriddenSchemaProperty(),
 		]);
@@ -279,6 +280,7 @@ class ObjectUpdate extends AbstractMCPTool
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 				]);
@@ -296,6 +298,7 @@ class ObjectUpdate extends AbstractMCPTool
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 				]);
