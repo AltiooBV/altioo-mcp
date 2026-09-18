@@ -180,6 +180,34 @@ class SearchPagingContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * An unknown class is answered with a suggestion, not with the datamodel.
+	 *
+	 * CheckOQL() parses, checks, and then throws the exception away, keeping
+	 * getMessage() - which for an unknown class ends in every class the
+	 * instance has. A single typo answered with an alphabetical list of a few
+	 * hundred names is an expensive way to say no, and it says nothing about
+	 * which one was meant.
+	 *
+	 * iTop already knows: UnknownClassOqlException::GetUserFriendlyDescription()
+	 * runs FindClosestString() over candidates its constructor has already
+	 * filtered by read rights, so the suggestion cannot name a class the caller
+	 * may not see. Keeping the exception rather than its message is the whole
+	 * fix, which is why this asserts the parse is done here rather than through
+	 * CheckOQL().
+	 */
+	public function testAnUnknownClassIsAnsweredWithASuggestion(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(ObjectSearchByOQL::class))->getFileName()
+		);
+
+		$this->assertStringContainsString('GetUserFriendlyDescription', $sBody, 'the suggestion iTop already computes is discarded');
+		$this->assertStringContainsString('new \\OqlInterpreter', $sBody, 'the exception is still being thrown away by CheckOQL()');
+		$this->assertStringNotContainsString('CheckOQL($oql', $sBody, 'the message with the full class list is back');
+		$this->assertStringContainsString('catch (\\OQLException', $sBody, 'a parse failure is no longer told apart from a broken datamodel');
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{
