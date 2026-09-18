@@ -287,6 +287,14 @@ published archive was installed and exercised on into this line; the README and
   fifty-row search fifty of them. `mcp_max_document_bytes` (5 MB) bounds both directions, and
   the two tools and the template form the `documents` toolset, with an `MCP-toolset-documents`
   token scope.
+- **Archived objects are a per-call choice on both searches.** `archived` takes `exclude` (the
+  default), `include` or `only`. Seeing them used to be a property of the connection — iTop reads
+  `with_archive` off the request and `DBSearch` takes archive mode from it at construction — so two
+  identical calls answered differently depending on how the client was connected. The parameter is
+  applied on every path, so it is the authority. `only` on a class with no archived state is refused
+  rather than answered with an empty set. Note iTop's own coupling: including archived objects
+  includes obsolete ones too.
+
 - **Every read says whether the object is archived.** `archive_flag` and `archive_date` are magic
   attributes iTop adds to an archivable class, so a full read always carried them — but the searches
   default to `id, friendlyname`, which describes a soft-deleted object and a live one identically,
