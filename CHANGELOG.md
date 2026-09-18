@@ -689,6 +689,14 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **An attribute derived from others says which ones.** A `UserRequest`'s `priority` is writable,
+  mandatory, and reported as both — and every value a caller sets is discarded, because the class
+  derives it from `urgency` and `impact` on every write. A model reading the schema literally, which
+  the tool tells it to do, set it and learned otherwise from the `overridden` block afterwards. The
+  schema knew: the class XML declares `<dependencies>` on that field. Reported as `dependsOn`, read
+  through `GetPrerequisiteAttributes()` rather than listed here, so a pack deriving something else
+  reports it the same way.
+
 - **An unknown class in an OQL query is answered with a suggestion, not with the datamodel.**
   `SELECT NotARealClass` came back with every class in the instance, alphabetically — a few hundred
   names as the answer to one typo. The list is iTop's and so is the fix: `CheckOQL()` keeps only
