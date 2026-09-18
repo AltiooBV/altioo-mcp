@@ -62,6 +62,26 @@ final class DatamodelReader
 	 */
 	public const OBJECT_RIGHTS_KEYS = ['modify', 'bulkModify', 'delete', 'bulkDelete'];
 
+	/** The blocks {@see Describe()} can answer with, and the value asking for all of them. */
+	public const BLOCK_RIGHTS = 'rights';
+	public const BLOCK_ATTRIBUTES = 'attributes';
+	public const BLOCK_DERIVED = 'derived';
+	public const BLOCK_RELATIONS = 'relations';
+	public const BLOCK_LIFECYCLE = 'lifecycle';
+
+	public const BLOCKS = [
+		self::BLOCK_RIGHTS,
+		self::BLOCK_ATTRIBUTES,
+		self::BLOCK_DERIVED,
+		self::BLOCK_RELATIONS,
+		self::BLOCK_LIFECYCLE,
+	];
+
+	public const BLOCKS_ALL = '*';
+
+	/** The `attributes` value that narrows on none of them. */
+	public const ATTRIBUTES_ALL = '*';
+
 	/**
 	 * The `may` value that reports every gate and narrows on none.
 	 *
@@ -388,17 +408,83 @@ final class DatamodelReader
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function Describe(string $sClass): array
+	public static function Describe(string $sClass, string $sInclude = self::BLOCKS_ALL, string $sAttributes = self::ATTRIBUTES_ALL, bool $bRequiredOnly = false): array
 	{
+		$aBlocks = self::requestedBlocks($sInclude);
 		$aAttributes = self::attributes($sClass);
 
-		return self::Summarize($sClass) + [
-			'rights'     => self::RightsOf($sClass),
-			'attributes' => array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === false),
-			'derived'    => array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === true),
-			'relations'  => self::relations($sClass),
-			'lifecycle'  => self::lifecycle($sClass),
+		if ($bRequiredOnly) {
+			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true);
+		}
+
+		if ($sAttributes !== self::ATTRIBUTES_ALL && $sAttributes !== '') {
+			$aWanted = array_flip(array_map('trim', explode(',', $sAttributes)));
+			$aAttributes = array_intersect_key($aAttributes, $aWanted);
+		}
+
+		$aPayload = self::Summarize($sClass);
+
+		if (in_array(self::BLOCK_RIGHTS, $aBlocks, true)) {
+			$aPayload['rights'] = self::RightsOf($sClass);
+		}
+
+		if (in_array(self::BLOCK_ATTRIBUTES, $aBlocks, true)) {
+			$aPayload['attributes'] = array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === false);
+		}
+
+		if (in_array(self::BLOCK_DERIVED, $aBlocks, true)) {
+			$aPayload['derived'] = array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === true);
+		}
+
+		if (in_array(self::BLOCK_RELATIONS, $aBlocks, true)) {
+			$aPayload['relations'] = self::relations($sClass);
+		}
+
+		if (in_array(self::BLOCK_LIFECYCLE, $aBlocks, true)) {
+			$aPayload['lifecycle'] = self::lifecycle($sClass);
+		}
+
+		// What was asked for, echoed, so that a narrowed answer is never read
+		// as the whole class: "no relations" and "you did not ask for
+		// relations" are different claims, and an absent block cannot tell
+		// them apart on its own.
+		$aPayload['reported'] = [
+			'blocks'        => $aBlocks,
+			'attributes'    => $sAttributes,
+			'required_only' => $bRequiredOnly,
 		];
+
+		return $aPayload;
+	}
+
+	/**
+	 * The blocks a caller asked for, or all of them.
+	 *
+	 * A stock UserRequest answers with about forty writable attributes, thirty
+	 * derived ones, its relations and its whole lifecycle graph - and a model
+	 * that called it to find out whether title is mandatory pays for all of it,
+	 * before nearly every create and every stimulus. The narrowing the reading
+	 * tools have had since the start belongs here for the same reason.
+	 *
+	 * An unknown name is ignored rather than refused: the blocks are this
+	 * module's own vocabulary, a pack may one day add to it, and a typo that
+	 * costs a block is cheaper to see in the echo than a call that costs a
+	 * round trip.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function requestedBlocks(string $sInclude): array
+	{
+		if ($sInclude === self::BLOCKS_ALL || $sInclude === '') {
+			return self::BLOCKS;
+		}
+
+		$aAsked = array_map('trim', explode(',', $sInclude));
+		$aBlocks = array_values(array_intersect(self::BLOCKS, $aAsked));
+
+		// Nothing recognised means nothing was really asked for; answering with
+		// an empty class is worse than answering with the whole one.
+		return $aBlocks === [] ? self::BLOCKS : $aBlocks;
 	}
 
 	/**
