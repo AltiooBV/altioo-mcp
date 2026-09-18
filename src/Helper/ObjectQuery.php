@@ -51,10 +51,13 @@ final class ObjectQuery
 	{
 		$sKey = MetaModel::DBGetKey($sClass);
 
-		return DBObjectSearch::FromOQL(
+		$oSearch = DBObjectSearch::FromOQL(
 			"SELECT {$sClass} WHERE {$sKey} = :".self::ID_PARAMETER,
 			[self::ID_PARAMETER => $iId]
 		);
+		self::keepObsolete($oSearch);
+
+		return $oSearch;
 	}
 
 	/**
@@ -72,9 +75,37 @@ final class ObjectQuery
 	{
 		$sKey = MetaModel::DBGetKey($sClass);
 
-		return DBObjectSearch::FromOQL(
+		$oSearch = DBObjectSearch::FromOQL(
 			"SELECT {$sClass} WHERE {$sKey} IN (:".self::IDS_PARAMETER.')',
 			[self::IDS_PARAMETER => array_values(array_map('intval', $aIds))]
 		);
+		self::keepObsolete($oSearch);
+
+		return $oSearch;
+	}
+
+	/**
+	 * A read by id answers about the object that was named, obsolete or not.
+	 *
+	 * The searches honour the account's "show obsolete data" preference, which
+	 * is what the console does and what makes a result set mean the same thing
+	 * in both places. A lookup by id is a different question: the caller has
+	 * the identifier in hand, usually because it just wrote the object, and
+	 * "not found" for a row that exists is the wrong answer to it. The case
+	 * that makes this concrete is a status the datamodel counts as obsolete -
+	 * the write succeeds and the object disappears from the writer's own view.
+	 *
+	 * Set explicitly rather than left to DBSearch's default, which is true
+	 * today: a guarantee this module makes should not rest on a default it
+	 * does not own.
+	 *
+	 * Archived objects are deliberately not covered. Archiving is soft
+	 * deletion asked for on purpose, the searches expose it through their own
+	 * argument, and widening a by-id read to it would be a decision about
+	 * deleted data rather than about a computed condition.
+	 */
+	private static function keepObsolete(DBObjectSearch $oSearch): void
+	{
+		$oSearch->SetShowObsoleteData(true);
 	}
 }
