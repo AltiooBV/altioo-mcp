@@ -746,6 +746,14 @@ published archive was installed and exercised on into this line; the README and
   promises a user it will be told waits forever. Beside it: each call stands alone, so what
   persists does so because it was written into iTop.
 
+- **A category is listed once, and narrowing on one finds every class in it.** A class declares its
+  categories as one string — `"core/cmdb, grant_by_profile"` — and `MetaModel` explodes it on the
+  comma without trimming, so a spaced declaration registers `" grant_by_profile"` and an unspaced
+  one registers `"grant_by_profile"`. The duplicate in the refusal was the visible half; the half
+  that mattered is that `GetClasses()` trims what it is *asked for* while registration did not trim
+  what it *stored*, so narrowing on that category silently missed every class declared with the
+  space — most of iTop's own core among them.
+
 - **A bulk-created row says what it supplied and what was defaulted.** The single-object create
   answers with `applied` and `defaulted` beside `changes`; the bulk one answered with `changes` and
   `overridden` alone, so on the tool most likely to be creating objects from assembled data there
