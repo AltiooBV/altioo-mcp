@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use DBObject;
+use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -55,6 +56,81 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	/** The one attribute every class has, and the only unique one. */
 	const TIEBREAK_ATTRIBUTE = 'id';
 
+	/** What a search does about archived objects. */
+	const ARCHIVED_EXCLUDE = 'exclude';
+	const ARCHIVED_INCLUDE = 'include';
+	const ARCHIVED_ONLY = 'only';
+	const DEFAULT_ARCHIVED = self::ARCHIVED_EXCLUDE;
+
+	/** iTop's own flag for a soft-deleted object, on the classes that declare one. */
+	const ARCHIVE_FLAG = 'archive_flag';
+
+
+	/**
+	 * Whether a search sees archived objects, per call.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	protected static function archivedSchemaProperty(): array
+	{
+		return [
+			'archived' => [
+				'type'        => 'string',
+				'description' => 'Archived objects are soft-deleted: still there, out of circulation. "exclude" (the default) leaves them out, "include" returns them beside the live ones, "only" returns just them. Classes are archivable or not as a whole; "only" on a class that has no archived state is refused rather than answered with nothing.',
+				'enum'        => [self::ARCHIVED_EXCLUDE, self::ARCHIVED_INCLUDE, self::ARCHIVED_ONLY],
+				'default'     => self::DEFAULT_ARCHIVED,
+			],
+		];
+	}
+
+	/**
+	 * Applies that choice to the search, and refuses the one that cannot work.
+	 *
+	 * The parameter is authoritative over the session. DBSearch reads
+	 * utils::IsArchiveMode() at construction, and iTop takes that from
+	 * `with_archive` on the request - so without setting it explicitly,
+	 * "exclude" would mean "exclude, unless the client's URL says otherwise",
+	 * which is a default nobody can see. Set on every path, so one call cannot
+	 * inherit what another one asked for.
+	 *
+	 * Archive mode widens obsolete data too, which is iTop's coupling rather
+	 * than this module's: GetShowObsoleteData() answers true whenever archive
+	 * mode is on. Said in the refusal-free direction only - a caller asking to
+	 * include archived objects gets obsolete ones as well, and that is worth
+	 * knowing rather than hiding.
+	 *
+	 * @throws ToolCallException When the class has no archived state and the caller asked for only those.
+	 */
+	protected static function applyArchived(DBObjectSearch $oSearch, string $sClass, string $sArchived): void
+	{
+		if (!in_array($sArchived, [self::ARCHIVED_EXCLUDE, self::ARCHIVED_INCLUDE, self::ARCHIVED_ONLY], true)) {
+			throw new ToolCallException(sprintf(
+				"Invalid archived '%s'. Use '%s', '%s' or '%s'.",
+				$sArchived,
+				self::ARCHIVED_EXCLUDE,
+				self::ARCHIVED_INCLUDE,
+				self::ARCHIVED_ONLY
+			));
+		}
+
+		$bArchivable = MetaModel::IsValidAttCode($sClass, self::ARCHIVE_FLAG);
+
+		if ($sArchived === self::ARCHIVED_ONLY && !$bArchivable) {
+			// Refused rather than answered with an empty set: "no archived
+			// ones" and "this class cannot have any" are different facts, and
+			// the second one read as the first is the silent wrong answer.
+			throw new ToolCallException(
+				"Class '{$sClass}' has no archived state, so there are no archived objects of it to return. "
+				."Archiving is declared per class hierarchy; core_class_schema reports archive_flag where it exists."
+			);
+		}
+
+		$oSearch->SetArchiveMode($sArchived !== self::ARCHIVED_EXCLUDE);
+
+		if ($sArchived === self::ARCHIVED_ONLY) {
+			$oSearch->AddCondition(self::ARCHIVE_FLAG, 1, '=');
+		}
+	}
 
 	/**
 	 * The two properties every paged tool declares, so that both spell them
