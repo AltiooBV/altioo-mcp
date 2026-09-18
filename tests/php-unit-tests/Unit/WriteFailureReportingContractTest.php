@@ -490,6 +490,49 @@ class WriteFailureReportingContractTest extends TestCase
 		];
 	}
 
+	/**
+	 * Creating a credential says that the credential is not in the answer.
+	 *
+	 * A token's usable value never exists as an attribute.
+	 * AbstractPersonalToken::AfterInsert() generates it, keeps it on the object
+	 * as a plain property, stores only its hash in auth_token - overwriting
+	 * whatever the caller supplied for that attribute - and hands the plaintext
+	 * to the console as a session message, which a stateless endpoint cannot
+	 * deliver. So a create leaves a usable row and no usable credential, and
+	 * auth_token comes back masked over a salted hash with nothing behind the
+	 * mask worth having.
+	 *
+	 * Reported in review as a credential-provisioning gap, which it is - the
+	 * fix is to say so rather than to hand a live portable secret back through
+	 * a tool result, where it would land in a model's context, in the transport
+	 * and in this endpoint's own audit row.
+	 *
+	 * Pinned on the source, since the interface that identifies a token class
+	 * only exists on an instance.
+	 */
+	public function testCreatingACredentialSaysTheCredentialIsNotInTheAnswer(): void
+	{
+		$sPlan = (string) file_get_contents(self::SRC.'/Helper/WritePlan.php');
+
+		$this->assertStringContainsString('AuthentToken', $sPlan,
+			'the token classes are named rather than asked for by interface, so a later one is missed');
+		$this->assertStringContainsString(
+			'auth_token',
+			$this->methodBody(WritePlan::class, 'CredentialNote'),
+			'the note does not mention the attribute the caller will go looking at'
+		);
+
+		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectCreate.php');
+		$this->assertSame(
+			2,
+			substr_count($sSource, 'credentialNote($class)'),
+			'the note is not on both the dry run and the real create - a caller should learn this before it makes one'
+		);
+
+		// Nothing is returned for an ordinary class, on any instance.
+		$this->assertNull(WritePlan::CredentialNote('UserRequest'));
+	}
+
 	/** Every id that came out of a write goes through the one normaliser. */
 	public function testNoCreatePathCastsTheIdItself(): void
 	{

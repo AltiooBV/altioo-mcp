@@ -227,6 +227,7 @@ class ObjectCreate extends AbstractMCPTool
 			// saying so is not the same as answering with a different shape.
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, null)
+				+ self::credentialNote($class)
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
@@ -253,7 +254,8 @@ class ObjectCreate extends AbstractMCPTool
 					'changes'    => WritePlan::Map($aChanges),
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-				]);
+				]
+				+ self::credentialNote($class));
 		} catch (\Throwable $e) {
 			// A throw here does not mean nothing was written. DBInsert()
 			// commits in DBInsertNoReload() and only then walks the loaded
@@ -291,5 +293,20 @@ class ObjectCreate extends AbstractMCPTool
 					),
 				]);
 		}
+	}
+
+	/**
+	 * The `note` key, on the classes that need one.
+	 *
+	 * Added as an array so it disappears entirely for every other class
+	 * rather than appearing as an empty string nobody can act on.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function credentialNote(string $sClass): array
+	{
+		$sNote = WritePlan::CredentialNote($sClass);
+
+		return $sNote === null ? [] : ['note' => $sNote];
 	}
 }

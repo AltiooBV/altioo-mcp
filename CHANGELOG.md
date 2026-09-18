@@ -579,6 +579,21 @@ published archive was installed and exercised on into this line; the README and
   would settle the call. **Not covered:** per-attribute rights. iTop populates a new source's
   mapping itself, without any call reaching this endpoint, so there is no write here to refuse —
   the rule is honestly a class-level one, and `SECURITY.md` says so.
+- **Creating a token says that the token is not in the answer.** Reported in review as a
+  credential-provisioning gap, and it is one — with a cause neither of the offered explanations
+  quite had. The endpoint is not masking a value it could return: a token's usable value never
+  exists as an attribute at all. `AbstractPersonalToken::AfterInsert()` generates it, keeps it on
+  the object as a plain PHP property, stores only its **hash** in `auth_token` — overwriting
+  whatever the caller supplied for that attribute, so a caller that chose its own secret does not
+  have the credential it thinks it has — and hands the plaintext to the console as a session
+  message, which a stateless endpoint cannot deliver. `auth_token` comes back masked over a salted
+  hash with nothing behind the mask worth having, and the attribute's own "Readable only at
+  generation time" describes that console message rather than anything an API can read. So
+  `core_object_create` now returns a `note` saying exactly that, on the dry run as well as the real
+  write, and naming the console as the way to the value. Returning the credential itself was
+  declined deliberately: a token is portable and works against iTop's other APIs, outside every
+  gate on this one, so handing it back through a tool result would put a live secret in a model's
+  context, in the transport, and in this endpoint's own audit row.
 - **Maintenance mode is named instead of blamed on your profile.** `access_mode` withholds writing
   from everyone (`ACCESS_READONLY`) or from everyone but administrators (`ACCESS_ADMIN_WRITE`, the
   value `2`), and `UserRights::IsActionAllowed()` answers `UR_ALLOWED_NO` for every writing action

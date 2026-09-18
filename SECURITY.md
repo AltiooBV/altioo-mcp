@@ -420,6 +420,24 @@ the mess then looks like the data. Behind the automation setting rather than ref
 because managing data-quality rules is ordinary work an operator may delegate — unlike the record
 of what already happened.
 
+**Creating a token here does not give you the token.** Worth stating because the response invites
+the opposite conclusion. A token's usable value never exists as an attribute:
+`AbstractPersonalToken::AfterInsert()` generates it, keeps it on the object as a plain PHP
+property, stores only its **hash** in `auth_token` — overwriting whatever the caller supplied for
+that attribute — and hands the plaintext to the console as a session message, which a stateless
+endpoint has no way to deliver. So `auth_token` comes back masked over a salted hash, and there is
+nothing behind the mask worth having; the attribute's own description, "Readable only at
+generation time", describes that console message rather than a value an API can read.
+
+A create through this endpoint therefore leaves a usable row and no usable credential, and
+`core_object_create` says so in a `note` — on the dry run as well, so a caller learns it before it
+makes one. Handing the credential back instead was considered and declined: a token is portable
+and works against iTop's other APIs, outside every gate on this one, so returning it through a
+tool result would put a live secret into a model's context, into the transport, and into this
+endpoint's own audit row. Create tokens in the console, where the value is shown once and can be
+regenerated. (These classes are behind `mcp_allow_access_administration` in any case, and the
+self-guard still refuses minting one for yourself.)
+
 **The endpoint's own audit rows say whether a call was a rehearsal.** `AltiooEventMCPService`
 carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a` where there is no
 dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later

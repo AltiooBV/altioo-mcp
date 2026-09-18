@@ -50,6 +50,61 @@ final class WritePlan
 	public const SIMULATE_BY_DEFAULT = true;
 
 	/**
+	 * The interface iTop marks a class whose objects are a credential with.
+	 *
+	 * PersonalToken and UserToken implement it, and so would a later one.
+	 * Asked rather than named, for the reason every other rule here is asked.
+	 */
+	private const CREDENTIAL_INTERFACE = 'Combodo\\iTop\\AuthentToken\\Model\\iToken';
+
+	/**
+	 * What a caller has to be told when it creates a credential here, because
+	 * the answer it would otherwise draw is wrong.
+	 *
+	 * A token's usable value never exists as an attribute. iTop generates it
+	 * in AfterInsert() - AbstractPersonalToken::CreateNewToken() - keeps it on
+	 * the object as a plain property, stores only its *hash* in auth_token,
+	 * and hands the plaintext to the console through a session message. Three
+	 * consequences, none of them visible from the response:
+	 *
+	 *  - a value the caller supplied for auth_token is overwritten, always.
+	 *    Set('auth_token', $oPassword) runs after the insert whatever was sent,
+	 *    so a caller that chose its own secret does not have the credential it
+	 *    thinks it has.
+	 *  - auth_token comes back masked, and there is nothing behind the mask
+	 *    worth having. It is a salted hash. The attribute's own description -
+	 *    "Readable only at generation time" - describes the console's session
+	 *    message, not a value an API can read.
+	 *  - a session message is not something a stateless endpoint can deliver.
+	 *
+	 * So a create here leaves a usable row and no usable credential, and the
+	 * masked field invites the caller to go looking for a way to unmask it.
+	 * Saying so is the difference between a gap and a documented decision.
+	 *
+	 * Deliberately not the credential itself. Handing a live, portable secret
+	 * back through a tool result puts it in a model's context, in the
+	 * transport, and in this endpoint's own audit row where request_params are
+	 * kept - and a token works against iTop's other APIs, outside every gate
+	 * on this one. That is a decision for an operator to take knowingly, not a
+	 * convenience to add quietly.
+	 *
+	 * @return string|null Null for every class that is not one.
+	 * @since 1.0.0
+	 */
+	public static function CredentialNote(string $sClass): ?string
+	{
+		if (!is_a($sClass, self::CREDENTIAL_INTERFACE, true)) {
+			return null;
+		}
+
+		return 'The credential itself is not in this answer and is not in the object. iTop generates it after the insert, '
+			.'stores only its hash in auth_token - overwriting any value you supplied for that attribute - and shows the '
+			.'plaintext once, as a console message this endpoint has no way to deliver. So this row exists and you cannot '
+			.'authenticate with it: open the token in the iTop console and use the value it shows, or regenerate it there. '
+			.'Tell the user that, rather than trying to read auth_token back.';
+	}
+
+	/**
 	 * Whether this call is rehearsing, which is not only the caller's to
 	 * decide.
 	 *
