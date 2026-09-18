@@ -814,6 +814,175 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * Every class this module declares has been put to the barrier.
+	 *
+	 * The failure this test exists for, in the words of the reviewer who found
+	 * it: the gate is "an allowlist of blocked classes, not a security
+	 * property... it\'s writable because nobody added it to the blocklist, not
+	 * because it was evaluated and judged safe". AltiooEventMCPService is the
+	 * case in point - this module\'s own audit trail, one row per inbound
+	 * request, added as a feature and never once held up against the barrier
+	 * protecting everything else. A caller could delete the evidence of what
+	 * it had just done, then the row recording that.
+	 *
+	 * A test cannot decide whether an arbitrary iTop class is dangerous. It
+	 * can insist that every class **this module puts into the datamodel** has
+	 * been looked at, which is the specific thing that did not happen. A class
+	 * added here is either barred, or named below with a reason - and adding
+	 * one without doing either fails, at the moment it is added, rather than
+	 * at the next red-team pass.
+	 */
+	public function testEveryClassThisModuleDeclaresHasBeenConsidered(): void
+	{
+		// Classes this module declares that are deliberately ordinary. Each
+		// entry is a decision someone made on purpose, not a gap.
+		$aDeliberatelyOrdinary = [];
+
+		$sDatamodel = dirname(__DIR__, 3).'/datamodel.altioo-mcp.xml';
+		$this->assertFileExists($sDatamodel);
+
+		$oDoc = new \DOMDocument();
+		$this->assertTrue($oDoc->load($sDatamodel), 'the module datamodel does not parse');
+
+		// The declared parent, not the compiled one: this suite boots no iTop,
+		// so is_a() cannot resolve AltiooEventMCPService to Event - and the
+		// datamodel says so in as many words. Asking the file is what makes
+		// this test bite where it is useful, which is the moment a class is
+		// added rather than the next red-team pass.
+		$oXPath = new \DOMXPath($oDoc);
+		$aDeclared = [];
+		foreach ($oXPath->query('//class[@id]') as $oClass) {
+			$oParent = $oXPath->query('parent', $oClass)->item(0);
+			$aDeclared[$oClass->getAttribute('id')] = $oParent === null ? '' : trim($oParent->textContent);
+		}
+
+		$this->assertNotEmpty($aDeclared, 'no class found in the module datamodel - the scan is looking in the wrong place');
+
+		$aUnconsidered = [];
+		foreach ($aDeclared as $sClass => $sParent) {
+			if (in_array($sClass, $aDeliberatelyOrdinary, true)) {
+				continue;
+			}
+
+			// The class itself, then up the chain the file declares, then the
+			// parent it stops at - which is iTop's, and is where a root like
+			// Event is matched by name.
+			$bConsidered = AccessGrants::IsBarred($sClass);
+			$sUp = $sParent;
+			$iGuard = 0;
+			while (!$bConsidered && $sUp !== '' && $iGuard++ < 20) {
+				$bConsidered = AccessGrants::IsBarred($sUp);
+				$sUp = $aDeclared[$sUp] ?? '';
+			}
+
+			if (!$bConsidered) {
+				$aUnconsidered[] = $sClass.($sParent === '' ? '' : " (parent {$sParent})");
+			}
+		}
+		sort($aUnconsidered);
+
+		$this->assertSame([], $aUnconsidered, sprintf(
+			"This module declares %s and the barrier has nothing to say about it. "
+			."Either it belongs behind one of the rules in AccessGrants, or it is ordinary and belongs in this test's own list with a reason. "
+			."Deciding nothing is how AltiooEventMCPService stayed writable by the sessions it was recording.",
+			implode(', ', $aUnconsidered)
+		));
+	}
+
+	/**
+	 * The audit trail this endpoint writes cannot be edited through it.
+	 *
+	 * The class the test above would have caught, pinned directly - and pinned
+	 * on the parent, because that is where the rule lives: AltiooEventMCPService
+	 * declares <parent>Event</parent>, as do iTop\'s own EventNotification,
+	 * EventIssue, EventWebService, EventRestService and EventLoginUsage.
+	 *
+	 * No setting reaches it, and that is the whole point: an audit trail the
+	 * audited party may edit with the operator\'s permission is an audit trail
+	 * the audited party may edit.
+	 */
+	public function testTheEndpointsOwnAuditTrailIsNotWritableThroughIt(): void
+	{
+		$this->assertTrue(AccessGrants::IsRecording('Event'));
+		$this->assertTrue(AccessGrants::IsBarred('Event'));
+
+		foreach ([[false, false], [true, true]] as [$bAdministration, $bAutomation]) {
+			$sRefusal = AccessGrants::RefusalGiven($bAdministration, 'Event', 1, [], $bAutomation);
+
+			$this->assertNotNull($sRefusal, 'a setting was allowed to open the record of what happened');
+			$this->assertStringNotContainsString('mcp_allow', $sRefusal,
+				'the refusal names a setting, so a caller goes and asks an operator to turn it on');
+		}
+	}
+
+	/**
+	 * And this module\'s own class comes with the parent, on an instance.
+	 */
+	public function testThisModulesAuditClassIsRecordingWhereTheDatamodelIsLoaded(): void
+	{
+		if (!class_exists('AltiooEventMCPService')) {
+			$this->markTestSkipped('no iTop datamodel is loaded, so the module class is not known to descend from Event here.');
+		}
+
+		$this->assertTrue(AccessGrants::IsRecording('AltiooEventMCPService'));
+		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'AltiooEventMCPService', 1, [], true));
+	}
+
+	/**
+	 * The mail queue is the primitive, so the queue is what is gated.
+	 *
+	 * AsyncSendEmail extends AsyncTask and is the outbound queue iTop\'s cron
+	 * drains, with free-text to, subject and message and a status of
+	 * "planned". One create puts a real email into it, sent from the
+	 * instance\'s own configured identity to any address - no trigger, no
+	 * action, no connection object. Gated at AsyncTask because anything else
+	 * landing in that queue is executed the same way by the same cron.
+	 */
+	public function testTheDeferredWorkQueueIsGated(): void
+	{
+		$this->assertTrue(AccessGrants::IsAutomation('AsyncTask'));
+		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'AsyncTask', null, [], false));
+		$this->assertNull(AccessGrants::RefusalGiven(false, 'AsyncTask', null, [], true));
+	}
+
+	/**
+	 * The credentials the instance authenticates outward with.
+	 *
+	 * Left out of the barrier once, on the reasoning at CREDENTIAL_ATTRIBUTE
+	 * that a recoverable secret is the object\'s own data. That covers a device
+	 * password; it does not cover a token this instance authenticates to a
+	 * third party with, which a caller can replace with its own or read back
+	 * through something else it wrote. Oauth2Client carries client_secret,
+	 * refresh_token and access_token as AttributeEncryptedPassword, and its
+	 * five subclasses come with it by descent.
+	 */
+	public function testOutboundCredentialStoresAreGated(): void
+	{
+		foreach (['Oauth2Client', 'OAuthClient'] as $sClass) {
+			$this->assertTrue(AccessGrants::IsAutomation($sClass), "{$sClass} holds outbound credentials and is ungated");
+			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
+		}
+	}
+
+	/**
+	 * The rules that decide what a person is shown as wrong.
+	 *
+	 * Not an escalation - nothing here grants access to anything - but the
+	 * other half of covering your tracks: delete the rule and the mess looks
+	 * like the data. Behind the automation setting rather than refused
+	 * outright, because managing data-quality rules is ordinary work an
+	 * operator may delegate, unlike the record of what already happened.
+	 */
+	public function testTheDataQualityAuditIsGated(): void
+	{
+		foreach (['AuditRule', 'AuditCategory', 'AuditDomain'] as $sClass) {
+			$this->assertTrue(AccessGrants::IsDetection($sClass));
+			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
+			$this->assertNull(AccessGrants::RefusalGiven(false, $sClass, 1, [], true));
+		}
+	}
+
+	/**
 	 * An ordinary class is nobody's business here, whatever the setting says.
 	 */
 	public function testAnOrdinaryClassIsNeverRefusedByThisRule(): void

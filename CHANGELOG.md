@@ -333,6 +333,45 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
+- **The endpoint does not write the record of what it did.** The one that undermines the rest, and
+  it was this module's own doing. `AltiooEventMCPService` — a row per inbound request, carrying the
+  method, the tool, the status and the error — was left writable by the very session it records, so
+  a caller could delete the evidence of what it had just done and then the row recording that
+  deletion, in reverse order, leaving no MCP-side trace. Every other control here rests on "we can
+  review what the agent did". The rule is on the parent rather than on this class:
+  `AltiooEventMCPService` declares `<parent>Event</parent>`, as do iTop's own `EventNotification`,
+  `EventIssue`, `EventWebService`, `EventRestService` and `EventLoginUsage`, so gating `Event`
+  covers this module's class, iTop's, and whatever a pack adds, with none of them listed. **No
+  setting lifts it** — an audit trail the audited party may edit with the operator's permission is
+  an audit trail the audited party may edit — and reading stays open, since an assistant that can
+  answer "what did I call, and what failed" is useful and reading a record does not alter it.
+- **The endpoint does not queue work for the cron, or hold the keys it would use.** `AsyncSendEmail`
+  extends `AsyncTask` and *is* the outbound mail queue iTop's cron drains, with free-text `to`,
+  `subject` and `message` and a status of `planned`: one `core_object_create` sends a real email
+  from the instance's own identity to any address, with none of the trigger/action/connection
+  scaffolding the automation barrier was written for. Gated at `AsyncTask`, not at
+  `AsyncSendEmail`, because the queue is the primitive. `ActionEmail` was already covered by
+  `Action` — worth recording that its `to`/`cc`/`bcc` are `AttributeOQL`, so the recipient list is
+  a query and `SELECT Person` reaches every contact in the CMDB. And `Oauth2Client`, its five
+  subclasses and `OAuthClient` join them: they carry `client_secret`, `refresh_token` and
+  `access_token` as `AttributeEncryptedPassword`, and the reasoning that kept them out before — a
+  recoverable secret is the object's own data — covers a device password and does not cover a token
+  this instance authenticates to a third party with. `AuditRule`, `AuditCategory` and `AuditDomain`
+  are behind the same setting: not an escalation, but the other half of covering your tracks, since
+  deleting the rule that would have flagged a mess makes the mess look like the data.
+- **The barrier is now checked against this module's own datamodel, by a test.** The structural
+  criticism behind all of the above, in the reviewer's words: the gate is "an allowlist of blocked
+  classes, not a security property" — a class is "writable because nobody added it to the
+  blocklist, not because it was evaluated and judged safe". That is accurate, and
+  `AltiooEventMCPService` is what it costs: an audit feature added without ever being held up
+  against the barrier protecting everything else. Two things narrow it. Every root is chosen as
+  high in its hierarchy as the meaning holds — `Event` not `AltiooEventMCPService`, `AsyncTask` not
+  `AsyncSendEmail`, `Action` not `ActionEmail` — so a class added underneath one is covered before
+  anyone here has heard of it. And a unit test walks every class this module's datamodel declares,
+  resolves its declared parent chain against the barrier, and fails unless each is either behind a
+  rule or listed in that test with a reason: adding a class here without making that decision now
+  fails at the moment it is added. It does not make the barrier a derived property, and
+  `SECURITY.md` says so rather than implying otherwise.
 - **The endpoint does not leave standing instructions behind it.** The third family the same
   red-team pass turned up, independently exploitable and needing nothing outside classes this
   endpoint already wrote: a `RemoteApplicationConnection` whose `url` is a plain text attribute

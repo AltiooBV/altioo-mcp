@@ -657,6 +657,8 @@ final class DatamodelReader
 			$bGranting              = AccessGrants::IsGranting($sClass);
 			$bDelegating            = AccessGrants::IsDelegating($sClass);
 			$bAutomation            = AccessGrants::IsAutomation($sClass);
+			$bRecording             = AccessGrants::IsRecording($sClass);
+			$bDetection             = AccessGrants::IsDetection($sClass);
 			$bPersonal              = AccessGrants::IsPersonal($sClass);
 			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
 			$bAutomationAllowed     = MCPHelper::AllowsAutomationAdministration();
@@ -664,6 +666,30 @@ final class DatamodelReader
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
 			return $aRights + ['restricted' => null];
+		}
+
+		// Before everything else, and 'no' with no setting named: this one has
+		// no switch, and a caller told "unless X is on" goes and asks for X.
+		if ($bRecording) {
+			foreach ($aGates as $sGate) {
+				$aRights[$sGate] = 'no';
+			}
+
+			$aRights['restricted'] = sprintf(AccessGrants::RECORDING_REFUSAL, $sClass);
+
+			return $aRights;
+		}
+
+		if ($bDetection && !$bGranting) {
+			$aRights['restricted'] = sprintf(AccessGrants::DETECTION_REFUSAL, $sClass);
+
+			if (!$bAutomationAllowed) {
+				foreach ($aGates as $sGate) {
+					$aRights[$sGate] = 'no';
+				}
+			}
+
+			return $aRights;
 		}
 
 		if ($bPersonal && !$bGranting) {

@@ -251,7 +251,90 @@ final class AccessGrants
 		'Action',
 		'ActionWebhook',
 		'RemoteApplicationConnection',
+		// iTop's own deferred-work queue, and the reason it belongs here
+		// rather than beside the synchronisation family: AsyncSendEmail
+		// extends it and *is* the outbound mail queue the cron drains, with
+		// free-text to, subject and message and a status of 'planned'. One
+		// create puts a real email into it, sent from the instance's own
+		// configured identity to any address - no trigger, no action, no
+		// connection. Gated at AsyncTask rather than at AsyncSendEmail
+		// because the queue is the primitive: anything else that lands in it
+		// is executed the same way, by the same cron, outside this endpoint.
+		'AsyncTask',
+		// The credentials the instance acts outward with. Oauth2Client and
+		// its five subclasses carry client_secret, refresh_token and
+		// access_token as AttributeEncryptedPassword - recoverable by
+		// design, because an outbound secret has to be replayable to be
+		// used, which is exactly what makes writing one worth refusing.
+		// OAuthClient is the mailbox side of the same idea. Left out of the
+		// barrier once before, on the reasoning at CREDENTIAL_ATTRIBUTE that
+		// a recoverable secret is the object's own data; that reasoning
+		// covers a device password and does not cover a token this instance
+		// authenticates to a third party with, which a caller can steal by
+		// reading it back out through a webhook or replace with its own.
+		'Oauth2Client',
+		'OAuthClient',
 	];
+
+	/**
+	 * The rules that decide what a person is shown as wrong.
+	 *
+	 * iTop's data-quality audit - AuditRule, AuditCategory, AuditDomain, all
+	 * of them plain cmdbAbstractObject children with no common root, so this
+	 * is a list and there is no datamodel question that would derive it.
+	 *
+	 * Not an escalation: nothing here grants access to anything. It is the
+	 * other half of covering your tracks. An agent that has made a mess of the
+	 * CMDB can also delete the rule that would have put that mess on somebody's
+	 * dashboard, and the mess then looks like the data.
+	 *
+	 * Behind the same setting as the automation family rather than refused
+	 * outright, because managing data-quality rules is ordinary work an
+	 * operator may reasonably delegate - unlike the record of what already
+	 * happened, which is below and has no switch.
+	 */
+	private const DETECTION_ROOTS = [
+		'AuditRule',
+		'AuditCategory',
+		'AuditDomain',
+	];
+
+	/**
+	 * The record of what happened, which the thing being recorded may not
+	 * edit.
+	 *
+	 * This module writes an AltiooEventMCPService row per inbound request -
+	 * method, tool, status, error - and then left that class writable by the
+	 * very session it was recording. A caller could delete the evidence of
+	 * what it had just done, and then the row recording that deletion, in
+	 * reverse order, leaving no MCP-side trace at all. Every other control on
+	 * this endpoint rests on "we can review what the agent did"; this is the
+	 * one whose absence makes that sentence false.
+	 *
+	 * Found by a red-team pass. It was never evaluated and judged safe - it
+	 * was added as an audit feature and never cross-checked against the
+	 * barrier protecting everything else, which is the general failure this
+	 * whole set of findings describes.
+	 *
+	 * The root is Event, not the class this module declares: AltiooEventMCPService
+	 * declares <parent>Event</parent>, and so do iTop's own EventNotification,
+	 * EventIssue, EventWebService, EventRestService and EventLoginUsage - all
+	 * of them records of something that happened, none of them things a caller
+	 * should be rewriting. Gating the parent covers this module's class, iTop's,
+	 * and whatever a pack adds, without any of them being listed.
+	 *
+	 * iTop's change log is the same idea and is refused a layer earlier, by
+	 * ObjectHistory: CMDBChange and CMDBChangeOp are not merely unwritable but
+	 * unreadable through the object tools, because core_object_history serves
+	 * them instead. Here, reading is deliberately open - an assistant that can
+	 * answer "what did I call, and what failed" is useful, and reading a record
+	 * does not alter it.
+	 *
+	 * **No setting lifts this one.** An audit trail the audited party can edit
+	 * with the operator's permission is an audit trail the audited party can
+	 * edit.
+	 */
+	private const RECORDING_ROOTS = ['Event'];
 
 	/**
 	 * The classes whose rows belong to one person.
@@ -353,6 +436,19 @@ final class AccessGrants
 	 * make this instance call out on its own".
 	 */
 	public const AUTOMATION_REFUSAL = 'Class \'%s\' is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, on changes made by anyone, and outside this endpoint entirely. Nothing here can send mail or call a URL directly, so staging one cannot be graded against what you may do, and it is refused unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
+
+	/**
+	 * What every write tool says about the record of what happened.
+	 *
+	 * Names no setting, because there is not one. A caller told "unless X is
+	 * on" goes and asks for X.
+	 */
+	public const RECORDING_REFUSAL = 'Class \'%s\' is a record of something that happened - this endpoint writes one for every request it serves - so it cannot be written or deleted here at all, by anyone, with no setting to change that. An audit trail the audited party can edit is not one. Reading is unaffected: ask for the rows rather than changing them.';
+
+	/**
+	 * What they say about the rules that decide what gets flagged.
+	 */
+	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - so it is not something this endpoint changes on its own initiative, and it cannot be written here unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
 
 	/**
 	 * What they say when a write reaches somebody else's personal row.
@@ -537,6 +633,38 @@ final class AccessGrants
 	}
 
 	/**
+	 * Whether $sClass records something that happened.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsRecording(string $sClass): bool
+	{
+		foreach (self::RECORDING_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether $sClass decides what a person is shown as wrong.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsDetection(string $sClass): bool
+	{
+		foreach (self::DETECTION_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Whether $sClass holds rows that belong to one account.
 	 *
 	 * @since 1.0.0
@@ -566,6 +694,8 @@ final class AccessGrants
 		return self::IsGranting($sClass)
 			|| self::IsDelegating($sClass)
 			|| self::IsAutomation($sClass)
+			|| self::IsRecording($sClass)
+			|| self::IsDetection($sClass)
 			|| self::IsPersonal($sClass);
 	}
 
@@ -696,11 +826,22 @@ final class AccessGrants
 			return sprintf(self::NOT_YOURS_REFUSAL, $sClass);
 		}
 
-		// A standing instruction that makes the instance act by itself. No
-		// target to grade it on, and nothing on this endpoint it could be
-		// graded against - see AUTOMATION_ROOTS.
+		// The record of what happened, before anything else and with no
+		// setting consulted: every other rule here is worth having only while
+		// somebody can still check whether it held.
+		if (self::IsRecording($sClass)) {
+			return sprintf(self::RECORDING_REFUSAL, $sClass);
+		}
+
+		// A standing instruction that makes the instance act by itself, or the
+		// credentials it acts with. No target to grade it on, and nothing on
+		// this endpoint it could be graded against - see AUTOMATION_ROOTS.
 		if (self::IsAutomation($sClass) && !$bAutomationAllowed) {
 			return sprintf(self::AUTOMATION_REFUSAL, $sClass);
+		}
+
+		if (self::IsDetection($sClass) && !$bAutomationAllowed) {
+			return sprintf(self::DETECTION_REFUSAL, $sClass);
 		}
 
 		if (self::IsDelegating($sClass)) {

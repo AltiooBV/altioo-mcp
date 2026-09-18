@@ -245,6 +245,66 @@ setting**, not a share of `mcp_allow_access_administration`: "may an assistant a
 people's access" and "may an assistant leave a standing instruction that makes this instance call
 out on its own" are decisions an operator can reasonably take separately. Reading is unaffected.
 
+**And it does not write the record of what it did.** This module writes an
+`AltiooEventMCPService` row per inbound request — method, tool, status, error — and then left
+that class writable by the very session it was recording: a caller could delete the evidence of
+what it had just done, and then the row recording that deletion, in reverse order, leaving no
+MCP-side trace. Every other control here rests on "we can review what the agent did", and this
+is the one whose absence makes that sentence false.
+
+The rule is on the parent, not on this module's class. `AltiooEventMCPService` declares
+`<parent>Event</parent>`, and so do iTop's own `EventNotification`, `EventIssue`,
+`EventWebService`, `EventRestService` and `EventLoginUsage` — all records of something that
+happened. Gating `Event` covers this module's class, iTop's, and whatever a pack adds, with none
+of them listed. **No setting lifts it**, unlike every other barrier here: an audit trail the
+audited party may edit with the operator's permission is an audit trail the audited party may
+edit. Reading stays open — an assistant that can answer "what did I call, and what failed" is
+useful, and reading a record does not alter it. iTop's change log is the same idea one layer
+earlier: `CMDBChange` and `CMDBChangeOp` are not merely unwritable but unreadable through the
+object tools, because `core_object_history` serves them instead.
+
+**And it does not queue work for the cron to carry out.** `AsyncSendEmail` extends `AsyncTask` and
+*is* the outbound mail queue iTop's cron drains, with free-text `to`, `subject` and `message` and
+a status of `planned`. One `core_object_create` puts a real email into it, sent from the
+instance's own configured identity to any address — no trigger, no action, no connection object,
+none of the scaffolding the automation barrier was written for. The gate is on `AsyncTask`, not
+on `AsyncSendEmail`, because the queue is the primitive: anything else landing in it is executed
+the same way by the same cron. `ActionEmail` is a second route to the same place and was already
+covered by `Action` — worth knowing that its `to`/`cc`/`bcc` are `AttributeOQL`, so the recipient
+list is a query (`SELECT Person` reaches every contact in the CMDB) rather than an address.
+
+**And it does not write the credentials it authenticates outward with.** `Oauth2Client` and its
+five subclasses carry `client_secret`, `refresh_token` and `access_token` as
+`AttributeEncryptedPassword`; `OAuthClient` is the mailbox side of the same idea. These were
+outside the barrier on the reasoning above — that a recoverable secret is the object's own data,
+which is why a device or mailbox password is deliberately not matched. That reasoning covers a
+device password and does not cover a token this instance authenticates to a third party with,
+which a caller can replace with its own or read back through something else it wrote. They sit
+behind `mcp_allow_automation_administration` with the rest of the outbound machinery. The wider
+question — every class holding any recoverable secret — is deliberately still open, and the
+recoverable-type exclusion above still stands for the cases it was written for.
+
+**And it does not switch off what a person would be shown.** `AuditRule`, `AuditCategory` and
+`AuditDomain` are iTop's data-quality audit, separate from the change log. Nothing there grants
+access to anything; it is the other half of covering your tracks, since an agent that has made a
+mess of the CMDB can delete the rule that would have put that mess on somebody's dashboard, and
+the mess then looks like the data. Behind the automation setting rather than refused outright,
+because managing data-quality rules is ordinary work an operator may delegate — unlike the record
+of what already happened.
+
+**How these are meant to be found in future.** The honest description of the barrier is that it
+is a set of named roots matched by descent, plus two questions asked of the datamodel (what
+points at a synchronisation source; what points at a trigger or an action) — not a derived
+security property. A reviewer put that plainly: a class here "is writable because nobody added it
+to the blocklist, not because it was evaluated and judged safe". Two things narrow that gap
+rather than closing it. The roots are chosen as high in each hierarchy as the meaning holds
+(`Event`, not `AltiooEventMCPService`; `AsyncTask`, not `AsyncSendEmail`; `Action`, not
+`ActionEmail`), so a class added below one is covered before anyone here has heard of it. And a
+unit test walks every class **this module's own datamodel declares**, resolves its declared
+parent chain, and fails unless each is either behind a rule or named in that test with a reason —
+so a class added here without that decision being made fails at the moment it is added. That test
+is exactly what did not exist when `AltiooEventMCPService` was written.
+
 **And it does not write another account's personal rows.** `appUserPreferences` carries a
 `userid`, and iTop's own API for it — `GetPref()`/`SetPref()` — only ever touches the account it
 is called by; the console offers no way to edit someone else's. The object tools did, because a
@@ -290,6 +350,10 @@ reference.
 | An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_automation_administration` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |
+| An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included |
+| Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_automation_administration` |
+| Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
+| Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |
