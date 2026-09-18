@@ -689,6 +689,14 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **A case-log entry's history row says what was written.** `core_object_history` answered
+  `from: null, to: null` for every work note. Not the wrong column:
+  `CMDBChangeOpSetAttributeCaseLog` declares `lastentry` — an integer — and no `oldvalue` or
+  `newvalue`, so iTop never records the text there; it is on the object, which is why the console
+  renders those entries from the object. The text is now read from the object, after the attribute
+  rights have allowed it, and matched on date and user rather than on `lastentry` — an index later
+  entries push along, and an edited log leaves pointing at someone else's words.
+
 - **An attribute derived from others says which ones.** A `UserRequest`'s `priority` is writable,
   mandatory, and reported as both — and every value a caller sets is discarded, because the class
   derives it from `urgency` and `impact` on every write. A model reading the schema literally, which
