@@ -148,6 +148,20 @@ class MCPHelper
 	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
 
 	/**
+	 * Whether this endpoint may write iTop's automation - triggers, actions
+	 * and the connections behind them.
+	 *
+	 * Its own setting rather than a share of the one above, because it answers
+	 * a different question. That one is "may an assistant administer other
+	 * people's access"; this one is "may an assistant leave a standing
+	 * instruction that makes this instance call out on its own, later, on
+	 * changes made by anybody". An operator can reasonably want either without
+	 * the other, and folding them together would have been the mistake of
+	 * refusing one thing under the name of another.
+	 */
+	const MODULE_SETTING_ALLOW_AUTOMATION_ADMINISTRATION = 'mcp_allow_automation_administration';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -512,6 +526,22 @@ class MCPHelper
 	public static function AllowsAccessAdministration(): bool
 	{
 		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION, false) === true;
+	}
+
+	/**
+	 * Whether this instance lets the endpoint write triggers, actions and the
+	 * connections behind them.
+	 *
+	 * Off by default, and the default is the answer for almost every instance:
+	 * nothing an ordinary assistant workflow does needs a webhook wired up,
+	 * and what one buys is a channel that keeps firing after the session that
+	 * created it has gone.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function AllowsAutomationAdministration(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_AUTOMATION_ADMINISTRATION, false) === true;
 	}
 
 	/**

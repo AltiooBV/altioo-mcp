@@ -208,6 +208,43 @@ nothing and is nobody's business here. Reading is unaffected throughout, and
 `core_class_schema` grades these classes `depends` with a `restricted` line saying what would
 settle it. Found by a red-team pass against a live instance, not by this document.
 
+**And it does not write standing instructions that make the instance act on its own.** A third
+family, refused wholesale rather than graded — and the difference from the synchronisation rule
+above is the whole argument for it. A synchro delegates a capability this endpoint *does* grant
+and can therefore grade: writing objects of a class. A `Trigger` with an `Action` behind it
+delegates capabilities this endpoint grants **nobody** — no tool here sends mail, none makes an
+outbound HTTP request, none invokes a static method by name. "Could the caller have done this
+itself" has one answer for every caller, so there is nothing to grade against.
+
+What one burst of write access buys without the barrier: a `RemoteApplicationConnection` whose
+`url` is a plain text attribute with no scheme or host validation — an attacker's collector, or
+an internal address the web server can reach and the caller cannot — an `ActioniTopWebhook`
+pointed at it carrying whatever payload it likes, and a `Trigger` linked to that action by
+`lnkTriggerAction`, firing on every matching change made by anybody. The session ends; the
+channel does not, and nothing else on this endpoint outlives the call that made it.
+`ActioniTopWebhook`'s `prepare_payload_callback` and `process_response_callback` add a second
+thing worth knowing: they take a `Class::method` string and invoke it as a public static
+callback. That is not code injection — the method must already exist — but it is "call any
+loaded public static method by name", and what is loaded depends on the instance's extensions.
+
+So `Trigger`, `Action`, everything descending from either, any class carrying an external key to
+one of them (which is what `lnkTriggerAction` is), and `RemoteApplicationConnection` are refused
+by every write tool unless `mcp_allow_automation_administration` is on. That is **its own
+setting**, not a share of `mcp_allow_access_administration`: "may an assistant administer other
+people's access" and "may an assistant leave a standing instruction that makes this instance call
+out on its own" are decisions an operator can reasonably take separately. Reading is unaffected.
+
+**And it does not write another account's personal rows.** `appUserPreferences` carries a
+`userid`, and iTop's own API for it — `GetPref()`/`SetPref()` — only ever touches the account it
+is called by; the console offers no way to edit someone else's. The object tools did, because a
+preference row is an ordinary `DBObject` with an ordinary id and `UserRights` has nothing to say
+about it. This is the mirror of the self-guard above, and the only refusal here that is about
+*somebody else's* row rather than your own. Low blast radius — what a console shows by default —
+except that one of those preferences is whether obsolete objects are visible, so rewriting an
+administrator's row changes what they see without changing anything they would look at to find
+out why. A write naming neither an id nor a `userid` is your own row and goes through, which is
+what `core_set_obsolete_data` does.
+
 **What this does not cover.** Per-attribute rights. iTop populates a new source's mapping
 itself, every attribute at `update:true`, without any call reaching this endpoint — so there is
 no write here to refuse. A caller who may modify a class but not one of its attributes can have
@@ -239,6 +276,9 @@ reference.
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
 | An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by cron with rights this endpoint does not have | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves, since the engine consults no rights at all; one that names no target is refused. Per-attribute rights are not covered — see above |
+| An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_automation_administration` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
+| One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
+| Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |

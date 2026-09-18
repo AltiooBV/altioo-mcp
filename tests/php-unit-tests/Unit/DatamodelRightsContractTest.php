@@ -92,8 +92,11 @@ class DatamodelRightsContractTest extends TestCase
 		$this->assertStringContainsString("'no'", $sBody, 'a refused write is graded as something other than final');
 		$this->assertStringContainsString("'depends'", $sBody, 'the per-row half is graded yes rather than depends');
 
-		// Reads are deliberately untouched: listing a token to see when it
-		// expires is useful and discloses nothing.
+		// Reads are deliberately untouched by every barrier here: listing a
+		// token to see when it expires is useful and discloses nothing. The
+		// change-log branch is the one exception and narrows them without
+		// naming them - see testTheChangeLogIsReportedAsRefused() - so neither
+		// gate is spelled anywhere in this method.
 		$this->assertStringNotContainsString("'read'", $sBody);
 		$this->assertStringNotContainsString("'bulkRead'", $sBody);
 
@@ -102,6 +105,39 @@ class DatamodelRightsContractTest extends TestCase
 			(string) (new \Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema())->getDescription(),
 			'nothing tells a reader what restricted means'
 		);
+	}
+
+	/**
+	 * The change log is reported as refused, because it is.
+	 *
+	 * Every tool on this endpoint refuses CMDBChangeOp outright - the reads
+	 * too, since core_object_history is the way in - and the rights block said
+	 * 'yes' with restricted: null, which is exactly the shape of a class that
+	 * nothing guards. Reported by a red-team pass that tried to tamper with the
+	 * audit log, could not, and pointed out that the schema had told it the
+	 * opposite.
+	 *
+	 * The failure is a documentation one and it fails safe, which is why it is
+	 * worth pinning rather than shrugging at: a reviewer reading the block
+	 * concludes the audit log is writable, and the same block on a class where
+	 * the refusal is not there would say the same thing.
+	 *
+	 * This one takes the reads down with it, unlike every other entry in the
+	 * block - the refusal is not "you may not change this", it is "this is
+	 * served by another tool".
+	 */
+	public function testTheChangeLogIsReportedAsRefused(): void
+	{
+		$sBody = $this->body('narrowedByTheBarrier');
+
+		$this->assertStringContainsString('ObjectHistory::IsReserved', $sBody,
+			'the block never asks whether the class is the change log, so it reports it as unguarded');
+		$this->assertStringContainsString('RESERVED_REFUSAL', $sBody,
+			'a caller is told no without being told which tool serves it instead');
+
+		// The one place reads are narrowed, and deliberately so.
+		$this->assertStringContainsString('array_keys($aRights)', $sBody,
+			'only the write gates are graded, so a reserved class still advertises a read that every tool refuses');
 	}
 
 	/**

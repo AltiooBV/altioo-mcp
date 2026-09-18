@@ -187,6 +187,73 @@ final class AccessGrants
 	private const SOURCE_KEY_TARGET = 'SynchroDataSource';
 
 	/**
+	 * The classes that make iTop act outside this endpoint on its own.
+	 *
+	 * A third family, and the one that needs the least grading, because there
+	 * is nothing to grade it against.
+	 *
+	 * A synchronisation definition delegates a capability this endpoint does
+	 * grant - writing objects of a class - so it can be graded: may this
+	 * caller write that class itself? A trigger with an action behind it
+	 * delegates capabilities this endpoint grants **nobody**. No tool here
+	 * sends mail. No tool here makes an outbound HTTP request. No tool here
+	 * calls a static method by name. So there is no answer to "could the
+	 * caller have done this itself" other than no, for every caller, always -
+	 * and a rule whose answer never varies is a refusal.
+	 *
+	 * What one burst of write access buys without this: a
+	 * RemoteApplicationConnection whose url is a plain text attribute with no
+	 * scheme or host validation - an attacker's collector, or an internal
+	 * address the web server can reach and the caller cannot - an
+	 * ActioniTopWebhook pointed at it carrying whatever payload it likes, and
+	 * a Trigger linked to that action by lnkTriggerAction, firing on every
+	 * matching change made by anybody, for as long as nobody notices. The
+	 * session ends; the channel does not. That is the part that makes this
+	 * worth a barrier rather than a warning: nothing else on this endpoint
+	 * outlives the call that made it.
+	 *
+	 * ActioniTopWebhook's prepare_payload_callback and
+	 * process_response_callback take a Class::method string and invoke it as a
+	 * public static callback. That is not code injection - the method has to
+	 * exist already - but it is "call any loaded public static method by name",
+	 * and what is loaded depends on which extensions an instance has.
+	 *
+	 * Trigger and Action are iTop root classes and are matched by descent, so
+	 * every kind of trigger and every kind of action is covered, including the
+	 * ones a pack adds. RemoteApplicationConnection is a named floor: deriving
+	 * it from "a class an Action points at" would refuse whatever else an
+	 * action happens to reference, and a barrier that makes Contact read-only
+	 * by inference is worse than one that misses a connection class a future
+	 * branch adds.
+	 */
+	private const AUTOMATION_ROOTS = [
+		'Trigger',
+		'Action',
+		'RemoteApplicationConnection',
+	];
+
+	/**
+	 * The classes whose rows belong to one person.
+	 *
+	 * The mirror of the self guard, and the only place on this endpoint where
+	 * the refusal is for *somebody else's* row rather than for your own.
+	 * appUserPreferences carries a userid and iTop's own API for it -
+	 * appUserPreferences::GetPref()/SetPref() - only ever reads and writes the
+	 * current user's; the console offers no way to edit another person's. The
+	 * object tools do, because a preference row is an ordinary DBObject with an
+	 * ordinary id, and UserRights has nothing to say about it.
+	 *
+	 * Small on its own: what somebody's console shows by default. Not nothing,
+	 * though, since one of those preferences is whether obsolete objects are
+	 * visible - so rewriting an administrator's row changes what they see
+	 * without changing anything they would look at to find out why.
+	 */
+	private const PERSONAL_ROOTS = ['appUserPreferences'];
+
+	/** Whose row it is, on the classes above. */
+	private const OWNER_ATTRIBUTE = 'userid';
+
+	/**
 	 * The attribute a data source names its target class in, and the one its
 	 * dependent rows name their data source in.
 	 *
@@ -254,6 +321,25 @@ final class AccessGrants
 	 * in bulk.
 	 */
 	public const DELEGATED_RIGHTS_REFUSAL = 'Class \'%s\' would be synchronised into \'%s\', and the synchronisation engine writes without consulting anyone\'s rights - so a definition may only be written here for a class you could write yourself. %s Ask an administrator for the right on \'%s\', or define the source in the iTop console.';
+
+	/**
+	 * What every write tool says when the instance refuses a trigger, an
+	 * action or the connection behind one.
+	 *
+	 * Names the capability rather than the class, because that is what an
+	 * operator is being asked to decide about: not "may an assistant write
+	 * Trigger rows" but "may an assistant leave standing instructions that
+	 * make this instance call out on its own".
+	 */
+	public const AUTOMATION_REFUSAL = 'Class \'%s\' is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, on changes made by anyone, and outside this endpoint entirely. Nothing here can send mail or call a URL directly, so staging one cannot be graded against what you may do, and it is refused unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
+
+	/**
+	 * What they say when a write reaches somebody else's personal row.
+	 *
+	 * The mirror of SELF_REFUSAL and deliberately its own sentence: that one
+	 * refuses your own access, this one refuses everyone else's preferences.
+	 */
+	public const NOT_YOURS_REFUSAL = 'Class \'%s\' holds one person\'s own settings, and this row is not yours. iTop\'s own API for it only ever reads and writes the account it is called by, and so does this endpoint. Act on your own row, or use the iTop console.';
 
 	/**
 	 * The category iTop files its rights model under.
@@ -348,23 +434,27 @@ final class AccessGrants
 			}
 		}
 
-		return self::$aDecided[$sKey] = self::PointsAtADataSource($sClass);
+		return self::$aDecided[$sKey] = self::PointsAtAnyOf($sClass, [self::SOURCE_KEY_TARGET]);
 	}
 
 	/**
-	 * Whether this class hangs off a synchronisation data source.
+	 * Whether this class carries an external key to any of $aTargets, or to
+	 * something descending from one.
 	 *
-	 * The datamodel half of the family, asked of the class rather than of its
-	 * spelling: a row that carries an external key to a SynchroDataSource is
-	 * part of a definition the engine will execute, whatever it is called and
-	 * whoever added it. The named floor above catches the four iTop ships; this
-	 * catches the fifth.
+	 * The datamodel half of two families, asked of the class rather than of
+	 * its spelling. A row pointing at a SynchroDataSource is part of a
+	 * definition the engine will execute; a row pointing at a Trigger or an
+	 * Action is part of wiring one to the other. Both are things a named list
+	 * gets wrong in the same two directions - it refuses a customer class that
+	 * happens to be spelled like one, and misses the one that is not.
 	 *
 	 * Never raises, and answers false for everything when there is no
-	 * MetaModel - the floor is what holds then, exactly as it does for the
-	 * granting family.
+	 * MetaModel - the named floors are what hold then, exactly as they do for
+	 * the granting family.
+	 *
+	 * @param array<int, string> $aTargets
 	 */
-	private static function PointsAtADataSource(string $sClass): bool
+	private static function PointsAtAnyOf(string $sClass, array $aTargets): bool
 	{
 		if (!class_exists('MetaModel')) {
 			return false;
@@ -380,14 +470,62 @@ final class AccessGrants
 					continue;
 				}
 
-				$sTarget = (string) $oAttDef->GetTargetClass();
-				if ($sTarget !== ''
-					&& (strcasecmp($sTarget, self::SOURCE_KEY_TARGET) === 0 || is_a($sTarget, self::SOURCE_KEY_TARGET, true))) {
-					return true;
+				$sPointsAt = (string) $oAttDef->GetTargetClass();
+				if ($sPointsAt === '') {
+					continue;
+				}
+
+				foreach ($aTargets as $sTarget) {
+					if (strcasecmp($sPointsAt, $sTarget) === 0 || is_a($sPointsAt, $sTarget, true)) {
+						return true;
+					}
 				}
 			}
 		} catch (Throwable) {
 			return false;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether $sClass is a standing instruction that makes iTop act by itself.
+	 *
+	 * Roots by descent - Trigger and Action are iTop's own, so every kind of
+	 * each is covered - plus the datamodel question that catches the link
+	 * between them: a class carrying an external key to a Trigger or an Action
+	 * is part of wiring one to the other, which is what lnkTriggerAction is
+	 * and what a pack's own link class would be.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsAutomation(string $sClass): bool
+	{
+		$sKey = 'automation:'.strtolower($sClass);
+		if (array_key_exists($sKey, self::$aDecided)) {
+			return self::$aDecided[$sKey];
+		}
+
+		foreach (self::AUTOMATION_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return self::$aDecided[$sKey] = true;
+			}
+		}
+
+		return self::$aDecided[$sKey] = self::PointsAtAnyOf($sClass, ['Trigger', 'Action']);
+	}
+
+	/**
+	 * Whether $sClass holds rows that belong to one account.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function IsPersonal(string $sClass): bool
+	{
+		foreach (self::PERSONAL_ROOTS as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return true;
+			}
 		}
 
 		return false;
@@ -404,7 +542,10 @@ final class AccessGrants
 	 */
 	public static function IsBarred(string $sClass): bool
 	{
-		return self::IsGranting($sClass) || self::IsDelegating($sClass);
+		return self::IsGranting($sClass)
+			|| self::IsDelegating($sClass)
+			|| self::IsAutomation($sClass)
+			|| self::IsPersonal($sClass);
 	}
 
 	/** The floor: the classes above, their descendants, and the prefix. */
@@ -498,7 +639,13 @@ final class AccessGrants
 	 */
 	public static function RefusalFor(string $sClass, ?int $iId = null, array $aFields = []): ?string
 	{
-		return self::RefusalGiven(MCPHelper::AllowsAccessAdministration(), $sClass, $iId, $aFields);
+		return self::RefusalGiven(
+			MCPHelper::AllowsAccessAdministration(),
+			$sClass,
+			$iId,
+			$aFields,
+			MCPHelper::AllowsAutomationAdministration()
+		);
 	}
 
 	/**
@@ -513,8 +660,28 @@ final class AccessGrants
 	 *
 	 * @since 1.0.0
 	 */
-	public static function RefusalGiven(bool $bAdministrationAllowed, string $sClass, ?int $iId = null, array $aFields = []): ?string
+	public static function RefusalGiven(
+		bool    $bAdministrationAllowed,
+		string  $sClass,
+		?int    $iId = null,
+		array   $aFields = [],
+		bool    $bAutomationAllowed = false,
+	): ?string
 	{
+		// Somebody else's personal row, whatever else is true of the class.
+		// Asked first because it is the only rule here that is about the row
+		// alone, and because a class could in principle be both.
+		if (self::IsPersonal($sClass) && !self::IsTheCallersOwnRow($sClass, $iId, $aFields)) {
+			return sprintf(self::NOT_YOURS_REFUSAL, $sClass);
+		}
+
+		// A standing instruction that makes the instance act by itself. No
+		// target to grade it on, and nothing on this endpoint it could be
+		// graded against - see AUTOMATION_ROOTS.
+		if (self::IsAutomation($sClass) && !$bAutomationAllowed) {
+			return sprintf(self::AUTOMATION_REFUSAL, $sClass);
+		}
+
 		if (self::IsDelegating($sClass)) {
 			// Graded on where the definition points, not on the fact that it is
 			// one. A synchronisation source over a CMDB class is ordinary work,
@@ -625,6 +792,60 @@ final class AccessGrants
 			return self::ScopeOfSource((int) $oRow->Get(self::SOURCE_ATTRIBUTE));
 		} catch (Throwable) {
 			return null;
+		}
+	}
+
+	/**
+	 * Whether a personal row is the caller's own.
+	 *
+	 * The mirror of {@see ReachesTheCaller()}, and it fails closed in the
+	 * opposite direction for the same reason: there, an undecidable answer
+	 * means "this is yours" and refuses; here it means "this is not yours" and
+	 * refuses. Both land on a refusal, which is the only thing the two rules
+	 * have to agree about.
+	 *
+	 * A write that names no owner is the caller's own. That is not a guess:
+	 * iTop's own appUserPreferences::SetPref() writes the row of the account
+	 * it is called by, and core_set_obsolete_data goes through exactly that -
+	 * so a call with no id and no userid is the tool this module ships, not a
+	 * caller reaching for somebody else.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function IsTheCallersOwnRow(string $sClass, ?int $iId, array $aFields): bool
+	{
+		$bNamesAnOwner = array_key_exists(self::OWNER_ATTRIBUTE, $aFields);
+
+		if ($iId === null && !$bNamesAnOwner) {
+			return true;
+		}
+
+		if (!class_exists('UserRights')) {
+			return false;
+		}
+
+		try {
+			$iCaller = (int) UserRights::GetUserId();
+			if ($iCaller < 1) {
+				return false;
+			}
+
+			// The values first, then the stored row: re-pointing your own
+			// preference row at somebody else is a write the stored row still
+			// describes as yours.
+			if ($bNamesAnOwner) {
+				return (int) $aFields[self::OWNER_ATTRIBUTE] === $iCaller;
+			}
+
+			if (!class_exists('MetaModel') || !MetaModel::IsValidClass($sClass)) {
+				return false;
+			}
+
+			$oRow = MetaModel::GetObject($sClass, (int) $iId, false, true);
+
+			return $oRow !== null && (int) $oRow->Get(self::OWNER_ATTRIBUTE) === $iCaller;
+		} catch (Throwable) {
+			return false;
 		}
 	}
 

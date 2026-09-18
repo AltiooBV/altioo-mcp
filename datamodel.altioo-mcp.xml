@@ -350,6 +350,18 @@
       -->
       <mcp_allow_access_administration type="bool">false</mcp_allow_access_administration>
       <!--
+        Whether this endpoint may write iTop's automation - Trigger, Action,
+        the links between them and the RemoteApplicationConnection a webhook
+        calls through. Off by default. A trigger with an action behind it is a
+        standing instruction: it fires on changes made by anyone, from inside
+        iTop's own request handling, long after the session that wrote it has
+        gone - and no tool here can send mail or call a URL directly, so there
+        is no rights answer that makes staging one equivalent to doing it.
+        On, an operator has decided an assistant may wire up notifications and
+        webhooks. Reading is unaffected either way.
+      -->
+      <mcp_allow_automation_administration type="bool">false</mcp_allow_automation_administration>
+      <!--
         Elements per tools/list, resources/list or prompts/list page. The MCP
         SDK defaults to 50 and pages the rest behind a cursor, which a client
         that ignores nextCursor never asks for: the 51st tool then exists and

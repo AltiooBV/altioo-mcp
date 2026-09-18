@@ -653,6 +653,164 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * The third family: a standing instruction that makes iTop act by itself.
+	 *
+	 * Reported by the same red-team pass, independently exploitable, and it
+	 * needs nothing outside the classes this endpoint already wrote. A
+	 * RemoteApplicationConnection whose url is a plain text attribute with no
+	 * scheme or host check; an ActioniTopWebhook pointed at it; a Trigger
+	 * linked to that action by lnkTriggerAction. Enabled, it fires on every
+	 * matching change made by anyone, from inside iTop's own request handling,
+	 * for as long as nobody notices - so one burst of write access becomes a
+	 * standing exfiltration or SSRF channel that outlives the session.
+	 *
+	 * Refused wholesale, unlike the synchronisation family, and the difference
+	 * is the whole argument. A synchro delegates writing objects of a class,
+	 * which this endpoint does grant and can therefore grade against the
+	 * caller. A trigger delegates sending mail, calling a URL and invoking a
+	 * static method by name - none of which any tool here grants anybody. The
+	 * question "could the caller have done this itself" has one answer for
+	 * every caller, and a rule whose answer never varies is a refusal.
+	 *
+	 * @dataProvider automationClassProvider
+	 */
+	public function testAnAutomationClassIsRefusedWithoutItsOwnSetting(string $sClass): void
+	{
+		$this->assertTrue(AccessGrants::IsAutomation($sClass));
+		$this->assertTrue(AccessGrants::IsBarred($sClass));
+
+		$sRefusal = AccessGrants::RefusalGiven(true, $sClass, 1, [], false);
+
+		$this->assertNotNull($sRefusal, "{$sClass} makes the instance act on its own and was allowed through");
+		$this->assertStringContainsString('mcp_allow_automation_administration', $sRefusal);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public function automationClassProvider(): array
+	{
+		return [
+			'the trigger root'       => ['Trigger'],
+			'the action root'        => ['Action'],
+			'the connection'         => ['RemoteApplicationConnection'],
+			'case is not a way past' => ['trigger'],
+		];
+	}
+
+	/**
+	 * The kinds of trigger and action, which need a datamodel to recognise.
+	 *
+	 * TriggerOnObjectCreate and ActioniTopWebhook are not in the named roots
+	 * and do not need to be - Trigger and Action are, and these descend from
+	 * them - so a suite with no iTop cannot resolve the relationship. Same
+	 * skip as the UserLocal case above, kept separate rather than weakening
+	 * the cases that run everywhere.
+	 *
+	 * @dataProvider automationDescendantProvider
+	 */
+	public function testAKindOfTriggerOrActionIsRefusedWhereTheDatamodelIsLoaded(string $sClass): void
+	{
+		if (!class_exists($sClass)) {
+			$this->markTestSkipped("no iTop datamodel is loaded, so {$sClass} is not known to descend from its root here.");
+		}
+
+		$this->assertTrue(AccessGrants::IsAutomation($sClass));
+		$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public function automationDescendantProvider(): array
+	{
+		return [
+			'a trigger on creation' => ['TriggerOnObjectCreate'],
+			'the webhook action'    => ['ActioniTopWebhook'],
+			'the mail action'       => ['ActionEmail'],
+		];
+	}
+
+	/**
+	 * The access setting does not reach it, and its own setting does.
+	 *
+	 * Two settings because they answer two questions. "May an assistant
+	 * administer other people's access" and "may an assistant leave a standing
+	 * instruction that makes this instance call out on its own" are decisions
+	 * an operator can reasonably take separately - and folding them together
+	 * would be refusing one thing under the name of another, which is the
+	 * mistake the synchronisation gate made first time round.
+	 */
+	public function testTheTwoAdministrationSettingsAreIndependent(): void
+	{
+		// Access administration on, automation off: still refused.
+		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'Action', 1, [], false));
+		// Automation on: allowed, whatever the access setting says.
+		$this->assertNull(AccessGrants::RefusalGiven(false, 'Action', 1, [], true));
+		$this->assertNull(AccessGrants::RefusalGiven(true, 'Action', 1, [], true));
+	}
+
+	/**
+	 * The link between a trigger and an action, found by what it points at.
+	 *
+	 * lnkTriggerAction is not in the named roots and does not need to be: a
+	 * class carrying an external key to a Trigger or an Action is part of
+	 * wiring one to the other, whatever it is called. Same rule that finds a
+	 * synchronisation mapping, asked with a different target.
+	 */
+	public function testTheTriggerActionLinkIsFoundByWhatItPointsAt(): void
+	{
+		if (!class_exists('MetaModel') || !class_exists('lnkTriggerAction')) {
+			$this->markTestSkipped('no iTop datamodel is loaded, so nothing can be asked what it points at.');
+		}
+
+		$this->assertTrue(AccessGrants::IsAutomation('lnkTriggerAction'));
+		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'lnkTriggerAction', 1, [], false));
+	}
+
+	/**
+	 * Somebody else's preferences are not this caller's to write.
+	 *
+	 * The mirror of the self guard, and the only refusal here that is about
+	 * another person's row rather than your own. appUserPreferences carries a
+	 * userid, iTop's own API for it only ever touches the current account, and
+	 * the console offers no way to edit another person's - but the object
+	 * tools did, because a preference row is an ordinary DBObject with an
+	 * ordinary id and UserRights has nothing to say about it. Small on its
+	 * own; one of those preferences decides whether obsolete objects are
+	 * visible, so rewriting an administrator's row changes what they see
+	 * without changing anything they would look at to find out why.
+	 */
+	public function testAnotherAccountsPreferencesAreRefused(): void
+	{
+		$this->assertTrue(AccessGrants::IsPersonal('appUserPreferences'));
+		$this->assertTrue(AccessGrants::IsBarred('appUserPreferences'));
+
+		// A row named by id, with no UserRights to establish whose it is.
+		$sRefusal = AccessGrants::RefusalGiven(true, 'appUserPreferences', 1, [], true);
+
+		$this->assertNotNull($sRefusal, "another account's preference row was allowed through");
+		$this->assertStringContainsString('not yours', $sRefusal);
+	}
+
+	/**
+	 * And the caller's own row still goes through.
+	 *
+	 * core_set_obsolete_data goes through appUserPreferences::SetPref(), which
+	 * writes the row of the account it is called by - so a call naming neither
+	 * an id nor a userid is this module's own tool, not a caller reaching for
+	 * somebody else. Refusing that would have broken the one legitimate use
+	 * while fixing the illegitimate one.
+	 */
+	public function testYourOwnPreferencesAreNotRefused(): void
+	{
+		$this->assertNull(
+			AccessGrants::RefusalGiven(false, 'appUserPreferences', null, [], false),
+			'the tool that stores your own preference was refused by the rule meant for other people\'s'
+		);
+	}
+
+	/**
 	 * An ordinary class is nobody's business here, whatever the setting says.
 	 */
 	public function testAnOrdinaryClassIsNeverRefusedByThisRule(): void

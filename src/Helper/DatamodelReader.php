@@ -633,20 +633,81 @@ final class DatamodelReader
 		$aGates = ['create', 'bulkCreate', 'modify', 'bulkModify', 'delete', 'bulkDelete'];
 
 		try {
+			// The change log first, and it is the one refusal that takes the
+			// reads down with it. Every tool on this endpoint refuses these
+			// classes outright - reads included, since core_object_history is
+			// the way in - and the block said 'yes' with restricted: null,
+			// which is the shape of a class nothing guards. A reviewer reading
+			// that concludes the audit log is writable; a model reading it
+			// makes the call and learns otherwise. Neither is the block's job.
+			if (ObjectHistory::IsReserved($sClass)) {
+				foreach (array_keys($aRights) as $sGate) {
+					if ($sGate !== 'restricted') {
+						$aRights[$sGate] = 'no';
+					}
+				}
+
+				return $aRights + ['restricted' => sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass)];
+			}
+
 			if (!AccessGrants::IsBarred($sClass)) {
 				return $aRights + ['restricted' => null];
 			}
 
 			$bGranting              = AccessGrants::IsGranting($sClass);
 			$bDelegating            = AccessGrants::IsDelegating($sClass);
+			$bAutomation            = AccessGrants::IsAutomation($sClass);
+			$bPersonal              = AccessGrants::IsPersonal($sClass);
 			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
+			$bAutomationAllowed     = MCPHelper::AllowsAutomationAdministration();
 		} catch (\Throwable $e) {
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
 			return $aRights + ['restricted' => null];
 		}
 
-		// The delegating half first, and only where the granting half has
+		if ($bPersonal && !$bGranting) {
+			// 'depends' on every write: whether the row is the caller's own is
+			// a question about the row, which is exactly what the grade says.
+			foreach ($aGates as $sGate) {
+				$aRights[$sGate] = self::stricter($aRights[$sGate], 'depends');
+			}
+
+			$aRights['restricted'] = sprintf(
+				'%s holds one person\'s own settings. A write is allowed on your own row and refused on anyone else\'s, '
+				.'whatever your profile says - iTop\'s own API for these only ever touches the account it is called by, and so does this endpoint. '
+				.'Reading is unaffected.',
+				$sClass
+			);
+
+			return $aRights;
+		}
+
+		if ($bAutomation && !$bGranting) {
+			$aRights['restricted'] = $bAutomationAllowed
+				? sprintf(
+					'%s is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, '
+					.'on changes made by anyone. mcp_allow_automation_administration is on, so it may be written here.',
+					$sClass
+				)
+				: sprintf(
+					'%s is part of iTop\'s automation - a standing instruction that makes the instance act on its own, later, on changes made by '
+					.'anyone, and outside this endpoint entirely. Nothing here can send mail or call a URL directly, so staging one cannot be graded '
+					.'against what you may do: it is refused at all, whatever your profile says. Turn on mcp_allow_automation_administration, or use '
+					.'the iTop console. Reading is unaffected.',
+					$sClass
+				);
+
+			if (!$bAutomationAllowed) {
+				foreach ($aGates as $sGate) {
+					$aRights[$sGate] = 'no';
+				}
+			}
+
+			return $aRights;
+		}
+
+		// The delegating half next, and only where the granting half has
 		// nothing to say: a class that is both is refused by the stricter of
 		// the two, and that is the one below.
 		if ($bDelegating && !$bGranting) {

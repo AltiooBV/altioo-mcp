@@ -333,6 +333,46 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
+- **The endpoint does not leave standing instructions behind it.** The third family the same
+  red-team pass turned up, independently exploitable and needing nothing outside classes this
+  endpoint already wrote: a `RemoteApplicationConnection` whose `url` is a plain text attribute
+  with no scheme or host validation — an attacker's collector, or an internal address the web
+  server can reach and the caller cannot — an `ActioniTopWebhook` pointed at it, and a `Trigger`
+  linked to that action by `lnkTriggerAction`. Enabled, it fires on every matching change made by
+  anyone, from inside iTop's own request handling, for as long as nobody notices: one burst of
+  write access becomes a standing exfiltration or SSRF channel, and nothing else on this endpoint
+  outlives the call that made it. Refused wholesale rather than graded on a target, and the
+  difference from the synchronisation rule is the argument for it — a synchro delegates writing
+  objects of a class, which this endpoint grants and can grade against the caller, while a trigger
+  delegates sending mail, calling a URL and invoking a static method by name, which it grants
+  nobody. A rule whose answer is the same for every caller is a refusal. `Trigger`, `Action`,
+  their descendants, any class carrying an external key to one of them and
+  `RemoteApplicationConnection` are refused unless **`mcp_allow_automation_administration`** is on
+  — a new setting rather than a share of the access one, because "may an assistant administer
+  other people's access" and "may an assistant make this instance call out on its own" are
+  separate decisions. Also worth knowing, though not itself a hole: `ActioniTopWebhook`'s
+  `prepare_payload_callback` and `process_response_callback` take a `Class::method` string and
+  invoke it as a public static callback — not code injection, since the method must already
+  exist, but "call any loaded public static method by name".
+- **One account may not rewrite another's preferences.** `appUserPreferences` carries a `userid`,
+  iTop's own `GetPref()`/`SetPref()` only ever touch the account they are called by, and the
+  console offers no way to edit somebody else's — but the object tools did, because a preference
+  row is an ordinary `DBObject` with an ordinary id and `UserRights` has nothing to say about it.
+  A dry-run update against another user's row came back `valid: true`. This is the mirror of the
+  self-guard — the one refusal here that is about *somebody else's* row rather than your own — and
+  it matters more than "what a console shows by default" suggests, since one of those preferences
+  is whether obsolete objects are visible: rewriting an administrator's row changes what they see
+  without changing anything they would look at to find out why. A write naming neither an id nor a
+  `userid` is your own and goes through, which is what `core_set_obsolete_data` does.
+- **The class schema reports the change log as refused, because it is.** Every tool refuses
+  `CMDBChangeOp` and `CMDBChange` outright — the reads too, since `core_object_history` is the way
+  in — and the rights block graded them `yes` with `restricted: null`, which is exactly the shape
+  of a class nothing guards. Found by a red-team pass that tried to tamper with the audit log,
+  could not, and pointed out that the schema had said the opposite. It fails safe, which is why it
+  is worth fixing rather than shrugging at: a reviewer reading that block concludes the audit log
+  is writable, and the same block on a class where the refusal was *not* there would read
+  identically. It is also the one entry that narrows the read gates, since the refusal is not "you
+  may not change this" but "another tool serves this".
 - **A write handed to iTop's synchronisation engine is graded on where it lands.** The access
   barrier is built on one sentence — this endpoint never writes the things that decide what it
   may write — and a red-team pass against a live instance found the half that sentence does not
