@@ -31,6 +31,39 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class BulkToolContractTest extends TestCase
 {
+	/**
+	 * A bulk-created row separates what was sent from what was defaulted.
+	 *
+	 * The single-object create answers with applied and defaulted beside
+	 * changes; the bulk one answered with changes and overridden only - so for
+	 * the tool most likely to be creating objects from data a model assembled,
+	 * there was no way to tell "what I set" from "what iTop filled in" without
+	 * diffing against the other tool's shape to learn the distinction exists.
+	 *
+	 * The values are read from the object in hand rather than re-read: a
+	 * hundred rows would be a hundred queries for a report nobody asked for
+	 * row by row.
+	 */
+	public function testABulkCreatedRowSaysWhatItSuppliedAndWhatWasDefaulted(): void
+	{
+		$aRow = (new ObjectBulkCreate())->getOutputSchema()['properties']['objects']['items'];
+
+		foreach (['applied', 'defaulted', 'changes', 'overridden'] as $sKey) {
+			$this->assertArrayHasKey($sKey, $aRow['properties'], "a bulk-created row does not report {$sKey}");
+			$this->assertContains($sKey, $aRow['required'], "a bulk-created row reports {$sKey} only sometimes");
+		}
+
+		$sSource = (string) file_get_contents(
+			(new \ReflectionClass(ObjectBulkCreate::class))->getFileName()
+		);
+		$this->assertStringContainsString('suppliedValues(', $sSource);
+		$this->assertStringNotContainsString(
+			'WritePlan::After(',
+			$sSource,
+			'the bulk path re-reads a row per object, which is a hundred queries'
+		);
+	}
+
 	/** @return array<string, array{0: object}> */
 	public static function bulkToolProvider(): array
 	{
