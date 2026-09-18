@@ -47,6 +47,54 @@ class DatamodelRightsContractTest extends TestCase
 	private const READER = self::SOURCE_DIR.'/Helper/DatamodelReader.php';
 
 	/**
+	 * The rights block answers for this endpoint, not only for iTop.
+	 *
+	 * The block exists so a model can pick a call that will succeed instead of
+	 * discovering the refusal by making it - and on the classes that decide
+	 * what this endpoint may do it was doing the opposite. iTop says an
+	 * administrator may modify UserToken, so the block said modify: "yes", and
+	 * the write was then refused by a barrier the block never mentioned: a
+	 * caller could learn its own escalation was blocked only by attempting one.
+	 *
+	 * Three answers, and the block already had three grades for them. Refused
+	 * outright is "no", which is documented as final and is exactly that.
+	 * Allowed for other people's access only - mcp_allow_access_administration
+	 * on - is "depends", since whether this row reaches the caller's own
+	 * credential is a question about the row. A class the barrier does not
+	 * touch is unchanged.
+	 *
+	 * `restricted` carries the why, because "no" alone sends a caller to ask an
+	 * administrator for a right no profile can grant.
+	 */
+	public function testTheRightsBlockReflectsTheWriteBarrier(): void
+	{
+		$oMethod = new ReflectionMethod(DatamodelReader::class, 'narrowedByTheBarrier');
+		$aLines = file($oMethod->getFileName());
+		$sBody = implode('', array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		));
+
+		$this->assertStringContainsString('AccessGrants::IsGranting', $sBody, 'the block never asks the barrier');
+		$this->assertStringContainsString('AllowsAccessAdministration', $sBody, 'the setting that decides is not consulted');
+		$this->assertStringContainsString("'restricted'", $sBody, 'a caller is told no without being told why');
+		$this->assertStringContainsString("'no'", $sBody, 'a refused write is graded as something other than final');
+		$this->assertStringContainsString("'depends'", $sBody, 'the per-row half is graded yes rather than depends');
+
+		// Reads are deliberately untouched: listing a token to see when it
+		// expires is useful and discloses nothing.
+		$this->assertStringNotContainsString("'read'", $sBody);
+		$this->assertStringNotContainsString("'bulkRead'", $sBody);
+
+		$this->assertStringContainsString(
+			'restricted',
+			(string) (new \Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema())->getDescription(),
+			'nothing tells a reader what restricted means'
+		);
+	}
+
+	/**
 	 * Every action the module gates on is one the schema grades.
 	 *
 	 * One direction only. Grading an action nothing checks costs a key in a
