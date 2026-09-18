@@ -330,6 +330,31 @@ final class AccessGrants
 	 * operator may reasonably delegate - unlike the record of what already
 	 * happened, which is below and has no switch.
 	 */
+	/**
+	 * The attributes an email action names its recipients with.
+	 *
+	 * Each is an AttributeOQL, and what the mailer does with it is worth
+	 * stating exactly, because the grade below follows from it and not from
+	 * the field's name. ActionEmail::FindRecipients() takes the raw OQL,
+	 * builds a DBObjectSearch from it, calls **AllowAllData()** on that search
+	 * - deliberately, so a notification reaches people the acting user cannot
+	 * see - then walks the class for its *first* AttributeEmailAddress and
+	 * collects that attribute's value from every matching row.
+	 *
+	 * So one field is an arbitrary query over an arbitrary class with the
+	 * rights and the silo switched off, returning one column. `SELECT Person`
+	 * is every contact's address in the CMDB. The body is not the same
+	 * problem: it goes through MetaModel::ApplyParams() against the trigger's
+	 * context, so it reaches the object that fired and the acting contact,
+	 * which grading the trigger's target_class already covers.
+	 *
+	 * What that makes the right grade: read on the class the query selects,
+	 * and read on the one attribute it would extract. Not every attribute -
+	 * only one is ever read out, and refusing on the rest would be refusing
+	 * something this does not do.
+	 */
+	private const RECIPIENT_ATTRIBUTES = ['to', 'cc', 'bcc'];
+
 	/** The OQL a category is defined by, and the key a rule names its category with. */
 	private const AUDIT_QUERY_ATTRIBUTE = 'definition_set';
 
@@ -502,6 +527,9 @@ final class AccessGrants
 	/**
 	 * What they say about editing a check that is watching the caller.
 	 */
+	/** What they say when a recipient query reaches something the caller may not read. */
+	public const RECIPIENT_REFUSAL = 'The \'%2$s\' of this \'%1$s\' is a query over \'%3$s\', and the mailer runs it with rights and silos switched off - so it would collect addresses from every matching row. Refused because %4$s. Narrow the query to a class you can read here, or set the recipients up in the iTop console.';
+
 	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_automation_administration says. Use the iTop console.';
 
 	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - so it is not something this endpoint changes on its own initiative, and it cannot be written here unless mcp_allow_automation_administration is on. Change it in the iTop console. Reading is unaffected.';
@@ -934,8 +962,18 @@ final class AccessGrants
 			// connection, a token store - has nothing to grade here and the
 			// setting has already decided it.
 			$sWatched = self::DelegatedTarget($sClass, $iId, $aFields);
+			if ($sWatched !== null) {
+				$sRefusal = self::CouldNotDoItDirectly($sClass, $sWatched, false);
+				if ($sRefusal !== null) {
+					return $sRefusal;
+				}
+			}
 
-			return $sWatched === null ? null : self::CouldNotDoItDirectly($sClass, $sWatched, false);
+			// And the recipients, where the class names any. An email action's
+			// to/cc/bcc are queries run with AllowAllData(), so each is a read
+			// of a class this caller may or may not be allowed to read - see
+			// RECIPIENT_ATTRIBUTES.
+			return self::RecipientQueryRefusal($sClass, $iId, $aFields);
 		}
 
 		if (self::IsDetection($sClass)) {
@@ -1074,6 +1112,121 @@ final class AccessGrants
 		} catch (Throwable) {
 			return null;
 		}
+	}
+
+	/**
+	 * Whether any recipient query reaches something this caller may not read.
+	 *
+	 * Graded per field, on the values being written first and the stored row
+	 * second - the same order the rest of this class uses, because changing
+	 * one recipient field of an existing action is a write the stored row
+	 * still describes the old way.
+	 *
+	 * A field that is empty, absent or unparseable yields nothing to grade:
+	 * empty is no recipients, and OQL that does not parse is refused by
+	 * CheckToWrite() before it ever runs. Only a query that resolves to a
+	 * class is graded, and it is graded on the two things the mailer actually
+	 * reads - the class, and the attribute it would take the address from.
+	 *
+	 * @param array<string, mixed> $aFields
+	 */
+	private static function RecipientQueryRefusal(string $sClass, ?int $iId, array $aFields): ?string
+	{
+		if (!class_exists('MetaModel') || !class_exists('DBObjectSearch')) {
+			return null;
+		}
+
+		try {
+			if (!MetaModel::IsValidClass($sClass)) {
+				return null;
+			}
+
+			$oRow = null;
+
+			foreach (self::RECIPIENT_ATTRIBUTES as $sAttCode) {
+				if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+					continue;
+				}
+
+				if (array_key_exists($sAttCode, $aFields)) {
+					$sOql = trim((string) $aFields[$sAttCode]);
+				} else {
+					if ($oRow === null && $iId !== null && $iId > 0) {
+						$oRow = MetaModel::GetObject($sClass, $iId, false, true);
+					}
+					$sOql = $oRow === null ? '' : trim((string) $oRow->Get($sAttCode));
+				}
+
+				if ($sOql === '') {
+					continue;
+				}
+
+				$sSelected = trim((string) DBObjectSearch::FromOQL($sOql)->GetClass());
+				if ($sSelected === '' || !MetaModel::IsValidClass($sSelected)) {
+					continue;
+				}
+
+				$sRefusal = self::ReadRefusalForRecipients($sClass, $sAttCode, $sSelected);
+				if ($sRefusal !== null) {
+					return $sRefusal;
+				}
+			}
+		} catch (Throwable) {
+			// An unparseable query is CheckToWrite()'s refusal, not this one's,
+			// and it never reaches the mailer.
+			return null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * The read grade for one recipient query: the class, and the one address
+	 * attribute the mailer would take.
+	 */
+	private static function ReadRefusalForRecipients(string $sClass, string $sAttCode, string $sSelected): ?string
+	{
+		if (self::IsBarred($sSelected)) {
+			return sprintf(self::RECIPIENT_REFUSAL, $sClass, $sAttCode, $sSelected, 'this endpoint does not read it');
+		}
+
+		if (!class_exists('UserRights') || !defined('UR_ACTION_READ') || !defined('UR_ACTION_BULK_READ')) {
+			return sprintf(self::RECIPIENT_REFUSAL, $sClass, $sAttCode, $sSelected, 'your rights on it could not be established here');
+		}
+
+		if (!UserRights::IsActionAllowed($sSelected, UR_ACTION_READ)
+			|| !UserRights::IsActionAllowed($sSelected, UR_ACTION_BULK_READ)) {
+			return sprintf(self::RECIPIENT_REFUSAL, $sClass, $sAttCode, $sSelected, 'you may not read it here');
+		}
+
+		// The address attribute the mailer picks: the first AttributeEmailAddress
+		// on the class, which is how FindRecipients() chooses it.
+		$sEmailAttCode = null;
+		foreach (MetaModel::ListAttributeDefs($sSelected) as $sCandidate => $oAttDef) {
+			if ($oAttDef instanceof \AttributeEmailAddress) {
+				$sEmailAttCode = $sCandidate;
+				break;
+			}
+		}
+
+		if ($sEmailAttCode === null) {
+			// No address to take: the mailer reports this as a wrong target and
+			// sends nothing, so there is nothing here to refuse.
+			return null;
+		}
+
+		if (defined('UR_ALLOWED_NO')
+			&& UserRights::IsActionAllowedOnAttribute($sSelected, $sEmailAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+			return sprintf(
+				self::RECIPIENT_REFUSAL,
+				$sClass,
+				$sAttCode,
+				$sSelected,
+				"you may not read '{$sEmailAttCode}' on it here, and that is the attribute the address is taken from"
+			);
+		}
+
+		return null;
 	}
 
 	/**

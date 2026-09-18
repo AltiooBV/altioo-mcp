@@ -316,8 +316,21 @@ instance's own configured identity to any address — no trigger, no action, no 
 none of the scaffolding the automation barrier was written for. The gate is on `AsyncTask`, not
 on `AsyncSendEmail`, because the queue is the primitive: anything else landing in it is executed
 the same way by the same cron. `ActionEmail` is a second route to the same place and was already
-covered by `Action` — worth knowing that its `to`/`cc`/`bcc` are `AttributeOQL`, so the recipient
-list is a query (`SELECT Person` reaches every contact in the CMDB) rather than an address.
+covered by `Action`. Its `to`/`cc`/`bcc` are `AttributeOQL`, and what the mailer does with them is
+worth stating exactly, because the grading follows from it: `FindRecipients()` takes the raw OQL,
+builds a search, calls **`AllowAllData()`** on it — deliberately, so a notification can reach
+people the acting user cannot see — then walks the selected class for its *first*
+`AttributeEmailAddress` and collects that one attribute from every matching row. So one field is
+an arbitrary query over an arbitrary class with rights and silo switched off, returning one
+column: `SELECT Person` is every contact address in the CMDB.
+
+Each recipient field is therefore graded as what it is, a read: the caller must be able to read
+the class the query selects, in bulk, and to read the one attribute the address is taken from.
+Not every attribute — only one is ever read out, and refusing on the rest would refuse something
+the mailer does not do. The message **body** is not the same problem and is deliberately not
+graded this way: it goes through `MetaModel::ApplyParams()` against the trigger's context, so it
+reaches the object that fired and the acting contact, which grading the trigger's `target_class`
+already covers.
 
 **And it does not write the credentials it authenticates outward with.** `Oauth2Client` and its
 five subclasses carry `client_secret`, `refresh_token` and `access_token` as

@@ -454,6 +454,18 @@ published archive was installed and exercised on into this line; the README and
   name — the rule yields "no" for every caller, and `mcp_allow_automation_administration` is an
   operator overriding it rather than a grade; even overridden, a trigger is still graded against
   the class it watches.
+- **An email action's recipients are graded as the read they are.** The gap left open when the
+  automation barrier went in, and closed by tracing the mailer rather than reasoning from the field
+  names. `ActionEmail::FindRecipients()` takes the raw OQL out of `to`/`cc`/`bcc`, builds a search,
+  calls **`AllowAllData()`** on it — deliberately, so a notification can reach people the acting
+  user cannot see — then walks the selected class for its *first* `AttributeEmailAddress` and
+  collects that attribute from every matching row. One field is an arbitrary query over an
+  arbitrary class with the rights and the silo switched off, returning one column: `SELECT Person`
+  is every contact address in the CMDB. So each recipient field is graded as a read — the class,
+  in bulk, and the one attribute the address is taken from, and no more than that, since no other
+  attribute is ever read out. The message **body** is deliberately not graded the same way: it goes
+  through `MetaModel::ApplyParams()` against the trigger's context, reaching the object that fired
+  and the acting contact, which grading the trigger's `target_class` already covers.
 - **A check that already exists is not the caller's to edit.** The same sentence turned around. An
   `AuditRule` or `AuditCategory` that exists is a control *on* the caller, not a thing the caller
   configures: turning it off, making the change it would have flagged and turning it back on leaves

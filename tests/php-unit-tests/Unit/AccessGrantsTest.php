@@ -1134,6 +1134,51 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * An email action's recipients are a read of a class, and graded as one.
+	 *
+	 * Traced rather than assumed, because the grade follows from what the
+	 * mailer does and not from the field being called "to".
+	 * ActionEmail::FindRecipients() takes the raw OQL, builds a search from
+	 * it, calls **AllowAllData()** on that search - deliberately, so a
+	 * notification reaches people the acting user cannot see - then walks the
+	 * selected class for its *first* AttributeEmailAddress and collects that
+	 * one attribute from every matching row. So `to = SELECT Person` is every
+	 * contact address in the CMDB, with the silo off.
+	 *
+	 * Hence the grade: read on the class the query selects, and read on the
+	 * one attribute the address is taken from. Not every attribute - only one
+	 * is ever read out.
+	 *
+	 * The body is not the same problem and is deliberately not graded here: it
+	 * goes through MetaModel::ApplyParams() against the trigger's context, so
+	 * it reaches the object that fired and the acting contact, which grading
+	 * the trigger's target_class already covers.
+	 */
+	public function testAnEmailActionsRecipientsAreGradedAsAReadOfThatClass(): void
+	{
+		$sRule = $this->body(AccessGrants::class, 'ReadRefusalForRecipients');
+
+		$this->assertStringContainsString('IsBarred', $sRule,
+			'a recipient query can select a class the barrier refuses outright');
+		$this->assertStringContainsString('UR_ACTION_READ', $sRule, 'the selected class is not graded for reading');
+		$this->assertStringContainsString('UR_ACTION_BULK_READ', $sRule,
+			'a query returning many rows is not graded as a bulk read');
+		$this->assertStringContainsString('AttributeEmailAddress', $sRule,
+			'the attribute the address is actually taken from is not graded');
+
+		// With no UserRights here, a query that names a class fails closed.
+		$sRefusal = AccessGrants::RefusalGiven(true, 'Action', 3, ['to' => 'SELECT Person'], true);
+
+		if (class_exists('MetaModel')) {
+			$this->markTestSkipped('an iTop is loaded; the graded path belongs to the integration suite.');
+		}
+
+		// Without MetaModel the query cannot be parsed at all, so this half is
+		// the source scan above; the decision is pinned where it can run.
+		$this->assertNull($sRefusal, 'a query that cannot be parsed here was refused as though it had been');
+	}
+
+	/**
 	 * An existing check is not the caller's to edit, even with the override.
 	 *
 	 * The loop it closes: turn the rule off, make the change it would have
