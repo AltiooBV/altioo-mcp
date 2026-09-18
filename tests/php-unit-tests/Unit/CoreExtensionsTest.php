@@ -75,6 +75,7 @@ class CoreExtensionsTest extends TestCase
 				'core_object_search_by_class',
 				'core_object_search_by_oql',
 				'core_object_update',
+				'core_set_obsolete_data',
 			],
 			$this->sortedKeys(MCPRegistry::GetTools())
 		);
@@ -176,6 +177,7 @@ class CoreExtensionsTest extends TestCase
 			'core_class_list'             => AccessPolicy::CAPABILITY_READ,
 			'core_class_schema'           => AccessPolicy::CAPABILITY_READ,
 			'core_current_user'           => AccessPolicy::CAPABILITY_READ,
+			'core_set_obsolete_data'      => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_search_by_oql'   => AccessPolicy::CAPABILITY_READ,
 			'core_object_search_by_class' => AccessPolicy::CAPABILITY_READ,
 			'core_object_find_by_name'    => AccessPolicy::CAPABILITY_READ,
