@@ -432,7 +432,14 @@ final class DatamodelReader
 			$aPayload['attributes'] = array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === false);
 		}
 
-		if (in_array(self::BLOCK_DERIVED, $aBlocks, true)) {
+		// required_only is the "what must I set" question, and a derived
+		// attribute is never an answer to it: nothing can set one. Left in, the
+		// block dominated the very payload the argument exists to shrink - a
+		// stock UserRequest answers with seven writable attributes and about
+		// twenty-five derived ones - and each derived entry carried
+		// required: true, which reads as a write obligation and is in fact the
+		// database saying the column it computes is not nullable.
+		if (in_array(self::BLOCK_DERIVED, $aBlocks, true) && !$bRequiredOnly) {
 			$aPayload['derived'] = array_filter($aAttributes, static fn (array $a): bool => $a['readOnly'] === true);
 		}
 
