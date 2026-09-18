@@ -1023,6 +1023,46 @@ final class WritePlan
 	}
 
 	/**
+	 * Whether the row a deletion was asked for is gone, when the deletion
+	 * threw.
+	 *
+	 * {@see CommittedId()} asks this question for a creation. A deletion needs
+	 * it for the same structural reason and answers it the other way round:
+	 * DBDelete() removes the row and then runs what follows it - the objects
+	 * that pointed at it, the AfterDelete hooks, iTop's own cleanup for
+	 * classes that own something outside their table - and a throw from any of
+	 * that arrives with the row already gone.
+	 *
+	 * The direction the two fail in is deliberately opposite, because the
+	 * costly mistake is. A creation reported as failed is retried, and that is
+	 * a second object, so a committed row is reported as the success it is. A
+	 * deletion reported as succeeded when the row is still there tells an
+	 * operator that a thing they were removing on purpose - a leaked
+	 * credential, a record somebody staged - is gone when it is not, and a
+	 * retry of a deletion that did work costs nothing. So this answers true
+	 * only on positive evidence of absence: anything it cannot establish is
+	 * reported as the failure it was.
+	 *
+	 * @return bool True only when the object was looked for and is not there.
+	 * @since 1.0.0
+	 */
+	public static function IsGone(string $sClass, int $iId): bool
+	{
+		if (!class_exists('MetaModel')) {
+			return false;
+		}
+
+		try {
+			// Not must-be-found, and with all data allowed: a row this caller
+			// can no longer see is not a row that was deleted, and answering
+			// otherwise would turn a rights change into a deletion report.
+			return MetaModel::GetObject($sClass, $iId, false, true) === null;
+		} catch (Throwable $e) {
+			return false;
+		}
+	}
+
+	/**
 	 * Runs iTop's own pre-write check, and refuses with what it found.
 	 *
 	 * CheckToWrite() returns [ok, issues, securityIssue] and fills the issues

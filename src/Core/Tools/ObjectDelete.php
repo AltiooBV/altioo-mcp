@@ -226,7 +226,34 @@ class ObjectDelete extends AbstractMCPTool
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);
 			} catch (\Throwable $e) {
-				throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
+				// A throw here does not mean the row is still there. DBDelete()
+				// removes it and then runs what follows - the objects that
+				// pointed at it, the AfterDelete hooks - so the failure can
+				// arrive with the deletion already done, exactly as a creation's
+				// can arrive with the row already written.
+				//
+				// Reporting that as a plain failure is what an operator acts on
+				// when they are removing something on purpose: they are told the
+				// cleanup did not work, and go looking for a record that is not
+				// there. So the object is asked for rather than assumed, and a
+				// deletion that happened is reported as one with the failure
+				// attached - and only ever on positive evidence, since the
+				// opposite mistake says a thing is gone when it is not.
+				if (!WritePlan::IsGone($class, $id)) {
+					throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
+				}
+
+				return ToolOutput::Structured(['class' => $class]
+					+ WritePlan::Identity($class, $id)
+					+ [
+						'simulated'    => false,
+						'valid'        => true,
+						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+						'warning'      => MCPHelper::OpaqueFailure(
+							"The {$class}::{$id} was deleted, but the call failed after the deletion",
+							$e
+						),
+					]);
 			}
 		}
 

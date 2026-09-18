@@ -327,6 +327,43 @@ class WriteFailureReportingContractTest extends TestCase
 			'a cast at the call site is the fix the next bulk tool would be written without');
 	}
 
+	/**
+	 * A deletion that happened is reported as one.
+	 *
+	 * The create path asks "is there a row" after a throw, because DBInsert()
+	 * commits and then keeps going. DBDelete() has the same shape and the
+	 * delete tool asked nothing: it turned every throw into an outright
+	 * failure, including the ones that arrive with the row already gone.
+	 *
+	 * Reported by a red-team pass, where the failing call was the cleanup of
+	 * the object staged to demonstrate something else. That is the case that
+	 * matters - an operator removing something on purpose is told the removal
+	 * did not work, and goes looking for a record that is not there.
+	 *
+	 * Deliberately the opposite direction from the creation rule, and the test
+	 * pins that too: a deletion may only be reported on positive evidence of
+	 * absence, because saying a thing is gone when it is not is the worse of
+	 * the two mistakes here, and retrying a deletion that worked costs
+	 * nothing.
+	 */
+	public function testACommittedDeletionIsReportedAsOneDespiteTheFailure(): void
+	{
+		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectDelete.php');
+
+		$this->assertStringContainsString('WritePlan::IsGone(', $sSource,
+			'the delete tool reports a failure without asking whether the row is still there');
+		$this->assertStringContainsString("'warning'", $sSource,
+			'a deletion that happened has nowhere to report the failure that followed it');
+
+		$sGone = $this->methodBody(WritePlan::class, 'IsGone');
+
+		$this->assertStringContainsString('=== null', $sGone, 'absence is inferred rather than established');
+		$this->assertStringContainsString('catch (Throwable', $sGone,
+			'a question asked while an exception is being reported may not raise one of its own');
+		$this->assertStringContainsString('return false;', $sGone,
+			'a question it cannot answer has to read as "still there", or a failure becomes a deletion report');
+	}
+
 	/** Every id that came out of a write goes through the one normaliser. */
 	public function testNoCreatePathCastsTheIdItself(): void
 	{
