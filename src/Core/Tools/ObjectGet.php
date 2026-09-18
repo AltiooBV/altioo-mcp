@@ -47,7 +47,8 @@ class ObjectGet extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, plus an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class, and the stimuli its current state accepts, which is what core_object_apply_stimulus will take. Call core_object_history for the full record of what changed.';
+		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, plus an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class, and the stimuli its current state accepts, which is what core_object_apply_stimulus will take. Call core_object_history for the full record of what changed. '
+			.'Files attached to an object are not attributes of it: they are Attachment objects pointing back at it, so core_object_search_by_class on Attachment with item_class and item_id lists them.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
