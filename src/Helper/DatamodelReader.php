@@ -422,7 +422,7 @@ final class DatamodelReader
 			$aAttributes = array_intersect_key($aAttributes, $aWanted);
 		}
 
-		$aPayload = self::Summarize($sClass);
+		$aPayload = self::Summarize($sClass) + ['obsolescence' => self::obsolescence($sClass)];
 
 		if (in_array(self::BLOCK_RIGHTS, $aBlocks, true)) {
 			$aPayload['rights'] = self::RightsOf($sClass);
@@ -775,6 +775,42 @@ final class DatamodelReader
 			$sFormat,
 			$sCorrected
 		);
+	}
+
+	/**
+	 * Why an object of this class can count as obsolete, in the datamodel's
+	 * own words.
+	 *
+	 * obsolescence_flag says that one is; it never says why, and the why is
+	 * not guessable from the class. The stock conditions are three different
+	 * shapes: a state on the object (status = 'obsolete'), a state inherited
+	 * through an external key (a database instance is obsolete because its
+	 * server is), and a date that has passed (a contract whose end date is
+	 * fifteen months old). A caller told only "true" cannot tell which of
+	 * those it is looking at, and a caller that wants to make an object
+	 * obsolete - or stop it being one - has nothing to act on.
+	 *
+	 * Rendered from the expression iTop evaluates rather than from the XML, so
+	 * it is what the database actually applies, COALESCE and all.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function obsolescence(string $sClass): array
+	{
+		try {
+			if (!MetaModel::IsObsoletable($sClass)) {
+				return ['obsoletable' => false, 'condition' => null];
+			}
+
+			return [
+				'obsoletable' => true,
+				'condition'   => MetaModel::GetObsolescenceExpression($sClass)->Render(),
+			];
+		} catch (\Throwable $e) {
+			// A class that cannot answer is reported as one that does not have
+			// the notion, which is what the flag will say about its objects too.
+			return ['obsoletable' => false, 'condition' => null];
+		}
 	}
 
 	/**
