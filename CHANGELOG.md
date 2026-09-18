@@ -603,6 +603,27 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **`core_class_schema` answers a subset of itself when asked.** A stock `UserRequest` describes
+  about forty writable attributes, thirty derived ones, its relations and its whole lifecycle
+  graph — and a model calls this before nearly every create and every stimulus, often to learn one
+  thing. `include` picks the blocks, `attributes` picks the codes, and `required_only` keeps just
+  what a write must set. Every default is the whole answer, and what comes back carries a
+  `reported` block echoing the narrowing: an absent block cannot otherwise be told apart from a
+  block that was empty. `itop://core/class/{class}` still answers in full — a resource takes no
+  arguments.
+
+- **A refused value says which string would have worked, where that is knowable.** iTop stores a
+  date-time as `Y-m-d H:i:s` — a space, no offset — and every other system a model has met uses
+  RFC 3339, so the ISO form is what a first attempt sends. The pattern was already in the schema
+  and the refusal still cost a round trip to go and read it; the refusal now carries the converted
+  string. Suggested, never applied: an offset-bearing value is an instant and iTop stores
+  wall-clock time, so moving a timestamp silently would be the worse failure.
+
+- **`core_object_get_related` flags a partial graph beside its summary.** `withheld` names the
+  classes held back for want of bulk read, but a caller had to go looking to learn there was
+  anything to look for — and a graph quietly missing a class reads exactly like a complete one.
+  `truncated` is always present and false on the ordinary answer.
+
 - **`core_class_schema` reports the target class of an external key rather than the rows behind
   it.** Describing `UserRequest` otherwise means returning every `Person` in the database under
   `caller_id`, on every call, and those rows have not been through object-level rights.
