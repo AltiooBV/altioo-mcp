@@ -15,6 +15,7 @@ use Mcp\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use UserRights;
+use utils;
 
 /**
  * What a write would do, established before it does it.
@@ -130,6 +131,96 @@ final class WritePlan
 			// {@see Identity()}.
 			'additionalProperties' => true,
 		];
+	}
+
+	/**
+	 * The `obsolescence` property, for a tool that changes an object's fields.
+	 *
+	 * The case it exists for: an agent sets a status the datamodel counts as
+	 * obsolete, the write succeeds, and the object then vanishes from its own
+	 * searches - because "show obsolete data" is off for that account, which is
+	 * the default. Nothing in the write said so, and the agent's next move is
+	 * to search for what it just wrote, find nothing, and conclude the write
+	 * failed.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function AfterSchemaProperty(): array
+	{
+		return [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'description'          => 'The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet.',
+		];
+	}
+
+	/**
+	 * That block, filled in.
+	 *
+	 * The flag is not a stored column: AttributeObsolescenceFlag answers
+	 * IsBasedOnOQLExpression, so the database evaluates the class's condition
+	 * when the object is queried. A dry run therefore cannot know what the
+	 * write would make of it - nothing has evaluated anything - which is why
+	 * the condition is reported beside the flag rather than instead of it: on a
+	 * dry run the flag is what the object carries now, and the condition is
+	 * what the caller can read to see where its own values would land.
+	 *
+	 * On a real write the object is asked again, which costs one read of one
+	 * row and only on a class that has the notion at all.
+	 *
+	 * @param DBObject           $oObject   The object the write acted on.
+	 * @param array<int, string> $aAttCodes The attributes the caller supplied, re-read so that what a hook changed is visible.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function After(DBObject $oObject, string $sClass, array $aAttCodes, bool $bSimulated): array
+	{
+		$aAfter = [
+			'friendlyname' => null,
+			'applied'      => [],
+			'obsolescence' => ['flag' => null, 'condition' => null, 'hidden_from_searches' => false],
+		];
+
+		try {
+			$iId = self::AsId($oObject->GetKey());
+			if (!$bSimulated && $iId !== null) {
+				// One read, for both halves of the answer.
+				//
+				// `changes` is taken before the write and has to be: DBInsert()
+				// clears the pending values, so asking afterwards reports
+				// nothing. What that leaves out is everything the write itself
+				// did - an AfterInsert hook, an event listener, a lifecycle
+				// that filled in a field, the ref a ticket is given - and the
+				// obsolescence flag, which is not a stored column at all but an
+				// expression the database evaluates when the row is queried.
+				$oFresh = MetaModel::GetObject($sClass, $iId, false);
+				$oObject = $oFresh ?? $oObject;
+			}
+
+			$aAfter['friendlyname'] = $oObject->GetName();
+
+			if ($aAttCodes !== []) {
+				// Through the serializer, so per-attribute read rights, the
+				// clipping and the masking all apply exactly as they do on a
+				// read. An attribute the caller may write and may not read
+				// comes back masked rather than echoed.
+				$aSerialized = ObjectSerializer::Serialize($oObject, $sClass, $aAttCodes);
+				$aAfter['applied'] = array_intersect_key($aSerialized, array_flip($aAttCodes));
+			}
+
+			if (MetaModel::IsObsoletable($sClass)) {
+				$aAfter['obsolescence']['condition'] = MetaModel::GetObsolescenceExpression($sClass)->Render();
+				$aAfter['obsolescence']['flag'] = (bool)$oObject->Get('obsolescence_flag');
+				$aAfter['obsolescence']['hidden_from_searches'] = $aAfter['obsolescence']['flag'] && !utils::ShowObsoleteData();
+			}
+		} catch (Throwable $e) {
+			// Describing the write must never cost the write that succeeded.
+			MCPHelper::LogError('Could not describe '.$sClass.' after the write: '.$e->getMessage());
+		}
+
+		return $aAfter;
 	}
 
 	/**
