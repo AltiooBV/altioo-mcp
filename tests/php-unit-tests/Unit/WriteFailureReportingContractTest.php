@@ -281,6 +281,52 @@ class WriteFailureReportingContractTest extends TestCase
 		));
 	}
 
+	/**
+	 * The same TypeError, one level down and once per row.
+	 *
+	 * core_object_bulk_create hands DBInsert()'s return value straight to
+	 * outcome(), whose id parameter was ?int. Under strict_types that rejected
+	 * the string the ORM returns - after the row was committed - so the catch
+	 * around the write reported every successful creation as "Created, but the
+	 * call failed after the write". The two other bulk tools pass an id
+	 * checkIds() already made an int of, which is why only create showed it.
+	 */
+	public function testTheBulkOutcomeTakesTheIdAsITopReportsIt(): void
+	{
+		$oMethod = new ReflectionMethod(
+			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+			'outcome'
+		);
+		$sType = (string) $oMethod->getParameters()[0]->getType();
+
+		$this->assertStringContainsString('string', $sType, sprintf(
+			'a bulk create hands this DBInsert()\'s return value, so a %s parameter throws a TypeError once the row is already written.',
+			$sType
+		));
+		$this->assertStringContainsString(
+			'WritePlan::AsId',
+			$this->methodBody(
+				'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+				'outcome'
+			),
+			'the widened parameter has to be normalised, or the schema\'s integer id becomes a string'
+		);
+	}
+
+	/**
+	 * Nothing between DBInsert() and the entry it produces may narrow the id.
+	 *
+	 * The signature above is the boundary that was found; a cast written at
+	 * the call site would put the TypeError back without changing it.
+	 */
+	public function testTheBulkCreateRowDoesNotCastTheIdItself(): void
+	{
+		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectBulkCreate.php');
+
+		$this->assertSame(0, preg_match('/outcome\(\s*\(int\)/', $sSource),
+			'a cast at the call site is the fix the next bulk tool would be written without');
+	}
+
 	/** Every id that came out of a write goes through the one normaliser. */
 	public function testNoCreatePathCastsTheIdItself(): void
 	{

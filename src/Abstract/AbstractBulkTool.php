@@ -504,16 +504,28 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * answer with the same set of keys. Adding it only when there is one is the
 	 * shape-by-parameter problem the single-object tools avoid, one level down.
 	 *
-	 * @param int|null $iId  Null when the object has no identifier yet, or never got one.
-	 * @param int      $iRow Zero-based position in the list that was sent.
+	 * The id is taken as iTop reports it, not as this signature would prefer.
+	 * The update and delete tools pass an id they parsed themselves, so an int
+	 * is all they ever had; the create tool passes what DBInsert() returned,
+	 * and that is the key as a string. A ?int parameter rejected it under
+	 * strict_types - after the row was committed - so every successful bulk
+	 * create answered "Created, but the call failed after the write", which is
+	 * the one answer that makes a caller retry and create a duplicate. The
+	 * normaliser is the same one WritePlan::Identity() and
+	 * DocumentAccess::Describe() were corrected to use, for the same reason:
+	 * this is the third boundary an ORM id crossed, and widening it here is
+	 * what keeps the next bulk tool from being the fourth.
+	 *
+	 * @param int|string|null $mId  The id as iTop reports it. Null when the object has no identifier yet, or never got one.
+	 * @param int             $iRow Zero-based position in the list that was sent.
 	 *
 	 * @return array<string, mixed>
 	 */
-	protected static function outcome(?int $iId, int $iRow, bool $bOk, string $sMessage = ''): array
+	protected static function outcome(int|string|null $mId, int $iRow, bool $bOk, string $sMessage = ''): array
 	{
 		return [
 			'row'     => $iRow,
-			'id'      => $iId,
+			'id'      => WritePlan::AsId($mId),
 			'status'  => $bOk ? 'ok' : 'error',
 			'message' => $sMessage,
 		];
