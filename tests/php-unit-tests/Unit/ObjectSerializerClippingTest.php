@@ -111,30 +111,42 @@ class ObjectSerializerClippingTest extends TestCase
 	}
 
 	/**
-	 * An archived object does not come back looking live.
+	 * Every read says whether the object is archived, and says it three ways.
 	 *
-	 * Archive mode is a view - iTop reads `with_archive` off the request, and
-	 * this endpoint reaches utils::ReadParam like any other - so a search made
-	 * under it returns archived objects beside live ones. The searches default
-	 * to id and friendlyname, which describe both identically, and a
-	 * soft-deleted ticket reported as current is the same silent wrong answer
-	 * the withheld block and the truncated flag exist to prevent.
+	 * Archived is soft-deleted: the object is out of circulation and still
+	 * there, and a search under archive mode - which this endpoint reaches,
+	 * since iTop reads `with_archive` through utils::ReadParam - returns
+	 * archived objects beside live ones. The default field list is id and
+	 * friendlyname, which describes both identically.
 	 *
-	 * Read off the source: the branch needs a session and a datamodel, and
-	 * what is worth holding is that it is conditional on the mode, that it
-	 * leaves a full read alone, and that it cannot throw.
+	 * The third state is the one worth holding. A class that declares no
+	 * archive flag is not "not archived": archiving is a property of a class
+	 * hierarchy, so a Person or a Team has no such state at all, and false
+	 * there would answer a question the datamodel never asked - a caller
+	 * filtering on it drops objects that were never candidates. null says the
+	 * question does not apply, as the lifecycle block already answers null for
+	 * a class with no states.
+	 *
+	 * Read off the source: the branch needs a datamodel, and what matters is
+	 * that it is unconditional, that it asks whether the class has the flag,
+	 * that it never overwrites what the rights layer decided, and that a
+	 * question about the datamodel cannot cost the read.
 	 */
-	public function testAnArchiveModeReadCarriesTheFlagItWouldOtherwiseOmit(): void
+	public function testEveryReadAnswersTheArchiveQuestionOrSaysItDoesNotApply(): void
 	{
-		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'withArchiveFlag');
+		$sAdds = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'withArchiveFlag');
+		$sHas = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'HasArchiveFlag');
+		$sSerialize = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'Serialize');
 
-		$this->assertStringContainsString('IsArchiveMode', $sBody, 'the flag is added whatever mode the session is in');
-		$this->assertStringContainsString('IsValidAttCode', $sBody, 'a class without the flag would be asked for one');
-		$this->assertStringContainsString('catch (Throwable', $sBody, 'a read must not fail over the mode it is read in');
+		$this->assertStringNotContainsString('IsArchiveMode', $sAdds, 'the flag is reported only while the mode is on');
+		$this->assertStringContainsString('$aFields === null', $sAdds, 'a caller that asked for everything already has it');
+		$this->assertStringContainsString('IsValidAttCode', $sHas, 'a class without the flag would be asked for one');
+		$this->assertStringContainsString('catch (Throwable', $sHas, 'a question about the datamodel must not cost the read');
+
 		$this->assertStringContainsString(
-			'$aFields === null',
-			$sBody,
-			'a caller that asked for every attribute already has it'
+			'!array_key_exists(self::ARCHIVE_FLAG, $aData) && !self::HasArchiveFlag($sClass)',
+			$sSerialize,
+			'null is written over an answer the loop already gave, or given to a class that has a real one'
 		);
 	}
 
