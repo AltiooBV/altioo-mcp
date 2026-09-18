@@ -67,8 +67,10 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				],
 				'filters' => [
 					'type'                 => 'object',
-					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
+					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory. '
+						.'Omit it to search the whole class - an empty filter is {} and never [], which is the shape a language without a distinct empty map will hand you.',
 					'additionalProperties' => true,
+					'default'              => new \stdClass(),
 				],
 			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::archivedSchemaProperty() + self::auditSchemaProperties() + self::actionsSchemaProperties(),
 			'required' => ['class'],
