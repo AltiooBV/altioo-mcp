@@ -333,6 +333,32 @@ published archive was installed and exercised on into this line; the README and
   `DocumentAccess::Describe()` declaring `int` for an id that `DBInsert()` returns as a string —
   the same boundary-type mistake `WritePlan::Identity()` was corrected for, one function along.
 
+- **A bulk creation that worked says so.** The third crossing of the same boundary, and the one
+  that cost the most: `AbstractBulkTool::outcome()` declared `?int` for the id, and
+  `core_object_bulk_create` hands it what `DBInsert()` returned — the key as a string. Under
+  `strict_types` that is a `TypeError`, raised after the row was committed and inside the catch
+  that exists precisely for a throw landing there, so **every** successful row of a real bulk
+  create came back "Created, but the call failed after the write" with a warning telling the
+  caller to report the reference rather than retry. The objects were correct and complete; only
+  the report was wrong, which is the version of this bug a caller is least likely to check.
+  Bulk update and bulk delete never showed it, because `checkIds()` had already made an int of
+  every id they pass. The parameter now takes the id as iTop reports it and normalises it
+  through `WritePlan::AsId()`, so the widening is done once at the boundary the three bulk tools
+  share rather than at each call site — and a unit test pins the signature, beside the two that
+  already pin `WritePlan::Identity()` and `DocumentAccess::Describe()`.
+- **`changes` says when it was read.** It is taken before the write and has to be, so an
+  attribute the write itself fills is empty there rather than wrong — a ticket answers `""` for
+  `ref` and `friendlyname`, which are assigned as the row is inserted, while `after` carries
+  what the object ended up with. The schema said only "the value this write set", which reads as
+  a contradiction to a caller looking at an empty `friendlyname` beside a populated one. It now
+  says which side of the write it describes, and the bulk tools — which report no `after` per
+  row — name `core_object_get` as the way to the rest.
+- **`core_object_search_by_class` says its filters are equalities.** Every pair becomes
+  `AddCondition(..., '=')`, so a word out of a title matches nothing, and a caller arriving from
+  the console's quick search reads an empty result as "no such object" rather than "not how this
+  filters". The property now says so and names the two tools that do match text:
+  `core_object_search_by_oql` with `LIKE`, and `core_object_find_by_name`.
+
 - **A refused deletion names the way that is open.** A profile that may not delete is the normal
   case — service desks retire tickets through the lifecycle, and deletion belongs to
   administrators — but the refusal said only that the door was shut, so a caller had to know the
