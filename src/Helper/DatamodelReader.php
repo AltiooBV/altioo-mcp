@@ -157,10 +157,58 @@ final class DatamodelReader
 	 */
 	public static function Categories(): array
 	{
-		$aCategories = array_filter(MetaModel::EnumCategories(), static fn ($sCategory): bool => $sCategory !== '');
+		// Trimmed and deduplicated, which iTop's own registration is not.
+		//
+		// A class declares its categories as one string - "core/cmdb,
+		// grant_by_profile" - and MetaModel explodes it on the comma without
+		// trimming, so a declaration written with a space after the comma
+		// registers the key " grant_by_profile", and one written without it
+		// registers "grant_by_profile". Both are in EnumCategories(), and
+		// printed in a list they look like the same word twice.
+		$aCategories = array_map('trim', MetaModel::EnumCategories());
+		$aCategories = array_filter($aCategories, static fn (string $sCategory): bool => $sCategory !== '');
+		$aCategories = array_unique($aCategories);
 		sort($aCategories);
 
 		return array_values($aCategories);
+	}
+
+	/**
+	 * Every class in a category, including the ones iTop's own lookup misses.
+	 *
+	 * The same spacing quirk costs more than a duplicate in a list.
+	 * Registration keys the bucket untrimmed and GetClasses() trims what it is
+	 * asked for, so "grant_by_profile" finds the classes that declared it
+	 * without a space and silently misses every class that declared it with
+	 * one - which in iTop's own core is most of them.
+	 *
+	 * HasCategory() reaches them: it matches against the class's raw
+	 * declaration, spaces and all. What it does not do is match on a word
+	 * boundary, so it is only asked where that cannot mislead - where the
+	 * requested category is not part of a longer one. Elsewhere the exact
+	 * lookup stands alone, which is what this module did everywhere until now.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function classesInCategory(string $sCategory): array
+	{
+		$aClasses = MetaModel::GetClasses($sCategory);
+
+		foreach (self::Categories() as $sKnown) {
+			if ($sKnown !== $sCategory && str_contains($sKnown, $sCategory)) {
+				// "core" would drag in "core/cmdb". The exact answer is the
+				// safe one.
+				return $aClasses;
+			}
+		}
+
+		foreach (MetaModel::GetClasses('') as $sClass) {
+			if (!in_array($sClass, $aClasses, true) && MetaModel::HasCategory($sClass, $sCategory)) {
+				$aClasses[] = $sClass;
+			}
+		}
+
+		return $aClasses;
 	}
 
 	/**
@@ -176,7 +224,7 @@ final class DatamodelReader
 	{
 		$aClasses = [];
 
-		foreach (MetaModel::GetClasses($sCategory) as $sClass) {
+		foreach (self::classesInCategory($sCategory) as $sClass) {
 			// Skip classes the current user has no read access to
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 				continue;
