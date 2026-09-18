@@ -149,7 +149,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// Through report() like the other two, rather than a hand-rolled copy
 		// of it: the defaults it applies are what make every entry carry the
 		// keys the schema promises.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => [], 'overridden' => []]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([])]));
 	}
 
 	/**
@@ -216,14 +216,14 @@ class ObjectBulkCreate extends AbstractBulkTool
 
 			if ($bSimulate) {
 				return self::outcome(null, $iRow, true, 'Would be created.')
-					+ ['changes' => $aChanges, 'overridden' => $aOverridden];
+					+ ['changes' => WritePlan::Map($aChanges), 'overridden' => WritePlan::Map($aOverridden)];
 			}
 
 			$iId = $oObject->DBInsert();
 
 			return self::outcome($iId, $iRow, true, 'Created.')
 				+ WritePlan::Identity($sClass, $iId)
-				+ ['changes' => $aChanges, 'overridden' => $aOverridden];
+				+ ['changes' => WritePlan::Map($aChanges), 'overridden' => WritePlan::Map($aOverridden)];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
 			return self::outcome(null, $iRow, false, $e->getMessage());
@@ -251,8 +251,8 @@ class ObjectBulkCreate extends AbstractBulkTool
 				return self::outcome($iCommittedId, $iRow, true, "Created, but the call failed after the write.")
 					+ WritePlan::Identity($sClass, $iCommittedId)
 					+ [
-						'changes'    => $aChanges,
-						'overridden' => $aOverridden,
+						'changes'    => WritePlan::Map($aChanges),
+						'overridden' => WritePlan::Map($aOverridden),
 						'warning'    => MCPHelper::OpaqueFailure(
 							"Row {$iRow} was created with id {$iCommittedId}, but the call failed after the write",
 							$e
