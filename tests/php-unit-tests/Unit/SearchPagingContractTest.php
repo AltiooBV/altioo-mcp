@@ -143,6 +143,43 @@ class SearchPagingContractTest extends TestCase
 		);
 	}
 
+	/**
+	 * The searches ask the user about obsolete objects, as the console does.
+	 *
+	 * "Show obsolete data" is a preference on the account, not a session flag:
+	 * utils::ShowObsoleteData() reads appUserPreferences and falls back to
+	 * obsolescence.show_obsolete_data. A search honours it only if the surface
+	 * asks - DBSearch starts with m_bShowObsoleteData true, which is why
+	 * iTop's own export service and portal call UpdateContextFromUser().
+	 *
+	 * These two did not ask, so one user got obsolete objects from the OQL
+	 * search, none from core_object_find_by_name, which has always asked, and
+	 * none in the console. Three answers to one question.
+	 *
+	 * Held on the shared helper, since both tools reach the search through it.
+	 */
+	public function testTheSearchesHonourTheUsersObsoleteDataPreference(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(AbstractObjectSearch::class))->getFileName()
+		);
+
+		$this->assertStringContainsString(
+			'SetShowObsoleteData(utils::ShowObsoleteData())',
+			$sBody,
+			'the set searches decide for themselves what the user already decided'
+		);
+
+		$sFindByName = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName::class))->getFileName()
+		);
+		$this->assertStringContainsString(
+			'SetShowObsoleteData(utils::ShowObsoleteData())',
+			$sFindByName,
+			'the three set-returning tools no longer answer the same question three ways'
+		);
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{
