@@ -113,17 +113,18 @@ final class ObjectSerializer
 		// nothing for the query.
 		$oInstanceSet = null;
 
-		// What a session in archive mode is not otherwise told, per object.
+		// Whether this object is archived, on every read that returns it.
 		//
-		// Archive mode is a view: iTop reads `with_archive` off the request, and
-		// under it a search returns archived objects beside live ones. The
-		// searches default to id and friendlyname, so an archived ticket comes
-		// back looking exactly like an open one - and a soft-deleted object
-		// reported as current is the silent wrong answer the withheld block and
-		// the truncated flag exist to prevent, one surface along.
+		// Archived is soft-deleted: the object is out of circulation but still
+		// there, and a search made under archive mode - which this endpoint
+		// reaches, since iTop reads `with_archive` through utils::ReadParam -
+		// returns archived objects beside live ones. The default field list is
+		// id and friendlyname, which describe both identically.
 		//
-		// Only in that mode, and only on a class carrying the flag: an ordinary
-		// session pays nothing and its payloads do not change.
+		// Not conditional on the mode. Whether the caller can currently *see*
+		// archived objects and whether the object in hand *is* one are two
+		// questions, and answering the second only while the answer is
+		// interesting is how a payload teaches a reader to stop looking.
 		$aFields = self::withArchiveFlag($sClass, $aFields);
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
@@ -146,6 +147,23 @@ final class ObjectSerializer
 				$aData[$sAttCode] = null;
 				$aUnreadable[] = $sAttCode;
 			}
+		}
+
+		// Three states, because there are three answers.
+		//
+		// true and false are iTop's own, on a class that declares the flag. A
+		// class that declares none is not "not archived": archiving is a
+		// property of a class hierarchy, and a Person or a Team has no such
+		// notion at all - reporting false there would be answering a question
+		// the datamodel never asked, and a caller filtering on it would drop
+		// objects that were never candidates. null says the question does not
+		// apply here, the same way the lifecycle block answers null for a class
+		// with no states rather than an empty list of transitions.
+		//
+		// Never overwrites what the loop found, so an attribute the caller may
+		// not read keeps whatever the rights layer decided about it.
+		if (!array_key_exists(self::ARCHIVE_FLAG, $aData) && !self::HasArchiveFlag($sClass)) {
+			$aData[self::ARCHIVE_FLAG] = null;
 		}
 
 		if (!empty($aUnreadable)) {
@@ -330,14 +348,13 @@ final class ObjectSerializer
 	private const ARCHIVE_FLAG = 'archive_flag';
 
 	/**
-	 * The archive flag, added to a narrowed field list while the session is
-	 * reading archived objects.
+	 * The archive flag, added to a narrowed field list.
 	 *
-	 * A caller that asked for every attribute already has it, and a caller that
-	 * named it already has it. This is for the default: id and friendlyname,
-	 * which describe an archived object and a live one identically.
+	 * A caller that asked for every attribute already has it, and one that
+	 * named it already has it. This is for the default - id and friendlyname -
+	 * which describes an archived object and a live one identically.
 	 *
-	 * Guarded, because a read must not fail over the mode it is being read in.
+	 * Guarded, because a read must not fail over a question about the class.
 	 *
 	 * @param array<int, string>|null $aFields Null means every attribute, which already includes the flag.
 	 *
@@ -349,17 +366,29 @@ final class ObjectSerializer
 			return $aFields;
 		}
 
-		try {
-			if (!utils::IsArchiveMode() || !MetaModel::IsValidAttCode($sClass, self::ARCHIVE_FLAG)) {
-				return $aFields;
-			}
-		} catch (Throwable $e) {
+		if (!self::HasArchiveFlag($sClass)) {
 			return $aFields;
 		}
 
 		$aFields[] = self::ARCHIVE_FLAG;
 
 		return $aFields;
+	}
+
+	/**
+	 * Whether this class has an archived state at all.
+	 *
+	 * Guarded: a question about the datamodel must not cost the read that
+	 * asked it, and answering "no" leaves the payload exactly as it was before
+	 * the flag existed.
+	 */
+	private static function HasArchiveFlag(string $sClass): bool
+	{
+		try {
+			return MetaModel::IsValidAttCode($sClass, self::ARCHIVE_FLAG);
+		} catch (Throwable $e) {
+			return false;
+		}
 	}
 
 	/**
