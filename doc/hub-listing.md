@@ -44,8 +44,9 @@ The two version rows come from
 [`.github/itop-support.json`](../.github/itop-support.json) and `composer.json`, and a test
 fails if this file stops agreeing with them. Do not edit them here to match a release; edit
 them there and the Hub copy follows. Which PHP an evaluator can actually use on their own patch
-is iTop's answer, not ours — the setup refuses a PHP it has not validated, so the combination
-cannot be got wrong silently, and this listing does not try to reproduce iTop's per-patch table.
+is iTop's answer, not ours — the setup warns about a PHP it has not validated rather than
+refusing it, so the combination cannot be got wrong silently but it can be got wrong, and this
+listing does not try to reproduce iTop's per-patch table.
 
 ## Long description
 

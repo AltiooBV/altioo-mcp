@@ -78,7 +78,7 @@ The machine-readable floor and ceiling on any branch:
 | Value | Where |
 |---|---|
 | iTop's floor | `PHP_MIN_VERSION`, `setup/setuputils.class.inc.php` |
-| iTop's ceiling | `PHP_NOT_VALIDATED_VERSION`, same file — setup refuses at or above it |
+| iTop's ceiling | `PHP_NOT_VALIDATED_VERSION`, same file — setup *warns* at or above it (`CheckResult::WARNING`) and installs anyway; only the floor raises `CheckResult::ERROR` |
 
 ---
 

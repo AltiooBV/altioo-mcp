@@ -50,9 +50,12 @@ install, through the `itop-structure/3.2.0` dependency.
 
 **Which PHP goes with which iTop is iTop's decision, not this module's**, and it moves within a
 branch: 3.2 gained 8.4 at 3.2.3-1, having had known issues with it before. You cannot get this
-combination wrong silently — iTop's own setup refuses a PHP it has not validated, and the
-version it refuses at is `PHP_NOT_VALIDATED_VERSION` in `setup/setuputils.class.inc.php` on the
-branch you are installing. For the per-patch answer, read
+combination wrong silently — iTop's own setup warns about a PHP it has not validated, and the
+version it warns at is `PHP_NOT_VALIDATED_VERSION` in `setup/setuputils.class.inc.php` on the
+branch you are installing. It is a warning and not an error, so the install goes through and
+the warning is what you have: read the setup log rather than expecting to be stopped. The one
+that does stop an install is the floor, `PHP_MIN_VERSION` in the same file. For the per-patch
+answer, read
 [iTop's requirements](https://www.itophub.io/wiki/page?id=3_2_0:install:requirements) for the
 patch you run. The declared range `>=8.2 <8.5` is the intersection of the branches above: floor
 8.2 because iTop 3.3 requires it, no ceiling at 8.5 because no iTop branch validates it yet.
