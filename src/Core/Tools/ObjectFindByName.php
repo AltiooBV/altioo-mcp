@@ -88,7 +88,8 @@ class ObjectFindByName extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Find iTop objects by free text, the way the console\'s global search does: the words are matched against every searchable attribute of every class the user may read, and the matching objects are returned with the class they belong to. This is the tool to start from when you know what something is called but not which class holds it - take the class from the result and pass it to core_object_get or core_class_schema. Several words are matched as AND. Wrap the text in double quotes to match it as one phrase. Narrow with class when you already know it, which is faster and searches that class and its subclasses only.';
+		return 'Find iTop objects by free text, the way the console\'s global search does: the words are matched against every searchable attribute of every class the user may read, and the matching objects are returned with the class they belong to. This is the tool to start from when you know what something is called but not which class holds it - take the class from the result and pass it to core_object_get or core_class_schema. Several words are matched as AND. Wrap the text in double quotes to match it as one phrase. Narrow with class when you already know it, which is faster and searches that class and its subclasses only. '
+			.'The limit is filled class by class in datamodel order, not by relevance - iTop\'s full-text search has no ranking - so a common word can fill the page from the first classes searched and never reach the rest. Check truncated, which says so along with how many classes were reached.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -192,6 +193,29 @@ class ObjectFindByName extends AbstractMCPTool
 			'truncated'        => $bTruncated,
 			'classes_searched' => $iScanned,
 			'classes_total'    => count($aClasses),
+			// What truncated actually costs, in as many words.
+			//
+			// The budget is spent class by class in the order the datamodel
+			// declares them, not by relevance - iTop's full-text search has no
+			// score to rank by - so a common word fills the page from whichever
+			// classes come first and never reaches the rest. "server" answered
+			// with typology rows and no tickets, correctly reporting
+			// truncated: true, which a caller that does not read the flag will
+			// miss.
+			//
+			// Said as a sentence rather than left to two numbers: the fix is
+			// to name a class or raise the limit, and that is worth stating
+			// where the truncation is reported.
+			'note'             => $bTruncated
+				? sprintf(
+					'Stopped after %d of %d classes: the limit of %d was filled before the rest were searched, '
+					.'and classes are searched in datamodel order rather than by relevance. '
+					.'Name a class to search only that one, or raise the limit.',
+					$iScanned,
+					count($aClasses),
+					$limit
+				)
+				: null,
 			// Classes dropped for want of the bulk read right, not for want of
 			// a match. Zero results with a non-zero count here means the caller
 			// was not allowed to look, which is a different answer from "no
