@@ -314,6 +314,15 @@ published archive was installed and exercised on into this line; the README and
   rather than answered with an empty set. Note iTop's own coupling: including archived objects
   includes obsolete ones too.
 
+- **A single-object update or delete refuses an obsolete object this account hides.** The case is a
+  stale id: an account that does not show obsolete objects — the default — acting on an id from
+  before the object became obsolete, unable to find it or check what it now is. Refused rather than
+  forbidden: obsolescence is a display filter in iTop, not a right, and modifying the object is the
+  only way to *stop* it being obsolete, so a guard with no way past it would strand exactly the
+  accounts nobody has configured. The refusal quotes the condition that decided and names both ways
+  forward — `obsolete_ok=true` on the call, or `core_set_obsolete_data`. Not on the bulk tools: a
+  bulk call is handed its ids explicitly and answers per row.
+
 - **A write describes the object it left behind.** `changes` is taken before the write and has to
   be — `DBInsert()` clears the pending values — so it reports what was asked for and what
   `DoComputeValues()` rewrote, and nothing the write itself did: an `AfterInsert` hook, an event
