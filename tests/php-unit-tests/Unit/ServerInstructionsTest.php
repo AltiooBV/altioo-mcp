@@ -126,6 +126,12 @@ class ServerInstructionsTest extends TestCase
 		$this->assertStringContainsString('"Access denied" is a real answer', $sText, $sCase);
 		$this->assertStringContainsString('This server is an iTop instance', $sText, $sCase);
 		$this->assertStringContainsString('settled when it connected', $sText, $sCase);
+		// Nothing arrives unasked, and nothing is kept between calls. A caller
+		// that expects to be told when a ticket opens waits forever, and one
+		// that expects the server to remember something builds on sand - both
+		// failures are silent, and neither is visible from tools/list.
+		$this->assertStringContainsString('Nothing here ever reaches you unasked', $sText, $sCase);
+		$this->assertStringContainsString('Each call stands alone', $sText, $sCase);
 	}
 
 	/**
