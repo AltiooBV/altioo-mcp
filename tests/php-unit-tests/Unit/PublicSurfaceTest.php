@@ -188,7 +188,11 @@ class PublicSurfaceTest extends TestCase
 		$oIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($sRoot.'/src'));
 		foreach ($oIt as $oFile) {
 			if ($oFile->getExtension() === 'php') {
-				$aPaths[] = ltrim(str_replace($sRoot, '', $oFile->getPathname()), '/');
+				// substr and not str_replace: the root is a prefix, and
+				// str_replace would strip every later occurrence of it too -
+				// a checkout at /src turns /src/src/Foo.php into Foo.php and
+				// every path in the set stops existing.
+				$aPaths[] = ltrim(substr($oFile->getPathname(), strlen($sRoot)), '/');
 			}
 		}
 		sort($aPaths);

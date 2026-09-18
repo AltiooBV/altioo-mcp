@@ -420,6 +420,8 @@ class OrmFailureRedactionTest extends TestCase
 		$sReal = realpath($sPath) ?: $sPath;
 		$sRoot = realpath(self::SOURCE_DIR.'/..') ?: '';
 
-		return ltrim(str_replace($sRoot, '', $sReal), '/');
+		// A prefix strip, not a search-and-replace: str_replace would also
+		// eat any later occurrence of the root inside the path.
+		return ltrim(substr($sReal, strlen($sRoot)), '/');
 	}
 }
