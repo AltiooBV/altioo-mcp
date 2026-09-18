@@ -689,11 +689,20 @@ published archive was installed and exercised on into this line; the README and
   sub-item, so no write path was affected; a search is, since `WHERE sla_tto_passed = 'no'` filters
   on a string the database never stores. One shape now, for every attribute.
 
+- **An unknown class in an OQL query is answered with a suggestion, not with the datamodel.**
+  `SELECT NotARealClass` came back with every class in the instance, alphabetically — a few hundred
+  names as the answer to one typo. The list is iTop's and so is the fix: `CheckOQL()` keeps only
+  `getMessage()` and discards an `UnknownClassOqlException` whose `GetUserFriendlyDescription()`
+  already runs a closest-match search, over candidates its constructor filtered by read rights. The
+  parse is now done here so the exception survives. Every other OQL error keeps `getMessage()`,
+  which carries the position and the offending token.
+
 - **`core_class_schema` answers a subset of itself when asked.** A stock `UserRequest` describes
   about forty writable attributes, thirty derived ones, its relations and its whole lifecycle
   graph — and a model calls this before nearly every create and every stimulus, often to learn one
   thing. `include` picks the blocks, `attributes` picks the codes, and `required_only` keeps just
-  what a write must set. Every default is the whole answer, and what comes back carries a
+  what a write must set — dropping the derived block with it, since nothing can supply a computed
+  attribute and leaving it in made the cheap call the expensive one. Every default is the whole answer, and what comes back carries a
   `reported` block echoing the narrowing: an absent block cannot otherwise be told apart from a
   block that was empty. `itop://core/class/{class}` still answers in full — a resource takes no
   arguments.
