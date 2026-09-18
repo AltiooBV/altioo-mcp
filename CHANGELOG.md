@@ -305,12 +305,14 @@ published archive was installed and exercised on into this line; the README and
   rather than answered with an empty set. Note iTop's own coupling: including archived objects
   includes obsolete ones too.
 
-- **Every read says whether the object is archived.** `archive_flag` and `archive_date` are magic
+- **Every read says whether the object is archived or obsolete.** `archive_flag` and `archive_date` are magic
   attributes iTop adds to an archivable class, so a full read always carried them — but the searches
   default to `id, friendlyname`, which describes a soft-deleted object and a live one identically,
   and archive mode is reachable here (iTop reads `with_archive` through `utils::ReadParam`). The
-  flag is now in every read, with three states: `true` and `false` are iTop's own, and **`null`
-  means the class has no archived state at all** — a Person or a Team is not "not archived", the
+  same goes for `obsolescence_flag`, and that is the half a stock instance actually has: nothing in
+  iTop 3.2 declares archiving, while `itop-structure`, `itop-config-mgmt`, `itop-storage-mgmt` and
+  `itop-virtualization-mgmt` all declare obsolescence. Both flags are now in every read, with three
+  states: `true` and `false` are iTop's own, and **`null` means the class has no such state at all** — a Person or a Team is not "not archived", the
   question does not apply, and `false` there would have a caller filtering on it drop objects that
   were never candidates. The same reasoning the lifecycle block follows when it answers `null`
   rather than an empty list of transitions.
