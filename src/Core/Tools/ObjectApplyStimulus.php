@@ -272,6 +272,15 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
 				continue;
 			}
+			// Asked before the ORM sees it: an id pointing at nothing is a
+			// mistake the caller can correct, and iTop answers it with an
+			// exception this module can only report opaquely.
+			$sBadTarget = WritePlan::RefusalForExternalKey($class, $sAttCode, $value);
+			if ($sBadTarget !== null) {
+				$aIssues[$sAttCode] = $sBadTarget;
+				continue;
+			}
+
 			try {
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
