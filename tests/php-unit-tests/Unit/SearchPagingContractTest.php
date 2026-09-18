@@ -208,6 +208,32 @@ class SearchPagingContractTest extends TestCase
 		$this->assertStringContainsString('catch (\\OQLException', $sBody, 'a parse failure is no longer told apart from a broken datamodel');
 	}
 
+	/**
+	 * A refusal does not end in a suggestion of nothing.
+	 *
+	 * OQLException appends ", I would suggest to use '<x>'" whenever the
+	 * parser had expectations at all, and FindClosestString() answers '' when
+	 * none is close - so a refusal could end in "use ''". iTop's own HTML
+	 * renderer guards that clause on the suggestion being non-empty; the plain
+	 * message handed to an API does not.
+	 *
+	 * A real suggestion is kept: it is the most actionable part of the message.
+	 */
+	public function testARefusalDoesNotEndInASuggestionOfNothing(): void
+	{
+		$oDrop = new \ReflectionMethod(ObjectSearchByOQL::class, 'withoutEmptySuggestion');
+
+		$this->assertSame(
+			"Syntax error - found 'FROM' at 20, expecting {WHERE}",
+			$oDrop->invoke(null, "Syntax error - found 'FROM' at 20, expecting {WHERE}, I would suggest to use ''")
+		);
+		$this->assertSame(
+			"found 'statuss', I would suggest to use 'status'",
+			$oDrop->invoke(null, "found 'statuss', I would suggest to use 'status'"),
+			'a real suggestion is the most actionable part of the message'
+		);
+	}
+
 	/** @return array<string, array{0: AbstractObjectSearch}> */
 	public static function searchToolProvider(): array
 	{

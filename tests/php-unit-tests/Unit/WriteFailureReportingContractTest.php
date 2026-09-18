@@ -182,6 +182,22 @@ class WriteFailureReportingContractTest extends TestCase
 		$this->assertStringContainsString('MetaModel::GetObject', $sAfter, 'nothing is re-read, so a trigger stays invisible');
 		$this->assertStringContainsString('!$bSimulated', $sAfter, 'a dry run reads a row it has not written');
 		$this->assertStringContainsString('ObjectSerializer::Serialize', $sAfter, 'values bypass the read rights and the masking');
+
+		// The codes re-read are the caller's, not the write's. On a create
+		// `changes` is every attribute of the new object, so handing that list
+		// here returned a seventy-attribute object twice in one answer - and
+		// the block that answers "what became of what you sent" answered
+		// "here is everything".
+		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
+			$sSource = (string) file_get_contents(
+				(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
+			);
+			$this->assertStringContainsString(
+				'WritePlan::After($oObject, $class, array_keys($aValidatedValues)',
+				$sSource,
+				"{$sTool} echoes back the whole object instead of what the caller supplied"
+			);
+		}
 		$this->assertStringContainsString('hidden_from_searches', $sAfter, 'the one consequence a caller cannot see for itself');
 		$this->assertStringContainsString('catch (Throwable', $sAfter, 'describing a write that succeeded must not fail it');
 	}
