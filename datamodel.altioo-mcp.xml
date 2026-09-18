@@ -145,6 +145,24 @@
           </values>
         </field>
 
+        <!--
+          Whether this call was a dry run. Without it a later review of this
+          log cannot tell a rehearsal from a real write - the parameters are
+          only stored at debug level - which is exactly the question such a
+          review is asking. "n/a" for a call that has no dry run to speak of:
+          a read, a handshake, anything that is not a write tool.
+        -->
+        <field id="simulate" xsi:type="AttributeEnum">
+          <values>
+            <value id="yes">yes</value>
+            <value id="no">no</value>
+            <value id="n/a">n/a</value>
+          </values>
+          <sql>simulate</sql>
+          <default_value>n/a</default_value>
+          <is_null_allowed>false</is_null_allowed>
+        </field>
+
         <!-- Wall-clock duration of the whole request, in milliseconds -->
         <field id="duration_ms" xsi:type="AttributeInteger">
           <sql>duration_ms</sql>
@@ -202,6 +220,9 @@
                     </item>
                     <item id="status">
                       <rank>50</rank>
+                    </item>
+                    <item id="simulate">
+                      <rank>55</rank>
                     </item>
                     <item id="duration_ms">
                       <rank>60</rank>

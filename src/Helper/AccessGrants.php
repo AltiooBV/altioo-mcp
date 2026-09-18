@@ -401,7 +401,18 @@ final class AccessGrants
 	 * with the operator's permission is an audit trail the audited party can
 	 * edit.
 	 */
-	private const RECORDING_ROOTS = ['Event'];
+	private const RECORDING_ROOTS = [
+		'Event',
+		// Not an Event, and that is the point of listing it. The webhook
+		// module declares <parent>DBObject</parent> for EventWebhook while
+		// _ActionWebhook writes one per call - url, headers, payload and the
+		// response body - so it is a record of something that happened by
+		// every test except the one the Event root applies. A class named
+		// Event* that is not an Event is exactly the case a root match
+		// silently misses, which is why this was found by a reviewer and not
+		// by the rule.
+		'EventWebhook',
+	];
 
 	/**
 	 * The classes whose rows belong to one person.
@@ -419,10 +430,30 @@ final class AccessGrants
 	 * visible - so rewriting an administrator's row changes what they see
 	 * without changing anything they would look at to find out why.
 	 */
-	private const PERSONAL_ROOTS = ['appUserPreferences'];
+	private const PERSONAL_ROOTS = [
+		'appUserPreferences',
+		// An edit lock, and forging one has no use this endpoint serves. A row
+		// names an arbitrary obj_class and obj_key and attributes the lock to
+		// an arbitrary user_id, so writing one freely is claiming "somebody
+		// else is editing this" about any object, in anybody's name - or
+		// clearing a lock a person is actually relying on. No tool here takes
+		// a lock or needs one; the console's concurrent-edit flow does.
+		//
+		// Scoped to the caller rather than hard-blocked, which is the lighter
+		// of the two the review offered: a row of your own is harmless and a
+		// row in someone else's name is the whole abuse, so the rule that
+		// already says "your own only" is the one that fits.
+		'iTopOwnershipToken',
+	];
 
-	/** Whose row it is, on the classes above. */
-	private const OWNER_ATTRIBUTE = 'userid';
+	/**
+	 * Whose row it is, on the classes above.
+	 *
+	 * Two spellings because iTop uses two: appUserPreferences declares
+	 * `userid` and iTopOwnershipToken declares `user_id`. Tried in order, and
+	 * the first the class actually declares is the one that decides.
+	 */
+	private const OWNER_ATTRIBUTES = ['userid', 'user_id'];
 
 	/**
 	 * The attribute a data source names its target class in, and the one its
@@ -1350,7 +1381,15 @@ final class AccessGrants
 	 */
 	private static function IsTheCallersOwnRow(string $sClass, ?int $iId, array $aFields): bool
 	{
-		$bNamesAnOwner = array_key_exists(self::OWNER_ATTRIBUTE, $aFields);
+		$sOwnerAttCode = null;
+		$bNamesAnOwner = false;
+		foreach (self::OWNER_ATTRIBUTES as $sCandidate) {
+			if (array_key_exists($sCandidate, $aFields)) {
+				$sOwnerAttCode = $sCandidate;
+				$bNamesAnOwner = true;
+				break;
+			}
+		}
 
 		if ($iId === null && !$bNamesAnOwner) {
 			return true;
@@ -1370,16 +1409,30 @@ final class AccessGrants
 			// preference row at somebody else is a write the stored row still
 			// describes as yours.
 			if ($bNamesAnOwner) {
-				return (int) $aFields[self::OWNER_ATTRIBUTE] === $iCaller;
+				return (int) $aFields[$sOwnerAttCode] === $iCaller;
 			}
 
 			if (!class_exists('MetaModel') || !MetaModel::IsValidClass($sClass)) {
 				return false;
 			}
 
+			// Which spelling this class uses, asked of the datamodel rather
+			// than guessed - a class declaring neither is one whose owner
+			// cannot be established, which is a refusal.
+			foreach (self::OWNER_ATTRIBUTES as $sCandidate) {
+				if (MetaModel::IsValidAttCode($sClass, $sCandidate)) {
+					$sOwnerAttCode = $sCandidate;
+					break;
+				}
+			}
+
+			if ($sOwnerAttCode === null) {
+				return false;
+			}
+
 			$oRow = MetaModel::GetObject($sClass, (int) $iId, false, true);
 
-			return $oRow !== null && (int) $oRow->Get(self::OWNER_ATTRIBUTE) === $iCaller;
+			return $oRow !== null && (int) $oRow->Get($sOwnerAttCode) === $iCaller;
 		} catch (Throwable) {
 			return false;
 		}

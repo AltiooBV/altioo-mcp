@@ -21,6 +21,14 @@
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+" _delta="force"><![CDATA[La requête s'est terminée sans erreur]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error" _delta="force"><![CDATA[Erreur]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+" _delta="force"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate" _delta="force"><![CDATA[Simulation]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate+" _delta="force"><![CDATA[Si l'appel a simulé la modification au lieu de l'effectuer]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:yes" _delta="force"><![CDATA[Oui]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:yes+" _delta="force"><![CDATA[Rien n'a été écrit : l'appel a indiqué ce qu'il aurait fait]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no" _delta="force"><![CDATA[Non]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no+" _delta="force"><![CDATA[L'appel devait aboutir, et a écrit]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a" _delta="force"><![CDATA[Sans objet]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a+" _delta="force"><![CDATA[L'appel n'a pas de simulation - une lecture, une poignée de main, un outil sans cet argument]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Durée (ms)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Taille de la réponse (octets)]]></entry>

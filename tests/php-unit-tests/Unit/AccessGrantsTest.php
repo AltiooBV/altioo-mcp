@@ -1225,6 +1225,55 @@ class AccessGrantsTest extends TestCase
 	}
 
 	/**
+	 * A log that is not called Event is still a log.
+	 *
+	 * EventWebhook declares <parent>DBObject</parent> in the webhook module
+	 * while _ActionWebhook writes one per call - url, headers, payload and the
+	 * response body - so it records something that happened by every test
+	 * except the one the Event root applies. A class named Event* that is not
+	 * an Event is exactly what a root match misses silently, which is why a
+	 * reviewer found it and the rule did not.
+	 */
+	public function testAWebhookCallLogIsNotWritableEither(): void
+	{
+		$this->assertTrue(AccessGrants::IsRecording('EventWebhook'));
+
+		foreach ([[false, false], [true, true]] as [$bAdministration, $bAutomation]) {
+			$sRefusal = AccessGrants::RefusalGiven($bAdministration, 'EventWebhook', 1, [], $bAutomation);
+
+			$this->assertNotNull($sRefusal, 'a setting was allowed to open the record of a webhook call');
+			$this->assertStringNotContainsString('mcp_allow', $sRefusal);
+		}
+	}
+
+	/**
+	 * An edit lock is only ever your own.
+	 *
+	 * A row names an arbitrary obj_class and obj_key and attributes the lock
+	 * to an arbitrary user_id, so writing one freely is claiming "somebody
+	 * else is editing this" about any object in anybody's name - or clearing
+	 * a lock a person is relying on. No tool here takes a lock or needs one.
+	 *
+	 * Scoped rather than hard-blocked, which is the lighter of the two the
+	 * review offered: your own row is harmless, someone else's is the abuse.
+	 * Note it declares `user_id` where appUserPreferences declares `userid`,
+	 * so the owner rule had to learn both spellings.
+	 */
+	public function testAnEditLockIsOnlyEverYourOwn(): void
+	{
+		$this->assertTrue(AccessGrants::IsPersonal('iTopOwnershipToken'));
+
+		$this->assertNotNull(
+			AccessGrants::RefusalGiven(false, 'iTopOwnershipToken', null, ['user_id' => 999], false),
+			"a lock in another account's name was allowed through"
+		);
+		$this->assertNull(
+			AccessGrants::RefusalGiven(false, 'iTopOwnershipToken', null, [], false),
+			'a lock naming no owner is your own and was refused'
+		);
+	}
+
+	/**
 	 * An existing check is not the caller's to edit, even with the override.
 	 *
 	 * The loop it closes: turn the rule off, make the change it would have

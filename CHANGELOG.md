@@ -407,6 +407,29 @@ published archive was installed and exercised on into this line; the README and
   `prepare_payload_callback` and `process_response_callback` take a `Class::method` string and
   invoke it as a public static callback — not code injection, since the method must already
   exist, but "call any loaded public static method by name".
+- **A webhook call log is a log, even though it is not an `Event`.** `EventWebhook` declares
+  `<parent>DBObject</parent>` in the webhook module while `_ActionWebhook` writes one per call —
+  url, headers, payload and the response body — so it records something that happened by every
+  test except the one the `Event` root applies. Listed by name for that reason. A class named
+  `Event*` that is not an `Event` is exactly what a root match misses in silence, which is why a
+  reviewer found this and the rule did not.
+- **An edit lock is only ever your own.** An `iTopOwnershipToken` row names an arbitrary
+  `obj_class` and `obj_key` and attributes the lock to an arbitrary `user_id`, so writing one
+  freely is claiming "somebody else is editing this" about any object in anybody's name, or
+  clearing a lock a person is relying on. No tool here takes a lock or needs one. Scoped to the
+  caller rather than hard-blocked — the lighter of the two the review offered, and the one that
+  fits, since a row of your own is harmless and a row in someone else's name is the whole abuse.
+  It declares `user_id` where `appUserPreferences` declares `userid`, so the owner rule now asks
+  the datamodel which spelling a class uses instead of assuming one.
+- **The endpoint's own audit rows say whether the call was a rehearsal.** `AltiooEventMCPService`
+  gains `simulate` — `yes`, `no`, or `n/a` where there is no dry run to speak of. Raised in review:
+  the row carried status, duration and size but nothing distinguishing a dry run from a real write,
+  and the parameters are kept only at debug level, so a later security review of this log could not
+  tell a rehearsal from a change that happened. That is the first question such a review asks.
+  Graded from the call's own arguments rather than carried down from the tool, so a pack's tool
+  spelling `simulate` the way the core ones do is covered; absent reads as `n/a` rather than `no`,
+  because a tool defaulting it to true is rehearsing when the caller says nothing, and reporting
+  that as a write would be the lie the field exists to prevent.
 - **Another account's preferences are behind a setting rather than refused outright.** Raised in
   review: of the barriers with no override at all, the audit ones earn it — nobody administers an
   instance by editing its own history — but this one did not. A service desk resetting a

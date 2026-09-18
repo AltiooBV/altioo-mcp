@@ -21,6 +21,14 @@
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+" _delta="force"><![CDATA[The request completed without error]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error" _delta="force"><![CDATA[Error]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+" _delta="force"><![CDATA[The request failed]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate" _delta="force"><![CDATA[Dry run]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate+" _delta="force"><![CDATA[Whether the call rehearsed the change instead of making it]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:yes" _delta="force"><![CDATA[Yes]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:yes+" _delta="force"><![CDATA[Nothing was written: the call reported what it would have done]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no" _delta="force"><![CDATA[No]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no+" _delta="force"><![CDATA[The call was asked to proceed, and wrote]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a" _delta="force"><![CDATA[Not applicable]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a+" _delta="force"><![CDATA[The call has no dry run to speak of - a read, a handshake, a tool that takes no such argument]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Duration (ms)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Response size (bytes)]]></entry>

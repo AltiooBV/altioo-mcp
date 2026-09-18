@@ -328,7 +328,11 @@ The rule is on the parent, not on this module's class. `AltiooEventMCPService` d
 `<parent>Event</parent>`, and so do iTop's own `EventNotification`, `EventIssue`,
 `EventWebService`, `EventRestService` and `EventLoginUsage` — all records of something that
 happened. Gating `Event` covers this module's class, iTop's, and whatever a pack adds, with none
-of them listed. **No setting lifts it**, unlike every other barrier here: an audit trail the
+of them listed — with one exception that has to be listed, and is: `EventWebhook` declares
+`<parent>DBObject</parent>` in the webhook module while `_ActionWebhook` writes one per call
+(url, headers, payload, response body), so it is a log by every test except the one the root
+applies. A class named `Event*` that is not an `Event` is exactly what a root match misses in
+silence. **No setting lifts it**, unlike every other barrier here: an audit trail the
 audited party may edit with the operator's permission is an audit trail the audited party may
 edit. Reading stays open — an assistant that can answer "what did I call, and what failed" is
 useful, and reading a record does not alter it. iTop's change log is the same idea one layer
@@ -392,6 +396,16 @@ the mess then looks like the data. Behind the automation setting rather than ref
 because managing data-quality rules is ordinary work an operator may delegate — unlike the record
 of what already happened.
 
+**The endpoint's own audit rows say whether a call was a rehearsal.** `AltiooEventMCPService`
+carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a` where there is no
+dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later
+security review of this log could not tell a rehearsal from a write that happened, because the
+parameters themselves are kept only at debug level — and telling those apart is exactly what such
+a review is for. It is read from the call's own arguments rather than carried down from the tool,
+so a pack's tool spelling `simulate` the way the core ones do is graded by it too; absent means
+`n/a` rather than `no`, since a tool defaulting it to true is rehearsing when the caller says
+nothing.
+
 **How these are meant to be found in future.** The honest description of the barrier is that it
 is a set of named roots matched by descent, plus two questions asked of the datamodel (what
 points at a synchronisation source; what points at a trigger or an action) — not a derived
@@ -408,7 +422,13 @@ is exactly what did not exist when `AltiooEventMCPService` was written.
 **And it does not write another account's personal rows unless an operator says so.**
 `appUserPreferences` carries a `userid`, and iTop's own API for it — `GetPref()`/`SetPref()` —
 only ever touches the account it is called by; the console offers no way to edit someone else's.
-Another account's row is refused unless `mcp_allow_access_administration` is on — behind a setting
+The same rule covers `iTopOwnershipToken`, iTop's edit lock: a row names an arbitrary
+`obj_class` and `obj_key` and attributes the lock to an arbitrary `user_id`, so writing one
+freely is claiming "somebody else is editing this" about any object in anybody's name, or
+clearing a lock a person is relying on. No tool here takes a lock or needs one. Scoped to the
+caller rather than hard-blocked, since a row of your own is harmless and a row in someone else's
+name is the whole abuse. Another account's row is refused unless `mcp_allow_access_administration`
+is on — behind a setting
 rather than refused outright, because unlike the audit trail (nobody administers an instance by
 editing its own history) there is a real full-admin use here: a service desk resetting a
 colleague's broken saved view, or the obsolete-data preference hiding half their console from

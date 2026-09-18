@@ -659,6 +659,57 @@ final class MCPController
 		return $sMethod === MCPHelper::MCP_METHOD_INITIALIZE;
 	}
 
+	/**
+	 * Whether the call being logged was a dry run, as its own parameters say.
+	 *
+	 * Three answers, because there are three cases and collapsing them loses
+	 * the one that matters. "yes" and "no" are a write tool that was asked to
+	 * rehearse or to proceed; "n/a" is everything with no dry run to speak
+	 * of - a read, a handshake, a tool that takes no simulate argument - and
+	 * is not the same statement as "no".
+	 *
+	 * Read from the parameters rather than carried down from the tool, so it
+	 * stays true for a pack's tool this module has never heard of: any tool
+	 * spelling the argument the way the write tools spell it is graded by it.
+	 * Absent means "n/a" rather than "no", because a tool that declares the
+	 * argument and defaults it to true is rehearsing when the caller says
+	 * nothing - and reporting that as a real write would be the lie this is
+	 * here to prevent.
+	 */
+	private static function simulateGrade(?string $sRequestParams): string
+	{
+		if ($sRequestParams === null || $sRequestParams === '') {
+			return 'n/a';
+		}
+
+		try {
+			$mParams = json_decode($sRequestParams, true, 32, JSON_THROW_ON_ERROR);
+		} catch (Throwable $e) {
+			return 'n/a';
+		}
+
+		if (!is_array($mParams)) {
+			return 'n/a';
+		}
+
+		// tools/call carries the tool's own arguments one level down.
+		$aArguments = $mParams['arguments'] ?? $mParams;
+		if (!is_array($aArguments) || !array_key_exists('simulate', $aArguments)) {
+			return 'n/a';
+		}
+
+		$mSimulate = $aArguments['simulate'];
+
+		// A string "false" is false here: a client that sends the flag as text
+		// is still saying which of the two it meant, and reading it as truthy
+		// would report a real write as a rehearsal.
+		if (is_string($mSimulate)) {
+			return in_array(strtolower(trim($mSimulate)), ['false', '0', 'no', ''], true) ? 'no' : 'yes';
+		}
+
+		return $mSimulate ? 'yes' : 'no';
+	}
+
 	private static function logIfConfigured(MCPResult $oResult): void
 	{
 		if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, MCPHelper::DEFAULT_LOG_SETTING) !== true) {
@@ -689,6 +740,11 @@ final class MCPController
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
+			// Whether this was a rehearsal. The parameters themselves are kept
+			// only at debug level, so without this a later review of this log -
+			// which is the log such a review reads first - cannot tell a dry
+			// run from a write that happened.
+			$oLog->Set('simulate', self::simulateGrade($oResult->requestParams));
 			// What the row could not answer before: how long the call took, how
 			// much it sent back - the two numbers that tell a slow instance from
 			// a client filling its context - and which log entry explains it.
