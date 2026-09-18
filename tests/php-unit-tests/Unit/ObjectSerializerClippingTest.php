@@ -111,6 +111,51 @@ class ObjectSerializerClippingTest extends TestCase
 	}
 
 	/**
+	 * isSensible is enforced on a read, not merely reported by the schema.
+	 *
+	 * The question was asked of a credential-adjacent class - an OAuth client's
+	 * client_secret, refresh_token and access_token are all flagged - and could
+	 * not be answered from outside, since that instance holds no such object.
+	 * It is answerable here: one predicate drives both surfaces.
+	 * DatamodelReader asks IsSensitive() to set isSensible, and Value() asks
+	 * the same method before it does anything else, returning the mask. iTop's
+	 * AttributePassword, AttributeEncryptedString and AttributeOneWayPassword
+	 * all implement iAttributeNoGroupBy, which is what that predicate matches.
+	 *
+	 * Two properties are worth pinning rather than the flag itself. The mask
+	 * comes before any conversion, so no branch below it can read the real
+	 * value into a response; and an external field whose target cannot be
+	 * resolved answers sensitive, so a broken datamodel hides rather than
+	 * leaks.
+	 */
+	public function testASensitiveAttributeIsMaskedBeforeAnythingReadsIt(): void
+	{
+		$sValue = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'Value');
+		$sPredicate = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'IsSensitive');
+
+		$iMask = strpos($sValue, 'IsSensitive');
+		$this->assertNotFalse($iMask, 'a read never asks whether the attribute is sensitive');
+		$this->assertLessThan(
+			strpos($sValue, 'AttributeBlob'),
+			$iMask,
+			'the value is converted before it is masked, so a branch below can read it'
+		);
+
+		$this->assertStringContainsString('iAttributeNoGroupBy', $sPredicate, 'the predicate no longer matches iTop\'s own secret types');
+		$this->assertMatchesRegularExpression(
+			'/catch \\(Throwable[^}]*}\\s*$|catch \\(Throwable.*return true;/s',
+			$sPredicate,
+			'an external field whose target cannot be resolved must answer sensitive, not readable'
+		);
+
+		$this->assertStringContainsString(
+			'IsSensitive',
+			$this->methodBody(\Altioo\iTop\Extension\MCP\Helper\DatamodelReader::class, 'attributes'),
+			'the schema flag and the masking would be two predicates that can disagree'
+		);
+	}
+
+	/**
 	 * Every read says whether the object is out of circulation, three ways each.
 	 *
 	 * Two notions, not one. Archived is soft deletion, declared per class
