@@ -649,7 +649,7 @@ final class DatamodelReader
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef),
-			] + self::allowedValues($oAttDef) + self::writeHint($oAttDef);
+			] + self::allowedValues($oAttDef) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;
@@ -818,6 +818,45 @@ final class DatamodelReader
 			// the notion, which is what the flag will say about its objects too.
 			return ['obsoletable' => false, 'condition' => null];
 		}
+	}
+
+	/**
+	 * The attributes this one is computed from, where the datamodel says so.
+	 *
+	 * The gap this closes: a UserRequest's priority is writable, mandatory,
+	 * and reported as both - and every value a caller sets is thrown away,
+	 * because ComputeValues() derives it from urgency and impact on every
+	 * write. A model reading the schema literally, which is what this tool
+	 * tells it to do, sets priority and finds out afterwards from the
+	 * `overridden` block on the write. The schema knew and did not say.
+	 *
+	 * Read rather than listed: the declaration is
+	 * <dependencies><attribute id="impact"/>... in the class XML, compiled to
+	 * depends_on and answered by GetPrerequisiteAttributes(). So a datamodel
+	 * that derives something else, in a pack nobody here has seen, reports it
+	 * the same way - and a class that stops deriving it stops saying so
+	 * without anyone editing this file.
+	 *
+	 * A declared dependency is not proof that the value is recomputed - the
+	 * recomputation is the class's own PHP, and the declaration is what the
+	 * console uses to refresh the field - so the wording says what is
+	 * declared, and the write still reports what actually survived.
+	 *
+	 * @return array<string, mixed> Empty for an attribute that depends on nothing.
+	 */
+	private static function dependsOn(AttributeDefinition $oAttDef, string $sClass): array
+	{
+		try {
+			$aPrerequisites = $oAttDef->GetPrerequisiteAttributes($sClass);
+		} catch (\Throwable $e) {
+			return [];
+		}
+
+		if (!is_array($aPrerequisites) || $aPrerequisites === []) {
+			return [];
+		}
+
+		return ['dependsOn' => array_values(array_filter($aPrerequisites, 'is_string'))];
 	}
 
 	/**
