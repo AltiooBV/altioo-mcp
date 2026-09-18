@@ -47,6 +47,33 @@ class RelatedBulkReadContractTest extends TestCase
 	}
 
 	/**
+	 * A partial graph says so where a caller will see it.
+	 *
+	 * `withheld` names the classes and explains itself, but a caller has to go
+	 * looking to learn there is anything to look for - and a graph quietly
+	 * missing a class reads exactly like a complete one, which is how "nothing
+	 * related" reaches a user as fact. `truncated` sits beside `summary`, is
+	 * always present, and is false on the ordinary answer.
+	 */
+	public function testAPartialGraphIsFlaggedBesideTheSummary(): void
+	{
+		$sBody = (string) file_get_contents(
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated::class))->getFileName()
+		);
+
+		$this->assertMatchesRegularExpression(
+			'/truncated.+aWithheld !== /',
+			$sBody,
+			'the flag is not derived from what was actually withheld'
+		);
+		$this->assertStringContainsString(
+			'truncated',
+			(string) (new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated())->getDescription(),
+			'the description never mentions the flag a caller has to read'
+		);
+	}
+
+	/**
 	 * Per class, not once for the whole graph: a caller may hold bulk read on
 	 * one class of the walk and not on another, and the answer differs.
 	 */
