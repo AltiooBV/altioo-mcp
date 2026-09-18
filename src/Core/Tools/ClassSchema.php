@@ -77,18 +77,40 @@ class ClassSchema extends AbstractMCPTool
 					'type'        => 'string',
 					'description' => 'iTop class name (e.g. UserRequest, Server). Use the core_class_list tool to list available classes.',
 				],
+				'include' => [
+					'type'        => 'string',
+					'description' => 'Blocks to return, comma-separated: '.implode(', ', DatamodelReader::BLOCKS).'. Defaults to all of them. A stock ticket class answers with about seventy attributes, so include="attributes" is the cheap call before a create.',
+					'default'     => DatamodelReader::BLOCKS_ALL,
+				],
+				'attributes' => [
+					'type'        => 'string',
+					'description' => 'Attribute codes to describe, comma-separated, or "*" for every one. Narrows the attributes and derived blocks only.',
+					'default'     => DatamodelReader::ATTRIBUTES_ALL,
+				],
+				'required_only' => [
+					'type'        => 'boolean',
+					'description' => 'Keep only the attributes a write must set. Answers "what is mandatory here" without the rest of the class.',
+					'default'     => false,
+				],
 			],
 			'required' => ['class'],
 		];
 	}
 
 	/**
-	 * @param string $class The class to describe, e.g. 'UserRequest'
-	 * @return array An array containing the class summary, the caller's rights on the class, its writable attributes, its derived ones, its relations and its lifecycle
+	 * @param string $class         The class to describe, e.g. 'UserRequest'
+	 * @param string $include       Blocks to return, comma-separated; '*' for all of them
+	 * @param string $attributes    Attribute codes to describe, comma-separated; '*' for all of them
+	 * @param bool   $required_only Keep only the attributes a write must set
+	 *
+	 * @return array The class summary and whichever of rights, attributes, derived, relations and lifecycle were asked for, plus a `reported` block echoing the narrowing
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
 	public static function execute(
 		string $class,
+		string $include = DatamodelReader::BLOCKS_ALL,
+		string $attributes = DatamodelReader::ATTRIBUTES_ALL,
+		bool   $required_only = false,
 	): mixed
 	{
 		if ($class === '') {
@@ -101,6 +123,6 @@ class ClassSchema extends AbstractMCPTool
 			throw new ToolCallException("Unknown class '{$class}'.");
 		}
 
-		return ToolOutput::Json(DatamodelReader::Describe($class));
+		return ToolOutput::Json(DatamodelReader::Describe($class, $include, $attributes, $required_only));
 	}
 }
