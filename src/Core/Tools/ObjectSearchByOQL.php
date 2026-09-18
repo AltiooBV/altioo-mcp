@@ -56,7 +56,8 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			'properties' => [
 				'oql' => [
 					'type'                 => 'string',
-					'description'          => 'The OQL query to execute. OQL has no ORDER BY clause; sort with order_by instead.',
+					'description'          => 'The OQL query to execute. OQL has no ORDER BY clause; sort with order_by instead. '
+						.'SELECT on a parent class covers its children - SELECT Ticket answers across UserRequest, Incident and any other subclass - and each row reports the class it actually is.',
 				],
 			] + self::fieldsSchemaProperties() + self::pagingSchemaProperties() + self::orderingSchemaProperties() + self::auditSchemaProperties() + self::actionsSchemaProperties(),
 			'required' => ['oql'],

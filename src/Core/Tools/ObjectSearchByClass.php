@@ -62,7 +62,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			'properties' => [
 				'class'   => [
 					'type'        => 'string',
-					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
+					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name. '
+						.'A parent class searches its children too, so "Ticket" answers across UserRequest, Incident and whatever else a datamodel derives from it, and each result reports the class it actually is - one call rather than one per subclass.',
 				],
 				'filters' => [
 					'type'                 => 'object',
