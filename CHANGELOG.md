@@ -234,6 +234,13 @@ published archive was installed and exercised on into this line; the README and
   no caller is handed a name it cannot fetch. No tool per prompt: a model that knows the name can
   ask its user for it.
 
+- **`archive_mode` says what it means.** It named iTop's archive mode correctly — a property of
+  the session's view, under which searches also return archived and obsolete objects — in two words
+  that read like neither: a caller is as likely to take them for "archiving is switched on" or for
+  "this instance is locked read-only". The second is the expensive misreading, since it has a model
+  decline a write the instance would have accepted. The field carries `enabled` and a sentence
+  ruling that reading out.
+
 - **`core_current_user`: the identity as a tool, and what this session can reach.**
   `itop://core/current-user` answers who the session is authenticated as, and a client that never
   fetches resources never asks: a model looks for a tool, finds none, and concludes the server
