@@ -76,6 +76,7 @@
         <entry id="MCP:tool:core_class_list:title" _delta="force"><![CDATA[Lister les classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title" _delta="force"><![CDATA[Obtenir le schéma d'une classe]]></entry>
         <entry id="MCP:tool:core_current_user:title" _delta="force"><![CDATA[Utilisateur courant]]></entry>
+        <entry id="MCP:tool:core_set_obsolete_data:title" _delta="force"><![CDATA[Afficher ou masquer les données obsolètes]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Appliquer un stimulus]]></entry>
         <entry id="MCP:tool:core_object_attach:title" _delta="force"><![CDATA[Joindre un document]]></entry>
         <entry id="MCP:tool:core_object_bulk_create:title" _delta="force"><![CDATA[Créer des objets en masse]]></entry>
