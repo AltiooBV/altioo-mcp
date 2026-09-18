@@ -407,6 +407,15 @@ published archive was installed and exercised on into this line; the README and
   `prepare_payload_callback` and `process_response_callback` take a `Class::method` string and
   invoke it as a public static callback — not code injection, since the method must already
   exist, but "call any loaded public static method by name".
+- **Another account's preferences are behind a setting rather than refused outright.** Raised in
+  review: of the barriers with no override at all, the audit ones earn it — nobody administers an
+  instance by editing its own history — but this one did not. A service desk resetting a
+  colleague's broken saved view, or the obsolete-data preference hiding half their console from
+  them, is a real full-admin use with no other way to reach it here, and every other barrier on
+  this endpoint is closed-by-default-with-an-opt-in. Having no hatch made this the odd one out
+  rather than the strict one. It now sits behind `mcp_allow_access_administration`, which already
+  means "this endpoint may administer other people's accounts", and the refusal names it so a
+  caller can report what to change. Your own row was never in question either way.
 - **One account may not rewrite another's preferences.** `appUserPreferences` carries a `userid`,
   iTop's own `GetPref()`/`SetPref()` only ever touch the account they are called by, and the
   console offers no way to edit somebody else's — but the object tools did, because a preference

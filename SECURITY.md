@@ -405,9 +405,15 @@ parent chain, and fails unless each is either behind a rule or named in that tes
 so a class added here without that decision being made fails at the moment it is added. That test
 is exactly what did not exist when `AltiooEventMCPService` was written.
 
-**And it does not write another account's personal rows.** `appUserPreferences` carries a
-`userid`, and iTop's own API for it — `GetPref()`/`SetPref()` — only ever touches the account it
-is called by; the console offers no way to edit someone else's. The object tools did, because a
+**And it does not write another account's personal rows unless an operator says so.**
+`appUserPreferences` carries a `userid`, and iTop's own API for it — `GetPref()`/`SetPref()` —
+only ever touches the account it is called by; the console offers no way to edit someone else's.
+Another account's row is refused unless `mcp_allow_access_administration` is on — behind a setting
+rather than refused outright, because unlike the audit trail (nobody administers an instance by
+editing its own history) there is a real full-admin use here: a service desk resetting a
+colleague's broken saved view, or the obsolete-data preference hiding half their console from
+them. This was the one barrier here with no hatch at all, which made it the odd one out rather
+than the strict one. Your own row was never in question either way. The object tools did, because a
 preference row is an ordinary `DBObject` with an ordinary id and `UserRights` has nothing to say
 about it. This is the mirror of the self-guard above, and the only refusal here that is about
 *somebody else's* row rather than your own. Low blast radius — what a console shows by default —
