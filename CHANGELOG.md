@@ -226,6 +226,14 @@ published archive was installed and exercised on into this line; the README and
   ones the tools actually check, taken from the same list the rights block is built from, so the
   schema's enum, the refusal message and the block cannot come apart. With no `may` no rights are
   read at all, so `itop://core/classes` costs what it always did.
+- **A prompt is discoverable without a client that lists prompts.** `prompts/list` is a method
+  plenty of clients never call and some do not implement, so `core_my_open_tickets` — written for
+  the commonest question this server gets — was invisible to exactly the caller it was written for.
+  The served prompt names are now named in the `initialize` instructions and in
+  `core_current_user`'s `access` block, both narrowed through the same check registration uses, so
+  no caller is handed a name it cannot fetch. No tool per prompt: a model that knows the name can
+  ask its user for it.
+
 - **`core_current_user`: the identity as a tool, and what this session can reach.**
   `itop://core/current-user` answers who the session is authenticated as, and a client that never
   fetches resources never asks: a model looks for a tool, finds none, and concludes the server
