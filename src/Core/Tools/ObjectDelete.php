@@ -91,6 +91,7 @@ class ObjectDelete extends AbstractMCPTool
 					'description' => 'The ID of the object to delete.',
 					'minimum'     => 1,
 				],
+				'obsolete_ok' => WritePlan::ObsoleteOkSchemaProperty('delete'),
 				'simulate' => [
 					'type'        => 'boolean',
 					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Show the plan to the user, then call again with simulate=false to delete.',
@@ -108,6 +109,7 @@ class ObjectDelete extends AbstractMCPTool
 	 * @param string $class The class of the object to delete
 	 * @param int $id The ID of the object to delete
 	 * @param bool $simulate When true (default), only the deletion plan is computed and returned
+	 * @param bool $obsolete_ok Delete an obsolete object even though this account hides them
 	 * @param string|null $comment Why the object is being deleted, recorded in the history of everything the deletion touches
 	 * @return array The result of the deletion operation
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
@@ -116,6 +118,7 @@ class ObjectDelete extends AbstractMCPTool
 		string  $class,
 		int     $id,
 		bool    $simulate = true,
+		bool    $obsolete_ok = false,
 		?string $comment = null,
 	): mixed
 	{
@@ -186,6 +189,10 @@ class ObjectDelete extends AbstractMCPTool
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot delete object.");
 		}
+
+		// Before the plan is computed: an object this account cannot see in its
+		// own searches is one it is probably acting on from a stale id.
+		WritePlan::RefuseHiddenObsolete($oObject, $sFinalClass, $obsolete_ok, 'delete');
 
 		// CheckToDelete() returns a *boolean* (!FoundStopper()) and fills the
 		// plan by reference; the reasons live on the plan itself.
