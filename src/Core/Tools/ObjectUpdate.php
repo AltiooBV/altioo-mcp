@@ -288,7 +288,7 @@ class ObjectUpdate extends AbstractMCPTool
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
@@ -307,7 +307,7 @@ class ObjectUpdate extends AbstractMCPTool
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aChanges), $simulate),
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => $aChanges,
 					'overridden' => $aOverridden,
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
