@@ -45,6 +45,64 @@ class OrmFailureRedactionTest extends TestCase
 	private const SOURCE_DIR = __DIR__.'/../../../src';
 
 	/**
+	 * A bad external key is answered, not deferred.
+	 *
+	 * org_id = 999999 on an instance with no such organisation came back as
+	 * "iTop refused it, the reason is in the log under reference X, quote that
+	 * reference" - opaque about a reason that is knowable and harmless, and
+	 * pointing at a log nothing on this server reads. Every other refusal on
+	 * this surface names what is valid in that context; this one named a step
+	 * the caller could not take.
+	 *
+	 * Asked before the ORM sees the value, so the plain refusal replaces the
+	 * opaque one rather than decorating it. Missing and unreadable share a
+	 * sentence: telling them apart would let a caller enumerate what it may
+	 * not see.
+	 */
+	public function testABadExternalKeyIsAnsweredInItsOwnWords(): void
+	{
+		$sBody = $this->methodBody(
+			\Altioo\iTop\Extension\MCP\Helper\WritePlan::class,
+			'RefusalForExternalKey'
+		);
+
+		$this->assertStringContainsString('IsExternalKey', $sBody, 'the check fires on attributes that are not keys');
+		$this->assertStringContainsString('GetTargetClass', $sBody, 'the refusal does not name the class to search');
+		$this->assertStringContainsString('core_object_find_by_name', $sBody, 'the refusal names no way forward');
+		$this->assertStringNotContainsString('OpaqueFailure', $sBody, 'the plain reason is wrapped in the opaque one');
+
+		foreach ([
+			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectCreate',
+			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectUpdate',
+			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectApplyStimulus',
+			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+		] as $sClass) {
+			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());
+			$this->assertStringContainsString(
+				'WritePlan::RefusalForExternalKey(',
+				$sSource,
+				"{$sClass} still defers a bad id to the ORM"
+			);
+		}
+	}
+
+	/**
+	 * The opaque refusal points at something the caller can actually do.
+	 *
+	 * It used to say "quote that reference", and the reference is an index
+	 * into iTop's log - which no tool on this server reads. A model was being
+	 * sent to look for a capability that does not exist.
+	 */
+	public function testTheOpaqueRefusalDoesNotSendTheCallerToALogItCannotRead(): void
+	{
+		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'RejectedValue');
+
+		$this->assertStringContainsString('core_class_schema', $sBody, 'the caller is told nothing it can check');
+		$this->assertStringContainsString('No tool here reads that log', $sBody, 'the dead end is not named as one');
+		$this->assertStringNotContainsString('quote that reference', $sBody);
+	}
+
+	/**
 	 * The broad catches. Anything narrower names a type this module or the SDK
 	 * defines, and those carry messages meant to be read.
 	 */
@@ -423,5 +481,29 @@ class OrmFailureRedactionTest extends TestCase
 		// A prefix strip, not a search-and-replace: str_replace would also
 		// eat any later occurrence of the root inside the path.
 		return ltrim(substr($sReal, strlen($sRoot)), '/');
+	}
+
+	/**
+	 * The body of a method, comments stripped.
+	 *
+	 * Stripped because these assertions are about what the code does, and a
+	 * comment explaining why a phrase was removed contains that phrase - which
+	 * is exactly how this test first failed against the fix it was written for.
+	 */
+	private function methodBody(string $sClass, string $sMethod): string
+	{
+		$oMethod = new \ReflectionMethod($sClass, $sMethod);
+		$aLines = file($oMethod->getFileName());
+
+		$aBody = array_slice(
+			$aLines,
+			$oMethod->getStartLine() - 1,
+			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
+		);
+
+		return implode('', array_filter(
+			$aBody,
+			static fn (string $sLine): bool => !str_starts_with(ltrim($sLine), '//')
+		));
 	}
 }
