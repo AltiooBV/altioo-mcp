@@ -69,10 +69,14 @@ Three fields change the outcome:
 This file is also the answer to "which versions do you support" on the Hub listing and in the
 README. Keeping one list rather than three is the point of it.
 
-One nuance worth stating plainly: iTop 3.2's setup treats PHP 8.4 as *not yet validated by
-Combodo* and says so as a warning, not an error, so the install proceeds. A green 8.4 job is
-therefore our claim about this module on that PHP, not Combodo's claim about iTop on it. The
-warning is in the setup log of every such run.
+One nuance worth stating plainly, and it now turns on which patch the resolver lands on. Up to
+3.2.2, iTop's setup treated PHP 8.4 as *not yet validated by Combodo* and said so as a warning,
+not an error, so the install proceeded — and a green 8.4 job was our claim about this module on
+that PHP rather than Combodo's claim about iTop on it. 3.2.3-1 moved
+`PHP_NOT_VALIDATED_VERSION` from `8.4.0` to `8.5.0`, so the newest 3.2 patch validates 8.4 and
+that warning is gone from the setup log. It returns the moment a `pin` holds the branch at
+3.2.2 or earlier, which is the case this paragraph exists for: read the setup log of the run
+rather than assuming either way.
 
 ## The order of the jobs
 
