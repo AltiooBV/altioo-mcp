@@ -176,7 +176,39 @@ module appears in the computed list rather than trusting that it did.
 ## Running it on a laptop
 
 Everything CI does is in `tools/ci/`, and none of it is GitHub-specific beyond the `::group::`
-markers. Against a local MariaDB:
+markers. What is not portable is the machine underneath: the workflows want a PHP inside the
+range `composer.json` declares, a MariaDB, and somewhere disposable to install an iTop into,
+and few working machines have all three — the one this was last run on has PHP 8.5, which the
+extension does not support.
+
+[`tools/ci/local/run.sh`](../tools/ci/local/run.sh) supplies all three from Docker and needs
+nothing else installed:
+
+```bash
+tools/ci/local/run.sh unit            # ci.yml's unit job and its linter, on 8.2
+tools/ci/local/run.sh unit 8.4        # the same, on the ceiling of the range
+tools/ci/local/run.sh matrix          # itop-matrix.yml, iTop 3.2, on 8.2
+tools/ci/local/run.sh matrix 3.3 8.4  # another branch, another PHP
+tools/ci/local/run.sh integration     # the integration suite alone, seconds
+tools/ci/local/run.sh down            # remove the containers, the volume, the network
+```
+
+It runs the same `tools/ci/` scripts the workflow steps run; the only thing it adds is the
+machine. The image is built once per PHP version and the installed iTop is kept in a Docker
+volume, which is what makes `integration` a two-second loop rather than a ten-minute one — the
+loop an integration test actually gets written in. `matrix` records a verdict per step and
+carries on, the way `fail-fast: false` lets the real matrix finish.
+
+**Expect `unattended install` to fail on iTop 3.2.3-2.** The setup runs with
+`--check-consistency=1`, and that release's own datamodel does not pass it: `ActionNotification`
+declares a default language outside its allowed values, `SynchroReplica` the same for
+`dest_class`, and `TemporaryObjectDescriptor` puts an unknown `meta` in its details ZList. None
+of the three is ours — installing the same release with an empty `extensions/` and a database of
+its own reports exactly the same three. The module still compiles, gets its rows in
+`priv_module_install` and `priv_extension_install`, and serves tools over HTTP, which is why the
+steps after it are worth reading rather than skipping.
+
+On a machine that does have a PHP in range and a MariaDB, the scripts still run directly:
 
 ```bash
 composer install --no-dev --optimize-autoloader
