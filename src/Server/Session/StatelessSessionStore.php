@@ -19,9 +19,14 @@ use Symfony\Component\Uid\Uuid;
  * carried from one request to the next, and nothing already in the browser
  * decides anything here.
  *
- * The SDK does not offer a stateless mode, so it is given a store that serves
- * back what this request wrote and forgets it when the request ends. Serving
- * it back is not optional. The SDK queues a response into the session
+ * Since SDK 0.8 the endpoint answers two protocol eras. A 2026-07-28 client
+ * never reaches this class at all: that revision dropped the handshake and the
+ * session id, and the transport routes it to a dispatcher that has no session
+ * layer to store anything in. What is left here is the handshake era -
+ * 2025-06-18 and 2025-11-25, which most clients still speak - where the SDK
+ * has a session whether or not the deployment wants one. It is given a store
+ * that serves back what this request wrote and forgets it when the request
+ * ends. Serving it back is not optional. The SDK queues a response into the session
  * (Protocol::queueOutgoing()), saves it through the store, and then reads it
  * back through a *different* Session object, built by
  * SessionManager::createWithId() inside Protocol::consumeOutgoingMessages().
@@ -40,9 +45,10 @@ use Symfony\Component\Uid\Uuid;
  * the only reason that is not a way into somebody else's state is that no
  * state outlives the request that made it.
  *
- * This is a workaround, not a design: it stands in until the PHP SDK supports
- * stateless operation directly, at which point this class goes away rather
- * than being improved.
+ * This is a workaround, not a design, and it is now half retired: the SDK
+ * supports stateless operation directly for the revision that defines it, and
+ * this class covers the older revisions that cannot be served any other way.
+ * It goes away when the handshake era does, rather than being improved.
  *
  * @see https://modelcontextprotocol.io/specification/basic/transports Streamable HTTP without a session
  * @since 1.0.0
