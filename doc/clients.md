@@ -158,7 +158,10 @@ curl -sS -D - -X POST "$ENDPOINT" \
 ```
 
 No `Mcp-Session-Id` comes back, and that is the answer rather than a fault: nothing was stored,
-so there is nothing to return to. A `tools/call` additionally needs `Mcp-Name: <tool>`, and
+so there is nothing to return to. A session on this revision is also never handed the server
+instructions — there is no `initialize` answer to carry them — so the first call worth making is
+`core_instructions`, which returns the same block. The `itop://core/instructions` resource
+carries it too, at `priority: 1`, for a client that reads resources. A `tools/call` additionally needs `Mcp-Name: <tool>`, and
 `resources/read` needs `Mcp-Name: <uri>`; `Mcp-Param-*`, which mirrors the arguments, is
 optional and the call is served without it.
 

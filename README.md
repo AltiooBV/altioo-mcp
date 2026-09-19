@@ -80,6 +80,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
+| `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
@@ -214,6 +215,7 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 
 | URI | Content |
 |---|---|
+| `itop://core/instructions` | How this instance works — the same block `initialize` carries, annotated `priority: 1` |
 | `itop://core/version` | iTop version and edition |
 | `itop://core/current-user` | Who the request authenticated as: contact, user id, language, whether archive mode is on, and the toolsets this session is served |
 | `itop://core/classes` | The list of classes in the datamodel |
@@ -274,13 +276,17 @@ or a pack you install reaches a running session only after it reconnects. A pack
 append a paragraph with `MCPRegistry::AddInstructions()`.
 
 That block travels in the `initialize` answer and nowhere else, which is the SDK's only place
-to put it — so **a client on `2026-07-28` never receives it**, that revision having no
-`initialize` to answer. Such a client is not left guessing: every tool, resource and prompt
-still carries its own description in the listing, and those do most of the work. What it loses
-is the server-level guidance — the date formats read from your instance, the note about
-attribute codes, the refusal and injection paragraphs. Until the specification gives that block
-a home outside the handshake, a deployment that depends on it should prefer clients on an
-earlier revision.
+to put it — so **a client on `2026-07-28` is never sent it**, that revision having no
+`initialize` to answer. It can still fetch it: the same text, rendered for the same caller, is
+the `core_instructions` tool and the `itop://core/instructions` resource. The resource is
+annotated `audience: assistant, priority: 1`, the strongest thing the schema lets a resource say
+about itself; the tool exists because a client that never enumerates resources never sees an
+annotation, and every client sees `tools/list`. Both sit where `core_current_user` does, so a
+narrowed session keeps them.
+
+What is not automatic is the reading. A client on an earlier revision is handed the block; one
+on `2026-07-28` has to ask, and whether it asks is the client's business. The first sentence of
+the tool's description is written to be the thing that makes it ask.
 
 **It is narrowed like the surface it describes.** The guidance is assembled per caller from
 the same policy that decides what is registered, so a token scoped to one toolset is not told
@@ -978,8 +984,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
 
 - **Streamable HTTP only.** No SSE streaming, no resumability. Each request is authenticated on
   its own and no server-side session is carried between them.
-- **No server instructions on `2026-07-28`.** That revision dropped `initialize`, which is the
-  only message the block is carried in. Tool, resource and prompt descriptions are unaffected.
+- **Server instructions are not pushed to a `2026-07-28` client.** That revision dropped
+  `initialize`, the only message the block is carried in. It is fetchable — `core_instructions`,
+  or `itop://core/instructions` at `priority: 1` — but whether a client reads it is the client's
+  decision, not this server's.
 - **No OAuth.** By design — terminate it in a proxy in front of iTop. A client that offers only
   a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
   proxy's discovery document.
