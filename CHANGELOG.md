@@ -40,7 +40,10 @@ published archive was installed and exercised on into this line; the README and
 ### Added
 
 - **An MCP server inside iTop, at a single authenticated HTTP endpoint.** Streamable HTTP,
-  stateless, authenticated by iTop itself on every request. The surface stays close to iTop's
+  stateless, authenticated by iTop itself on every request. One URL answers two protocol eras:
+  a client on `2026-07-28` is served without a handshake and without a session id, and one on
+  an earlier revision still performs `initialize` and receives an id that carries nothing,
+  because this endpoint stores nothing past the request that made it. The surface stays close to iTop's
   own primitives, in the same spirit as its REST/JSON API: list and describe classes, find
   objects by name the way the console's global search does, search by OQL or by attribute
   criteria, read one object, walk relations, read and store documents, read the change log, and
