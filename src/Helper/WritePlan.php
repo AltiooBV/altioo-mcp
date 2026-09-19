@@ -487,6 +487,118 @@ final class WritePlan
 	}
 
 	/**
+	 * A set attribute that quietly threw away part of what the caller sent.
+	 *
+	 * AttributeSet::MakeRealValue() walks the elements it parsed and unsets
+	 * every one that is not in the allowed values - no exception, no flag,
+	 * nothing on the object to compare against afterwards:
+	 *
+	 *     if (!isset($aAllowedValues[$sValue])) { unset($aValues[$i]); }
+	 *
+	 * So `scope: "mcp"` on a token came back valid: true with an empty scope,
+	 * and a caller that asked for a narrow credential got one that grants
+	 * nothing - or, on an attribute where empty means something else, one that
+	 * grants more. A scalar enum refuses the same mistake by name; the set
+	 * form is the inconsistency, not the refusal.
+	 *
+	 * `overridden` cannot see this and never could. It compares what the
+	 * object holds before CheckToWrite() with what it holds after, which
+	 * catches DoComputeValues() - and this happens earlier still, inside the
+	 * conversion, so by the time anything is Set() the asked-for value is
+	 * already gone. The comparison has to be against what the caller actually
+	 * sent, which is why this takes the raw value rather than reading the
+	 * object.
+	 *
+	 * Elements are split here rather than through FromStringToArray(), which
+	 * has a silent drop of its own - it ignores anything shorter than three
+	 * characters - and a rule about silent drops should not inherit one.
+	 *
+	 * @param mixed $mSupplied  As the caller sent it.
+	 * @param mixed $mConverted What MakeValue() made of it.
+	 *
+	 * @return string|null The refusal, or null when nothing was lost.
+	 * @since 1.0.0
+	 */
+	public static function RefusalForDroppedSetValues(string $sClass, string $sAttCode, mixed $mSupplied, mixed $mConverted): ?string
+	{
+		if (!$mConverted instanceof \ormSet) {
+			return null;
+		}
+
+		try {
+			$aAsked = self::setElements($mSupplied);
+			if ($aAsked === []) {
+				return null;
+			}
+
+			$aKept = array_map('strval', $mConverted->GetValues());
+			$aLost = array_values(array_diff($aAsked, $aKept));
+			if ($aLost === []) {
+				return null;
+			}
+
+			$oAttDef  = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			$aAllowed = array_keys($oAttDef->GetPossibleValues());
+			sort($aAllowed);
+
+			return sprintf(
+				"'%s' does not accept %s. iTop drops an unknown element of a set without saying so, and the write would "
+				."have reported success with %s stored instead - so it is refused here rather than applied by halves. "
+				."Allowed: %s.",
+				$sAttCode,
+				implode(', ', array_map(static fn ($s) => json_encode($s), $aLost)),
+				$aKept === [] ? 'nothing' : json_encode(implode(', ', $aKept)),
+				$aAllowed === [] ? '(none declared)' : implode(', ', $aAllowed)
+			);
+		} catch (Throwable $e) {
+			// A question about the value must not become the refusal.
+			return null;
+		}
+	}
+
+	/**
+	 * The elements of a set as the caller wrote them.
+	 *
+	 * Both shapes a client sends: a list, and the comma-separated string iTop
+	 * itself uses. The configured item separator is honoured where there is a
+	 * configuration to ask.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function setElements(mixed $mSupplied): array
+	{
+		if (is_array($mSupplied)) {
+			$aRaw = $mSupplied;
+		} elseif (is_string($mSupplied)) {
+			$sSeparator = ',';
+			try {
+				$sConfigured = (string) MetaModel::GetConfig()->Get('tag_set_item_separator');
+				if ($sConfigured !== '') {
+					$mSupplied  = str_replace($sConfigured, ',', $mSupplied);
+				}
+			} catch (Throwable $e) {
+				// No configuration to ask; the comma is iTop's own default.
+			}
+			$aRaw = explode($sSeparator, $mSupplied);
+		} else {
+			return [];
+		}
+
+		$aElements = [];
+		foreach ($aRaw as $mElement) {
+			if (!is_scalar($mElement)) {
+				continue;
+			}
+			$sElement = trim((string) $mElement);
+			if ($sElement !== '') {
+				$aElements[] = $sElement;
+			}
+		}
+
+		return array_values(array_unique($aElements));
+	}
+
+	/**
 	 * The string form of an external key, which iTop reads as OQL.
 	 *
 	 * Three things can be wrong with it and all three are the caller's to fix,

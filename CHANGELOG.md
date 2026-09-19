@@ -632,6 +632,20 @@ published archive was installed and exercised on into this line; the README and
   It now says the instance is in read-only mode and that this has nothing to do with rights on the
   class, which is the difference between an operator granting a profile that changes nothing and an
   operator waiting for the maintenance window to end.
+- **A set attribute that lost part of what was sent is refused, not applied.** Reproduced in
+  review on a token's `scope`: sending `"mcp"` came back `valid: true` with
+  `applied: {"scope": ""}`. The caller asked for a narrow credential and got one that grants
+  nothing, with nothing in the answer saying the value had been rejected. The cause is in iTop and
+  is unconditional — `AttributeSet::MakeRealValue()` walks the elements it parsed and unsets every
+  one that is not allowed, `if (!isset($aAllowedValues[$sValue])) { unset($aValues[$i]); }`, with no
+  exception and no flag. A scalar enum refuses the same mistake by name; the set form was the
+  inconsistency, not the refusal. Every conversion site now compares what the caller sent with what
+  survived and refuses the difference, naming the elements that were dropped and the allowed
+  values. Worth recording why `overridden` never caught it: that block compares the object before
+  `CheckToWrite()` with the object after, which is what catches `DoComputeValues()` — this happens
+  earlier still, inside the conversion, so the asked-for value is already gone before anything is
+  `Set()`. The comparison has to be against the supplied value, and a test pins that it is, since a
+  refactor that read the object back would restore the bug in silence.
 - **An external key given as a string says what is wrong with it.** The one invalid-value case
   that still dead-ended: `org_id: "abc"` came back as an opaque reference into the instance log,
   which no tool here reads, while every other bad value - an enum, a date - is named in full.

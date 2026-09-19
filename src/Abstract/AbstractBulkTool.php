@@ -354,6 +354,16 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
+				// iTop's set attributes throw away an element they do not
+				// recognise without saying so - see WritePlan. A value the
+				// caller sent and the object will not hold is a refusal here,
+				// the way a scalar enum already refuses one.
+				$sDropped = WritePlan::RefusalForDroppedSetValues($sClass, $sAttCode, $value, $aValues[$sAttCode]);
+				if ($sDropped !== null) {
+					unset($aValues[$sAttCode]);
+					$aIssues[] = $sDropped;
+					continue;
+				}
 			} catch (\Throwable $e) {
 				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);

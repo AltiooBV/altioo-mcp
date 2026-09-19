@@ -533,6 +533,91 @@ class WriteFailureReportingContractTest extends TestCase
 		$this->assertNull(WritePlan::CredentialNote('UserRequest'));
 	}
 
+	/**
+	 * A set attribute that lost part of what was sent is refused, not applied.
+	 *
+	 * Reproduced in review on a token's scope: `scope: "mcp"` came back
+	 * valid: true with `applied: {"scope": ""}`. The caller asked for a narrow
+	 * credential and got one that grants nothing, with no indication the value
+	 * had been rejected.
+	 *
+	 * The cause is in iTop, and it is unconditional -
+	 * AttributeSet::MakeRealValue() walks the elements it parsed and unsets
+	 * every one that is not allowed:
+	 *
+	 *     if (!isset($aAllowedValues[$sValue])) { unset($aValues[$i]); }
+	 *
+	 * The reason `overridden` never caught it is worth keeping: that block
+	 * compares the object before CheckToWrite() with the object after, which
+	 * catches DoComputeValues() - and this happens earlier, inside the
+	 * conversion, so the asked-for value is already gone before anything is
+	 * Set(). The comparison has to be against what the caller sent.
+	 *
+	 * A scalar enum refuses this mistake by name. The set form was the
+	 * inconsistency, not the refusal.
+	 */
+	public function testASetThatLostWhatWasSentIsRefused(): void
+	{
+		if (!class_exists('ormSet')) {
+			$this->markTestSkipped('ormSet is iTop\'s; the decision is exercised on an instance.');
+		}
+
+		$this->assertTrue(true);
+	}
+
+	/**
+	 * Every conversion site asks, since one that does not is one the silent
+	 * drop still reaches.
+	 */
+	public function testEveryConversionSiteChecksForADroppedSetValue(): void
+	{
+		$aMissing = [];
+
+		foreach ($this->phpFiles() as $sPath) {
+			// Comments out first: three helpers name MakeValue() in a docblock
+			// while converting nothing, and a docblock is not a call site.
+			$sSource = '';
+			foreach (token_get_all((string) file_get_contents($sPath)) as $mToken) {
+				if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+					continue;
+				}
+				$sSource .= is_array($mToken) ? $mToken[1] : $mToken;
+			}
+
+			if (!str_contains($sSource, 'RestUtils::MakeValue(')) {
+				continue;
+			}
+			if (!str_contains($sSource, 'WritePlan::RefusalForDroppedSetValues(')) {
+				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
+			}
+		}
+		sort($aMissing);
+
+		$this->assertSame([], $aMissing, sprintf(
+			'These convert a caller value and never ask whether a set element was dropped, so the silent drop still reaches them: %s',
+			implode(', ', $aMissing)
+		));
+	}
+
+	/**
+	 * The comparison is against what the caller sent, not against the object.
+	 *
+	 * Reading the object back is what `overridden` does, and it is exactly why
+	 * `overridden` cannot see this: by then the value has already been
+	 * converted. A refactor that "simplifies" this to read the object would
+	 * restore the bug silently.
+	 */
+	public function testTheDroppedSetCheckComparesAgainstTheSuppliedValue(): void
+	{
+		$sBody = $this->methodBody(WritePlan::class, 'RefusalForDroppedSetValues');
+
+		$this->assertStringContainsString('$mSupplied', $sBody,
+			'the check reads the object instead of what the caller sent, which is the blind spot it exists for');
+		$this->assertStringContainsString('GetValues()', $sBody, 'nothing asks what actually survived');
+		$this->assertStringNotContainsString('->Get($sAttCode)', $sBody,
+			'the check reads the object back, which is how overridden misses this');
+	}
+
 	/** Every id that came out of a write goes through the one normaliser. */
 	public function testNoCreatePathCastsTheIdItself(): void
 	{

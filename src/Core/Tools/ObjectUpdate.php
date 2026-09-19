@@ -254,6 +254,16 @@ class ObjectUpdate extends AbstractMCPTool
 				// The SDK hands us arrays for nested JSON objects; RestUtils
 				// branches on stdClass. See RestValue.
 				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
+				// iTop's set attributes throw away an element they do not
+				// recognise without saying so - see WritePlan. A value the
+				// caller sent and the object will not hold is a refusal here,
+				// the way a scalar enum already refuses one.
+				$sDropped = WritePlan::RefusalForDroppedSetValues($class, $sAttCode, $value, $aValidatedValues[$sAttCode]);
+				if ($sDropped !== null) {
+					unset($aValidatedValues[$sAttCode]);
+					$aIssues[$sAttCode] = $sDropped;
+					continue;
+				}
 			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($class, $sAttCode, $value);
