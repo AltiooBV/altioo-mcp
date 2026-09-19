@@ -57,6 +57,12 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       install, and the remaining gates (`pinned-actions`, `audit`, `example-pack`, the archive
       shape and the SBOM) are shell and Composer commands runnable by hand from the job
       definitions. What has never been exercised is GitHub's runners, not the steps.
+- [ ] **Remove the unproven notice once CI is green.** The `ci-unproven` block in
+      [ci-itop-matrix.md](ci-itop-matrix.md) and the four one-line pointers into it
+      (README, CONTRIBUTING, ci-upgrade.md, security-summary.md §2) describe a repository that
+      has never run Actions. That stops being true the first time the workflows run, and a
+      caveat left behind after it expires misleads in the opposite direction. Delete all five
+      and note it in the changelog entry for the version it happened under.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an

@@ -9,6 +9,37 @@ because the version that breaks is rarely the one being developed against.
 on a schedule, which matters more: nothing in this repository changes when Combodo publishes
 3.2.4, and that is exactly when the claim on the Hub listing quietly stops being true.
 
+## Status: none of this has run on GitHub yet
+
+<!-- ci-unproven:begin -->
+
+**Every workflow in [`.github/workflows/`](../.github/workflows/) ships unproven on GitHub's
+runners, and this is the one place that says so.** At 1.0.0 the repository has never run
+Actions: `ci.yml`, `itop-matrix.yml`, `upgrade.yml` and `release.yml` are published as written,
+not as observed. Anything in this repository that speaks of CI in the present tense — the
+README's supported-versions claim, `CONTRIBUTING.md`'s "CI has to be green",
+[security-summary.md](security-summary.md) §2 on how a release is built — describes a
+mechanism that is in place and has not yet been exercised where it will run.
+
+What *has* been exercised is the steps, locally and by hand:
+[`tools/ci/local/run.sh`](../tools/ci/local/run.sh) runs `ci.yml`'s lint and unit jobs across
+the PHP range and `itop-matrix.yml`'s install against iTop 3.2, in containers, from the same
+scripts under `tools/ci/` that the workflow steps call. The remaining gates — the pinned-action
+check, `composer audit --locked`, the example pack, the archive shape and the SBOM — are shell
+and Composer commands that were run directly from the job definitions and passed. What is
+untested is GitHub, not the logic.
+
+`release.yml` is the one with no local equivalent, and the one that matters most: it has a
+`workflow_dispatch` that performs the whole build, checksum and inventory **without publishing
+anything**, which is how it gets exercised before a tag depends on it.
+
+**Delete this section the first time the workflows run green on GitHub**, and say so in the
+changelog entry for the version that happens under.
+[release-checklist.md](release-checklist.md) carries the step. A caveat nobody removes becomes
+a lie by neglect, which is worse than the one it was written to prevent.
+
+<!-- ci-unproven:end -->
+
 ## What is checked, and why each one is separate
 
 | Step | What it would catch |

@@ -54,7 +54,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 
 | | |
 |---|---|
-| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml). **Not yet exercised on GitHub at 1.0.0** — [ci-itop-matrix.md](ci-itop-matrix.md#status-none-of-this-has-run-on-github-yet) |
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
 | **Authenticity** | a [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) signed by the workflow. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo AltiooBV/altioo-mcp` |

@@ -74,6 +74,10 @@ what a client unzipping into `extensions/` does, leftovers and all.
 
 ## Running it
 
+This workflow has never run on GitHub — see
+[ci-itop-matrix.md](ci-itop-matrix.md#status-none-of-this-has-run-on-github-yet), which
+carries that caveat for all four.
+
 There are no release tags yet, so the scheduled and push runs have no baseline and the jobs
 **skip** — visibly, with a summary line saying why, rather than passing green on nothing.
 
