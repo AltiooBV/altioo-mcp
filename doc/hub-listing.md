@@ -1,9 +1,11 @@
-# Hub listing copy
+# Listing copy
 
-Ready to paste into the iTop Hub submission. The Hub page, not the archive, is where the
-install decision is made, so everything an evaluator needs is here rather than one click away.
-Keep it in step with `extension.xml` and the README at every release. The supported-versions
-rows are checked automatically; everything else here is prose somebody has to re-read.
+Ready to paste into the places this extension is described to people who have not installed it:
+the iTop Hub submission, and the GitHub repository's About box. Neither is the archive, and
+both are where the install decision is made, so everything an evaluator needs is here rather
+than one click away. Keep it in step with `extension.xml` and the README at every release. The
+supported-versions rows are checked automatically; everything else here is prose somebody has
+to re-read.
 
 ---
 
@@ -15,6 +17,31 @@ Altioo MCP — Model Context Protocol server for iTop
 
 Let an AI assistant search, read and update your CMDB and tickets — through the user's own iTop
 permissions, with every write confirmed first.
+
+## GitHub repository description (the About box)
+
+```
+iTop extension that adds a Model Context Protocol (MCP) server to your instance - inside iTop, not beside it: no service to deploy, no REST hop, no copy of the datamodel to keep in sync. Assistants search, read and update CMDB and ticketing objects as the authenticated user. Dry-run writes, every call audited.
+```
+
+311 characters, inside GitHub's 350 limit. Plain hyphens rather than en dashes: the field is
+plain text, and hyphens survive a copy-paste into the Hub form or `composer.json` unchanged.
+
+**It names no iTop or PHP version, deliberately.** Every other copy of that claim is checked
+against [`.github/itop-support.json`](../.github/itop-support.json) by `ModuleMetadataTest` —
+the README's Requirements table, the Compatibility block below, the sentence in
+`extension.xml`. The About box is the one surface no test can reach, so a version put there is
+the one that goes stale in silence. Requirements belong in the README, which is one click away
+from the box and is checked.
+
+**The first clause is the whole point of the description.** An MCP server for iTop can also be
+a separate process that talks to iTop over REST; this is not that, and somebody deciding
+between them should not have to open the README to find out. Keep "inside iTop, not beside it"
+and the three consequences after the colon if this is ever rewritten.
+
+Topics, set beside the description, are where discovery actually happens. `composer.json`
+already declares the keywords worth reusing: `itop`, `mcp`, `model-context-protocol`, `itsm`,
+`cmdb`, `ai`.
 
 ## Category
 

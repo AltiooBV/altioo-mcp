@@ -15,7 +15,10 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       `[Unreleased]` and `[x.y.z]` link-reference definitions to the foot of
       [CHANGELOG.md](../CHANGELOG.md); until then the headings render their brackets literally,
       which is preferable to shipping compare links that 404. The brackets themselves are not
-      optional — [release.yml](../.github/workflows/release.yml) matches on them.
+      optional — [release.yml](../.github/workflows/release.yml) matches on them. While there:
+      set the About box and topics from [hub-listing.md](hub-listing.md), which carries the
+      agreed text. It is the one description no test can check, so it is also the one nobody
+      notices is wrong.
 - [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
       One toggle, and it belongs to the same sitting as creating the repository.
       [SECURITY.md](../SECURITY.md) points at `/security/advisories/new` and commits to 5
