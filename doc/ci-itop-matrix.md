@@ -188,7 +188,7 @@ nothing else installed:
 tools/ci/local/run.sh unit            # ci.yml's unit job and its linter, on 8.2
 tools/ci/local/run.sh unit 8.4        # the same, on the ceiling of the range
 tools/ci/local/run.sh matrix          # itop-matrix.yml, iTop 3.2, on 8.2
-tools/ci/local/run.sh matrix 3.3 8.4  # another branch, another PHP
+tools/ci/local/run.sh matrix 3.3 8.4  # a branch not in the matrix: how you try 3.3
 tools/ci/local/run.sh integration     # the integration suite alone, seconds
 tools/ci/local/run.sh down            # remove the containers, the volume, the network
 ```

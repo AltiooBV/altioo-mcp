@@ -2,8 +2,8 @@
 /**
  * Resolves the declared support policy into a concrete CI matrix.
  *
- * `.github/itop-support.json` names branches - 3.2, 3.3 - because that is what
- * the extension actually claims. What CI has to install is a specific release.
+ * `.github/itop-support.json` names branches - 3.2, and whichever others are
+ * claimed - because a branch is what the extension actually claims. What CI has to install is a specific release.
  * This turns one into the other by asking what the newest patch of each branch
  * is, which is the only way the matrix stays true after a patch nobody here
  * noticed was published.

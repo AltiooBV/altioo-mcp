@@ -27,17 +27,19 @@
     "                   yet. True for a branch we intend to support at its GA and want to",
     "                   be told about early; never for one users are already running.",
     "  pin              an exact tag, when a resolved patch is known broken and the",
-    "                   failure is not ours. Temporary by nature: say why, in this file."
+    "                   failure is not ours. Temporary by nature: say why, in this file.",
+    "",
+    "3.3 is deliberately absent, and its absence is not a claim that the module fails",
+    "there. Nothing has ever been installed on 3.3 - not CI, not the sandbox - and a",
+    "branch named here is a branch the README, the Hub listing and the setup wizard all",
+    "tell an operator is tested. Naming one that is not is the single thing this file",
+    "exists to prevent. Add the entry once a 3.3 install has actually been exercised;",
+    "allow_prerelease is there for exactly that first look."
   ],
   "branches": [
     {
       "branch": "3.2",
       "php": ["8.2", "8.4"]
-    },
-    {
-      "branch": "3.3",
-      "php": ["8.2", "8.4"],
-      "allow_prerelease": true
     }
   ]
 }

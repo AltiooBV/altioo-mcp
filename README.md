@@ -28,7 +28,7 @@ down to individual attributes and lifecycle stimuli.
 
 | | |
 |---|---|
-| iTop | **3.2** (current LTS) or **3.3** |
+| iTop | **3.2** (current LTS) |
 | PHP | **8.2** to **8.4** |
 
 <!-- supported-versions:end -->
@@ -48,6 +48,12 @@ it — so there is one place to change when a branch is added or retired, and no
 quietly disagree with it. iTop 3.1 and earlier are not supported at all: the setup refuses to
 install, through the `itop-structure/3.2.0` dependency.
 
+**iTop 3.3 is a different case, and it is not claimed.** Nothing here has been installed on it,
+so there is no evidence either way — that is an absence of testing rather than a known
+incompatibility, and the module may well work. It will be added to the table above when a 3.3
+install has actually been exercised, and not before: a branch named there is a branch this
+project is telling you it tests.
+
 **Which PHP goes with which iTop is iTop's decision, not this module's**, and it moves within a
 branch: 3.2 gained 8.4 at 3.2.3-1, having had known issues with it before. You cannot get this
 combination wrong silently — iTop's own setup warns about a PHP it has not validated, and the
@@ -57,8 +63,10 @@ the warning is what you have: read the setup log rather than expecting to be sto
 that does stop an install is the floor, `PHP_MIN_VERSION` in the same file. For the per-patch
 answer, read
 [iTop's requirements](https://www.itophub.io/wiki/page?id=3_2_0:install:requirements) for the
-patch you run. The declared range `>=8.2 <8.5` is the intersection of the branches above: floor
-8.2 because iTop 3.3 requires it, no ceiling at 8.5 because no iTop branch validates it yet.
+patch you run. The declared range `>=8.2 <8.5` is narrower than iTop 3.2's own floor of 8.1,
+and the extra minor is this module's dependencies rather than iTop's: `symfony/uid` and
+`webmozart/assert` both require 8.2, so `composer.lock` sets the floor. There is no ceiling at
+8.5 because no iTop branch validates it yet.
 
 **What a release is tested against.** No version is published until the unit suite has passed in
 CI across the declared PHP range, and the archive has been unzipped, installed through the iTop

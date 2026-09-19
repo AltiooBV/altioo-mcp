@@ -17,7 +17,8 @@
 #   tools/ci/local/run.sh unit                  the ci.yml unit job, on 8.2
 #   tools/ci/local/run.sh unit 8.4              the same, on the ceiling
 #   tools/ci/local/run.sh matrix                itop-matrix.yml, iTop 3.2 on 8.2
-#   tools/ci/local/run.sh matrix 3.3 8.4        another branch, another PHP
+#   tools/ci/local/run.sh matrix 3.3 8.4        a branch the matrix does not claim -
+#                                               how 3.3 gets tried before claiming it
 #   tools/ci/local/run.sh integration           just the integration suite, against
 #                                               the instance matrix already installed
 #   tools/ci/local/run.sh shell 8.2             a prompt inside the runner

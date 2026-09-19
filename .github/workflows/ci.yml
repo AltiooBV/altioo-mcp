@@ -79,8 +79,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The range declared in composer.json: floor 8.2 because iTop 3.3
-        # requires it, ceiling 8.4 because no iTop branch validates 8.5.
+        # The range declared in composer.json: floor 8.2 because the locked
+        # dependencies require it - symfony/uid and webmozart/assert - rather
+        # than because iTop does, iTop 3.2's own floor being 8.1. Ceiling 8.4
+        # because no iTop branch validates 8.5.
         php: ['8.2', '8.3', '8.4']
 
     steps:
