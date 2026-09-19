@@ -24,10 +24,17 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       set the About box and topics from [hub-listing.md](hub-listing.md), which carries the
       agreed text. It is the one description no test can check, so it is also the one nobody
       notices is wrong.
-- [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
-      One toggle, to be done in the same sitting as making the repository public — check
-      whether GitHub offers it at all while the repository is private, since some security
-      features appear only once it is public.
+- [ ] **Enable private vulnerability reporting.** Settings → **Advanced Security**, under
+      *Security and quality* → **Enable** beside *Private vulnerability reporting*. (GitHub has
+      moved and renamed that sidebar entry more than once — it was *Code security and
+      analysis*; look for the section, not the label.)
+
+      **The feature is public-repository-only**, verified against
+      [GitHub's documentation](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository)
+      on 2026-09-19, so the toggle does not exist while the repository is private and this
+      cannot be done early. It belongs in the same sitting as making it public, because
+      [SECURITY.md](../SECURITY.md) names GitHub as the *preferred* channel: between going
+      public and flipping this, the channel listed first is the one that 404s.
       [SECURITY.md](../SECURITY.md) points at `/security/advisories/new` and commits to 5
       working days to acknowledge and 90 days to a fix; the link 404s until the setting is on,
       and SECURITY.md calls GitHub the *preferred* channel, so until then the channel named
