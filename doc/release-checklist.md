@@ -5,8 +5,13 @@ The unchecked items below are the ones that cannot be closed inside the reposito
 
 ## Still open before the first publication
 
-- [ ] **Publish the repository.** `https://github.com/AltiooBV/altioo-mcp` currently
-      404s, and it is the value of `more_info_url` in `extension.xml`, of `homepage` and
+- [ ] **Make the repository public.** It exists — `AltiooBV/altioo-mcp`, created and
+      **private**. That is not the same as done, and this box stays open until it is public:
+      GitHub answers a private repository with a 404 to anyone who is not a collaborator, so
+      the URL below still does not resolve for a single person who would ever click it. Ticking
+      this because the repository exists is the one way to get it wrong.
+      `https://github.com/AltiooBV/altioo-mcp` is the value of
+      `more_info_url` in `extension.xml`, of `homepage` and
       `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
       module declaration, of the link line at the top of the README, and of
       `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer served to callers. One dead
@@ -20,7 +25,9 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       agreed text. It is the one description no test can check, so it is also the one nobody
       notices is wrong.
 - [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
-      One toggle, and it belongs to the same sitting as creating the repository.
+      One toggle, to be done in the same sitting as making the repository public — check
+      whether GitHub offers it at all while the repository is private, since some security
+      features appear only once it is public.
       [SECURITY.md](../SECURITY.md) points at `/security/advisories/new` and commits to 5
       working days to acknowledge and 90 days to a fix; the link 404s until the setting is on,
       and SECURITY.md calls GitHub the *preferred* channel, so until then the channel named
@@ -29,6 +36,15 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       table and `composer.json` `support.email`, so a reporter always has a route that works.
 - [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
+- [ ] **Run CI for real, while nobody can see it.** The private repository is the one
+      chance to find out what the four workflows do on GitHub's runners before the result is
+      public. Push, and let `ci.yml` and `itop-matrix.yml` run on their own; `upgrade.yml`
+      skips with no tag; then fire [release.yml](../.github/workflows/release.yml) by
+      `workflow_dispatch`, which builds and checksums the archive **without publishing
+      anything** — the one rehearsal of the path that otherwise runs for the first time on the
+      tag itself. Everything up to here has been exercised locally in
+      [tools/ci/local](../tools/ci/local/run.sh) and by hand; what is untested is GitHub, not
+      the steps.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an
