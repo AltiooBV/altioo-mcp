@@ -19,6 +19,7 @@ class CoreExtensions implements iMCPServiceProvider
 	public static function RegisterServiceProvider(): void
 	{
 		//Resources
+		MCPRegistry::RegisterResource(new Resources\Instructions());
 		MCPRegistry::RegisterResource(new Resources\Version());
 		MCPRegistry::RegisterResource(new Resources\CurrentUser());
 		MCPRegistry::RegisterResource(new Resources\ClassList());
@@ -28,6 +29,9 @@ class CoreExtensions implements iMCPServiceProvider
 		MCPRegistry::RegisterResourceTemplate(new ResourceTemplates\ObjectDocument());
 
 		//Tools
+		// First in the list because it is the one to read first, and the order
+		// here is the order tools/list answers in.
+		MCPRegistry::RegisterTool(new Tools\Instructions());
 		MCPRegistry::RegisterTool(new Tools\CurrentUser());
 		MCPRegistry::RegisterTool(new Tools\SetObsoleteData());
 		MCPRegistry::RegisterTool(new Tools\ClassList());

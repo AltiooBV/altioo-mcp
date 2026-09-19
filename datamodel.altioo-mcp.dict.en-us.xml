@@ -83,6 +83,7 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-server+" _delta="force"><![CDATA[Restrict this token to the resources that describe the instance and the caller]]></entry>
         <entry id="MCP:tool:core_class_list:title" _delta="force"><![CDATA[List Classes]]></entry>
         <entry id="MCP:tool:core_class_schema:title" _delta="force"><![CDATA[Get Class Schema]]></entry>
+        <entry id="MCP:tool:core_instructions:title" _delta="force"><![CDATA[Server Instructions]]></entry>
         <entry id="MCP:tool:core_current_user:title" _delta="force"><![CDATA[Current User]]></entry>
         <entry id="MCP:tool:core_set_obsolete_data:title" _delta="force"><![CDATA[Show or Hide Obsolete Data]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Apply Stimulus]]></entry>
@@ -101,6 +102,7 @@
         <entry id="MCP:tool:core_object_search_by_oql:title" _delta="force"><![CDATA[Search Objects by OQL]]></entry>
         <entry id="MCP:tool:core_object_update:title" _delta="force"><![CDATA[Update Object]]></entry>
         <entry id="MCP:resource:core_class_list:title" _delta="force"><![CDATA[iTop Classes]]></entry>
+        <entry id="MCP:resource:core_instructions:title" _delta="force"><![CDATA[Server Instructions]]></entry>
         <entry id="MCP:resource:core_current_user:title" _delta="force"><![CDATA[Current User]]></entry>
         <entry id="MCP:resource:core_version:title" _delta="force"><![CDATA[iTop Version]]></entry>
         <entry id="MCP:resource_template:core_class_detail:title" _delta="force"><![CDATA[iTop Class Detail]]></entry>

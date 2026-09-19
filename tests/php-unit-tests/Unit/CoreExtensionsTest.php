@@ -60,6 +60,7 @@ class CoreExtensionsTest extends TestCase
 				'core_class_list',
 				'core_class_schema',
 				'core_current_user',
+				'core_instructions',
 				'core_object_apply_stimulus',
 				'core_object_attach',
 				'core_object_bulk_create',
@@ -89,6 +90,7 @@ class CoreExtensionsTest extends TestCase
 			[
 				'itop://core/classes',
 				'itop://core/current-user',
+				'itop://core/instructions',
 				'itop://core/version',
 			],
 			$this->sortedKeys(MCPRegistry::GetResources())
@@ -177,6 +179,7 @@ class CoreExtensionsTest extends TestCase
 			'core_class_list'             => AccessPolicy::CAPABILITY_READ,
 			'core_class_schema'           => AccessPolicy::CAPABILITY_READ,
 			'core_current_user'           => AccessPolicy::CAPABILITY_READ,
+			'core_instructions'           => AccessPolicy::CAPABILITY_READ,
 			'core_set_obsolete_data'      => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_search_by_oql'   => AccessPolicy::CAPABILITY_READ,
 			'core_object_search_by_class' => AccessPolicy::CAPABILITY_READ,
