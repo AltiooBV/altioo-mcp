@@ -130,7 +130,22 @@ need_runner() {
 		# sessions. A server from the previous run does not fail the next one
 		# visibly; it answers it, from the previous tree.
 		docker exec "$sName" pkill -f 'php -S' >/dev/null 2>&1 || true
-		return
+
+		# And the same trap one level up. A runner outlives the checkout it was
+		# started for, and the name carries the PHP version but nothing about
+		# where /src points. Invoked from a second working copy - a worktree on
+		# another branch, most likely - the name matches, the container is
+		# reused, and /src still points at the first copy: the run answers, in
+		# full, from the wrong tree. Every number it prints is real, which is
+		# what makes it worse than a crash.
+		local sMounted
+		sMounted=$(docker inspect "$sName" \
+			--format '{{range .Mounts}}{{if eq .Destination "/src"}}{{.Source}}{{end}}{{end}}' 2>/dev/null) || sMounted=
+		if [ "$sMounted" = "$REPO" ]; then
+			return
+		fi
+		say "$sName is bound to ${sMounted:-nothing}, not $REPO - recreating it"
+		docker rm -f "$sName" >/dev/null 2>&1 || true
 	fi
 	need_net
 	need_volume
@@ -274,6 +289,12 @@ step "datamodel checks, then the endpoint over HTTP" smoke
 printf '\n%s\n' '=============================================================='
 printf '%s\n' "${aResults[@]}"
 printf '\nthe instance is kept at %s in volume %s\n' "$sItopDir" "$sVolume"
+
+# A summary a person reads is not a status a script can act on, and this one is
+# printed by a run that has already swallowed each step's exit code to get here.
+# Any FAIL row leaves non-zero, the way the workflow's job would.
+printf '%s\n' "${aResults[@]}" | grep -q '^FAIL' && exit 1
+exit 0
 INNER
 	run_script "$sPhp" matrix.sh \
 		"/work/module-$sPhp" "/work/itop-$sBranch-$sPhp" "itop_${sBranch//./}_${sPhp//./}" \
