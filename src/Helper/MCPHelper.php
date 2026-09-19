@@ -78,7 +78,7 @@ class MCPHelper
 	const MODULE_SETTING_LOG_METHOD = 'log_mcp_method';
 
 	const MODULE_SETTING_LOG_LEVEL = 'log_mcp_level';
-	const DEFAULT_LOG_LEVEL = 'error';
+	const DEFAULT_LOG_LEVEL = 'info';
 	const LOG_LEVEL_INFO = 'info';
 	const LOG_LEVEL_DEBUG = 'debug';
 	const LOG_LEVEL_ERROR = 'error';

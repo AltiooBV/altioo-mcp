@@ -468,9 +468,9 @@
         <item>exceptions</item>
       </log_mcp_method>
       <log_mcp_level type="enum">
-        <value id="info">info</value>
+        <value id="info" default="true">info</value>
         <value id="debug">debug</value>
-        <value id="error" default="true">error</value>
+        <value id="error">error</value>
       </log_mcp_level>
     </parameters>
   </module_parameters>

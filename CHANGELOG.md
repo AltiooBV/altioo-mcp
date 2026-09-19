@@ -844,9 +844,16 @@ published archive was installed and exercised on into this line; the README and
   a pack's `acme_ticket_add_log_entry`. The name is derived from the class name, so a pack
   author writes none of them by hand. This is the shape every other MCP server in the ecosystem
   uses, and it is the string a client configuration and an `mcp_disabled_tools` entry name.
+- **The audit trail records every audited call, on an instance nobody configured.**
+  `log_mcp_level` defaults to `info`, so "every call is audited" — which the Hub listing and the
+  sentence the setup wizard shows both say without qualification — is true of a default install
+  rather than of one whose operator found the setting. The cost is a row per call and a table
+  with no built-in purge, which is an operator's retention decision; `error` narrows the trail
+  to failures and connections for an instance where the volume is not worth it, and that is a
+  deliberate choice to record less than the documentation claims.
 - **The audit trail records that a client connected, and which one.** `initialize` is audited
-  whatever `log_mcp_level` says — the level exists to keep successful calls out of the trail,
-  and a successful connection is the one success an operator needs. Without it a token quietly
+  whatever `log_mcp_level` says, so it survives even the narrowed `error` level: a successful
+  connection is the one success an operator needs whatever else is being kept. Without it a token quietly
   in use by something nobody remembers issuing leaves no trace until it does something, and an
   integration that stopped connecting looks like one that connected and had nothing to do. The
   row names the client from `clientInfo`; nothing verifies it, so it identifies a well-behaved

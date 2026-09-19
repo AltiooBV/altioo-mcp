@@ -639,7 +639,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'mcp_source_url' => '',
     'log_mcp_service' => true,
     'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
-    'log_mcp_level' => 'error',
+    'log_mcp_level' => 'info',
 ),
 ```
 
@@ -661,7 +661,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
-| `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
+| `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and is a troubleshooting setting, not a standing one |
 
 ### Start read-only
 
@@ -748,12 +748,14 @@ response: the 415 on a body that is not JSON, and the 401 on a request that brou
 credential. There is nothing a log could usefully add about a request that never named anyone.
 
 **Turn the detail up.** `log_mcp_level` decides how much the *audit trail* keeps, not the error
-log, and it is worth raising while you are looking:
+log. At the default it already records every audited call, so the only step left while you are
+looking is the one that stores what was actually sent:
 
 ```php
 'altioo-mcp' => array(
-    // 'error' (default) records failures. 'info' records successes too, which is how you
-    // confirm a call arrived at all. 'debug' additionally stores the raw JSON parameters.
+    // 'info' (default) records every audited call. 'debug' additionally stores the raw JSON
+    // parameters, which is how you see what the client actually sent - and why it is a
+    // setting to turn back down afterwards. 'error' narrows the trail to failures.
     'log_mcp_level' => 'debug',
 ),
 ```

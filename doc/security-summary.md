@@ -130,7 +130,7 @@ text that came from outside the organisation — not a permission boundary; the 
 | **What personal data does it store?** | Only in the audit trail it adds. One `AltiooEventMCPService` row per audited call: the calling user, the JSON-RPC method, the element invoked, the outcome, the duration and the response size |
 | **Where** | `priv_altioo_event_mcp_service`, inside your own iTop database, in iTop's event log alongside its other event classes |
 | **Retention** | **Yours to set**, as for iTop's other event classes. There is no built-in purge, and the table grows with use — say so in your retention policy rather than discovering it |
-| **Anything more sensitive?** | At `log_mcp_level => debug` only, raw request parameters are written to iTop's log, which may contain object data. `error` is the default and the documented operating level |
+| **Anything more sensitive?** | At `log_mcp_level => debug` only, raw request parameters are written to iTop's log, which may contain object data. `debug` is a troubleshooting setting, never a standing one; the default is `info`, which records that each call happened without recording what it carried |
 | **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant** |
 
 **Change attribution.** Every write this extension makes is attached to an iTop change record

@@ -496,11 +496,17 @@ that matters most against prompt injection: a model acting on text that came fro
 organisation cannot silently commit a change on the strength of that text alone.
 
 **Calls are audited** as `AltiooEventMCPService` objects, with the method, the element invoked,
-the outcome, the duration and the calling user. What earns a row depends on `log_mcp_level`:
-at the default `error` that is every failure and every client connection, and successful calls
-are left out deliberately, since a busy instance would otherwise write a row per read. Set it
-to `info` to record those too — the section below explains why `error` is nonetheless the
-recommended operating level.
+the outcome, the duration, the calling user, and whether the call was a rehearsal or a write.
+What earns a row depends on `log_mcp_level`, and **the default `info` records every audited
+call** — which is what makes "every call is audited" true of an instance nobody configured,
+rather than true only of one whose operator found the setting.
+
+The cost is a row per call, including every read, and the table has no built-in purge. That is
+the operator's to manage in the ordinary way: set retention on it as on iTop's other event
+classes, and if the volume is genuinely not worth it, `error` narrows the trail to failures and
+client connections. Narrowing it is a decision to record less than the documentation claims, so
+make it deliberately — a successful read that left no trace is one nobody can account for
+later.
 
 **Errors do not leak internals.** Only `ToolCallException` and `ResourceReadException` messages
 reach the client; anything else is answered generically and correlated to `log/error.log` by a
@@ -567,8 +573,10 @@ records two). In particular, and specifically relevant here:
   so adding a profile to it widens who can hold a working credential for every API on this
   instance, this endpoint included — and it is the reason a token minted against the wrong
   account is worth something rather than nothing.
-- Leave `log_mcp_level` at `error` in normal operation: `debug` stores raw request parameters,
-  which may contain data your users would not expect to find in an audit log.
+- Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
+  standing**: `debug` stores raw request parameters, which may contain data your users would
+  not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
+  knowing successful calls then leave no trace.
 - Review `AltiooEventMCPService` retention against your own data-retention policy.
 
 ## Dependencies
