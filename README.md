@@ -273,6 +273,15 @@ this transport is stateless and sends no list-changed notification, so a scope y
 or a pack you install reaches a running session only after it reconnects. A pack can
 append a paragraph with `MCPRegistry::AddInstructions()`.
 
+That block travels in the `initialize` answer and nowhere else, which is the SDK's only place
+to put it — so **a client on `2026-07-28` never receives it**, that revision having no
+`initialize` to answer. Such a client is not left guessing: every tool, resource and prompt
+still carries its own description in the listing, and those do most of the work. What it loses
+is the server-level guidance — the date formats read from your instance, the note about
+attribute codes, the refusal and injection paragraphs. Until the specification gives that block
+a home outside the handshake, a deployment that depends on it should prefer clients on an
+earlier revision.
+
 **It is narrowed like the surface it describes.** The guidance is assembled per caller from
 the same policy that decides what is registered, so a token scoped to one toolset is not told
 to call tools it will never be served — a paragraph about the datamodel tools goes only to a
@@ -635,7 +644,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
-| `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row |
+| `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
 | `log_mcp_level` | `error` | `error` logs failures only; `info` logs everything; `debug` additionally records the raw request parameters |
 
 ### Start read-only
@@ -737,7 +746,9 @@ Put it back to `'error'` afterwards. `'debug'` stores whatever the caller sent, 
 include data your users would not expect to find in an audit log.
 
 **Is the call arriving at all?** Look for an `AltiooEventMCPService` row with the method
-`initialize`. That row is written whenever a client connects, at every log level. Then look for
+`initialize`. That row is written whenever a client connects, at every log level — unless the
+client speaks `2026-07-28`, which has no `initialize` to write a row for; for one of those,
+look for the method it actually called instead. Then look for
 one with the method `exceptions`: every refusal that lands before the login — the 403 on the
 host, the 415 on the media type, the 401 on a request that brought no credential — is caught at
 the entry point and audited under that method, so such a row means the request did arrive and
@@ -750,7 +761,8 @@ reached the module, which is then a web server rule, a proxy, or a wrong URL.
 
 ### The three that account for most of it
 
-**1. `401` on a credential you know is right, and no `initialize` row.**
+**1. `401` on a credential you know is right, and no `initialize` row** (or, on `2026-07-28`,
+no row for the method the client called)**.**
 
 Under FastCGI, Apache drops the `Authorization` header before PHP sees it, so the module never
 receives the bearer token and iTop answers as it would to an anonymous caller. Nothing is
@@ -966,6 +978,8 @@ Known and deliberate, so that none of them is a discovery made after installing:
 
 - **Streamable HTTP only.** No SSE streaming, no resumability. Each request is authenticated on
   its own and no server-side session is carried between them.
+- **No server instructions on `2026-07-28`.** That revision dropped `initialize`, which is the
+  only message the block is carried in. Tool, resource and prompt descriptions are unaffected.
 - **No OAuth.** By design — terminate it in a proxy in front of iTop. A client that offers only
   a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
   proxy's discovery document.
