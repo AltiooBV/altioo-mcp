@@ -36,15 +36,27 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       table and `composer.json` `support.email`, so a reporter always has a route that works.
 - [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
-- [ ] **Run CI for real, while nobody can see it.** The private repository is the one
-      chance to find out what the four workflows do on GitHub's runners before the result is
-      public. Push, and let `ci.yml` and `itop-matrix.yml` run on their own; `upgrade.yml`
-      skips with no tag; then fire [release.yml](../.github/workflows/release.yml) by
+- [ ] **Stop Actions from running while the repository is private.** Minutes are metered on
+      a private repository and free on a public one, so every run before it goes public is paid
+      for and every run after is not. This is not only about pushing: three workflows carry a
+      `schedule`, scheduled workflows run from the **default branch**, and `itop-matrix.yml`
+      downloads and installs a full iTop per PHP version. Land the tree on `main` while private
+      and those start firing weekly on their own, with nobody pushing anything. Either disable
+      Actions for now (Settings → Actions → General), or keep the tree off the default branch
+      until the repository is public — a push to any other branch, with no pull request open,
+      triggers none of the four.
+
+      The first real run then costs nothing, and it happens on the first push to `main` after
+      going public. Follow it with [release.yml](../.github/workflows/release.yml) by
       `workflow_dispatch`, which builds and checksums the archive **without publishing
-      anything** — the one rehearsal of the path that otherwise runs for the first time on the
-      tag itself. Everything up to here has been exercised locally in
-      [tools/ci/local](../tools/ci/local/run.sh) and by hand; what is untested is GitHub, not
-      the steps.
+      anything** — the one rehearsal of a path that otherwise runs for the first time on the
+      tag itself.
+
+      Until then the coverage is local, and it is most of it: `tools/ci/local/run.sh unit`
+      is `ci.yml`'s lint and unit jobs across 8.2, 8.3 and 8.4, `run.sh matrix` is the 3.2
+      install, and the remaining gates (`pinned-actions`, `audit`, `example-pack`, the archive
+      shape and the SBOM) are shell and Composer commands runnable by hand from the job
+      definitions. What has never been exercised is GitHub's runners, not the steps.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an
