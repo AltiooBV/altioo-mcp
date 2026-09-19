@@ -24,7 +24,6 @@ use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
-use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use UserRights;
 
@@ -71,13 +70,24 @@ final class MCPService
 	 * told otherwise, which answers 403 to every request a production instance
 	 * ever receives. The fix is to hand it the hostnames this instance is
 	 * served under - not to pass an empty middleware list, which would drop
-	 * CORS handling and protocol-version validation along with it, and which
-	 * the SDK logs a warning about for exactly that reason.
+	 * CORS handling along with it, and which the SDK logs a warning about for
+	 * exactly that reason.
 	 *
 	 * When the hostname cannot be known - see MCPHelper::GetAllowedHosts() -
 	 * the middleware is left out rather than given a list that matches nothing.
 	 * The SDK documents that as the supported answer for a deployment fronted
 	 * by a proxy that validates Host itself.
+	 *
+	 * ProtocolVersionMiddleware is deliberately absent, and adding it back
+	 * would break the endpoint rather than harden it. Since SDK 0.8 one URL
+	 * answers two protocol eras: the transport reads the body, classifies the
+	 * request and routes it to the handshake leg or to the stateless
+	 * 2026-07-28 one. Everything in this list runs *before* that
+	 * classification, and this middleware recognises handshake revisions only
+	 * - so from out here it would answer 400 to every modern-era call. The
+	 * transport applies it itself, to handshake traffic only, via
+	 * StreamableHttpTransport::handshakeMiddleware(). Nothing is lost by
+	 * leaving it out, and the SDK logs a warning when it is left in.
 	 *
 	 * @return array<int, \Psr\Http\Server\MiddlewareInterface>
 	 */
@@ -90,8 +100,6 @@ final class MCPService
 		if (!in_array(MCPHttp::ANY_HOST, $aAllowedHosts, true)) {
 			$aMiddleware[] = new DnsRebindingProtectionMiddleware($aAllowedHosts, $factory, $factory);
 		}
-
-		$aMiddleware[] = new ProtocolVersionMiddleware();
 
 		return $aMiddleware;
 	}

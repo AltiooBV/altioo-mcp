@@ -49,7 +49,7 @@ class MCPHelper
 	 *
 	 * @since 1.0.0
 	 */
-	const SDK_CONSTRAINT = '^0.7.1';
+	const SDK_CONSTRAINT = '^0.8.1';
 
 	/**
 	 * The licence this module is distributed under, and where its source is.
