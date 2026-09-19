@@ -604,7 +604,18 @@ final class MCPController
 			// a browser sends none of them without being told they are allowed.
 			// Last-Event-ID belongs to stream resumption, which is the GET
 			// above, so it is not among them.
-			'Access-Control-Allow-Headers'  => 'Content-Type, Accept, Authorization, Auth-Token, Mcp-Session-Id, MCP-Protocol-Version',
+			//
+			// Mcp-Method and Mcp-Name are the 2026-07-28 revision's mirror of
+			// the body (SEP-2243). The SDK validates them by default and
+			// refuses the call with -32020 when one that applies is missing, so
+			// a browser client on that revision cannot work without them here.
+			// Mcp-Param-* mirrors the arguments and is deliberately not listed:
+			// the names are per-tool, CORS has no prefix wildcard, and a
+			// wildcard entry is ignored on a credentialed request anyway. The
+			// SDK treats those as optional - a call that omits them is served -
+			// so what a browser loses by not being able to send them is the
+			// mirror, not the call.
+			'Access-Control-Allow-Headers'  => 'Content-Type, Accept, Authorization, Auth-Token, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
 			// Headers are invisible to fetch() unless exposed, and a client that
 			// cannot read Mcp-Session-Id cannot make a second call.
 			'Access-Control-Expose-Headers' => 'Mcp-Session-Id, WWW-Authenticate',
