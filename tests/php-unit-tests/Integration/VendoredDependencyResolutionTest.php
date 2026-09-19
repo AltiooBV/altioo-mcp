@@ -322,7 +322,7 @@ class VendoredDependencyResolutionTest extends TestCase
 		$aParts = array_map('intval', explode('.', $sFloor) + [0, 0, 0]);
 
 		// Below 1.0.0 the minor is the breaking digit, which is what makes
-		// mcp/sdk's ^0.7.1 mean "0.7.x and nothing else".
+		// mcp/sdk's ^0.8.1 mean "0.8.x and nothing else".
 		return $aParts[0] === 0
 			? sprintf('0.%d.0', $aParts[1] + 1)
 			: sprintf('%d.0.0', $aParts[0] + 1);

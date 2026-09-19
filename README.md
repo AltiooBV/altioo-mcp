@@ -295,6 +295,14 @@ Streamable HTTP, over a single endpoint, stateless: each request is authenticate
 and no server-side session is carried between requests. SSE streaming and resumability are not
 supported. Authentication is delegated to iTop itself — see [Granting access](#granting-access).
 
+The one endpoint answers two protocol eras, and the client picks. A client on **2026-07-28** —
+the revision that dropped the handshake and the session id — is served statelessly by the SDK
+itself and is given no `Mcp-Session-Id` at all. A client on an earlier revision still performs
+`initialize` and still receives a session id, because that is what those revisions require; the
+id is real but carries nothing, since this endpoint stores nothing past the request that made
+it. Either way what a request is allowed to do is decided from the credential it brought, not
+from anything a previous request left behind.
+
 ### Sizing the worker pool
 
 Every call occupies one PHP worker for its whole duration, and MCP calls are not the short
@@ -941,7 +949,7 @@ across minor releases, any of which changing is a major bump and an entry in
 When a later version changes one of those, the changelog entry for it is where the removed
 identifier or the changed default is named, along with what an administrator has to do about it.
 
-**On `mcp/sdk`.** The MCP SDK this module vendors is pinned `^0.7.1`: a pre-1.0 package, whose
+**On `mcp/sdk`.** The MCP SDK this module vendors is pinned `^0.8.1`: a pre-1.0 package, whose
 API can change between minor versions. The module pins the minor it was tested against, ships
 it inside the archive, and treats an SDK upgrade as a release of its own with the test suite as
 the gate. Nothing on an installed instance moves until you install a new version of this

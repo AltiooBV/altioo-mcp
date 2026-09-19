@@ -44,7 +44,7 @@ That makes the dependency tree part of what you are installing rather than an im
 detail, which is why both documents travel with the archive: an instance found in a year's time
 can answer what it is running without reaching the internet.
 
-**Notable component.** `mcp/sdk` is pre-1.0 (`^0.7.1`), so its API can change between minor
+**Notable component.** `mcp/sdk` is pre-1.0 (`^0.8.1`), so its API can change between minor
 versions. The extension pins the minor it was tested against, vendors it, and treats an SDK
 upgrade as a release of its own with the test suite as the gate. Nothing on an installed
 instance moves until you install a new version of the extension. See *Dependencies* in

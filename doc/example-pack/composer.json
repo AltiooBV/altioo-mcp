@@ -28,7 +28,7 @@
     "php": ">=8.2"
   },
   "require-dev": {
-    "mcp/sdk": "^0.7.1",
+    "mcp/sdk": "^0.8.1",
     "phpunit/phpunit": "^9.6"
   },
 
