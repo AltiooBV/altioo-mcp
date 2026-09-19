@@ -49,9 +49,19 @@ INITIALIZE='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVer
 # about them is drawn here. Note that this cuts both ways for the two URLs
 # above: php -S serves them both because it ignores the deny, and on Apache
 # they are both reachable because the module's own .htaccess grants them back.
-PHP_CLI_SERVER_WORKERS=4 php -S "${HOST}:${PORT}" -t "$ITOP_DIR" >"$ITOP_DIR/ci-httpd.log" 2>&1 &
+#
+# Started in a session of its own, and stopped by process group rather than by
+# process: PHP_CLI_SERVER_WORKERS makes the server fork workers, and they do not
+# die with their parent - killing it orphans four processes that go on holding
+# the port. On Actions that is invisible, the machine being discarded with them.
+# Anywhere the machine is reused it is worse than a leak: the next run's server
+# cannot bind, curl reaches the *previous* server, and the checks below pass or
+# fail against a tree and a database that are not the ones under test. setsid
+# execs in place here rather than forking, so $! is the leader of the new group
+# and -"$SERVER_PID" names every worker in it.
+setsid env PHP_CLI_SERVER_WORKERS=4 php -S "${HOST}:${PORT}" -t "$ITOP_DIR" >"$ITOP_DIR/ci-httpd.log" 2>&1 &
 SERVER_PID=$!
-trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+trap 'kill -TERM -"$SERVER_PID" 2>/dev/null || kill -TERM "$SERVER_PID" 2>/dev/null || true' EXIT INT TERM
 
 for _ in $(seq 1 30); do
   if curl -fsS -o /dev/null "${BASE}/index.php"; then break; fi
