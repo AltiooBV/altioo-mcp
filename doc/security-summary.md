@@ -67,10 +67,11 @@ because either alone is answerable by anyone who can host a zip.
 
 **Who can publish.** A release happens only on a `v*` tag pushed to
 `AltiooBV/altioo-mcp`; nothing is uploaded by hand, and no credential outside GitHub
-Actions is involved. Tag-push rights are held by the repository's maintainers, listed on the
-repository — **the named list is written into this row at first publication**
-([doc/release-checklist.md](release-checklist.md) carries the step). A compromised release
-would be handled as an incident with an advisory, not as a quiet re-upload.
+Actions is involved. Tag-push rights are held by **Guy Couronne (Altioo)** and by nobody else
+at 1.0.0 — one person, named rather than left as "the maintainers", because an approver asking
+this is asking who can cause an archive to exist. The row is revised when that changes, not at
+the next release. A compromised release would be handled as an incident with an advisory, not
+as a quiet re-upload.
 
 ## 3. Vulnerability process
 

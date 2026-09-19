@@ -17,20 +17,24 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       which is preferable to shipping compare links that 404. The brackets themselves are not
       optional — [release.yml](../.github/workflows/release.yml) matches on them.
 - [ ] **Enable private vulnerability reporting** on that repository (Settings → Security).
-      [SECURITY.md](../SECURITY.md) already points at
-      `/security/advisories/new` and commits to 5 working days to acknowledge and 90 days to a
-      fix; the link 404s until the setting is on.
+      One toggle, and it belongs to the same sitting as creating the repository.
+      [SECURITY.md](../SECURITY.md) points at `/security/advisories/new` and commits to 5
+      working days to acknowledge and 90 days to a fix; the link 404s until the setting is on,
+      and SECURITY.md calls GitHub the *preferred* channel, so until then the channel named
+      first is the one that does not work. **Not a publication blocker:**
+      <security@altioo.com> is live and published beside it in SECURITY.md, the README support
+      table and `composer.json` `support.email`, so a reporter always has a route that works.
 - [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
 - [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
       holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
       instance. Two are enough: the token screen with an `MCP` scope ticked, and an
       `AltiooEventMCPService` list showing calls that were made.
-- [ ] **Name the publishers.** [security-summary.md](security-summary.md) §2 answers "who can
-      publish a release" by mechanism — a `v*` tag push, nothing by hand — and leaves the named
-      list open, because there is no honest answer to give before the repository exists. Fill
-      that row with the accounts that actually hold tag-push rights when it does. An approver
-      asking the question is asking about people, not about a workflow file.
+- [x] **Name the publishers** — done. [security-summary.md](security-summary.md) §2 answers
+      "who can publish a release" by mechanism — a `v*` tag push, nothing by hand — and now
+      also by name: **Guy Couronne (Altioo)**, sole holder of tag-push rights at 1.0.0. An
+      approver asking the question is asking about people, not about a workflow file. Revisit
+      the row whenever that stops being true, rather than at the next release.
 - [ ] **Tag `v1.0.0`** once the run below is green. The archive, its SHA-256, the SBOM and the
       licence inventory are attached by [release.yml](../.github/workflows/release.yml); nothing
       is uploaded by hand.
