@@ -104,10 +104,14 @@ a URL and a header will work. Two things to know:
 
 ## Checking it works
 
-It takes two calls, not one. Every method other than `initialize` is answered `400` — *"A
-valid session id is REQUIRED for non-initialize requests"* — before any handler runs, so the
-first call has to be the handshake, and the second has to carry back the `Mcp-Session-Id` the
-first one returned.
+How many calls it takes depends on the revision your client speaks, and this endpoint serves
+both from the one URL.
+
+### On 2025-06-18 or 2025-11-25: two calls
+
+Every method other than `initialize` is answered `400` — *"A valid session id is REQUIRED for
+non-initialize requests"* — before any handler runs, so the first call has to be the handshake,
+and the second has to carry back the `Mcp-Session-Id` the first one returned.
 
 ```bash
 ENDPOINT=https://<your-itop>/env-production/altioo-mcp/index.php
@@ -133,10 +137,39 @@ curl -sS -X POST "$ENDPOINT" \
 The same handshake, with the id read out of the headers for you, is `tools/ci/http-smoke.sh` in
 the source repository — it is not in this archive, since nothing under `tools/` is packaged.
 
+### On 2026-07-28: one call
+
+That revision dropped the handshake and the session id, so there is nothing to establish and
+nothing to carry back. What `initialize` used to negotiate travels in `params._meta` on every
+request instead, and the method — plus the subject, for the methods that name one — is mirrored
+into headers so an intermediary can route the call without reading the body.
+
+```bash
+curl -sS -D - -X POST "$ENDPOINT" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: tools/list" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientInfo":{"name":"curl","version":"0"},
+        "io.modelcontextprotocol/clientCapabilities":{}}}}'
+```
+
+No `Mcp-Session-Id` comes back, and that is the answer rather than a fault: nothing was stored,
+so there is nothing to return to. A `tools/call` additionally needs `Mcp-Name: <tool>`, and
+`resources/read` needs `Mcp-Name: <uri>`; `Mcp-Param-*`, which mirrors the arguments, is
+optional and the call is served without it.
+
 - **`401` on step 1** — the credential did not get through. Check the token's scope, check that
   the user holds `MCP Services User` or `Administrator`, and check that `Authorization` reaches
   PHP.
 - **`400` on step 2** — the session id was not sent, or not the one step 1 returned.
+- **`-32020` on the one-call form** — a required mirror header is missing. The message names
+  which: `Missing required Mcp-Method header`, or `Mcp-Name` for a method that has a subject.
+  A browser-based client gets this when its preflight was not allowed to send them, which is
+  what the endpoint's `Access-Control-Allow-Headers` exists to permit.
 - **Fewer tools than you expect** — the token is scoped, `mcp_capabilities` or
   `mcp_read_only` is set, `mcp_enabled_toolsets` is narrowed, or a pack's tools declare no
   annotations and are therefore graded `delete`.
