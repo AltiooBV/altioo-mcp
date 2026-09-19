@@ -40,10 +40,11 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * The versions cannot be pinned to iTop's, because this module supports two
  * iTop branches that do not ship the same ones. So the overlap stands and is
- * checked instead. Six of the seven satisfy what this module declares; the
- * seventh is recorded below with the reason it is survivable, so that it is a
- * known state rather than a silent one - and so that any *eighth* fails this
- * test.
+ * checked instead. All seven satisfy what this module declares, which is why
+ * ACCEPTED_DIVERGENCES below is empty - an empty list is the good state, not a
+ * missing one. Anything that stops satisfying its constraint fails here until
+ * somebody either fixes it or records it there with the reason it survives,
+ * and any *eighth* package appearing in both trees fails the overlap test.
  *
  * KNOWN GAP, needs a decision. The assertions below still measure the
  * direction that stopped happening: they ask whether iTop's version satisfies
@@ -67,12 +68,12 @@ class VendoredDependencyResolutionTest extends TestCase
 	 * @var array<string, string>
 	 */
 	private const ACCEPTED_DIVERGENCES = [
-		'psr/http-factory' =>
-			'mcp/sdk asks for ^1.1, iTop 3.2 ships 1.0.2. The only difference between them is that '
-			.'1.1 added return types to the factory interfaces. nyholm/psr7 declares those return types on its '
-			.'own methods, and PHP allows a method to add a return type the interface leaves unspecified - so '
-			.'the typed implementation satisfies the untyped interface. It would stop being survivable if the '
-			.'SDK began calling something 1.1 introduced.',
+		// psr/http-factory was here: mcp/sdk asks for ^1.1 and iTop 3.2.2
+		// shipped 1.0.2, survivable because the only difference is the return
+		// types 1.1 added to the factory interfaces. iTop 3.2.3 ships 1.1.0,
+		// so the divergence is gone on every patch this module now supports
+		// and testEveryAcceptedDivergenceIsStillDiverging says so rather than
+		// letting the entry sit here meaning nothing.
 	];
 
 	/** @var array<string, mixed>|null */
@@ -169,30 +170,40 @@ class VendoredDependencyResolutionTest extends TestCase
 	/**
 	 * An accepted divergence that has been fixed upstream must be removed from
 	 * the list, or the list stops meaning anything.
+	 *
+	 * One assertion, made whether or not the list has entries: a per-entry loop
+	 * asserts nothing at all when the list is empty, and PHPUnit rightly calls
+	 * that risky. Empty is the state this list is supposed to be in most of the
+	 * time, so it has to be the state that is checked rather than the state
+	 * that is skipped.
 	 */
 	public function testEveryAcceptedDivergenceIsStillDiverging(): void
 	{
 		$aOverlap = $this->overlappingPackages();
 
-		foreach (self::ACCEPTED_DIVERGENCES as $sPackage => $sReason) {
-			$this->assertArrayHasKey(
-				$sPackage,
-				$aOverlap,
-				sprintf('%s is no longer shipped by both trees; drop it from ACCEPTED_DIVERGENCES.', $sPackage)
-			);
-
-			$bStillDiverges = false;
-			foreach ($this->constraintsOn($sPackage) as $sConstraint) {
-				if (!$this->satisfies($aOverlap[$sPackage][1], $sConstraint)) {
-					$bStillDiverges = true;
-				}
+		$aStillDiverging = [];
+		foreach (array_keys(self::ACCEPTED_DIVERGENCES) as $sPackage) {
+			// Gone from one of the trees is not diverging either, and lands in
+			// the same report: the entry has outlived what it described.
+			if (!isset($aOverlap[$sPackage])) {
+				continue;
 			}
 
-			$this->assertTrue(
-				$bStillDiverges,
-				sprintf('%s now satisfies every constraint; drop it from ACCEPTED_DIVERGENCES.', $sPackage)
-			);
+			foreach ($this->constraintsOn($sPackage) as $sConstraint) {
+				if (!$this->satisfies($aOverlap[$sPackage][1], $sConstraint)) {
+					$aStillDiverging[] = $sPackage;
+					break;
+				}
+			}
 		}
+
+		$this->assertSame(
+			array_keys(self::ACCEPTED_DIVERGENCES),
+			$aStillDiverging,
+			"An entry in ACCEPTED_DIVERGENCES has stopped diverging - either iTop moved or this module did.\n"
+			.'Drop it. A list that records states which no longer happen is a list nobody rereads, and the '
+			.'next real divergence gets added to it without anyone checking the ones already there.'
+		);
 	}
 
 	/**
