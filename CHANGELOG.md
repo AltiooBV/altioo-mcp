@@ -24,6 +24,11 @@ The first release. Nothing precedes it, so the entries below describe what the e
 rather than what changed in it — there is no instance anywhere running an earlier version, and
 nothing here is a migration.
 
+The repository begins at a single commit for the same reason: the months of work before
+publication were squashed into it. This entry, and not a commit history, is the account of what
+that work produced — [CONTRIBUTING.md](CONTRIBUTING.md#how-this-extension-is-built) says what
+that costs a reader auditing provenance, and that nothing is squashed after it.
+
 It has not been tagged, so this heading carries no date. The date is written in on the day of
 the tag: [doc/release-checklist.md](doc/release-checklist.md) carries the step,
 [release.yml](.github/workflows/release.yml) refuses a tag whose version has no dated heading,
