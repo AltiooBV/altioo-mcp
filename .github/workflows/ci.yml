@@ -101,8 +101,17 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      # Resolved against config.platform.php (8.2), which is the oldest PHP the
-      # extension claims - not against whichever PHP this job happens to run.
+      # Checked against the PHP this job actually runs, which is the point of
+      # running it three times: it proves the one committed lock is installable
+      # on every version the extension claims, extensions included.
+      #
+      # It does NOT read config.platform.php - that override applies when
+      # `composer update` resolves, not here. Verified 2026-09-19: this step
+      # reports the real runtime (8.2.33 on the 8.2 job, 8.4.25 on the 8.4 one),
+      # not the pinned 8.2.0. The two do different jobs and the pin is the
+      # reason this step can pass on 8.2 at all - drop it and an update run on a
+      # developer's 8.4 resolves symfony/uid to a release needing >=8.4.1, which
+      # this step then fails on 8.2 and 8.3.
       - name: Check platform requirements
         run: composer check-platform-reqs
 
