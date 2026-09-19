@@ -108,12 +108,7 @@ final class MCPService
 	{
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
-			->setInstructions(ServerInstructions::Text(
-				$oPolicy,
-				self::internalFormatOf(\AttributeDateTime::class),
-				self::internalFormatOf(\AttributeDate::class),
-				self::servedPromptNames($oPolicy)
-			))
+			->setInstructions(self::InstructionsFor($oPolicy))
 			->setPaginationLimit(MCPHelper::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
@@ -128,6 +123,29 @@ final class MCPService
 		self::warnAboutSettingsThatMatchNothing($aDisabled);
 
 		return $builder->build();
+	}
+
+	/**
+	 * The instructions block, rendered for one caller.
+	 *
+	 * Two surfaces serve it now - the `initialize` answer, and the
+	 * core_instructions tool and itop://core/instructions resource for the
+	 * callers that never see one, `2026-07-28` having no `initialize` to put
+	 * it in. The point of the second is that it says what the first says, so
+	 * it is assembled once here rather than twice from the same pieces: two
+	 * renderings of the same guidance is the shape that diverges quietly, and
+	 * the one that diverges is always the one nobody is reading.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function InstructionsFor(AccessPolicy $oPolicy): string
+	{
+		return ServerInstructions::Text(
+			$oPolicy,
+			self::internalFormatOf(\AttributeDateTime::class),
+			self::internalFormatOf(\AttributeDate::class),
+			self::servedPromptNames($oPolicy)
+		);
 	}
 
 	/**
