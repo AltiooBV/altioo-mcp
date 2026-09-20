@@ -125,7 +125,9 @@ Messages in English, saying what changed and — when it is not obvious — why.
 of the commits here names the problem rather than the patch, because six months later the
 question being asked of the history is always "what was wrong", never "what did you type".
 
-Every commit carries the trailer described in the next section.
+Every commit carries the trailer described in the next section — every commit a person or a
+model wrote. Dependabot's do not, and should not: nothing authored them, and a trailer
+claiming otherwise would be the first inaccurate one in the history.
 
 **Before you call it done, run `git status`.** Either nothing of yours is outstanding, or say
 plainly in the pull request what you left out and why.
