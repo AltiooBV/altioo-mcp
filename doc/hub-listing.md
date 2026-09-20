@@ -164,6 +164,13 @@ really refuse, and does it really show me first?* Four, in this order.
    committing. Shoot it on a single connected server with real-looking ticket content — not a
    ticket called "test", and not with a second, failing server in frame.
 
+   Aim for a **question rather than a command**: "can this ticket be a higher priority?" beats
+   "set the priority to critical". Asked that way the rehearsal is not a safety gate the
+   evaluator has to be sold on, it is the thing that answered the question — several candidate
+   outcomes, each with what iTop would derive from it, and nothing written until the person
+   picks one. A guardrail shown being *useful* argues better than one shown being safe, and it
+   is the same screenshot.
+
 Not the object's Activity panel: the `(MCP: …)` attribution is recorded on the change and is
 queryable, but the panel displays the user, so there is nothing there to photograph. See
 *Change attribution* above.
