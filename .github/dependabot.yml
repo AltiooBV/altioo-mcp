@@ -1,0 +1,73 @@
+# Dependency updates.
+#
+# This answers a different question from `composer audit --locked`, which
+# ci.yml already runs weekly. The audit asks "has anything we ship been
+# declared vulnerable"; this asks "has anything we ship fallen behind". Both
+# matter here for the same reason: vendor/ is built from composer.lock and
+# shipped inside the release archive, so a dependency this repository does not
+# update is a dependency every installed instance keeps running.
+#
+# Wednesday, because the other schedules are already taken and a quiet
+# repository should not produce all its noise on one morning: itop-matrix.yml
+# runs Monday, ci.yml and upgrade.yml run Tuesday.
+
+version: 2
+updates:
+  # The extension's own dependencies. composer.lock is committed and vendor/ is
+  # built from it, so what lands here is what an operator ends up installing.
+  #
+  # mcp/sdk is the one to read rather than merge: it is pre-1.0, so a minor
+  # bump is a breaking change by semver's own rules for 0.x, and
+  # doc/security-summary.md states that an SDK upgrade is treated as a release
+  # of its own with the test suite as the gate. Dependabot opens the PR; a
+  # person decides.
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      # Matches the convention in CONTRIBUTING.md: build: for dependencies.
+      prefix: "build"
+      include: "scope"
+    labels:
+      - "dependencies"
+
+  # The pinned action SHAs in .github/workflows/.
+  #
+  # ci.yml has a job that fails the build if any action is referenced by tag
+  # instead of by commit SHA, which makes those pins a maintenance burden
+  # nobody would otherwise keep up with: a pinned action is a frozen action.
+  # Dependabot updates the SHA *and* rewrites the trailing version comment, so
+  # the pin stays honest without anyone resolving tags by hand. This is the
+  # entry that makes the pinning policy sustainable rather than aspirational.
+  #
+  # Grouped into one pull request: five actions drifting separately is five
+  # pull requests a week describing the same kind of change.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+
+# doc/example-pack is deliberately absent. It carries its own composer.json but
+# its composer.lock is gitignored on purpose - the pack is a template, and a
+# lock committed in doc/ would pin whichever versions were current when it was
+# last touched onto every reader who follows its README. Dependabot updating a
+# lock that is not supposed to exist would defeat that. ci.yml runs the pack's
+# own `composer install` on every change, which is what actually keeps it
+# resolvable.
