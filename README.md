@@ -915,9 +915,17 @@ lawful basis for processing does not cover sending a ticket's contents to a thir
 that decision belongs at the profile you grant, before the first connection.
 
 **What the module stores.** One `AltiooEventMCPService` row per audited call: timestamp, user,
-method, element invoked, outcome, duration, response size. Request *parameters* are stored only
-at `log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your
-own retention on that table as you do for iTop's other event classes.
+method, element invoked, outcome, whether it was a dry run, duration, response size, a link to
+the credential it authenticated with, and — when it wrote — a link to the `CMDBChange` plus a
+readable list of the objects that change touched.
+
+That list names objects as `Class::id` and **does not record what they now contain**: it says
+`UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request
+*parameters* are the only place object data could appear, and they are stored only at
+`log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your own
+retention on that table as you do for iTop's other event classes — the object list is kept on
+the row precisely so that purging `CMDBChange` does not leave the audit trail saying a write
+happened without saying to what.
 
 ## Security
 

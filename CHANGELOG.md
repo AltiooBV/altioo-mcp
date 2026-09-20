@@ -460,6 +460,17 @@ published archive was installed and exercised on into this line; the README and
   Both messages say where the reference lives and which call finds it, without promising the caller
   can: `AltiooEventMCPService` is not readable by an ordinary account, and the message says whose
   is.
+- **An audit row names the credential and what it changed.** It recorded that a write succeeded
+  and neither who nor what: `userinfo` was a login string with no way to reach the token behind
+  it, and nothing said which objects were touched. `user_token_id` and `personal_token_id` are
+  two keys rather than one because iTop's token classes are siblings under `cmdbAbstractObject`,
+  so the populated field is what answers "personal or application"; `change_id` links iTop's own
+  record of every old and new value; `changed_objects` repeats the answer in readable form
+  because `CMDBChange` retention is the operator's to set, and a purge would otherwise leave
+  every historical row saying a write happened without saying to what. The list is `Class::id`
+  and attribute names, never values. All three keys are nullable, which is what makes deleting a
+  token reset the link instead of taking the row with it — an audit trail the audited party can
+  clear by rotating a credential is not one.
 - **The endpoint's own audit rows say whether the call was a rehearsal.** `AltiooEventMCPService`
   gains `simulate` — `yes`, `no`, or `n/a` where there is no dry run to speak of. Raised in review:
   the row carried status, duration and size but nothing distinguishing a dry run from a real write,
