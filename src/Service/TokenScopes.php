@@ -208,12 +208,13 @@ final class TokenScopes
 	 * `PersonalToken` and `UserToken` are siblings under `cmdbAbstractObject`
 	 * rather than two halves of one class - which of the two it is.
 	 *
-	 * **Deliberately not memoised.** Resolving it twice in a request costs a
-	 * second decrypt of a credential already in hand; a static holding a token
-	 * object costs correctness the first time this class is used somewhere
-	 * that serves more than one request per process. This class has kept no
-	 * request state so far and this is not the change that should give it
-	 * some.
+	 * **Only callable while the credential is still in hand.**
+	 * {@see \Altioo\iTop\Extension\MCP\Helper\MCPHttp::ForgetAuthToken()}
+	 * drops the raw token as soon as the scopes have been read, so that what
+	 * follows cannot copy it into a PSR-7 request, a stack trace or a
+	 * var_dump. After that point this returns null, and anything needing to
+	 * know which credential ran the request has to have asked
+	 * {@see RememberIdentity()} first.
 	 *
 	 * The caller gets the object or null, never an exception: this is reached
 	 * on the way to writing an audit row, where a failure must cost a field
@@ -243,5 +244,77 @@ final class TokenScopes
 
 			return null;
 		}
+	}
+
+	/**
+	 * Which credential ran this request, kept past the credential itself.
+	 *
+	 * `['class' => 'UserToken'|'PersonalToken', 'key' => int]`, or null when
+	 * the request did not authenticate with a token - or when it was asked for
+	 * after {@see \Altioo\iTop\Extension\MCP\Helper\MCPHttp::ForgetAuthToken()}
+	 * without having been remembered first.
+	 *
+	 * This is the same shape as {@see AccessPolicy::Remember()} and exists for
+	 * the same stated reason: deciding it again later would need the token
+	 * back, and the token is gone by design. What is kept is an identity - a
+	 * class name and a row id - and not the secret: the audit row is allowed
+	 * to say which credential acted, and nothing is allowed to keep the
+	 * credential.
+	 *
+	 * @var array{class: string, key: int}|null
+	 */
+	private static ?array $aIdentity = null;
+
+	/**
+	 * Resolves the credential's identity while it can still be resolved.
+	 *
+	 * Called by the controller in the window between authentication and
+	 * `ForgetAuthToken()`, beside `AccessPolicy::Remember()`. Idempotent, and
+	 * it costs nothing on a second call: the first one is what pays for the
+	 * decrypt.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RememberIdentity(): void
+	{
+		if (self::$aIdentity !== null) {
+			return;
+		}
+
+		$oToken = self::OfCurrentRequestObject();
+		if ($oToken === null) {
+			return;
+		}
+
+		self::$aIdentity = [
+			'class' => get_class($oToken),
+			'key'   => (int)$oToken->GetKey(),
+		];
+	}
+
+	/**
+	 * The identity remembered for this request, when there is one.
+	 *
+	 * @return array{class: string, key: int}|null
+	 *
+	 * @since 1.0.0
+	 */
+	public static function RememberedIdentity(): ?array
+	{
+		return self::$aIdentity;
+	}
+
+	/**
+	 * Drops it, as {@see AccessPolicy::Forget()} drops the policy.
+	 *
+	 * Nothing in a request needs this - a PHP process serves one - but a test
+	 * suite runs many in one process, and an identity surviving into the next
+	 * one would have the second request audited as the first one's caller.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function ForgetIdentity(): void
+	{
+		self::$aIdentity = null;
 	}
 }

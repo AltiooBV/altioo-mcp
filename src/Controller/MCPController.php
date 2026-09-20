@@ -26,8 +26,6 @@ use ExecutionKPI;
 use LoginWebPage;
 use Throwable;
 use UserRights;
-use UserToken;
-use PersonalToken;
 use ContextTag;
 use utils;
 use MetaModel;
@@ -107,6 +105,11 @@ final class MCPController
 			// later would need the token back. A write tool asks this to learn
 			// whether it is rehearsing, and asking must not cost a query.
 			AccessPolicy::Remember($oPolicy);
+			// Same window, same reason: the audit row names the credential that
+			// ran the request, and a row id cannot be recovered once the
+			// credential it belongs to has been dropped. An identity is not a
+			// secret; the token is, and it still goes on the next line.
+			TokenScopes::RememberIdentity();
 			MCPHttp::ForgetAuthToken();
 
 			$oKPI->ComputeAndReport('Parameters validated');
@@ -819,15 +822,20 @@ final class MCPController
 	 */
 	private static function describeCredential(AltiooEventMCPService $oLog): void
 	{
-		$oToken = TokenScopes::OfCurrentRequestObject();
-		if ($oToken === null) {
+		// Remembered during the request, not resolved now. The raw token is
+		// dropped by ForgetAuthToken() as soon as the scopes have been read -
+		// long before this row is written - so asking for it here answers null
+		// however well the request authenticated. That is what shipped first:
+		// two external keys that were always empty.
+		$aIdentity = TokenScopes::RememberedIdentity();
+		if ($aIdentity === null) {
 			return;
 		}
 
-		$sField = match (true) {
-			$oToken instanceof UserToken     => 'user_token_id',
-			$oToken instanceof PersonalToken => 'personal_token_id',
-			default                          => null,
+		$sField = match ($aIdentity['class']) {
+			'UserToken'     => 'user_token_id',
+			'PersonalToken' => 'personal_token_id',
+			default         => null,
 		};
 		if ($sField === null) {
 			// A token class this module has not met. The scopes still gated the
@@ -835,7 +843,7 @@ final class MCPController
 			return;
 		}
 
-		$oLog->Set($sField, $oToken->GetKey());
+		$oLog->Set($sField, $aIdentity['key']);
 	}
 
 	/**
