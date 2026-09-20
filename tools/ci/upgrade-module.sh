@@ -145,6 +145,23 @@ XML
 # A setup that failed leaves these behind and the next one refuses to start.
 rm -rf "$ITOP_DIR/data/.maintenance" "$ITOP_DIR/data/.readonly"
 
+# iTop hardens the configuration file to 0440 once it has written it
+# (setup/runtimeenv.class.inc.php, after DoCreateConfig), and then cannot
+# rewrite it on an upgrade: the chmod that makes it writable again lives in
+# setup/unattended-install/unattended-install.php inside `if ($sMode ==
+# 'install')` *and* `if ($bClean)`, so install-itop.sh gets it through
+# --clean=1 and <mode>upgrade</mode> never does. The setup runs every step,
+# compiles env-<env>, and throws "Could not write to configuration file" at
+# create-config, the last one.
+#
+# Making it writable first is what an administrator does before an upgrade,
+# and iTop's own wizard checks for it. The mode is not restored afterwards
+# because iTop restores it itself, to 0440, as soon as it has written.
+if [ -f "$CONFIG_FILE" ] && [ ! -w "$CONFIG_FILE" ]; then
+  echo "making $CONFIG_FILE writable for the upgrade (iTop left it $(stat -c %a "$CONFIG_FILE"))"
+  chmod u+w "$CONFIG_FILE"
+fi
+
 set +e
 php "$ITOP_DIR/setup/unattended-install/unattended-install.php" \
   --param-file="$RESPONSE_FILE" \
