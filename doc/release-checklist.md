@@ -43,7 +43,9 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       table and `composer.json` `support.email`, so a reporter always has a route that works.
 - [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
-- [ ] **Stop Actions from running while the repository is private.** Minutes are metered on
+- [x] **Stop Actions from running while the repository is private** — done, disabled in the
+      repository settings on 2026-09-20. Re-enable them the moment it goes public, when they
+      become free and are the point. Minutes are metered on
       a private repository and free on a public one, so every run before it goes public is paid
       for and every run after is not. This is not only about pushing: three workflows carry a
       `schedule`, scheduled workflows run from the **default branch**, and `itop-matrix.yml`
