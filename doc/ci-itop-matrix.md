@@ -46,7 +46,6 @@ a lie by neglect, which is worse than the one it was written to prevent.
 |---|---|
 | A dry run (`--install=0`) selects `altioo-mcp` | The setup **silently** dropping the extension — an unsatisfiable dependency does not fail a setup, it removes a checkbox. This one runs as its own job, before any database exists |
 | iTop's unattended setup completes | A module declaration that no longer parses, an XML delta the compiler rejects |
-| `--check-consistency=1` | A datamodel this module contributes to that compiles but is not coherent |
 | A row in `priv_module_install`, at this version | The setup completing without installing the module, or installing a stale copy left in `extensions/` by an earlier run |
 | A row in `priv_extension_install`, `source = extensions` | The module arriving by some route other than the one a user's install takes |
 | `env-production/altioo-mcp` exists | Recorded as installed, but not compiled to where iTop loads it from |
@@ -173,12 +172,11 @@ is what actually runs here — called with its documented options, not reimpleme
 
 It is written for an administrator inside an unzipped iTop with a response file already filled
 in, installing once. Stripped of argument handling it defaults `installation.xml`, clears the
-maintenance lock, and calls the PHP with `--use_itop_config`. Four things follow that rule it
+maintenance lock, and calls the PHP with `--use_itop_config`. Three things follow that rule it
 out for CI:
 
 - no way to pass **`--install=0`**, which is the whole database-free `installable` job;
 - no way to pass **`--clean=1`**, so a re-install is not repeatable;
-- no way to pass **`--check-consistency=1`**;
 - **`--use_itop_config` is hardcoded**, and it overrides the response file's database settings,
   URL and language from an existing `config-itop.php` whenever one is present — harmless on a
   fresh runner, wrong on any reused workspace.
@@ -230,14 +228,24 @@ volume, which is what makes `integration` a two-second loop rather than a ten-mi
 loop an integration test actually gets written in. `matrix` records a verdict per step and
 carries on, the way `fail-fast: false` lets the real matrix finish.
 
-**Expect `unattended install` to fail on iTop 3.2.3-2.** The setup runs with
-`--check-consistency=1`, and that release's own datamodel does not pass it: `ActionNotification`
-declares a default language outside its allowed values, `SynchroReplica` the same for
-`dest_class`, and `TemporaryObjectDescriptor` puts an unknown `meta` in its details ZList. None
-of the three is ours — installing the same release with an empty `extensions/` and a database of
-its own reports exactly the same three. The module still compiles, gets its rows in
-`priv_module_install` and `priv_extension_install`, and serves tools over HTTP, which is why the
-steps after it are worth reading rather than skipping.
+**`--check-consistency=1` was removed, and this is where that was decided.** The setup used to
+run with it, and iTop 3.2.3-2's own datamodel does not pass it: `ActionNotification` declares a
+default language outside its allowed values, `SynchroReplica` the same for `dest_class`, and
+`TemporaryObjectDescriptor` puts an unknown `meta` in its details ZList. None of the three is
+ours — installing the same release with an empty `extensions/` and a database of its own reports
+exactly the same three.
+
+This was previously documented here as a failure to expect, which is the wrong resolution: a
+step that is red on every supported version gates nothing, and an expected red is one nobody
+reads. It is worse than inert, because the check runs *last* — iTop writes the config, compiles
+`env-production` and installs the module, then prints `installation failed!` and exits non-zero
+over a complete instance. That is what hid it locally: the installed directories were there, so
+the run looked like it had worked, and only the verdict file said otherwise.
+
+What replaces it is the rest of this table, all of which says something about *this* module
+rather than about Combodo's: the rows in `priv_module_install` and `priv_extension_install`,
+`env-production/altioo-mcp` existing, iTop's own module test suite, this module's integration
+suite, and the endpoint answering over HTTP.
 
 On a machine that does have a PHP in range and a MariaDB, the scripts still run directly:
 
