@@ -68,10 +68,12 @@ because either alone is answerable by anyone who can host a zip.
 **Who can publish.** A release happens only on a `v*` tag pushed to
 `AltiooBV/altioo-mcp`; nothing is uploaded by hand, and no credential outside GitHub
 Actions is involved. Tag-push rights are held by **Guy Couronne (Altioo)**, GitHub
-[`altioo-guycouronne`](https://github.com/altioo-guycouronne), and by nobody else at 1.0.0 — one
-person, named rather than left as "the maintainers", because an approver asking this is asking
-who can cause an archive to exist. The account is given alongside the name so the answer can be
-checked against the repository's own collaborator list rather than taken on trust. The row is revised when that changes, not at
+[`gurneyhallack`](https://github.com/gurneyhallack), and by nobody else at 1.0.0 — one person,
+named rather than left as "the maintainers", because an approver asking this is asking who can
+cause an archive to exist. The account is given alongside the name so the answer can be checked
+against the repository's own collaborator list rather than taken on trust, and it is a personal
+account by design: `AltiooBV` owns the repository, one named human holds the rights to publish
+from it, and the archive itself is built by Actions rather than by either. The row is revised when that changes, not at
 the next release. A compromised release would be handled as an incident with an advisory, not
 as a quiet re-upload.
 

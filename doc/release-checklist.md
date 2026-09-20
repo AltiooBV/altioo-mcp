@@ -78,7 +78,7 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       from the release archive by `exclude.txt`: listing material, not instance documentation.
 - [x] **Name the publishers** — done. [security-summary.md](security-summary.md) §2 answers
       "who can publish a release" by mechanism — a `v*` tag push, nothing by hand — and now
-      also by name: **Guy Couronne (Altioo)**, GitHub `altioo-guycouronne`, sole holder of
+      also by name: **Guy Couronne (Altioo)**, GitHub `gurneyhallack`, sole holder of
       tag-push rights at 1.0.0. An
       approver asking the question is asking about people, not about a workflow file. Revisit
       the row whenever that stops being true, rather than at the next release.
