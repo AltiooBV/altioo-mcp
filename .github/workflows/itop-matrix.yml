@@ -167,10 +167,16 @@ jobs:
           --health-timeout=5s
           --health-retries=10
 
-    env:
-      ITOP_DIR: ${{ runner.temp }}/itop
-
+    # ITOP_DIR is deliberately not a job-level `env:` entry. The `runner`
+    # context is not available when those are evaluated - GitHub rejects the
+    # whole file with "Unrecognized named-value: 'runner'", which is a parse
+    # error, so the workflow does not run at all rather than failing visibly.
+    # $RUNNER_TEMP is the same value as an environment variable, set inside
+    # every step, and $GITHUB_ENV carries it to the steps that follow.
     steps:
+      - name: Where the iTop under test is unpacked
+        run: echo "ITOP_DIR=$RUNNER_TEMP/itop" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
