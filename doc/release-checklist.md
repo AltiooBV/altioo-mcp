@@ -70,10 +70,12 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       has never run Actions. That stops being true the first time the workflows run, and a
       caveat left behind after it expires misleads in the opposite direction. Delete all five
       and note it in the changelog entry for the version it happened under.
-- [ ] **Capture the listing images.** The Hub shows an icon and screenshots; `assets/img/`
-      holds `altioo-mcp.svg` for the icon, and screenshots have to be taken from a running
-      instance. Two are enough: the token screen with an `MCP` scope ticked, and an
-      `AltiooEventMCPService` list showing calls that were made.
+- [x] **Capture the listing images** — done. `assets/img/altioo-mcp.svg` is the icon, and
+      `assets/img/screenshots/` holds the four the Hub needs, taken from the sandbox and
+      stripped of metadata (no EXIF, no XMP, no ICC, no Apple `iDOT`; the display profile was
+      converted to sRGB rather than dropped). What each one has to show, and what makes one
+      wrong, is in [hub-listing.md](hub-listing.md#screenshots-to-attach). They are excluded
+      from the release archive by `exclude.txt`: listing material, not instance documentation.
 - [x] **Name the publishers** — done. [security-summary.md](security-summary.md) §2 answers
       "who can publish a release" by mechanism — a `v*` tag push, nothing by hand — and now
       also by name: **Guy Couronne (Altioo)**, sole holder of tag-push rights at 1.0.0. An

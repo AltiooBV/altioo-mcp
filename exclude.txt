@@ -44,6 +44,17 @@ exclude.txt
 .phpunit.cache
 doc/example-pack/vendor
 doc/example-pack/composer.lock
+
+# assets/img/screenshots is listing material: it exists to be uploaded to the
+# Hub and to be re-uploaded the next time that page is edited, which is why it
+# is versioned here rather than living in somebody's Downloads folder. It is
+# not documentation the instance has any use for, and no document embeds it -
+# so unlike README.md and doc/, excluding it costs a reader nothing.
+#
+# If a screenshot is ever embedded in the README, that one has to ship: a
+# shipped README with a broken image is worse than a larger archive. Move it up
+# to assets/img/ and leave this rule covering only what the Hub needs.
+assets/img/screenshots
 tools
 build
 altioo-mcp-*.zip

@@ -152,20 +152,27 @@ a proxy — the `401` will advertise it); no console UI, configuration is module
 The set exists to answer one question an evaluator has and the prose cannot settle: *does it
 really refuse, and does it really show me first?* Four, in this order.
 
-1. **The token screen.** An **application token** — `Remote application`, the `MCP Services
-   User` profile **paired with a functional one**, and a scope list that is a *subset* of the
-   toolsets, not all of them. The pairing is the point: `MCP Services User` grants no data
-   rights of its own, and a screenshot showing it alone shows an assistant that can reach
-   nothing. Equally, do not shoot an `Administrator` token — the whole claim is least
-   privilege, and a screenshot of full rights argues the opposite.
-2. **The MCP Service Call list**, filtered to one session: a row with `Dry run = Yes`
-   immediately followed by the same tool with `Dry run = No`. Rehearsed, then committed, with
-   `Objects changed` beside both. This is the strongest single image — the guardrail and the
-   audit trail in one frame — and it is the one a security reviewer wants.
-3. **One MCP Service Call in detail**, showing the credential link, the change link and the
-   object list. It is what makes the row an audit record rather than a counter.
-4. **An assistant session mid-dry-run**, reporting what it *would* write and asking before
-   committing. Shoot it on a single connected server with real-looking ticket content — not a
+They are in [`assets/img/screenshots/`](../assets/img/screenshots), already captured and
+stripped of metadata. Upload those; the notes below are what to reshoot *against* if an
+instance or a release makes one of them wrong.
+
+1. **The token screen** — `token-scoped-credential.png`. An **application token**:
+   `Remote application`, the `MCP Services User` profile **paired with a functional one**
+   (`Support Agent` here), and a scope list that is a *subset* of the toolsets, not all of
+   them. The pairing is the point: `MCP Services User` grants no data rights of its own, and a
+   screenshot showing it alone shows an assistant that can reach nothing. Equally, do not shoot
+   an `Administrator` token — the whole claim is least privilege, and a screenshot of full
+   rights argues the opposite.
+2. **The MCP Service Call list** — `audit-dry-run-then-write.png`. Filtered to one session: a
+   row with `Dry run = Yes` immediately followed by the same tool with `Dry run = No`.
+   Rehearsed, then committed, with `Objects changed` beside both. This is the strongest single
+   image — the guardrail and the audit trail in one frame — and it is the one a security
+   reviewer wants.
+3. **One MCP Service Call in detail** — `audit-call-detail.png`, showing the credential link,
+   the change link and the object list. It is what makes the row an audit record rather than a
+   counter.
+4. **An assistant session mid-dry-run** — `assistant-rehearses-a-change.png`, reporting what
+   it *would* write and asking before committing. Shoot it on a single connected server with real-looking ticket content — not a
    ticket called "test", and not with a second, failing server in frame.
 
    Aim for a **question rather than a command**: "can this ticket be a higher priority?" beats
