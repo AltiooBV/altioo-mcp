@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
@@ -20,10 +21,13 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
+use CMDBObject;
 use ExecutionKPI;
 use LoginWebPage;
 use Throwable;
 use UserRights;
+use UserToken;
+use PersonalToken;
 use ContextTag;
 use utils;
 use MetaModel;
@@ -761,6 +765,14 @@ final class MCPController
 			// which is the log such a review reads first - cannot tell a dry
 			// run from a write that happened.
 			$oLog->Set('simulate', self::simulateGrade($oResult->requestParams));
+			// Which credential, and what it changed. The row named neither: it
+			// said a write by "claude" succeeded, where "claude" is a login
+			// string and the write had no subject. Both halves are links, so a
+			// reviewer gets from the row to the token and to the change in one
+			// click each, and `changed_objects` keeps the readable answer for
+			// after the change rows are purged.
+			self::describeCredential($oLog);
+			self::describeChange($oLog);
 			// What the row could not answer before: how long the call took, how
 			// much it sent back - the two numbers that tell a slow instance from
 			// a client filling its context - and which log entry explains it.
@@ -788,6 +800,72 @@ final class MCPController
 			// Never let audit logging take down a request that already succeeded.
 			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
 		}
+	}
+
+	/**
+	 * Names the credential on the audit row, in the field that says which kind.
+	 *
+	 * iTop's two token classes are siblings - `PersonalToken` and `UserToken`
+	 * both descend from `cmdbAbstractObject` - so there is no one external key
+	 * that could point at either, and the populated field is what answers
+	 * "personal or application". Neither set means the request authenticated
+	 * some other way, which is itself worth being able to search for.
+	 *
+	 * The inherited `userinfo` string is set regardless and is not replaced by
+	 * this: the keys are reset when a token is deleted, and a rotated
+	 * credential must not take the record of what it did with it.
+	 *
+	 * @since 1.0.0
+	 */
+	private static function describeCredential(AltiooEventMCPService $oLog): void
+	{
+		$oToken = TokenScopes::OfCurrentRequestObject();
+		if ($oToken === null) {
+			return;
+		}
+
+		$sField = match (true) {
+			$oToken instanceof UserToken     => 'user_token_id',
+			$oToken instanceof PersonalToken => 'personal_token_id',
+			default                          => null,
+		};
+		if ($sField === null) {
+			// A token class this module has not met. The scopes still gated the
+			// call; only the link is missing, and userinfo still names it.
+			return;
+		}
+
+		$oLog->Set($sField, $oToken->GetKey());
+	}
+
+	/**
+	 * Names what the call changed, when it changed anything.
+	 *
+	 * `GetCurrentChange(false)` - the argument is load-bearing. The default is
+	 * `true`, which *creates* a change when there is none, so reading it
+	 * without the flag would mint an empty `CMDBChange` on every read this
+	 * endpoint serves and make the audit trail claim a write per search.
+	 *
+	 * Null here is the honest answer for a read and for a dry run, and it is
+	 * checkable against `simulate`: a row grading `yes` with a change attached
+	 * would be the finding.
+	 *
+	 * @since 1.0.0
+	 */
+	private static function describeChange(AltiooEventMCPService $oLog): void
+	{
+		$oChange = CMDBObject::GetCurrentChange(false);
+		if ($oChange === null) {
+			return;
+		}
+
+		$iChangeId = (int)$oChange->GetKey();
+		if ($iChangeId <= 0) {
+			return;
+		}
+
+		$oLog->Set('change_id', $iChangeId);
+		$oLog->Set('changed_objects', self::truncate(ChangeSummary::OfChange($iChangeId), 65535));
 	}
 
 	 /**

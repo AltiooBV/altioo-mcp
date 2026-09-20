@@ -179,7 +179,10 @@ final class TokenScopes
 		}
 
 		try {
-			$oToken = TokenLoginExtension::GetToken($sToken);
+			$oToken = self::OfCurrentRequestObject();
+			if ($oToken === null) {
+				return null;
+			}
 			$oScope = $oToken->Get('scope');
 
 			$aScopes = method_exists($oScope, 'GetValues') ? $oScope->GetValues() : [];
@@ -192,6 +195,51 @@ final class TokenScopes
 			// token itself in log/error.log, in clear, for as long as that file
 			// is kept.
 			MCPHelper::LogError('The scopes of the presented token could not be read ('.get_class($e).').');
+
+			return null;
+		}
+	}
+
+	/**
+	 * The token object this request authenticated with, when it used one.
+	 *
+	 * Separate from {@see OfCurrentRequest()} because the audit row needs the
+	 * credential itself and not its scopes: which token, and - since
+	 * `PersonalToken` and `UserToken` are siblings under `cmdbAbstractObject`
+	 * rather than two halves of one class - which of the two it is.
+	 *
+	 * **Deliberately not memoised.** Resolving it twice in a request costs a
+	 * second decrypt of a credential already in hand; a static holding a token
+	 * object costs correctness the first time this class is used somewhere
+	 * that serves more than one request per process. This class has kept no
+	 * request state so far and this is not the change that should give it
+	 * some.
+	 *
+	 * The caller gets the object or null, never an exception: this is reached
+	 * on the way to writing an audit row, where a failure must cost a field
+	 * rather than the row.
+	 *
+	 * @return object|null A `PersonalToken` or a `UserToken`.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function OfCurrentRequestObject(): ?object
+	{
+		$sToken = MCPHttp::CurrentAuthToken();
+		if ($sToken === null) {
+			return null;
+		}
+
+		if (!class_exists(TokenLoginExtension::class)) {
+			return null;
+		}
+
+		try {
+			return TokenLoginExtension::GetToken($sToken);
+		} catch (Throwable $e) {
+			// The class, never the message - GetToken() is handed the raw
+			// credential and an exception is free to quote it.
+			MCPHelper::LogError('The presented token could not be resolved ('.get_class($e).').');
 
 			return null;
 		}
