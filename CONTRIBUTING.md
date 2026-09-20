@@ -151,28 +151,39 @@ answered with something better than a guess.
 
 ## How this extension is built
 
-The architecture, the security model, the review of every change and the decision to keep it
-are human; the code that implements them was written by a model under that direction. Commits
-carry a `Co-Authored-By: Claude` trailer to record it, and the initial commit carries it too.
+The architecture, the security model, the review of every change and the decision to merge it
+are human; the code that implements them was written by a model under that direction, and the
+`Co-Authored-By: Claude` trailer on the commits records it.
 
-**This repository begins at one commit, and that commit is the whole of the work before
-publication.** The extension was built over months in a private tree, in small commits with
-their own messages and trailers, and it was squashed into a single commit when the repository
-was published. So there is no pre-publication history here to read: no bisect, no per-change
-rationale, no sequence showing how the security model arrived at its current shape.
+**The whole history is published, including the part that predates the first release.** The
+extension was built before anyone could install it, and those commits are here rather than
+squashed away: they are the record of which decisions were made, when, and why, and that record
+is worth more to a reader deciding whether to trust this with their CMDB than any summary of it
+could be. Read `git log` before you read this file.
 
-**That is a loss, and naming it is the point of this section.** The private history was the
-better record — a message per decision, written when the decision was made — and a reader of
-this repository does not have it. What survives is this file, the changelog, the tests that
-encode the rules, and the comments in the code, all of which were written to carry the
-reasoning rather than to decorate it. That is deliberate but it is not equivalent, and anyone
-auditing provenance should know they are reading a summary and not a record.
+**The history is not uniformly stamped, and this says so rather than rounding up.** The initial
+commit predates the convention, and a few commits made during the build-out carry their message
+but not the trailer. The list is not reproduced here — a count in prose goes stale the moment
+the next commit lands, and a claim nobody can check is the thing this section is trying not to
+make. Ask the repository instead:
 
-**From the first commit onward, nothing is squashed or rewritten.** The one-time squash was
-the act of publishing; it is not the project's practice, and the rule under
-[Getting a change in](#getting-a-change-in) — history is not rewritten after review — applies
-to every commit this repository has. If that rule is ever broken again it will be said here,
-in the same plain terms.
+```bash
+git log --oneline --invert-grep --grep='Co-Authored-By:'
+```
+
+Those commits are not being rebased. Rewriting reviewed history so that an attribution sentence
+comes out true is the same tidying this section exists to refuse, and it would cost the more
+valuable half of the record to protect the cheaper half: what those commits do carry is a
+message saying what changed and why, which is where the human decision actually shows. A gap
+that is visible and explained beats a clean history that was edited to look that way.
+
+**Nothing before publication is signed, and nothing before publication will be.** The signing
+key was created on the day the repository was published; every commit older than that has no
+signature because it had none at the time. Signing them now would mean rewriting every commit
+to attach an attestation dated to a key that did not yet exist — a backdated claim, and the
+same tidying as above wearing a better suit. Commits from publication onward are signed, and so
+is the `v1.0.0` tag, which is the signature that carries weight: it is what triggers the release
+workflow, and what a published archive's provenance chains back to.
 
 It is stated here for two reasons.
 
