@@ -78,9 +78,29 @@ echo "::group::Upgrading $MODULE_CODE $OLD_VERSION -> $NEW_VERSION"
 # new version dropped stay behind, exactly as they do for a client who unzips
 # over their extensions/ directory. No --delete, for that reason: this is the
 # messy case, and the one that finds leftovers still being loaded.
+# A module tree must not contain another module tree, and this one can: the
+# workflow checks the baseline out with actions/checkout, whose `path` has to
+# sit inside GITHUB_WORKSPACE, and MODULE_SRC defaults to that same workspace.
+# Copied wholesale, extensions/altioo-mcp then holds a nested baseline/ with a
+# second module.altioo-mcp.php, extension.xml and datamodel declaring the same
+# module id. iTop records the module and compiles nothing - the setup says
+# "installed!", priv_module_install gains its row, and env-production/altioo-mcp
+# is simply never created.
+#
+# Found the first time upgrade.yml had a baseline to run against. Excluded by
+# what it is rather than by name, so a checkout to any other path is caught too.
+NESTED_EXCLUDES=()
+while IFS= read -r sNested; do
+  [ -n "$sNested" ] || continue
+  echo "::notice::$sNested inside MODULE_SRC declares a module of its own; excluded from the copy"
+  NESTED_EXCLUDES+=( --exclude="/$sNested/" )
+done < <(cd "$MODULE_SRC" && find . -mindepth 2 -maxdepth 2 -name 'module.*.php' \
+           -printf '%h\n' 2>/dev/null | sed 's#^\./##' | sort -u)
+
 rsync -a \
   --exclude='.git' \
   --exclude-from="$MODULE_SRC/exclude.txt" \
+  "${NESTED_EXCLUDES[@]}" \
   "$MODULE_SRC/" "$ITOP_DIR/extensions/$MODULE_CODE/"
 test -f "$ITOP_DIR/extensions/$MODULE_CODE/vendor/autoload.php" \
   || { echo "vendor/ is missing - run composer install --no-dev first"; exit 1; }
