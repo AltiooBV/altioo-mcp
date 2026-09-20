@@ -9,37 +9,6 @@ because the version that breaks is rarely the one being developed against.
 on a schedule, which matters more: nothing in this repository changes when Combodo publishes
 3.2.4, and that is exactly when the claim on the Hub listing quietly stops being true.
 
-## Status: two of the four workflows have run on GitHub
-
-<!-- ci-unproven:begin -->
-
-**Two of the four workflows have now run on GitHub; two have not, and this is the one place
-that says which.** `ci.yml` and `itop-matrix.yml` run on every pull request and have been
-observed green. `upgrade.yml` and `release.yml` ship as written rather than as observed:
-`upgrade.yml` triggers on a push to `main` and on a schedule, so a pull request never exercises
-it, and `release.yml` runs only on a `v*` tag or a manual dispatch.
-
-**The first run was not green, and what it found is why this notice existed.** Three failures,
-each uncovered by fixing the one before it: `upgrade.yml` and `itop-matrix.yml` both used
-`${{ runner.temp }}` in a job-level `env:`, which is a parse error, so neither had ever
-executed; the install was gated on `--check-consistency=1`, which iTop's own datamodel does not
-pass on any supported version; and the integration suite's dictionary-key list had gone stale
-against a rename. All three were in the half of the pipeline that only CI exercises — local
-coverage was real and stopped exactly where the integration suite skips.
-
-`release.yml` is the one with no local equivalent, and the one that matters most: it has a
-`workflow_dispatch` that performs the whole build, checksum and inventory **without publishing
-anything**, which is how it gets exercised before a tag depends on it. Until that has been run,
-[security-summary.md](security-summary.md) §2's account of how a release is built describes a
-mechanism in place rather than one observed.
-
-**Delete this section once `upgrade.yml` and `release.yml` have each run**, and say so in the
-changelog entry for the version that happens under.
-[release-checklist.md](release-checklist.md) carries the step. A caveat nobody removes becomes
-a lie by neglect, which is worse than the one it was written to prevent.
-
-<!-- ci-unproven:end -->
-
 ## What is checked, and why each one is separate
 
 | Step | What it would catch |

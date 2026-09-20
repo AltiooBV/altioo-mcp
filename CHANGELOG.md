@@ -856,6 +856,16 @@ published archive was installed and exercised on into this line; the README and
   a pack's `acme_ticket_add_log_entry`. The name is derived from the class name, so a pack
   author writes none of them by hand. This is the shape every other MCP server in the ecosystem
   uses, and it is the string a client configuration and an `mcp_disabled_tools` entry name.
+- **Every workflow has run on GitHub, and the first run found three things.** The pipeline was
+  published before it had ever executed, with a notice saying so and saying what had been
+  exercised locally instead. The first real run proved the notice right: `upgrade.yml` and
+  `itop-matrix.yml` both used `${{ runner.temp }}` in a job-level `env:` and had therefore never
+  parsed, the install was gated on a consistency check iTop's own datamodel fails, and the
+  integration suite's dictionary list had gone stale against a rename. All three sat in the half
+  of the pipeline that only CI exercises. Fixed, guarded where a guard was possible, and the
+  notice removed now that `ci.yml`, `itop-matrix.yml`, `upgrade.yml` and `release.yml` have each
+  run — the last by `workflow_dispatch`, which builds and checksums the archive without
+  publishing it.
 - **The audit trail records every audited call, on an instance nobody configured.**
   `log_mcp_level` defaults to `info`, so "every call is audited" — which the Hub listing and the
   sentence the setup wizard shows both say without qualification — is true of a default install

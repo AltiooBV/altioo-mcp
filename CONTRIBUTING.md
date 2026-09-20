@@ -53,10 +53,8 @@ project's real answers on dependencies, formatting and supported versions.
    an entry written from a diff.
 5. **CI has to be green.** It runs the lint, the unit suite across the PHP range, and installs
    the module into every supported iTop branch — [doc/ci-itop-matrix.md](doc/ci-itop-matrix.md)
-   explains what each stage is actually asking, and
-   [records](doc/ci-itop-matrix.md#status-two-of-the-four-workflows-have-run-on-github) which
-   workflows have been observed running there. Run `tools/ci/local/run.sh unit` before opening
-   a pull request either way.
+   explains what each stage is actually asking. Run `tools/ci/local/run.sh unit` before opening
+   a pull request and you will not learn it from CI.
 6. **Review is by a maintainer**, and the merge is a maintainer's. History is not rewritten
    after review — see [How this extension is built](#how-this-extension-is-built) for why that
    matters here.
