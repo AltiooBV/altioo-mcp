@@ -176,8 +176,25 @@ EXTENSION_SOURCE=$(itop_sql "SELECT source FROM \`${DB_PREFIX}priv_extension_ins
   || fail "$MODULE_CODE was upgraded from '${EXTENSION_SOURCE:-nowhere}', expected 'extensions'"
 
 # Recompiled, not merely recorded.
-test -d "$ITOP_DIR/env-$TARGET_ENV/$MODULE_CODE" \
-  || fail "env-$TARGET_ENV/$MODULE_CODE does not exist - recorded as upgraded but not compiled"
+#
+# When this fails it fails confusingly: the database says the module upgraded,
+# the setup said "installed!", and only the directory is missing. "It is not
+# there" is not a diagnosis, so say what *is* there - which env directories
+# exist, what the target one holds, and whether the module was still in
+# extensions/ when the setup ran. One of those answers it.
+if [ ! -d "$ITOP_DIR/env-$TARGET_ENV/$MODULE_CODE" ]; then
+  echo "--- what is actually on disk ---"
+  echo "ITOP_DIR=$ITOP_DIR  TARGET_ENV=$TARGET_ENV  MODULE_CODE=$MODULE_CODE"
+  echo "env directories:"
+  ls -d "$ITOP_DIR"/env-* 2>/dev/null || echo "  none"
+  echo "entries in env-$TARGET_ENV: $(ls "$ITOP_DIR/env-$TARGET_ENV" 2>/dev/null | wc -l)"
+  ls "$ITOP_DIR/env-$TARGET_ENV" 2>/dev/null | grep -i -E 'altioo|mcp' | sed 's/^/  match: /' || echo "  no entry matching altioo or mcp"
+  echo "extensions/:"
+  ls "$ITOP_DIR/extensions" 2>/dev/null | sed 's/^/  /' || echo "  none"
+  echo "extensions/$MODULE_CODE contents:"
+  ls "$ITOP_DIR/extensions/$MODULE_CODE" 2>/dev/null | head -20 | sed 's/^/  /' || echo "  absent"
+  fail "env-$TARGET_ENV/$MODULE_CODE does not exist - recorded as upgraded but not compiled"
+fi
 
 COMPILED_VERSION=$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' \
   "$ITOP_DIR/env-$TARGET_ENV/$MODULE_CODE/extension.xml" 2>/dev/null | head -1)
