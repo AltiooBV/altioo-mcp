@@ -489,11 +489,21 @@ itself, every attribute at `update:true`, without any call reaching this endpoin
 no write here to refuse. A caller who may modify a class but not one of its attributes can have
 that attribute overwritten by the engine. The rule is honestly a class-level one.
 
-**No tool writes on a first call.** Create, update, delete, attach, apply-stimulus and the three
-bulk tools all default to `simulate: true` and return what the call *would* change, having run
-iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`. This is the mitigation
-that matters most against prompt injection: a model acting on text that came from outside the
-organisation cannot silently commit a change on the strength of that text alone.
+**No tool writes unless it is asked to.** Create, update, delete, attach, apply-stimulus and the
+three bulk tools all default to `simulate: true` and return what the call *would* change, having
+run iTop's `CheckToWrite()`. Writing requires an explicit `simulate=false`.
+
+**Be precise about what that defends against.** The default is a guardrail, not a boundary: a
+caller that passes `simulate=false` writes on that call, and a model acting on injected text can
+pass it. What the default stops is the *careless* commit — a tool called without the argument
+writes nothing, so an injected instruction has to be specific enough to name it, and every
+rehearsal puts a report in front of a person first.
+
+The boundary is **`MCP-advisory`**. A token carrying it has `simulate` forced true on every write
+tool it can reach, whatever the caller passes, so nothing that credential touches can commit —
+propose changes, show a person, write nothing. That is the scope to issue when the client is
+driven by a model reading text you do not control, and it is the one that makes the guarantee
+this paragraph used to claim for the default.
 
 **Calls are audited** as `AltiooEventMCPService` objects, with the method, the element invoked,
 the outcome, the duration, the calling user, and whether the call was a rehearsal or a write.

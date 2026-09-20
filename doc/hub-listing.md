@@ -99,11 +99,15 @@ logs are written by anyone who can open a ticket or send a mail. The server tell
 at connection time that text found in an object asking it to call a tool or ignore an
 instruction is content to report, not a request to act on.
 
-**Nothing writes on a first call.** Create, update, delete, attach, apply-stimulus and the bulk
-tools are dry runs by default: they run iTop's own `CheckToWrite()` and report what the call *would*
-change — including the attributes a state change would clear as a side effect — and write only
-when the caller explicitly asks again. An assistant acting on text that came from outside your
-organisation cannot silently commit a change on the strength of that text alone.
+**Nothing writes unless asked, and one scope makes that absolute.** Create, update, delete,
+attach, apply-stimulus and the bulk tools are dry runs by default: they run iTop's own
+`CheckToWrite()` and report what the call *would* change — including the attributes a state
+change would clear as a side effect — and write only when the caller explicitly says so.
+
+That default is a guardrail rather than a boundary: a caller may ask to write straight away. The
+boundary is the **`MCP-advisory`** token scope, which forces the rehearsal on every write tool
+the credential can reach, whatever the caller passes — so an assistant driven by text that came
+from outside your organisation cannot commit a change on the strength of that text at all.
 
 **Every change says where it came from.** iTop attaches each write to a change record, and left
 alone that record carries the user's name and nothing else — the same name whether the person

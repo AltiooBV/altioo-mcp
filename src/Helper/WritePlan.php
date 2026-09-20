@@ -46,7 +46,7 @@ use utils;
  */
 final class WritePlan
 {
-	/** Nothing writes on a first call. */
+	/** Writes rehearse unless the caller asks otherwise; MCP-advisory removes the asking. */
 	public const SIMULATE_BY_DEFAULT = true;
 
 	/**

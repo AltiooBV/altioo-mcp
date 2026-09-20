@@ -156,10 +156,14 @@ It deliberately does not fetch: "download this URL and attach it" would have iTo
 HTTP call to an address chosen by whatever the model was reading, from inside iTop's own
 network.
 
-**Nothing writes on a first call.** Every writing tool takes `simulate`, defaulting to
+**Nothing writes unless asked.** Every writing tool takes `simulate`, defaulting to
 `true`: it runs iTop's own `CheckToWrite()` — mandatory attributes, `DoCheckToWrite()` on the
 class and on every extension hooked into it — and reports which attributes the call would
-change, without writing. Call again with `simulate=false` to go through with it. That is worth
+change, without writing. Call again with `simulate=false` to go through with it — and note that
+a caller *may* pass `simulate=false` on the first call: the default is a guardrail against a
+careless or manipulated model, not a permission boundary. The boundary is the
+[`MCP-advisory` scope](#grading-a-token), which forces the rehearsal whatever the caller passes.
+That is worth
 more than a formality check: for an update, the moment between the check and the write is the
 only one where the pending values are still pending, so the report can tell you that setting
 `status` to `closed` also cleared three other attributes, *before* it does.
