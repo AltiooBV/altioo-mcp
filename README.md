@@ -79,6 +79,45 @@ the iTop patch and the PHP version its own run used under **Tested on** in
 Combinations outside that are expected to work from the ranges above rather than
 observed; if one of them is the one you run, say so and it can be added to the gate.
 
+## Why it runs inside iTop
+
+An MCP server for iTop can be a separate process that talks to the instance over REST. This is
+not that: it is a module, compiled into the instance, calling `MetaModel` and `UserRights`
+directly. Everything below follows from that one decision, and it is the decision worth
+understanding before the feature list.
+
+**Permissions are checked where the objects are, not at an API boundary.** A service outside
+iTop can only be as fine-grained as the interface it calls. Inside, the checks are iTop's own
+and they run wherever a tool touches an object: per class, per object, per attribute and per
+stimulus. That granularity is why a sensitive field is masked rather than a whole record
+withheld, and why the datamodel itself is filtered — a class the authenticated user may not
+read is not listed, not described and not searched. `grep -rn 'UserRights::' src/` is the
+check, and it is deliberately not summarised as a number here: a count in prose is a claim that
+goes stale on the next commit.
+
+**The schema is read live, so there is nothing to keep in sync.** Class definitions, allowed
+values, mandatory fields and lifecycle transitions come from `MetaModel` at call time. Custom
+classes, custom attributes and custom states appear with no configuration and no mapping file,
+and they cannot drift from the instance, because there is no second copy of them to drift.
+
+**Writes are iTop's writes.** Every change goes through `CheckToWrite()` — mandatory attributes,
+`DoCheckToWrite()` on the class and on every extension hooked into it — and lands on iTop's own
+`CMDBChange`, so it appears in the object's history and in any reporting already built on that
+table. No integration account, no "API user" doing everyone's changes under one name.
+
+**There is no second service holding a credential to your CMDB.** Authentication is iTop's own
+login: the same token, the same profiles, the same revocation. Disable a token or change a
+profile and the next call is refused, with nothing to restart and no cache to expire. There is
+also nothing outbound — `src/` contains no HTTP client of any kind, which is a property of the
+code rather than a setting.
+
+**What it costs.** The module installs into the instance's `extensions/` directory, which is
+privileged, and it is upgraded with the instance rather than on its own schedule. Calls run in
+iTop's PHP workers, so a long-running one occupies a worker for its duration ([Limitations](#limitations)).
+A separate service is the right shape if you need to put an MCP endpoint in front of several
+iTop instances at once, or to run it where the instance cannot be touched. This is the right
+shape if you want the assistant to be exactly as privileged as the person it acts for.
+
 ## What it exposes
 
 The core surface stays close to iTop's own primitives, in the same spirit as its REST/JSON
