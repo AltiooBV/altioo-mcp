@@ -49,7 +49,7 @@ this endpoint is not.
 
 | Version | Status |
 |---|---|
-| 1.0.x | **Not released yet.** Supported from the day it is |
+| 1.0.x | **Supported.** Released 2026-09-20, security fixes until 2031-09-20 |
 
 Fixes are issued as a new patch of every minor still inside its support period below, not only
 of the newest one. The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
@@ -59,12 +59,10 @@ branch that Combodo has retired is not tested against.
 
 **Five years of security fixes from the release date of a minor version.**
 
-`1.0.x` has not been released, so its window has not started and no end date is given here.
-Both dates are written into this section when the tag is pushed —
-[doc/release-checklist.md](doc/release-checklist.md) carries the step. A commitment dated from
-anything other than the day the archive actually became installable is one that runs short by
-however long the release slipped, and the five years below is a floor, not a target: it is not
-a number to spend on a delay in the repository.
+`1.0.x` was released on **2026-09-20**, so its window runs to **2031-09-20**. The date is the day the
+archive actually became installable, not the day the work finished: a commitment dated from
+anything else runs short by however long the release slipped, and the five years is a floor
+rather than a target — not a number to spend on a delay in the repository.
 
 Five years is the floor the EU [Cyber Resilience Act](https://eur-lex.europa.eu/eli/reg/2024/2847/oj)
 sets for a product with digital elements, and it is committed to here whether or not this

@@ -18,7 +18,7 @@ Removal of anything on that surface comes at least one minor release after a `@d
 naming its replacement. Migration steps an administrator has to take are called out in the
 entry itself, not left to be inferred from it.
 
-## [1.0.0] — unreleased
+## [1.0.0] - 2026-09-20
 
 The first release. Nothing precedes it, so the entries below describe what the extension **is**
 rather than what changed in it — there is no instance anywhere running an earlier version, and
@@ -30,18 +30,19 @@ rather than squashed away, so the entries below can be read against the commits 
 does not carry — in particular that nothing older than publication is signed, because the key
 did not exist yet.
 
-It has not been tagged, so this heading carries no date. The date is written in on the day of
-the tag: [doc/release-checklist.md](doc/release-checklist.md) carries the step,
-[release.yml](.github/workflows/release.yml) refuses a tag whose version has no dated heading,
-and that same date starts the support window in [SECURITY.md](SECURITY.md#support-period).
+Tagged 2026-09-20, which is also the date the five-year support window opens in
+[SECURITY.md](SECURITY.md#support-period).
 
-Two properties are worth having before the list: **no tool writes on a first call**, and **a
-tool is graded read / write / delete by the annotations it declares**.
+Two properties are worth having before the list: **no tool writes unless it is asked to** — the
+rehearsal is the default rather than a boundary, and `MCP-advisory` is the scope that makes it
+one — and **a tool is graded read / write / delete by the annotations it declares**.
 
-**Tested on.** Not recorded yet, because there has been no release run. Step 7 of
-[the release checklist](doc/release-checklist.md) writes the iTop patch and the PHP version the
-published archive was installed and exercised on into this line; the README and
-[doc/hub-listing.md](doc/hub-listing.md) both read it from here.
+**Tested on.** iTop **3.2.3-2** on PHP **8.2** and **8.4** — installed through iTop's own
+unattended setup, then exercised by the module's integration suite and by calling the endpoint
+over HTTP. The unit suite runs on 8.2, 8.3 and 8.4, and again against the tree inside the
+published archive. Combinations outside that are expected to work from the ranges in the README
+rather than observed; the README and [doc/hub-listing.md](doc/hub-listing.md) both read this
+line from here.
 
 ### Added
 
@@ -856,6 +857,16 @@ published archive was installed and exercised on into this line; the README and
   a pack's `acme_ticket_add_log_entry`. The name is derived from the class name, so a pack
   author writes none of them by hand. This is the shape every other MCP server in the ecosystem
   uses, and it is the string a client configuration and an `mcp_disabled_tools` entry name.
+- **Every workflow has run on GitHub, and the first run found three things.** The pipeline was
+  published before it had ever executed, with a notice saying so and saying what had been
+  exercised locally instead. The first real run proved the notice right: `upgrade.yml` and
+  `itop-matrix.yml` both used `${{ runner.temp }}` in a job-level `env:` and had therefore never
+  parsed, the install was gated on a consistency check iTop's own datamodel fails, and the
+  integration suite's dictionary list had gone stale against a rename. All three sat in the half
+  of the pipeline that only CI exercises. Fixed, guarded where a guard was possible, and the
+  notice removed now that `ci.yml`, `itop-matrix.yml`, `upgrade.yml` and `release.yml` have each
+  run — the last by `workflow_dispatch`, which builds and checksums the archive without
+  publishing it.
 - **The audit trail records every audited call, on an instance nobody configured.**
   `log_mcp_level` defaults to `info`, so "every call is audited" — which the Hub listing and the
   sentence the setup wizard shows both say without qualification — is true of a default install

@@ -74,10 +74,6 @@ what a client unzipping into `extensions/` does, leftovers and all.
 
 ## Running it
 
-This workflow has never run on GitHub — a pull request does not trigger it. See
-[ci-itop-matrix.md](ci-itop-matrix.md#status-two-of-the-four-workflows-have-run-on-github),
-which records which of the four have.
-
 There are no release tags yet, so the scheduled and push runs have no baseline and the jobs
 **skip** — visibly, with a summary line saying why, rather than passing green on nothing.
 

@@ -45,10 +45,7 @@ once, in
 for the branches and in `composer.json` for the PHP range. The CI matrix is computed from that
 file, the Hub listing is filled from it, and a test fails if the rows above stop agreeing with
 it — so there is one place to change when a branch is added or retired, and nothing that can
-quietly disagree with it. The lint, unit and install workflows have been observed green on GitHub; the upgrade and
-release workflows have not yet run there, and
-[doc/ci-itop-matrix.md](doc/ci-itop-matrix.md#status-two-of-the-four-workflows-have-run-on-github)
-says which is which. iTop 3.1 and earlier are not supported at all: the setup refuses to
+quietly disagree with it. iTop 3.1 and earlier are not supported at all: the setup refuses to
 install, through the `itop-structure/3.2.0` dependency.
 
 **iTop 3.3 is a different case, and it is not claimed.** Nothing here has been installed on it,

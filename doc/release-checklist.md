@@ -66,15 +66,11 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       install, and the remaining gates (`pinned-actions`, `audit`, `example-pack`, the archive
       shape and the SBOM) are shell and Composer commands runnable by hand from the job
       definitions. What has never been exercised is GitHub's runners, not the steps.
-- [ ] **Remove the unproven notice once `upgrade.yml` and `release.yml` have each run.**
-      Narrowed on 2026-09-20: `ci.yml` and `itop-matrix.yml` have been observed green on a pull
-      request, so the `ci-unproven` block in [ci-itop-matrix.md](ci-itop-matrix.md) and the four
-      one-line pointers into it (README, CONTRIBUTING, ci-upgrade.md, security-summary.md §2)
-      now say which two remain unproven rather than claiming none has run. A pull request cannot
-      exercise the other two — `upgrade.yml` triggers on a push to `main` and on a schedule,
-      `release.yml` on a `v*` tag or a manual dispatch. Delete all five once both have, and note
-      it in the changelog entry for the version it happened under. A caveat left behind after it
-      expires misleads in the opposite direction.
+- [x] **Remove the unproven notice** — done 2026-09-20. All four workflows have now run:
+      `ci.yml` and `itop-matrix.yml` green on a pull request, `upgrade.yml` on each merge to
+      `main` (skipping cleanly, since no `v*` tag exists to upgrade from), and `release.yml` by
+      `workflow_dispatch`, which produced `altioo-mcp-1.0.0.zip` without publishing anything.
+      The `ci-unproven` block and its four pointers are gone.
 - [x] **Capture the listing images** — done. `assets/img/altioo-mcp.svg` is the icon, and
       `assets/img/screenshots/` holds the four the Hub needs, taken from the sandbox and
       stripped of metadata (no EXIF, no XMP, no ICC, no Apple `iDOT`; the display profile was
