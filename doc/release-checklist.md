@@ -3,44 +3,24 @@
 What has to be true before an archive is published, and what the release run has to prove.
 The unchecked items below are the ones that cannot be closed inside the repository.
 
-## Still open before the first publication
+## Before the first publication — all closed 2026-09-20
 
-- [ ] **Make the repository public.** It exists — `AltiooBV/altioo-mcp`, created and
-      **private**. That is not the same as done, and this box stays open until it is public:
-      GitHub answers a private repository with a 404 to anyone who is not a collaborator, so
-      the URL below still does not resolve for a single person who would ever click it. Ticking
-      this because the repository exists is the one way to get it wrong.
-      `https://github.com/AltiooBV/altioo-mcp` is the value of
-      `more_info_url` in `extension.xml`, of `homepage` and
-      `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
-      module declaration, of the link line at the top of the README, and of
-      `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer served to callers. One dead
-      link is the first thing an evaluator clicks. If the final URL differs, change it in those
-      six places — `ModuleMetadataTest` asserts they agree. Once the URL resolves, add the
-      `[Unreleased]` and `[x.y.z]` link-reference definitions to the foot of
-      [CHANGELOG.md](../CHANGELOG.md); until then the headings render their brackets literally,
-      which is preferable to shipping compare links that 404. The brackets themselves are not
-      optional — [release.yml](../.github/workflows/release.yml) matches on them. While there:
-      set the About box and topics from [hub-listing.md](hub-listing.md), which carries the
-      agreed text. It is the one description no test can check, so it is also the one nobody
-      notices is wrong.
-- [ ] **Enable private vulnerability reporting.** Settings → **Advanced Security**, under
-      *Security and quality* → **Enable** beside *Private vulnerability reporting*. (GitHub has
-      moved and renamed that sidebar entry more than once — it was *Code security and
-      analysis*; look for the section, not the label.)
+Kept rather than deleted: each line records what was actually done and why it had to be, which
+is the only part of a checklist worth reading after it is finished. A second release does not
+repeat these — *Every release* below is the recurring list.
 
-      **The feature is public-repository-only**, verified against
-      [GitHub's documentation](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository)
-      on 2026-09-19, so the toggle does not exist while the repository is private and this
-      cannot be done early. It belongs in the same sitting as making it public, because
-      [SECURITY.md](../SECURITY.md) names GitHub as the *preferred* channel: between going
-      public and flipping this, the channel listed first is the one that 404s.
-      [SECURITY.md](../SECURITY.md) points at `/security/advisories/new` and commits to 5
-      working days to acknowledge and 90 days to a fix; the link 404s until the setting is on,
-      and SECURITY.md calls GitHub the *preferred* channel, so until then the channel named
-      first is the one that does not work. **Not a publication blocker:**
-      <security@altioo.com> is live and published beside it in SECURITY.md, the README support
-      table and `composer.json` `support.email`, so a reporter always has a route that works.
+- [x] **Make the repository public** — done 2026-09-20. `https://github.com/AltiooBV/altioo-mcp`
+      resolves anonymously, which is what closes it: the URL is the value of `more_info_url` in
+      `extension.xml`, of `homepage` and `support.*` in `composer.json`, of
+      `doc.manual_setup` / `doc.more_information` in the module declaration, of the link line at
+      the top of the README, and of `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer
+      served to callers. `ModuleMetadataTest` asserts those six agree; being public is what makes
+      them resolve.
+- [x] **Enable private vulnerability reporting** — done 2026-09-20, in the same sitting as
+      making the repository public, which is the earliest it could be: the feature is
+      public-repository-only. `/security/advisories/new` now answers, so the channel
+      [SECURITY.md](../SECURITY.md) names *first* is the one that works, and the 5-working-day
+      acknowledgement and 90-day fix commitments it makes have a route to arrive on.
 - [x] **Create `security@altioo.com`** — done. It is published in
       SECURITY.md and in the README support table as the alternative to GitHub.
 - [x] **Stop Actions from running while the repository is private** — done, disabled in the
@@ -83,9 +63,16 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       tag-push rights at 1.0.0. An
       approver asking the question is asking about people, not about a workflow file. Revisit
       the row whenever that stops being true, rather than at the next release.
-- [ ] **Tag `v1.0.0`** once the run below is green. The archive, its SHA-256, the SBOM and the
-      licence inventory are attached by [release.yml](../.github/workflows/release.yml); nothing
-      is uploaded by hand.
+- [x] **Tag `v1.0.0`** — done 2026-09-20, from `5e65c85`. The tag and the commit both verify,
+      and [release.yml](../.github/workflows/release.yml) attached
+      `altioo-mcp-1.0.0.zip`, its SHA-256, `sbom.cyclonedx.json`, `licenses.json` and a build
+      provenance attestation. Nothing was uploaded by hand. Verify the archive with
+      `gh attestation verify altioo-mcp-1.0.0.zip --repo AltiooBV/altioo-mcp`.
+
+`upgrade.yml` becomes meaningful from here: it had no baseline to upgrade *from* while no `v*`
+tag existed, so it skipped. With one tag its oldest and newest baselines are the same release,
+and it will exercise the v1.0.0-to-`main` path on the next push to `main`. That is the first
+time this repository tests what happens to an instance a client already has.
 
 ## Every release
 
