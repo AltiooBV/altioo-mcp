@@ -37,8 +37,19 @@
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Paramètres de la requête]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
-        <entry id="fieldset:AltiooEventMCPService:main" _delta="force"><![CDATA[Informations générales]]></entry>
-        <entry id="fieldset:AltiooEventMCPService:details" _delta="force"><![CDATA[Détails]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_token_id" _delta="force"><![CDATA[Jeton applicatif]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_token_id+" _delta="force"><![CDATA[Le jeton applicatif utilisé pour authentifier cet appel. Renseigné uniquement pour un jeton applicatif ; un jeton personnel renseigne le champ ci-dessous]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:personal_token_id" _delta="force"><![CDATA[Jeton personnel]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:personal_token_id+" _delta="force"><![CDATA[Le jeton personnel utilisé pour authentifier cet appel. Renseigné uniquement pour un jeton personnel ; un jeton applicatif renseigne le champ ci-dessus]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:change_id" _delta="force"><![CDATA[Modification]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:change_id+" _delta="force"><![CDATA[L'enregistrement iTop de ce que cet appel a modifié, avec l'ancienne et la nouvelle valeur de chaque attribut. Vide pour une lecture et pour une simulation, qui n'écrivent rien]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:changed_objects" _delta="force"><![CDATA[Objets modifiés]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:changed_objects+" _delta="force"><![CDATA[Ce que la modification a touché, une ligne par objet, conservé ici afin de survivre à une purge de rétention de la modification elle-même]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:who" _delta="force"><![CDATA[Qui]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:what" _delta="force"><![CDATA[Ce qui a été appelé]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:outcome" _delta="force"><![CDATA[Résultat]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:changed" _delta="force"><![CDATA[Ce qui a changé]]></entry>
+        <entry id="fieldset:AltiooEventMCPService:diagnostics" _delta="force"><![CDATA[Diagnostics]]></entry>
         <entry id="Profile:MCP Services User" _delta="force"><![CDATA[Utilisateur des services MCP]]></entry>
         <entry id="Profile:MCP Services User+" _delta="force"><![CDATA[Seuls les utilisateurs disposant de ce profil sont autorisés à utiliser les services MCP (sauf si 'secure_mcp_services' est positionné à false dans la configuration du module).]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP" _delta="force"><![CDATA[MCP]]></entry>

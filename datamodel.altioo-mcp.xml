@@ -172,6 +172,76 @@
           </values>
         </field>
 
+        <!--
+          Which credential authenticated the call. Exactly one of these is set,
+          and which one is the answer: iTop's two token classes are siblings -
+          PersonalToken and UserToken both descend from cmdbAbstractObject, not
+          from a common token class - so there is no single external key that
+          could point at either, and the populated field is the discriminator.
+          Neither set means the request did not authenticate with a token.
+
+          Both are nullable, and that is the part doing the work: a nullable
+          external key is *reset* when its target is deleted, not cascaded
+          (DBObject::MakeDeletionPlan, "Optional external key, list to reset").
+          Tokens are rebuilt and revoked as a matter of routine - there is a
+          REBUILD TOKEN button on that very screen - and an audit row that
+          vanished with the credential it recorded would be an audit trail the
+          audited party can clear by rotating a token.
+
+          `userinfo` above stays for the same reason: the key is the
+          convenience, the inherited string is the record, and it still names
+          the caller after the token object is gone.
+        -->
+        <field id="user_token_id" xsi:type="AttributeExternalKey">
+          <sql>user_token_id</sql>
+          <dependencies/>
+          <is_null_allowed>true</is_null_allowed>
+          <allow_target_creation>false</allow_target_creation>
+          <target_class>UserToken</target_class>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+
+        <field id="personal_token_id" xsi:type="AttributeExternalKey">
+          <sql>personal_token_id</sql>
+          <dependencies/>
+          <is_null_allowed>true</is_null_allowed>
+          <allow_target_creation>false</allow_target_creation>
+          <target_class>PersonalToken</target_class>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+
+        <!--
+          The change this request made, when it made one. Null for a read and
+          null for a dry run, which is information rather than an absence - it
+          agrees with `simulate` and disagreeing with it would be the finding.
+
+          One request produces at most one CMDBChange: ChangeTracking::ForRequest()
+          calls CMDBObject::SetCurrentChange(null) once per request and iTop
+          then creates one lazily on the first write and reuses it, so a bulk
+          call writing fifty objects sits under this single change.
+        -->
+        <field id="change_id" xsi:type="AttributeExternalKey">
+          <sql>change_id</sql>
+          <dependencies/>
+          <is_null_allowed>true</is_null_allowed>
+          <allow_target_creation>false</allow_target_creation>
+          <target_class>CMDBChange</target_class>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+
+        <!--
+          What the change touched, in readable form, denormalised on purpose.
+          The key above is the live drill-down; this is the part that survives
+          a retention purge of CMDBChange, which doc/security-summary.md says
+          is the operator's to set. Without it, purging the change turns every
+          historical row back into "a write succeeded" with no subject.
+        -->
+        <field id="changed_objects" xsi:type="AttributeText">
+          <sql>changed_objects</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
         <!-- Wall-clock duration of the whole request, in milliseconds -->
         <field id="duration_ms" xsi:type="AttributeInteger">
           <sql>duration_ms</sql>
@@ -217,7 +287,7 @@
             <item id="col:col0">
               <rank>10</rank>
               <items>
-                <item id="fieldset:AltiooEventMCPService:main">
+                <item id="fieldset:AltiooEventMCPService:who">
                   <rank>10</rank>
                   <items>
                     <item id="date">
@@ -226,23 +296,25 @@
                     <item id="userinfo">
                       <rank>20</rank>
                     </item>
-                    <item id="mcp_method">
+                    <item id="user_token_id">
                       <rank>30</rank>
                     </item>
-                    <item id="mcp_name">
+                    <item id="personal_token_id">
                       <rank>40</rank>
                     </item>
-                    <item id="status">
-                      <rank>50</rank>
+                  </items>
+                </item>
+                <item id="fieldset:AltiooEventMCPService:what">
+                  <rank>20</rank>
+                  <items>
+                    <item id="mcp_method">
+                      <rank>10</rank>
+                    </item>
+                    <item id="mcp_name">
+                      <rank>20</rank>
                     </item>
                     <item id="simulate">
-                      <rank>55</rank>
-                    </item>
-                    <item id="duration_ms">
-                      <rank>60</rank>
-                    </item>
-                    <item id="response_bytes">
-                      <rank>70</rank>
+                      <rank>30</rank>
                     </item>
                   </items>
                 </item>
@@ -251,14 +323,39 @@
             <item id="col:col1">
               <rank>20</rank>
               <items>
-                <item id="fieldset:AltiooEventMCPService:details">
+                <item id="fieldset:AltiooEventMCPService:outcome">
                   <rank>10</rank>
                   <items>
-                    <item id="message">
+                    <item id="status">
                       <rank>10</rank>
                     </item>
+                    <item id="message">
+                      <rank>20</rank>
+                    </item>
+                    <item id="duration_ms">
+                      <rank>30</rank>
+                    </item>
+                    <item id="response_bytes">
+                      <rank>40</rank>
+                    </item>
+                  </items>
+                </item>
+                <item id="fieldset:AltiooEventMCPService:changed">
+                  <rank>20</rank>
+                  <items>
+                    <item id="change_id">
+                      <rank>10</rank>
+                    </item>
+                    <item id="changed_objects">
+                      <rank>20</rank>
+                    </item>
+                  </items>
+                </item>
+                <item id="fieldset:AltiooEventMCPService:diagnostics">
+                  <rank>30</rank>
+                  <items>
                     <item id="error_ref">
-                      <rank>15</rank>
+                      <rank>10</rank>
                     </item>
                     <item id="request_params">
                       <rank>20</rank>
@@ -286,6 +383,12 @@
             </item>
             <item id="status">
               <rank>50</rank>
+            </item>
+            <item id="simulate">
+              <rank>60</rank>
+            </item>
+            <item id="changed_objects">
+              <rank>70</rank>
             </item>
           </items>
         </list>
