@@ -5,25 +5,13 @@ The unchecked items below are the ones that cannot be closed inside the reposito
 
 ## Still open before the first publication
 
-- [ ] **Make the repository public.** It exists — `AltiooBV/altioo-mcp`, created and
-      **private**. That is not the same as done, and this box stays open until it is public:
-      GitHub answers a private repository with a 404 to anyone who is not a collaborator, so
-      the URL below still does not resolve for a single person who would ever click it. Ticking
-      this because the repository exists is the one way to get it wrong.
-      `https://github.com/AltiooBV/altioo-mcp` is the value of
-      `more_info_url` in `extension.xml`, of `homepage` and
-      `support.*` in `composer.json`, of `doc.manual_setup` / `doc.more_information` in the
-      module declaration, of the link line at the top of the README, and of
-      `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer served to callers. One dead
-      link is the first thing an evaluator clicks. If the final URL differs, change it in those
-      six places — `ModuleMetadataTest` asserts they agree. Once the URL resolves, add the
-      `[Unreleased]` and `[x.y.z]` link-reference definitions to the foot of
-      [CHANGELOG.md](../CHANGELOG.md); until then the headings render their brackets literally,
-      which is preferable to shipping compare links that 404. The brackets themselves are not
-      optional — [release.yml](../.github/workflows/release.yml) matches on them. While there:
-      set the About box and topics from [hub-listing.md](hub-listing.md), which carries the
-      agreed text. It is the one description no test can check, so it is also the one nobody
-      notices is wrong.
+- [x] **Make the repository public** — done 2026-09-20. `https://github.com/AltiooBV/altioo-mcp`
+      resolves anonymously, which is what closes it: the URL is the value of `more_info_url` in
+      `extension.xml`, of `homepage` and `support.*` in `composer.json`, of
+      `doc.manual_setup` / `doc.more_information` in the module declaration, of the link line at
+      the top of the README, and of `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer
+      served to callers. `ModuleMetadataTest` asserts those six agree; being public is what makes
+      them resolve.
 - [ ] **Enable private vulnerability reporting.** Settings → **Advanced Security**, under
       *Security and quality* → **Enable** beside *Private vulnerability reporting*. (GitHub has
       moved and renamed that sidebar entry more than once — it was *Code security and
@@ -83,9 +71,16 @@ The unchecked items below are the ones that cannot be closed inside the reposito
       tag-push rights at 1.0.0. An
       approver asking the question is asking about people, not about a workflow file. Revisit
       the row whenever that stops being true, rather than at the next release.
-- [ ] **Tag `v1.0.0`** once the run below is green. The archive, its SHA-256, the SBOM and the
-      licence inventory are attached by [release.yml](../.github/workflows/release.yml); nothing
-      is uploaded by hand.
+- [x] **Tag `v1.0.0`** — done 2026-09-20, from `5e65c85`. The tag and the commit both verify,
+      and [release.yml](../.github/workflows/release.yml) attached
+      `altioo-mcp-1.0.0.zip`, its SHA-256, `sbom.cyclonedx.json`, `licenses.json` and a build
+      provenance attestation. Nothing was uploaded by hand. Verify the archive with
+      `gh attestation verify altioo-mcp-1.0.0.zip --repo AltiooBV/altioo-mcp`.
+
+`upgrade.yml` becomes meaningful from here: it had no baseline to upgrade *from* while no `v*`
+tag existed, so it skipped. With one tag its oldest and newest baselines are the same release,
+and it will exercise the v1.0.0-to-`main` path on the next push to `main`. That is the first
+time this repository tests what happens to an instance a client already has.
 
 ## Every release
 
