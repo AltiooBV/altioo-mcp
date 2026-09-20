@@ -91,6 +91,45 @@ class RequestPipelineOrderTest extends TestCase
 	}
 
 	/**
+	 * The audit row names the credential that ran the request, and it can only
+	 * learn which one while the credential is still in hand.
+	 *
+	 * ForgetAuthToken() drops the raw token as soon as the scopes have been
+	 * read - deliberately, so that what follows cannot copy it into a PSR-7
+	 * request or a stack trace - and the row is written at the very end. The
+	 * first version of this feature resolved the token when writing the row,
+	 * which is after the drop: both external keys shipped, both were always
+	 * empty, and nothing failed to say so.
+	 *
+	 * Asserted as an ordering rather than as behaviour because that is what it
+	 * is. The call looks freely movable, and moving it one line down makes the
+	 * audit trail quietly anonymous again.
+	 */
+	public function testTheCredentialIsIdentifiedBeforeItIsDropped(): void
+	{
+		$this->assertComesBefore(
+			'RememberIdentity',
+			'ForgetAuthToken',
+			'RememberIdentity() must run before ForgetAuthToken(), or the audit row cannot name the credential'
+		);
+	}
+
+	/**
+	 * And the drop still happens. The fix for the above is one line before it;
+	 * the failure mode of a careless merge is keeping the new line and losing
+	 * the old one, which trades an empty column for a token living on in a
+	 * PSR-7 request's server parameters.
+	 */
+	public function testTheCredentialIsStillDroppedBeforeTheSdkRuns(): void
+	{
+		$this->assertComesBefore(
+			'ForgetAuthToken',
+			'MCPService::run',
+			'ForgetAuthToken() must run before the SDK sees the request, or the raw token is copied into it'
+		);
+	}
+
+	/**
 	 * ResetSession() is unauthenticated: reaching it is enough to end the
 	 * caller's iTop session. Any website can make a browser issue this
 	 * request, so the host has to be checked before the reset rather than
