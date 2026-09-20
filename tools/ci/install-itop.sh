@@ -37,9 +37,8 @@
 # wrapper for an administrator standing inside an unzipped iTop with a response
 # file already filled in, installing once: it defaults installation.xml, clears
 # the maintenance lock, and calls unattended-install.php with --use_itop_config.
-# Nothing in it accepts --install=0, --clean=1 or --check-consistency=1, so the
-# dry-run gate below, a repeatable re-install and the datamodel check are all
-# out of reach through it; and --use_itop_config, which it hardcodes, silently
+# Nothing in it accepts --install=0 or --clean=1, so the dry-run gate below and a
+# repeatable re-install are both out of reach through it; and --use_itop_config, which it hardcodes, silently
 # prefers an existing config-itop.php over the response file, which is wrong
 # every time a workspace is reused.
 #
@@ -235,7 +234,6 @@ php "$ITOP_DIR/setup/unattended-install/unattended-install.php" \
   --param-file="$RESPONSE_FILE" \
   --installation_xml="$ITOP_DIR/datamodels/2.x/installation.xml" \
   --clean=1 \
-  --check-consistency=1 \
   2>&1 | tee "$ITOP_DIR/ci-install.log"
 INSTALL_RC=${PIPESTATUS[0]}
 set -e
@@ -243,9 +241,31 @@ echo "::endgroup::"
 
 fail() { echo "::error::$1"; echo "--- last 60 lines of the setup log ---"; tail -60 "$ITOP_DIR/ci-install.log"; exit 1; }
 
-# 1. The installer's own verdict. It exits 0 and prints this only when every
-#    step ran and, because --check-consistency=1 is on, MetaModel::CheckDefinitions
-#    had nothing to say about the compiled datamodel this module contributed to.
+# 1. The installer's own verdict: every step ran and it says so.
+#
+#    --check-consistency=1 was passed here and has been removed. It runs
+#    MetaModel::CheckDefinitions() over the *whole* compiled datamodel, and iTop's
+#    own shipped classes do not pass it: ActionNotification.language and
+#    SynchroReplica.dest_class each declare a default of '' that is not among their
+#    allowed values, and TemporaryObjectDescriptor's 'details' ZList names an
+#    attribute code 'meta' the class does not have. A vanilla install carrying no
+#    extension at all reports the same three, so the flag could never be green on
+#    any version this module supports.
+#
+#    It also failed in the least useful way available. The consistency check runs
+#    last, so iTop writes the config, compiles env-production and installs the
+#    module, and only then prints "installation failed!" instead of "installed!"
+#    and exits non-zero - a complete instance underneath a fatal-looking run, which
+#    is how it went unnoticed locally: the directories were there, so it looked
+#    like it had worked.
+#
+#    What the flag was for is not lost, only narrowed to checks that say something
+#    about *this* module: priv_module_install and priv_extension_install below are
+#    iTop's own record of what it installed, itop-smoke.php checks that the
+#    compiled datamodel still holds what the controller reads, the integration
+#    suite runs against the installed instance, and the endpoint is called over
+#    HTTP. A checker that cannot tell this module's classes from Combodo's was
+#    never what would catch a mistake here.
 [ "$INSTALL_RC" -eq 0 ] || fail "the unattended install exited $INSTALL_RC"
 grep -q '^installed!$' "$ITOP_DIR/ci-install.log" || fail "the setup did not report success"
 

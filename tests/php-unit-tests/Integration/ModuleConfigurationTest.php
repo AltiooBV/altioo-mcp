@@ -252,22 +252,65 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 		$this->assertNotSame($sKey, Dict::S($sKey), "dictionary entry missing for '{$sKey}'");
 	}
 
-	/** @return array<string, array{0: string}> */
+	/**
+	 * Every key the datamodel obliges this module to translate, read out of the
+	 * datamodel rather than listed here.
+	 *
+	 * It was a hand-written list of eleven, and it drifted: two of them named
+	 * fieldsets that had been renamed, so the test failed on entries that were
+	 * correctly absent, while nine attributes added since - including four added
+	 * the same morning - were never checked at all. A list restating what another
+	 * file declares is a list that goes stale, and this one went stale in both
+	 * directions at once.
+	 *
+	 * The rule it encodes: a class this module *defines* owes a label for itself,
+	 * for every attribute, for every enum value and for every fieldset in its
+	 * presentation. A class it only *extends* owes labels for the values it adds
+	 * and nothing else, because iTop labels the rest. Profiles owe their name.
+	 *
+	 * @return array<string, array{0: string}>
+	 */
 	public static function dictionaryKeyProvider(): array
 	{
-		$aKeys = [
-			'Class:AltiooEventMCPService',
-			'Class:AltiooEventMCPService/Attribute:mcp_method',
-			'Class:AltiooEventMCPService/Attribute:mcp_name',
-			'Class:AltiooEventMCPService/Attribute:status',
-			'Class:AltiooEventMCPService/Attribute:status/Value:success',
-			'Class:AltiooEventMCPService/Attribute:status/Value:error',
-			'Class:AltiooEventMCPService/Attribute:request_params',
-			'fieldset:AltiooEventMCPService:main',
-			'fieldset:AltiooEventMCPService:details',
-			'Class:PersonalToken/Attribute:scope/Value:MCP',
-			'Class:UserToken/Attribute:scope/Value:MCP',
-		];
+		$oXml = simplexml_load_file(__DIR__.'/../../../datamodel.altioo-mcp.xml');
+		$aKeys = [];
+
+		foreach ($oXml->xpath('//class[@id]') ?: [] as $oClass) {
+			$sClass = (string)$oClass['id'];
+			$bDefined = (string)$oClass['_delta'] === 'define';
+
+			if ($bDefined) {
+				$aKeys[] = 'Class:'.$sClass;
+			}
+
+			foreach ($oClass->xpath('.//field[@id]') ?: [] as $oField) {
+				$sField = (string)$oField['id'];
+				if ($bDefined) {
+					$aKeys[] = 'Class:'.$sClass.'/Attribute:'.$sField;
+				}
+				foreach ($oField->xpath('.//value[@id]') ?: [] as $oValue) {
+					if ($bDefined || (string)$oValue['_delta'] === 'define') {
+						$aKeys[] = 'Class:'.$sClass.'/Attribute:'.$sField.'/Value:'.(string)$oValue['id'];
+					}
+				}
+			}
+
+			foreach ($oClass->xpath('.//item[@id]') ?: [] as $oItem) {
+				$sItem = (string)$oItem['id'];
+				if (str_starts_with($sItem, 'fieldset:')) {
+					$aKeys[] = $sItem;
+				}
+			}
+		}
+
+		foreach ($oXml->xpath('//profile/name') ?: [] as $oName) {
+			$aKeys[] = 'Profile:'.(string)$oName;
+		}
+
+		$aKeys = array_values(array_unique($aKeys));
+		sort($aKeys);
+
+		self::assertNotEmpty($aKeys, 'no dictionary keys were derived; the datamodel scan has stopped working');
 
 		return array_combine($aKeys, array_map(static fn (string $s): array => [$s], $aKeys));
 	}

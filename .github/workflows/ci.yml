@@ -53,14 +53,46 @@ jobs:
       - name: Combodo's coding standard
         run: phpcs
 
-  # Every action is pinned to the commit it resolved to, because a tag is
-  # mutable and one of these runs under contents: write. A pin nothing checks
-  # is a pin the next hurried edit drops.
-  pinned-actions:
-    name: Actions are pinned to a commit
+  # Two things about the workflow files themselves, neither of which any suite
+  # can check: they fail on GitHub or not at all.
+  workflows:
+    name: Workflow files are valid
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # A context used where it does not exist is a *parse* error: GitHub
+      # rejects the whole file and the workflow does not run at all, which
+      # looks identical to a workflow nobody triggered. upgrade.yml and
+      # itop-matrix.yml both shipped with `${{ runner.temp }}` in a job-level
+      # `env:` and neither had ever run; the first push to a public repository
+      # is what said so. `runner` and `steps` exist only inside steps.
+      - name: No job-level key may use a step-only context
+        run: |
+          python3 - <<'PY'
+          import sys, glob, yaml
+          JOB_LEVEL = ['env', 'if', 'container', 'services', 'strategy',
+                       'concurrency', 'timeout-minutes', 'runs-on']
+          STEP_ONLY = ['runner.', 'steps.']
+          bad = []
+          for f in sorted(glob.glob('.github/workflows/*.yml')):
+              for job, spec in (yaml.safe_load(open(f)).get('jobs') or {}).items():
+                  for key in JOB_LEVEL:
+                      if key not in spec:
+                          continue
+                      dumped = yaml.dump(spec[key])
+                      for ctx in STEP_ONLY:
+                          if ctx in dumped:
+                              bad.append(f"{f}: job '{job}', {key}: uses {ctx.rstrip('.')}")
+          for b in bad:
+              print(b)
+          if bad:
+              print()
+              print("the context above does not exist where it is used; GitHub refuses the")
+              print("whole file, so the workflow silently never runs. Move it into a step.")
+              sys.exit(1)
+          print("no job-level key uses a step-only context")
+          PY
 
       - name: No workflow may reference an action by tag
         run: |

@@ -9,31 +9,31 @@ because the version that breaks is rarely the one being developed against.
 on a schedule, which matters more: nothing in this repository changes when Combodo publishes
 3.2.4, and that is exactly when the claim on the Hub listing quietly stops being true.
 
-## Status: none of this has run on GitHub yet
+## Status: two of the four workflows have run on GitHub
 
 <!-- ci-unproven:begin -->
 
-**Every workflow in [`.github/workflows/`](../.github/workflows/) ships unproven on GitHub's
-runners, and this is the one place that says so.** At 1.0.0 the repository has never run
-Actions: `ci.yml`, `itop-matrix.yml`, `upgrade.yml` and `release.yml` are published as written,
-not as observed. Anything in this repository that speaks of CI in the present tense — the
-README's supported-versions claim, `CONTRIBUTING.md`'s "CI has to be green",
-[security-summary.md](security-summary.md) §2 on how a release is built — describes a
-mechanism that is in place and has not yet been exercised where it will run.
+**Two of the four workflows have now run on GitHub; two have not, and this is the one place
+that says which.** `ci.yml` and `itop-matrix.yml` run on every pull request and have been
+observed green. `upgrade.yml` and `release.yml` ship as written rather than as observed:
+`upgrade.yml` triggers on a push to `main` and on a schedule, so a pull request never exercises
+it, and `release.yml` runs only on a `v*` tag or a manual dispatch.
 
-What *has* been exercised is the steps, locally and by hand:
-[`tools/ci/local/run.sh`](../tools/ci/local/run.sh) runs `ci.yml`'s lint and unit jobs across
-the PHP range and `itop-matrix.yml`'s install against iTop 3.2, in containers, from the same
-scripts under `tools/ci/` that the workflow steps call. The remaining gates — the pinned-action
-check, `composer audit --locked`, the example pack, the archive shape and the SBOM — are shell
-and Composer commands that were run directly from the job definitions and passed. What is
-untested is GitHub, not the logic.
+**The first run was not green, and what it found is why this notice existed.** Three failures,
+each uncovered by fixing the one before it: `upgrade.yml` and `itop-matrix.yml` both used
+`${{ runner.temp }}` in a job-level `env:`, which is a parse error, so neither had ever
+executed; the install was gated on `--check-consistency=1`, which iTop's own datamodel does not
+pass on any supported version; and the integration suite's dictionary-key list had gone stale
+against a rename. All three were in the half of the pipeline that only CI exercises — local
+coverage was real and stopped exactly where the integration suite skips.
 
 `release.yml` is the one with no local equivalent, and the one that matters most: it has a
 `workflow_dispatch` that performs the whole build, checksum and inventory **without publishing
-anything**, which is how it gets exercised before a tag depends on it.
+anything**, which is how it gets exercised before a tag depends on it. Until that has been run,
+[security-summary.md](security-summary.md) §2's account of how a release is built describes a
+mechanism in place rather than one observed.
 
-**Delete this section the first time the workflows run green on GitHub**, and say so in the
+**Delete this section once `upgrade.yml` and `release.yml` have each run**, and say so in the
 changelog entry for the version that happens under.
 [release-checklist.md](release-checklist.md) carries the step. A caveat nobody removes becomes
 a lie by neglect, which is worse than the one it was written to prevent.
@@ -46,7 +46,6 @@ a lie by neglect, which is worse than the one it was written to prevent.
 |---|---|
 | A dry run (`--install=0`) selects `altioo-mcp` | The setup **silently** dropping the extension — an unsatisfiable dependency does not fail a setup, it removes a checkbox. This one runs as its own job, before any database exists |
 | iTop's unattended setup completes | A module declaration that no longer parses, an XML delta the compiler rejects |
-| `--check-consistency=1` | A datamodel this module contributes to that compiles but is not coherent |
 | A row in `priv_module_install`, at this version | The setup completing without installing the module, or installing a stale copy left in `extensions/` by an earlier run |
 | A row in `priv_extension_install`, `source = extensions` | The module arriving by some route other than the one a user's install takes |
 | `env-production/altioo-mcp` exists | Recorded as installed, but not compiled to where iTop loads it from |
@@ -173,12 +172,11 @@ is what actually runs here — called with its documented options, not reimpleme
 
 It is written for an administrator inside an unzipped iTop with a response file already filled
 in, installing once. Stripped of argument handling it defaults `installation.xml`, clears the
-maintenance lock, and calls the PHP with `--use_itop_config`. Four things follow that rule it
+maintenance lock, and calls the PHP with `--use_itop_config`. Three things follow that rule it
 out for CI:
 
 - no way to pass **`--install=0`**, which is the whole database-free `installable` job;
 - no way to pass **`--clean=1`**, so a re-install is not repeatable;
-- no way to pass **`--check-consistency=1`**;
 - **`--use_itop_config` is hardcoded**, and it overrides the response file's database settings,
   URL and language from an existing `config-itop.php` whenever one is present — harmless on a
   fresh runner, wrong on any reused workspace.
@@ -230,14 +228,24 @@ volume, which is what makes `integration` a two-second loop rather than a ten-mi
 loop an integration test actually gets written in. `matrix` records a verdict per step and
 carries on, the way `fail-fast: false` lets the real matrix finish.
 
-**Expect `unattended install` to fail on iTop 3.2.3-2.** The setup runs with
-`--check-consistency=1`, and that release's own datamodel does not pass it: `ActionNotification`
-declares a default language outside its allowed values, `SynchroReplica` the same for
-`dest_class`, and `TemporaryObjectDescriptor` puts an unknown `meta` in its details ZList. None
-of the three is ours — installing the same release with an empty `extensions/` and a database of
-its own reports exactly the same three. The module still compiles, gets its rows in
-`priv_module_install` and `priv_extension_install`, and serves tools over HTTP, which is why the
-steps after it are worth reading rather than skipping.
+**`--check-consistency=1` was removed, and this is where that was decided.** The setup used to
+run with it, and iTop 3.2.3-2's own datamodel does not pass it: `ActionNotification` declares a
+default language outside its allowed values, `SynchroReplica` the same for `dest_class`, and
+`TemporaryObjectDescriptor` puts an unknown `meta` in its details ZList. None of the three is
+ours — installing the same release with an empty `extensions/` and a database of its own reports
+exactly the same three.
+
+This was previously documented here as a failure to expect, which is the wrong resolution: a
+step that is red on every supported version gates nothing, and an expected red is one nobody
+reads. It is worse than inert, because the check runs *last* — iTop writes the config, compiles
+`env-production` and installs the module, then prints `installation failed!` and exits non-zero
+over a complete instance. That is what hid it locally: the installed directories were there, so
+the run looked like it had worked, and only the verdict file said otherwise.
+
+What replaces it is the rest of this table, all of which says something about *this* module
+rather than about Combodo's: the rows in `priv_module_install` and `priv_extension_install`,
+`env-production/altioo-mcp` existing, iTop's own module test suite, this module's integration
+suite, and the endpoint answering over HTTP.
 
 On a machine that does have a PHP in range and a MariaDB, the scripts still run directly:
 
