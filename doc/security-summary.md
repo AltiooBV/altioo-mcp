@@ -134,9 +134,13 @@ text that came from outside the organisation — not a permission boundary; the 
 | **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant** |
 
 **Change attribution.** Every write this extension makes is attached to an iTop change record
-carrying the tool that made it, not just the user: `Jane Doe (MCP: core_object_update)`, visible
-in the object's History tab. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` returns every
-change made through the endpoint, which is the query an audit will ask for. Left alone, iTop
+carrying the tool that made it, not just the user: `Jane Doe (MCP: core_object_update)` in
+`CMDBChange.userinfo`. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` returns every change
+made through the endpoint, which is the query an audit will ask for. It is recorded and
+queryable rather than displayed: since iTop 3.0 the console's Activity panel prefers the
+change's `user_id` over `userinfo` and shows the user's login, keeping the suffix as a fallback
+for a user that no longer exists. The per-call view with the tool named is this module's own
+`MCP Service Call` trail. Left alone, iTop
 would record only the user's name — the same name whether the person made the change themselves
 or a token-driven agent made it nightly for a month.
 

@@ -109,8 +109,11 @@ organisation cannot silently commit a change on the strength of that text alone.
 alone that record carries the user's name and nothing else — the same name whether the person
 made the change themselves, asked an assistant to make it, or issued a token to an agent that
 has been making it nightly for a month. A change made here reads
-`Jane Doe (MCP: core_object_update)`, with an optional comment for the reason, in the object's
-own History tab. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds every one of them.
+`Jane Doe (MCP: core_object_update)`, with an optional comment for the reason.
+`SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds every one of them. The console's
+Activity panel shows the user rather than that line — since iTop 3.0 it prefers the change's
+`user_id` — so the per-call view carrying the tool name is the **MCP Service Call** trail
+below.
 
 **Four gates before any of that.** A dedicated `MCP Services User` profile; a credential iTop
 accepts, with `MCP` token scopes that are distinct from the REST and Export scopes and can make
@@ -142,10 +145,28 @@ a proxy — the `401` will advertise it); no console UI, configuration is module
 
 ## Screenshots to attach
 
-1. Personal token screen with an `MCP` scope ticked.
-2. The **MCP Service Call** list in the console, showing audited calls.
-3. An object's History tab, with a change attributed to `… (MCP: core_object_update)`.
-4. An assistant session answering a question from live iTop data.
+The set exists to answer one question an evaluator has and the prose cannot settle: *does it
+really refuse, and does it really show me first?* Four, in this order.
+
+1. **The token screen.** An **application token** — `Remote application`, the `MCP Services
+   User` profile **paired with a functional one**, and a scope list that is a *subset* of the
+   toolsets, not all of them. The pairing is the point: `MCP Services User` grants no data
+   rights of its own, and a screenshot showing it alone shows an assistant that can reach
+   nothing. Equally, do not shoot an `Administrator` token — the whole claim is least
+   privilege, and a screenshot of full rights argues the opposite.
+2. **The MCP Service Call list**, filtered to one session: a row with `Dry run = Yes`
+   immediately followed by the same tool with `Dry run = No`. Rehearsed, then committed, with
+   `Objects changed` beside both. This is the strongest single image — the guardrail and the
+   audit trail in one frame — and it is the one a security reviewer wants.
+3. **One MCP Service Call in detail**, showing the credential link, the change link and the
+   object list. It is what makes the row an audit record rather than a counter.
+4. **An assistant session mid-dry-run**, reporting what it *would* write and asking before
+   committing. Shoot it on a single connected server with real-looking ticket content — not a
+   ticket called "test", and not with a second, failing server in frame.
+
+Not the object's Activity panel: the `(MCP: …)` attribution is recorded on the change and is
+queryable, but the panel displays the user, so there is nothing there to photograph. See
+*Change attribution* above.
 
 ## Support
 

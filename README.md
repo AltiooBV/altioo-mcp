@@ -164,14 +164,23 @@ more than a formality check: for an update, the moment between the check and the
 only one where the pending values are still pending, so the report can tell you that setting
 `status` to `closed` also cleared three other attributes, *before* it does.
 
-**Every write says where it came from, in the object's own history.** iTop attaches each
-change to a `CMDBChange`, and what the console shows on an object's History tab is the line
-that record carries. Left alone it is the user's name, which through this endpoint says less
-than it looks: the same name appears whether the person made the change themselves, asked an
-assistant to make it, or issued a token to an agent that has been making it nightly for a
-month. A change made here reads `Jane Doe (MCP: core_object_update)`, and the tool is filled
-in from the request — so a tool from a pack that has never heard of any of this is attributed
-exactly like a core one.
+**Every write says where it came from, on the change record.** iTop attaches each change to a
+`CMDBChange`, and its `userinfo` is the line that says who. Left alone it is the user's name,
+which through this endpoint says less than it looks: the same name appears whether the person
+made the change themselves, asked an assistant to make it, or issued a token to an agent that
+has been making it nightly for a month. A change made here reads
+`Jane Doe (MCP: core_object_update)`, and the tool is filled in from the request — so a tool
+from a pack that has never heard of any of this is attributed exactly like a core one.
+
+**Where you will and will not see it.** `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'`
+returns every change made through the endpoint, which is the query an audit asks. The
+console's **Activity panel does not show it**: since iTop 3.0 a change also carries `user_id`,
+and `CMDBChangeOpFactory::GetUserLoginFromChangeOp()` prefers that over `userinfo`, resolving
+the User and displaying their login — so the panel reads `Jane Doe` and the `(MCP: …)` suffix
+is used only as a fallback, for a change whose user no longer exists. The suffix is recorded
+and queryable, not rendered. What the console *does* show per call, with the tool named, is
+this module's own [audit trail](#audit-trail): one `MCP Service Call` per request, linking
+to both the credential and the change.
 
 Every writing tool also takes an optional `comment`, iTop's REST/JSON `comment` by another
 route, which adds the *why*: `Jane Doe (MCP: core_object_update) - caller confirmed the laptop
