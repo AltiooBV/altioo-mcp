@@ -1473,8 +1473,15 @@ target branch — the script's options have changed between branches.
   cache, removes the `data/.maintenance` / `data/.readonly` locks a failed setup leaves behind. It
   **refuses to run when the DB prefix is non-empty** ("Cleanup not implemented for a partial
   database") — a CI database MUST therefore be a whole database, not a prefix inside one.
-- `--check-consistency=1` runs `MetaModel::CheckDefinitions()` after the install: the only check that
-  the datamodel your module contributed to compiles *and* is coherent.
+- `--check-consistency=1` runs `MetaModel::CheckDefinitions()` after the install. It is the only
+  check that the compiled datamodel is coherent and not merely parseable — but **verify it passes
+  on a vanilla install of your target branch before gating a build on it.** It validates the
+  *whole* datamodel, Combodo's classes included, and shipped releases have failed their own check:
+  a default outside an attribute's allowed values, a ZList naming an attribute code that does not
+  exist. When that is true of the branch you target, the flag can never be green, it fails *after*
+  the setup has written the config and compiled `env-<env>/` — so a complete instance reports a
+  fatal run — and it cannot distinguish your classes from theirs. Run it for information; take the
+  verdict from the records below, which are about your module.
 - **NEVER `--use_itop_config` in CI.** It overrides the response file's database settings, URL and
   language from any existing `config-itop.php` — harmless on a fresh runner, wrong on every reused
   workspace. Same reason not to call the shipped `setup/unattended-install/install-itop.sh`: it

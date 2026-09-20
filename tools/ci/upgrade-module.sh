@@ -129,11 +129,21 @@ set +e
 php "$ITOP_DIR/setup/unattended-install/unattended-install.php" \
   --param-file="$RESPONSE_FILE" \
   --installation_xml="$ITOP_DIR/datamodels/2.x/installation.xml" \
-  --check-consistency=1 \
   2>&1 | tee "$ITOP_DIR/ci-upgrade.log"
 UPGRADE_RC=${PIPESTATUS[0]}
 set -e
 echo "::endgroup::"
+
+# --check-consistency=1 is deliberately not passed, for the reason spelled out
+# in install-itop.sh: it runs MetaModel::CheckDefinitions() over the *whole*
+# compiled datamodel, and iTop's own shipped classes do not pass it on any
+# version this module supports. It fails last, after the upgrade has already
+# recompiled and rewritten everything, so it reports a fatal run over a
+# complete instance. The verdict here comes from priv_module_install and the
+# fixture check below, both of which are about this module.
+#
+# It was removed from install-itop.sh first and missed here, which is why the
+# upgrade job failed the first time it ever had a baseline to run against.
 
 fail() { echo "::error::$1"; echo "--- last 60 lines of the setup log ---"; tail -60 "$ITOP_DIR/ci-upgrade.log"; exit 1; }
 
