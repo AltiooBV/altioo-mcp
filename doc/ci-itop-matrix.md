@@ -9,31 +9,31 @@ because the version that breaks is rarely the one being developed against.
 on a schedule, which matters more: nothing in this repository changes when Combodo publishes
 3.2.4, and that is exactly when the claim on the Hub listing quietly stops being true.
 
-## Status: none of this has run on GitHub yet
+## Status: two of the four workflows have run on GitHub
 
 <!-- ci-unproven:begin -->
 
-**Every workflow in [`.github/workflows/`](../.github/workflows/) ships unproven on GitHub's
-runners, and this is the one place that says so.** At 1.0.0 the repository has never run
-Actions: `ci.yml`, `itop-matrix.yml`, `upgrade.yml` and `release.yml` are published as written,
-not as observed. Anything in this repository that speaks of CI in the present tense — the
-README's supported-versions claim, `CONTRIBUTING.md`'s "CI has to be green",
-[security-summary.md](security-summary.md) §2 on how a release is built — describes a
-mechanism that is in place and has not yet been exercised where it will run.
+**Two of the four workflows have now run on GitHub; two have not, and this is the one place
+that says which.** `ci.yml` and `itop-matrix.yml` run on every pull request and have been
+observed green. `upgrade.yml` and `release.yml` ship as written rather than as observed:
+`upgrade.yml` triggers on a push to `main` and on a schedule, so a pull request never exercises
+it, and `release.yml` runs only on a `v*` tag or a manual dispatch.
 
-What *has* been exercised is the steps, locally and by hand:
-[`tools/ci/local/run.sh`](../tools/ci/local/run.sh) runs `ci.yml`'s lint and unit jobs across
-the PHP range and `itop-matrix.yml`'s install against iTop 3.2, in containers, from the same
-scripts under `tools/ci/` that the workflow steps call. The remaining gates — the pinned-action
-check, `composer audit --locked`, the example pack, the archive shape and the SBOM — are shell
-and Composer commands that were run directly from the job definitions and passed. What is
-untested is GitHub, not the logic.
+**The first run was not green, and what it found is why this notice existed.** Three failures,
+each uncovered by fixing the one before it: `upgrade.yml` and `itop-matrix.yml` both used
+`${{ runner.temp }}` in a job-level `env:`, which is a parse error, so neither had ever
+executed; the install was gated on `--check-consistency=1`, which iTop's own datamodel does not
+pass on any supported version; and the integration suite's dictionary-key list had gone stale
+against a rename. All three were in the half of the pipeline that only CI exercises — local
+coverage was real and stopped exactly where the integration suite skips.
 
 `release.yml` is the one with no local equivalent, and the one that matters most: it has a
 `workflow_dispatch` that performs the whole build, checksum and inventory **without publishing
-anything**, which is how it gets exercised before a tag depends on it.
+anything**, which is how it gets exercised before a tag depends on it. Until that has been run,
+[security-summary.md](security-summary.md) §2's account of how a release is built describes a
+mechanism in place rather than one observed.
 
-**Delete this section the first time the workflows run green on GitHub**, and say so in the
+**Delete this section once `upgrade.yml` and `release.yml` have each run**, and say so in the
 changelog entry for the version that happens under.
 [release-checklist.md](release-checklist.md) carries the step. A caveat nobody removes becomes
 a lie by neglect, which is worse than the one it was written to prevent.
