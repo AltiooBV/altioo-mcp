@@ -18,7 +18,7 @@ Removal of anything on that surface comes at least one minor release after a `@d
 naming its replacement. Migration steps an administrator has to take are called out in the
 entry itself, not left to be inferred from it.
 
-## [1.0.0] — unreleased
+## [1.0.0] - 2026-09-20
 
 The first release. Nothing precedes it, so the entries below describe what the extension **is**
 rather than what changed in it — there is no instance anywhere running an earlier version, and
@@ -30,18 +30,19 @@ rather than squashed away, so the entries below can be read against the commits 
 does not carry — in particular that nothing older than publication is signed, because the key
 did not exist yet.
 
-It has not been tagged, so this heading carries no date. The date is written in on the day of
-the tag: [doc/release-checklist.md](doc/release-checklist.md) carries the step,
-[release.yml](.github/workflows/release.yml) refuses a tag whose version has no dated heading,
-and that same date starts the support window in [SECURITY.md](SECURITY.md#support-period).
+Tagged 2026-09-20, which is also the date the five-year support window opens in
+[SECURITY.md](SECURITY.md#support-period).
 
-Two properties are worth having before the list: **no tool writes on a first call**, and **a
-tool is graded read / write / delete by the annotations it declares**.
+Two properties are worth having before the list: **no tool writes unless it is asked to** — the
+rehearsal is the default rather than a boundary, and `MCP-advisory` is the scope that makes it
+one — and **a tool is graded read / write / delete by the annotations it declares**.
 
-**Tested on.** Not recorded yet, because there has been no release run. Step 7 of
-[the release checklist](doc/release-checklist.md) writes the iTop patch and the PHP version the
-published archive was installed and exercised on into this line; the README and
-[doc/hub-listing.md](doc/hub-listing.md) both read it from here.
+**Tested on.** iTop **3.2.3-2** on PHP **8.2** and **8.4** — installed through iTop's own
+unattended setup, then exercised by the module's integration suite and by calling the endpoint
+over HTTP. The unit suite runs on 8.2, 8.3 and 8.4, and again against the tree inside the
+published archive. Combinations outside that are expected to work from the ranges in the README
+rather than observed; the README and [doc/hub-listing.md](doc/hub-listing.md) both read this
+line from here.
 
 ### Added
 
