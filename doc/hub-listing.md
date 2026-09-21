@@ -54,7 +54,7 @@ Application management / Integration
 
 | | |
 |---|---|
-| iTop | **3.2** (LTS) |
+| iTop | **3.2** (LTS) and **3.3** (STS) |
 | PHP | **8.2** to **8.4** |
 
 <!-- supported-versions:end -->
@@ -62,7 +62,7 @@ Application management / Integration
 | | |
 |---|---|
 | Not supported | iTop 3.1 or earlier — the setup refuses |
-| Not claimed | iTop 3.3 — untested rather than known broken. It is not in the CI matrix, so it is not listed as supported |
+| Not claimed | no branch above 3.3. A branch enters the row above after the install matrix has actually run against it, never before |
 | Prerequisites | `authent-token` ≥ 2.2.1 and `itop-structure` ≥ 3.2.0 — both ship with iTop |
 | Licence | AGPL-3.0-or-later, same as iTop |
 | Price | Free |

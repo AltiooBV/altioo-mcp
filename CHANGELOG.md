@@ -18,6 +18,22 @@ Removal of anything on that surface comes at least one minor release after a `@d
 naming its replacement. Migration steps an administrator has to take are called out in the
 entry itself, not left to be inferred from it.
 
+## [Unreleased]
+
+### Added
+
+- **iTop 3.3 is now a supported branch**, alongside 3.2. The install matrix runs against iTop
+  3.3.0 on PHP 8.2 and 8.4, so the claim means what it means for 3.2: the setup selects and
+  installs the module there, Combodo's module validation suite and this module's own integration
+  suite pass against the compiled instance, and the endpoint answers over HTTP. Nothing in the
+  module changed to make that true — no source file, no datamodel, no dependency — and an
+  instance already running 1.0.0 on 3.2 has nothing to do about this entry.
+
+  **If you are moving an instance to 3.3, mind the PHP floor, which is iTop's rather than
+  ours:** 3.2 accepts PHP 8.1, 3.3 refuses anything below 8.2. This extension has always needed
+  8.2, so an instance already running it is already above 3.3's floor — but a 3.2 instance still
+  on 8.1 has to raise PHP before it can go to 3.3 at all.
+
 ## [1.0.0] - 2026-09-20
 
 The first release. Nothing precedes it, so the entries below describe what the extension **is**

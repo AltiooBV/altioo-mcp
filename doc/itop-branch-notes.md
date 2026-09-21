@@ -34,7 +34,7 @@ copy a branch or PHP value from here into a claim about this extension.
 | Branch | Track | Upstream status |
 |---|---|---|
 | **3.2.x** | **LTS** | current LTS, latest 3.2.3-2 (Apr 2026) |
-| 3.3.x | STS | next STS |
+| 3.3.x | STS | released, 3.3.0 (archive `iTop-3.3.0-21411.zip`, tag `3.3.0`) |
 | 3.1.x | — | unmaintained (last 3.1.3, Apr 2025) |
 | 3.0.x | — | unmaintained (last 3.0.4, Jan 2024) |
 | 2.7.x | — | unmaintained (last 2.7.13, Sep 2025) |
@@ -50,7 +50,9 @@ claimed otherwise:
   parameter does not exist anywhere in 3.2.2.
 - `latest:` refers to an `exec.php` at the web root. There is none in 3.2.2.
 
-Use the version-pinned namespace rather than `latest:` wherever the answer is load-bearing. The
+As of September 2026 `latest:` resolves to **3.3**, so it is no longer the LTS's page at all:
+anything read there about 3.2 is now a statement about a branch you are not running. Use the
+version-pinned namespace rather than `latest:` wherever the answer is load-bearing. The
 namespace is the branch with underscores and a trailing zero, not the branch as written anywhere
 else: `3_2_0:install:security` and `3_3_0:install:security` both resolve; `3.2:install:security`
 is a 404. Verified August 2026.
@@ -79,6 +81,15 @@ The machine-readable floor and ceiling on any branch:
 |---|---|
 | iTop's floor | `PHP_MIN_VERSION`, `setup/setuputils.class.inc.php` |
 | iTop's ceiling | `PHP_NOT_VALIDATED_VERSION`, same file — setup *warns* at or above it (`CheckResult::WARNING`) and installs anyway; only the floor raises `CheckResult::ERROR` |
+
+Read off tag `3.3.0` on 2026-09-21, and agreeing with both the `latest:` and the `3_3_0:` wiki
+requirements pages: `PHP_MIN_VERSION = '8.2.0'`, `PHP_NOT_VALIDATED_VERSION = '8.5.0'`,
+`MYSQL_MIN_VERSION = '5.7.0'`, `MYSQL_NOT_VALIDATED_VERSION = ''` (no ceiling warning at all).
+
+One consequence worth keeping in view: on 3.3 this extension's declared range and iTop's
+*validated* range are the same interval. `composer.json` says `>=8.2 <8.5`; 3.3 refuses below
+8.2.0 and warns from 8.5.0. On 3.2 they differ — iTop's floor is 8.1 there and ours is 8.2, so
+the narrower bound is ours and comes from `symfony/uid` and `webmozart/assert`.
 
 ---
 
