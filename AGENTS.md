@@ -1106,8 +1106,14 @@ XML is code; most of its failures stay invisible until a page renders. High-valu
 | `MetaModel::GetModuleSetting()` | setting read by code but never declared (§3.5) |
 
 MUST run Combodo's own `module_integration.xml.dist` before Hub submission — in-file description:
-"dedicated to validate modules/extensions"; runs `DictionariesConsistencyTest`,
-`DictionariesConsistencyAfterSetupTest`, `iTopModulesDependencyValidationServiceTest`.
+"dedicated to validate modules/extensions". It names its test files one by one in `<testsuites>`,
+so read that list on the branch you target rather than assuming it: the entries differ between
+branches, and **a branch can name a file it does not ship** — PHPUnit then treats the whole config
+as fatal at load time and the tests that do exist never run. When that happens, the answer is
+neither to drop the step nor to edit their config: run the entries that exist, under their config,
+and name the ones that do not — failing if the config names none or none of them exist, which are
+the cases where tolerating it would mean checking nothing. The branch notes record which branches
+are affected.
 
 ### 8.6 Test the security decisions
 

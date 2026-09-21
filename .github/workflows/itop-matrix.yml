@@ -204,13 +204,11 @@ jobs:
       # iTop's own validation for third-party modules: it walks everything the
       # setup compiled and checks the dictionaries resolve. It is their test,
       # run against our module, which makes it the one check here we did not
-      # write and cannot accidentally make agree with us.
+      # write and cannot accidentally make agree with us - so the script runs
+      # their config rather than a file list of our own. What it tolerates, and
+      # what it still fails on, is documented at the head of it.
       - name: iTop's module validation suite
-        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
-        run: |
-          set -euo pipefail
-          composer install --no-interaction --no-progress
-          php vendor/bin/phpunit -c module_integration.xml.dist
+        run: tools/ci/module-validation.sh
 
       # The suite that skips itself everywhere else. It extends iTop's
       # ItopDataTestCase, so it only ever runs where there is a real MetaModel -

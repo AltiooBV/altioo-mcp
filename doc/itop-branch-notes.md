@@ -201,6 +201,11 @@ depends on are recorded here:
   check reading the single line after the heading reports a module unselectable on 3.3 that the
   setup had in fact selected. `install-itop.sh` reads the block to the next blank line and splits
   on both.
+- **`module_integration.xml.dist` names a test that ships nowhere, at 3.3 and on `develop`:**
+  `integration-tests/iTopModulesDependencyValidationServiceTest.php`. Not in the 3.3.0 archive, not
+  in the 3.3.0 source tag, not on `develop` — the string does not occur anywhere in the tag. PHPUnit
+  fails at config-load time, so the two dictionary tests that *do* exist never run. 3.2's copy of
+  that config does not list it. Handled by `tools/ci/module-validation.sh`; verified 2026-09-21.
 - Response file models: `setup/unattended-install/xml_setup/`. `--installation_xml` path is
   `datamodels/2.x/installation.xml` on 3.x branches.
 

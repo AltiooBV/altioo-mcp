@@ -18,7 +18,7 @@ on a schedule, which matters more: nothing in this repository changes when Combo
 | A row in `priv_module_install`, at this version | The setup completing without installing the module, or installing a stale copy left in `extensions/` by an earlier run |
 | A row in `priv_extension_install`, `source = extensions` | The module arriving by some route other than the one a user's install takes |
 | `env-production/altioo-mcp` exists | Recorded as installed, but not compiled to where iTop loads it from |
-| iTop's `ModuleIntegration` suite | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
+| iTop's `ModuleIntegration` suite ([`module-validation.sh`](../tools/ci/module-validation.sh)) | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
 | The module's own `Integration` suite | Everything that needs a live `MetaModel`, `UserRights` and a database |
 | `itop-smoke.php` | Module settings, the audit class, the token scopes and the profile — the pieces the security model is made of, checked in the instance rather than in a fixture |
 | `http-smoke.sh` | The endpoint over the wire: refused without a credential — asked of both the compiled URL and the one under `extensions/`, since a boot that fatals answers `500` there and `401` nowhere — then `initialize` and `tools/list` with a credential |
@@ -186,16 +186,77 @@ nothing else installed:
 tools/ci/local/run.sh unit            # ci.yml's unit job and its linter, on 8.2
 tools/ci/local/run.sh unit 8.4        # the same, on the ceiling of the range
 tools/ci/local/run.sh matrix          # itop-matrix.yml, iTop 3.2, on 8.2
-tools/ci/local/run.sh matrix 3.3 8.4  # a branch not in the matrix: how you try 3.3
+tools/ci/local/run.sh matrix 3.2 8.4  # the same branch, on the ceiling
 tools/ci/local/run.sh integration     # the integration suite alone, seconds
 tools/ci/local/run.sh down            # remove the containers, the volume, the network
 ```
+
+**Trying a branch the matrix does not claim** takes one more step, and it is not optional:
+`matrix` resolves its release through `resolve-itop-versions.php --matrix`, which iterates
+`.github/itop-support.json`, so a branch absent from that file has no zip URL and the run stops
+before it downloads anything. Add the entry, run it, and take the entry back out — the file is
+the supported-versions claim three documents are generated from, so leaving a branch in it after
+an experiment is how an untested branch becomes a published claim. That order is deliberate:
+naming the branch is what makes it testable, and reverting is what keeps it from being a promise.
 
 It runs the same `tools/ci/` scripts the workflow steps run; the only thing it adds is the
 machine. The image is built once per PHP version and the installed iTop is kept in a Docker
 volume, which is what makes `integration` a two-second loop rather than a ten-minute one — the
 loop an integration test actually gets written in. `matrix` records a verdict per step and
 carries on, the way `fail-fast: false` lets the real matrix finish.
+
+## Tolerating an upstream test that does not exist
+
+`module_integration.xml.dist` is Combodo's, and the reason the step is worth having is that it is
+theirs — the one check in this table we did not write and cannot accidentally make agree with us.
+It also names its test files one at a time, and **3.3 names one that ships nowhere**:
+`iTopModulesDependencyValidationServiceTest.php` is in no 3.3.0 archive, in no 3.3.0 source tag,
+and not on `develop`. PHPUnit resolves `<file>` entries when it loads the config, so one absent
+file is fatal before any test runs, and the two that do exist — the dictionary consistency pair,
+around 5 000 assertions against our compiled module — never execute.
+
+**Why this is tolerated when `--check-consistency=1` was removed** — the two look alike, and the
+removal below is the precedent, so the difference is worth stating rather than assumed. That flag
+was dropped on two counts: it is red on a vanilla install of every branch we support, so it could
+never be green and therefore gated nothing; and it validates the whole datamodel, so a failure
+never said anything about *this* module. Neither is true here. This suite is green on 3.2 and
+green on 3.3 once the absent file is skipped, and it does test our module: delete one entry from
+our French dictionary in the compiled environment and it fails, naming the key —
+
+```
+The following entries are missing in french dictionaries :
+ - Class:AltiooEventMCPService/Attribute:mcp_name
+FAILURES!  Tests: 5175, Assertions: 10859, Failures: 1
+```
+
+(`DictionariesConsistencyAfterSetupTest` reads `env-<env>/dictionaries/*.dict.php`, the merged
+files the setup compiles, not the module's XML — so it sees our entries the way a running instance
+does. The sibling `DictionariesConsistencyTest` globs `*.dict*.php` under `extensions/` and
+`datamodels/2.x/`, which our XML dictionaries do not match; it is Combodo's own coverage, and we
+carry it rather than benefit from it.)
+
+So the question is not whether to keep the step. It is how to keep it on a branch where PHPUnit
+will not load its config. Three ways, and only one of them is honest:
+
+- **Let it stay red.** An expected red on a branch is one nobody reads, which is the argument that
+  removed `--check-consistency=1` below.
+- **Edit their config in the installed tree.** It stops being their test, and the day Combodo ships
+  the file we would go on not running it, silently — the same failure as a suite that skips itself
+  and reports green.
+- **Run the entries that exist, under their config, and say which ones did not.** This is what
+  [`module-validation.sh`](../tools/ci/module-validation.sh) does.
+
+It reads the `<file>` list out of `<testsuites>`, partitions it into present and missing, writes a
+copy of their config with the missing lines dropped — a copy, beside the original, because the
+bootstrap and the test paths both resolve relative to the config's directory — and runs PHPUnit on
+that. Every other setting in the config is theirs and untouched, which matters more than it looks:
+`convertWarningsToExceptions` and the `E_ALL` ini are what make the run strict, and a suite run
+instead with `--no-configuration` and a hand-written file list is a visibly different, weaker
+check.
+
+It still fails when tolerating would mean checking nothing: when the config names no test files at
+all (its shape changed, and this script reads it), and when none of the files it names exist. And
+it needs no attention the day the file appears — it is present, so it runs.
 
 **`--check-consistency=1` was removed, and this is where that was decided.** The setup used to
 run with it, and iTop 3.2.3-2's own datamodel does not pass it: `ActionNotification` declares a
