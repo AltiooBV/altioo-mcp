@@ -210,11 +210,15 @@ php "$ITOP_DIR/setup/unattended-install/unattended-install.php" \
   > "$ITOP_DIR/ci-dryrun.log" 2>&1 \
   || { echo "::error::the setup refused the run before installing anything"; cat "$ITOP_DIR/ci-dryrun.log"; exit 1; }
 
-# The module list is printed one line below its heading, as a comma-separated
-# list, so the field has to be matched whole: a substring test would be
+# The module list follows its heading and runs to the next blank line. Its shape
+# is not stable across branches - 3.2 prints the whole list on one
+# comma-separated line, 3.3 prints one module per line - so the block is read
+# whole rather than the single line after the heading, and split on both commas
+# and newlines. The field is then matched whole: a substring test would be
 # satisfied by any module whose name merely starts the same way.
-if ! grep -A1 -E '^(Computed modules to install|Modules to install)' "$ITOP_DIR/ci-dryrun.log" \
-     | tr ',' '\n' | grep -qx "$MODULE_CODE"; then
+if ! awk '/^(Computed modules to install|Modules to install)/{f=1} f{print} f&&/^[[:space:]]*$/{f=0}' \
+       "$ITOP_DIR/ci-dryrun.log" \
+     | tr ',' '\n' | tr -d '[:blank:]' | grep -qx "$MODULE_CODE"; then
   echo "::error::$MODULE_CODE would not be installed - the setup discovered it and did not select it"
   # The reason, in the setup's own words. It logs a warning naming the modules
   # that made the extension unselectable and then carries on as if nothing had

@@ -17,12 +17,23 @@
 #   tools/ci/local/run.sh unit                  the ci.yml unit job, on 8.2
 #   tools/ci/local/run.sh unit 8.4              the same, on the ceiling
 #   tools/ci/local/run.sh matrix                itop-matrix.yml, iTop 3.2 on 8.2
-#   tools/ci/local/run.sh matrix 3.3 8.4        a branch the matrix does not claim -
-#                                               how 3.3 gets tried before claiming it
+#   tools/ci/local/run.sh matrix 3.2 8.4        the same branch, on the ceiling
 #   tools/ci/local/run.sh integration           just the integration suite, against
 #                                               the instance matrix already installed
 #   tools/ci/local/run.sh shell 8.2             a prompt inside the runner
 #   tools/ci/local/run.sh down                  remove everything this created
+#
+# `matrix` only takes a branch .github/itop-support.json names: the release is
+# resolved through `resolve-itop-versions.php --matrix`, which iterates that
+# file, so an unclaimed branch has no zip URL and the run stops before it
+# downloads anything. To try one - 3.3, say - add the entry, run it, and take
+# the entry back out; doc/ci-itop-matrix.md says why the last step is not
+# optional.
+#
+# NEVER edit this file while a run of it is in progress. bash reads a script
+# incrementally by byte offset, so inserting a line ahead of the interpreter
+# shifts everything under it and the run dies on a syntax error that is not
+# there once it has stopped.
 #
 # The iTop stays in a Docker volume between runs, which is the point of the
 # `integration` subcommand: installing costs minutes, re-running the suite
@@ -265,12 +276,7 @@ echo "harness tag: ${ITOP_TAG:-none - the integration suite would skip itself}"
 step "would the setup install this module" env DRY_RUN_ONLY=1 tools/ci/install-itop.sh
 step "unattended install"                 tools/ci/install-itop.sh
 
-itop_validation() {
-	cd "$ITOP_DIR/tests/php-unit-tests" || return 1
-	composer install --no-interaction --no-progress >/dev/null || return 1
-	php vendor/bin/phpunit -c module_integration.xml.dist | tail -3
-}
-step "iTop's module validation suite" itop_validation
+step "iTop's module validation suite" tools/ci/module-validation.sh
 
 module_integration() {
 	cd "$ITOP_DIR/tests/php-unit-tests" || return 1
