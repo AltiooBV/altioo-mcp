@@ -29,16 +29,21 @@
     "  pin              an exact tag, when a resolved patch is known broken and the",
     "                   failure is not ours. Temporary by nature: say why, in this file.",
     "",
-    "3.3 is deliberately absent, and its absence is not a claim that the module fails",
-    "there. Nothing has ever been installed on 3.3 - not CI, not the sandbox - and a",
-    "branch named here is a branch the README, the Hub listing and the setup wizard all",
-    "tell an operator is tested. Naming one that is not is the single thing this file",
-    "exists to prevent. Add the entry once a 3.3 install has actually been exercised;",
-    "allow_prerelease is there for exactly that first look."
+    "3.3 was added on 2026-09-21, once it had actually been installed on - the whole",
+    "matrix, on the floor and the ceiling of the PHP range, not a spot check. Until",
+    "then it was deliberately absent, and a branch named here is a branch the README,",
+    "the Hub listing and the setup wizard all tell an operator is tested; naming one",
+    "that is not is the single thing this file exists to prevent. The same bar applies",
+    "to the next branch: allow_prerelease is there for the first look at one, and the",
+    "entry comes after the run, not before it."
   ],
   "branches": [
     {
       "branch": "3.2",
+      "php": ["8.2", "8.4"]
+    },
+    {
+      "branch": "3.3",
       "php": ["8.2", "8.4"]
     }
   ]

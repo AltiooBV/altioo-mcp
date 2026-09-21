@@ -28,7 +28,7 @@ down to individual attributes and lifecycle stimuli.
 
 | | |
 |---|---|
-| iTop | **3.2** (current LTS) |
+| iTop | **3.2** (current LTS) and **3.3** (current STS) |
 | PHP | **8.2** to **8.4** |
 
 <!-- supported-versions:end -->
@@ -48,11 +48,16 @@ it — so there is one place to change when a branch is added or retired, and no
 quietly disagree with it. iTop 3.1 and earlier are not supported at all: the setup refuses to
 install, through the `itop-structure/3.2.0` dependency.
 
-**iTop 3.3 is a different case, and it is not claimed.** Nothing here has been installed on it,
-so there is no evidence either way — that is an absence of testing rather than a known
-incompatibility, and the module may well work. It will be added to the table above when a 3.3
-install has actually been exercised, and not before: a branch named there is a branch this
-project is telling you it tests.
+**3.3 was added once it had been installed on, and not before.** It is in the table above
+because the whole matrix was run against iTop 3.3.0 on both PHP 8.2 and 8.4 — the setup, the
+module's own integration suite, Combodo's module validation suite and the endpoint over HTTP —
+rather than because the module looked likely to work there. That is the bar for every branch
+named above, and the next one will be added the same way: after the run.
+
+One consequence of supporting both is worth knowing before you pick a branch, because it is
+iTop's constraint rather than this module's: 3.2 accepts PHP 8.1 and 3.3 refuses anything below
+8.2. This extension needs 8.2 either way, so the combination to avoid is an existing 3.2
+instance still on 8.1 — raise PHP first, then install.
 
 **Which PHP goes with which iTop is iTop's decision, not this module's**, and it moves within a
 branch: 3.2 gained 8.4 at 3.2.3-1, having had known issues with it before. You cannot get this
