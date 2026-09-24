@@ -27,6 +27,15 @@
 # links it by full URL rather than by relative path for exactly that reason -
 # the same treatment AGENTS.md gets there.
 #
+# AI.md and CLAUDE.md are the entry points that send an assistant to AGENTS.md,
+# which no tool loads on its own. They are this repository's own text under its
+# own licence, so the provenance half of the rule above does not apply to them -
+# they are excluded only for the other half. They describe how this repository
+# is worked on, and an administrator who unpacks the archive in a maintenance
+# window has no use for instructions addressed to whoever edits it. CLAUDE.md
+# imports AI.md rather than repeating it, so neither carries content the other
+# does; excluding one and shipping the other would leave a dangling import.
+#
 # doc/example-pack ships as source and only as source. Its vendor/ and its lock
 # are what appear when somebody follows its README and runs composer in there -
 # a whole test framework, landing inside doc/ on a customer instance. .gitignore
@@ -48,6 +57,8 @@ phpunit.xml
 AGENTS.md
 doc/itop-branch-notes.md
 CODE_OF_CONDUCT.md
+AI.md
+CLAUDE.md
 phpcs.xml.dist
 exclude.txt
 .phpunit.result.cache
