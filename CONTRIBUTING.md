@@ -12,7 +12,7 @@ text rather than a house rewrite, so that nobody has to read a page to find out 
 usual terms apply: they do. Conduct reports go to <conduct@altioo.com>, which is a different
 mailbox from the security one and carries none of that file's timetable.
 
-## The rules the code is written to
+## The rules every change is written to
 
 [**doc/itop-extension-guide.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-extension-guide.md)
 is the development guide this repository follows, and it is worth reading before the first
@@ -20,6 +20,11 @@ change rather than after the first review comment. It covers what an iTop extens
 may not do — never modifying core, the supported extension points,
 `UserRights` on every read and write, dictionaries in XML, the coding standard, packaging and
 the release gate. Most review comments here are a pointer into one of its sections.
+
+**It governs documentation as much as code**, which is the half that gets missed: its §0 makes
+listing `doc/` and `.github/` a precondition for adding *any* document to this repository, so
+that a new one does not duplicate a document already there. A change that touches no PHP at all
+is still a change this guide is about.
 
 Two things about it are worth knowing up front:
 

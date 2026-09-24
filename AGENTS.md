@@ -24,12 +24,12 @@ could expire is in [`doc/itop-branch-notes.md`](doc/itop-branch-notes.md) instea
 ## 2. The guide governs documentation-only changes
 
 Its §0 precondition for writing **any** document into this repository is to list `doc/` and
-`.github/` first and confirm you are not duplicating one that is already there.
-`CONTRIBUTING.md` introduces it under a heading about how the code is written, which reads
-narrower than the scope is. The scope is every change.
+`.github/` first and confirm you are not duplicating one that is already there. A task that
+touches no PHP is still in scope, and `CONTRIBUTING.md` says so under "The rules every change is
+written to".
 
-This file exists because of that mistake: a code-of-conduct task was judged out of scope for the
-guide without the guide being opened, so the `doc/` listing never happened and a pull request
+This file exists because that was got wrong: a code-of-conduct task was judged out of scope for
+the guide without the guide being opened, so the `doc/` listing never happened and a pull request
 template went in restating `CONTRIBUTING.md` instead of linking it. Do not repeat it.
 
 ## 3. Disclose yourself in the pull request
