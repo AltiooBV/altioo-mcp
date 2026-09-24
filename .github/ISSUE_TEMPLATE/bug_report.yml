@@ -1,0 +1,133 @@
+name: Bug report
+description: Something the extension does that it should not, or does not do that it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Not for vulnerabilities.** A suspected security issue goes to
+        [the private advisory form](https://github.com/AltiooBV/altioo-mcp/security/advisories/new)
+        or <security@altioo.com>, never here.
+
+
+        Most of what follows is diagnosed from one file, `<itop>/log/error.log`, and the
+        [Troubleshooting](https://github.com/AltiooBV/altioo-mcp#troubleshooting) section names
+        the three cases that account for most reports. Worth ten minutes before this form.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >-
+        What you expected, and what you got instead. If the endpoint answered an error,
+        paste the response body verbatim - it is often the whole report.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: The request that reproduces it
+      description: >-
+        The JSON-RPC method and parameters, or the whole request. Redact anything you would
+        not publish - a token, and object contents that carry personal data.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: >-
+        `MCPHelper::VERSION` - the same string the server sends clients as `serverInfo`, and
+        the one in `extension.xml`.
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: itop-version
+    attributes:
+      label: iTop version
+      description: The full version, patch included, as the console footer or `setup/` reports it.
+      placeholder: 3.2.2-1-17851
+    validations:
+      required: true
+
+  - type: dropdown
+    id: php-version
+    attributes:
+      label: PHP version
+      options:
+        - "8.2"
+        - "8.3"
+        - "8.4"
+        - Other (say which below)
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: MCP client, and the protocol revision it negotiated
+      description: >-
+        The revision matters more than it looks: a `2026-07-28` client has no `initialize`,
+        so it gets no server instructions and writes no `initialize` audit row.
+      placeholder: Claude Desktop 1.x, 2025-06-18
+    validations:
+      required: true
+
+  - type: dropdown
+    id: web-server
+    attributes:
+      label: Web server
+      description: >-
+        Asked because the single most common report is not a bug in the module: under FastCGI,
+        Apache drops the `Authorization` header before PHP sees it.
+      options:
+        - Apache
+        - IIS
+        - nginx or other (say which below)
+        - Behind a reverse proxy (say which below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: >-
+        From `<itop>/log/error.log`, which is where every refusal whose reason is deliberately
+        kept out of the response is written. If the symptom is a `401`, grep `<itop>/log/` for
+        `TokenAuthLog` too: `LoginWebPage::DoLogin()` answers this module with one code and no
+        reason, so the reason a token was refused is only in that channel.
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant module parameters
+      description: >-
+        The `altioo-mcp` block from `conf/production/config-itop.php`, with any value you would
+        rather not publish replaced by a description of it. `mcp_allowed_hosts`,
+        `mcp_allowed_profiles`, `mcp_capabilities`, `mcp_disabled_tools` and `log_mcp_*` are
+        the ones that change behaviour.
+      render: php
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: >-
+            This is not a security report, and nothing above is a credential.
+          required: true
+        - label: >-
+            I read Troubleshooting, and this is not the dropped `Authorization` header, a host
+            missing from `mcp_allowed_hosts`, or a token refused on its scope.
+          required: true
+        - label: >-
+            I checked whether the user reproducing this can do the same thing through the iTop
+            console. A refusal the console also gives is iTop's permission model working.
+          required: false

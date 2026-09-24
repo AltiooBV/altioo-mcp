@@ -1,0 +1,28 @@
+# Issue forms live beside this file. Blank issues stay enabled on purpose: the
+# README's Support table sends questions to the tracker as well as bugs, and a
+# question forced through a bug form arrives with six empty required fields.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Report a vulnerability (private)
+    url: https://github.com/AltiooBV/altioo-mcp/security/advisories/new
+    about: >-
+      Never a public issue. Acknowledged within 5 working days; SECURITY.md has the
+      full commitment and what is out of scope.
+
+  - name: Troubleshooting first
+    url: https://github.com/AltiooBV/altioo-mcp#troubleshooting
+    about: >-
+      Three cases account for most reports - a dropped Authorization header under
+      FastCGI, a host missing from mcp_allowed_hosts, and a token refused on its
+      scope. Each has a named fix and a log line that identifies it.
+
+  - name: Client setup
+    url: https://github.com/AltiooBV/altioo-mcp/blob/main/doc/clients.md
+    about: Connecting Claude or another MCP client to the endpoint, per client.
+
+  - name: Writing a tool pack
+    url: https://github.com/AltiooBV/altioo-mcp/blob/main/doc/extending.md
+    about: >-
+      The base extension stays generic. Adding your own tools, resources and prompts
+      is the supported route for anything domain-specific.
