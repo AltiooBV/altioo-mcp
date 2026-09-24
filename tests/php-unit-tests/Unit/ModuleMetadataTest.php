@@ -449,7 +449,7 @@ class ModuleMetadataTest extends TestCase
 
 	/**
 	 * The package declares one licence, in LICENSE, composer.json,
-	 * extension.xml and the README. AGENTS.md and doc/itop-branch-notes.md are
+	 * extension.xml and the README. The two doc/ guides are
 	 * Creative Commons, and they shipped by omission: exclude.txt reasoned
 	 * about README.md, doc/, tests/ and tools/ and never about them. A
 	 * differently-licensed file landing on a customer instance inside a

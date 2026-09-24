@@ -25,7 +25,7 @@ permissions:
   contents: read
 
 jobs:
-  # Stage 1 (AGENTS.md §12.3): the cheapest and most decisive gate, and the
+  # Stage 1 (itop-extension-guide.md §12.3): the cheapest and most decisive gate, and the
   # one §4.8 states as a MUST. It fails on the tree as written rather than on
   # the tree as run, so it goes before the suites and before anything that
   # needs an iTop.

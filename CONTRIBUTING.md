@@ -14,10 +14,10 @@ mailbox from the security one and carries none of that file's timetable.
 
 ## The rules the code is written to
 
-[**AGENTS.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/AGENTS.md) is the
-development guide this repository follows, and it is worth reading before the first change
-rather than after the first review comment. It covers what an
-iTop extension may and may not do — never modifying core, the supported extension points,
+[**doc/itop-extension-guide.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-extension-guide.md)
+is the development guide this repository follows, and it is worth reading before the first
+change rather than after the first review comment. It covers what an iTop extension may and
+may not do — never modifying core, the supported extension points,
 `UserRights` on every read and write, dictionaries in XML, the coding standard, packaging and
 the release gate. Most review comments here are a pointer into one of its sections.
 
@@ -29,14 +29,14 @@ Two things about it are worth knowing up front:
   which branch, where a constant lives in the core source — is in
   [doc/itop-branch-notes.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-branch-notes.md),
   which carries its own verification date. If you need to state a version to make a rule clear,
-  the rule goes in `AGENTS.md` and the version goes in the branch notes.
+  the rule goes in the guide and the version goes in the branch notes.
 - **When it is wrong, fix it in the same pull request as the work that revealed it.** That is
   the intended way to change it, and corrections are as welcome as code. A quietly wrong guide
   costs more than no guide.
 
 Both are linked to the repository rather than by relative path on purpose, and so is the code
-of conduct above: those three are what `exclude.txt` keeps out of the release archive, being
-Creative Commons — CC BY-SA 4.0 for the two guides, CC BY 4.0 for the Covenant — in an
+of conduct above: `exclude.txt` keeps all three out of the release archive, being Creative
+Commons — CC BY-SA 4.0 for the two guides, CC BY 4.0 for the Covenant — in an
 AGPL-3.0-or-later package. A copy of this file unpacked on an instance therefore has none of
 them beside it, and a relative link would point at nothing.
 

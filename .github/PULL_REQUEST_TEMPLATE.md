@@ -18,7 +18,7 @@ Closes #
       see changed. It is what someone reads before scheduling a maintenance window, and one
       written later is one written from a diff.
 - [ ] Documentation that stated the old behaviour was corrected in the same change — README rows,
-      `doc/`, the dictionaries, and `AGENTS.md` where this revealed the guide was wrong.
+      `doc/`, the dictionaries, and the development guide where this revealed it was wrong.
 
 ## Checks
 

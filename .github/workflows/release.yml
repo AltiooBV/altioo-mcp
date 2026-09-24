@@ -165,7 +165,7 @@ jobs:
           test ! -e .git || { echo ".git leaked into the package"; exit 1; }
           test ! -d tools || { echo "tools/ leaked into the package"; exit 1; }
 
-          # The package declares one licence. AGENTS.md and
+          # The package declares one licence. The doc/ guides and
           # doc/itop-branch-notes.md are Creative Commons and shipped by
           # omission - exclude.txt reasoned about README.md, doc/, tests/ and
           # tools/, and nothing here asserted either their presence or their

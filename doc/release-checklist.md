@@ -118,7 +118,7 @@ tools/reconcile-since.py . v1.0.0 1.0.0 1.1.0
 **Branch notes.** Re-verify [itop-branch-notes.md](itop-branch-notes.md) against the branches
 this release actually claims, and update the date at its head. It is the one document that
 holds facts with a shelf life — branch status, PHP ranges, the newest patch of each branch —
-and `AGENTS.md` §12.5 makes this a release gate. Stale notes here become the supported-versions
+and `itop-extension-guide.md` §12.5 makes this a release gate. Stale notes here become the supported-versions
 claim in the README and on the Hub listing.
 
 **Green CI.** The linter (`composer lint`, Combodo's standard); the unit suite on PHP 8.2, 8.3

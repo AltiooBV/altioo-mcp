@@ -120,5 +120,6 @@ https://www.contributor-covenant.org/faq. Translations are available at
 https://www.contributor-covenant.org/translations.
 
 The Contributor Covenant is licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
-which is why this file — like `AGENTS.md` — is kept out of the release archive by `exclude.txt`
+which is why this file — like the development guide — is kept out of the release archive by
+`exclude.txt`
 rather than shipped inside an AGPL-3.0-or-later package. The reasoning is in that file.
