@@ -18,6 +18,15 @@
 # describes how the archive was built, which is a question about the build and
 # not about the instance.
 #
+# CODE_OF_CONDUCT.md is the same case as AGENTS.md, and listed for the same two
+# reasons rather than one. It is the Contributor Covenant, which is CC BY 4.0,
+# so shipping it inside an AGPL-3.0-or-later package with no NOTICE beside it
+# is the provenance claim described above; and it governs conduct in this
+# repository's issues and pull requests, which an installed copy has no more
+# use for than it has for the coding standard. CONTRIBUTING.md does ship, and
+# links it by full URL rather than by relative path for exactly that reason -
+# the same treatment AGENTS.md gets there.
+#
 # doc/example-pack ships as source and only as source. Its vendor/ and its lock
 # are what appear when somebody follows its README and runs composer in there -
 # a whole test framework, landing inside doc/ on a customer instance. .gitignore
@@ -38,6 +47,7 @@ composer.phar
 phpunit.xml
 AGENTS.md
 doc/itop-branch-notes.md
+CODE_OF_CONDUCT.md
 phpcs.xml.dist
 exclude.txt
 .phpunit.result.cache

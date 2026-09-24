@@ -6,6 +6,12 @@ Issues and pull requests are welcome on
 **Do not open a public issue for a suspected vulnerability.** [SECURITY.md](SECURITY.md) has
 the private channels and what we commit to.
 
+**This project runs on the [Contributor Covenant](https://github.com/AltiooBV/altioo-mcp/blob/main/CODE_OF_CONDUCT.md),
+version 2.1**, across the issues, the pull requests and the review comments. It is the standard
+text rather than a house rewrite, so that nobody has to read a page to find out whether the
+usual terms apply: they do. Conduct reports go to <conduct@altioo.com>, which is a different
+mailbox from the security one and carries none of that file's timetable.
+
 ## The rules the code is written to
 
 [**AGENTS.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/AGENTS.md) is the
@@ -28,10 +34,11 @@ Two things about it are worth knowing up front:
   the intended way to change it, and corrections are as welcome as code. A quietly wrong guide
   costs more than no guide.
 
-Both are linked to the repository rather than by relative path on purpose: they are the two
-documents `exclude.txt` keeps out of the release archive, being CC BY-SA 4.0 in an
-AGPL-3.0-or-later package. A copy of this file unpacked on an instance therefore has neither
-of them beside it, and a relative link would point at nothing.
+Both are linked to the repository rather than by relative path on purpose, and so is the code
+of conduct above: those three are what `exclude.txt` keeps out of the release archive, being
+Creative Commons — CC BY-SA 4.0 for the two guides, CC BY 4.0 for the Covenant — in an
+AGPL-3.0-or-later package. A copy of this file unpacked on an instance therefore has none of
+them beside it, and a relative link would point at nothing.
 
 It is a guide, not a permission slip: it describes how this project works, and it never
 overrides what the iTop source actually does. Where a repository file and the guide disagree,
