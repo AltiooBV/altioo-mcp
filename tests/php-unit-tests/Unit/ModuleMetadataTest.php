@@ -449,7 +449,7 @@ class ModuleMetadataTest extends TestCase
 
 	/**
 	 * The package declares one licence, in LICENSE, composer.json,
-	 * extension.xml and the README. AGENTS.md and doc/itop-branch-notes.md are
+	 * extension.xml and the README. The two doc/ guides are
 	 * Creative Commons, and they shipped by omission: exclude.txt reasoned
 	 * about README.md, doc/, tests/ and tools/ and never about them. A
 	 * differently-licensed file landing on a customer instance inside a
@@ -812,5 +812,79 @@ class ModuleMetadataTest extends TestCase
 		);
 
 		return $aMatch[1];
+	}
+
+	/**
+	 * The pull request template names each requirement and links it into
+	 * CONTRIBUTING.md rather than restating it - a second copy of a rule is a
+	 * future contradiction with nobody assigned to notice it (the guide's §0).
+	 *
+	 * That only holds while the links resolve. A heading renamed in
+	 * CONTRIBUTING.md turns every box pointing at it into a dead end, and a
+	 * reader who follows one and lands nowhere goes back to guessing - or to
+	 * copying the rule into the template again, which is what linking exists to
+	 * prevent. So this is the check that makes "link, don't restate"
+	 * maintainable rather than aspirational.
+	 *
+	 * Both halves of every link: the file exists here, and where a fragment is
+	 * given, a heading in that file slugifies to it.
+	 */
+	public function testThePullRequestTemplateLinksResolve(): void
+	{
+		$sPath = self::ROOT.'/.github/PULL_REQUEST_TEMPLATE.md';
+		if (!is_readable($sPath)) {
+			self::markTestSkipped('.github/PULL_REQUEST_TEMPLATE.md is not present; this is a repository check, not a package one');
+		}
+
+		preg_match_all(
+			'#\]\(https://github\.com/AltiooBV/altioo-mcp/blob/main/([^)\#]+)(?:\#([^)]+))?\)#',
+			file_get_contents($sPath),
+			$aLinks,
+			PREG_SET_ORDER
+		);
+		$this->assertNotEmpty($aLinks, 'the template links nowhere, so it either restates the rules or states none');
+
+		$aBroken = [];
+		foreach ($aLinks as $aLink) {
+			$sTarget = $aLink[1];
+			$sFragment = $aLink[2] ?? '';
+
+			if (!is_readable(self::ROOT.'/'.$sTarget)) {
+				$aBroken[] = $sTarget.' (no such file in this repository)';
+				continue;
+			}
+			if ($sFragment !== '' && !in_array($sFragment, self::headingSlugs($sTarget), true)) {
+				$aBroken[] = $sTarget.'#'.$sFragment.' (no heading slugifies to that)';
+			}
+		}
+		sort($aBroken);
+
+		$this->assertSame(
+			[],
+			$aBroken,
+			'the pull request template points at something that moved: '.implode(', ', $aBroken)
+		);
+	}
+
+	/**
+	 * The anchors GitHub derives from one document's headings: lower-cased,
+	 * anything but a letter, digit, space or hyphen dropped, spaces hyphenated.
+	 * Backticks and em dashes fall out under that rule, which is why they are
+	 * not handled separately.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function headingSlugs(string $sFile): array
+	{
+		preg_match_all('/^\#{1,6}\s+(.+?)\s*$/m', file_get_contents(self::ROOT.'/'.$sFile), $aHeadings);
+
+		return array_map(
+			static function (string $sHeading): string {
+				$sHeading = str_replace('*', '', $sHeading);
+
+				return str_replace(' ', '-', preg_replace('/[^a-z0-9 -]/', '', mb_strtolower($sHeading)));
+			},
+			$aHeadings[1]
+		);
 	}
 }

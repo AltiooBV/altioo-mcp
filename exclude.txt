@@ -7,8 +7,8 @@
 # tools/ does not: it is maintenance tooling for this repository, and it reads
 # git history, which no installed copy has.
 #
-# AGENTS.md and doc/itop-branch-notes.md are the exception to the rule above,
-# and not for size: they are CC BY-SA 4.0, while LICENSE, composer.json,
+# doc/itop-extension-guide.md and doc/itop-branch-notes.md are the exception to
+# the rule above, and not for size: they are CC BY-SA 4.0, while LICENSE, composer.json,
 # extension.xml and the README all declare the package AGPL-3.0-or-later with
 # no NOTICE beside it. Two differently-licensed files landing on a customer
 # instance is a provenance claim the package cannot support. They also describe
@@ -17,6 +17,39 @@
 # is not in the archive. This file excludes itself for the same reason: it
 # describes how the archive was built, which is a question about the build and
 # not about the instance.
+#
+# CODE_OF_CONDUCT.md is the same case as the guide, and listed for the same two
+# reasons rather than one. It is the Contributor Covenant, which is CC BY 4.0,
+# so shipping it inside an AGPL-3.0-or-later package with no NOTICE beside it
+# is the provenance claim described above; and it governs conduct in this
+# repository's issues and pull requests, which an installed copy has no more
+# use for than it has for the coding standard. CONTRIBUTING.md does ship, and
+# links it by full URL rather than by relative path for exactly that reason -
+# the same treatment the guide gets there.
+#
+# The guide was AGENTS.md at the root until the brief took that name. Several
+# assistants load a file called AGENTS.md without being told to, and a generic
+# guide - the same text in every repository that adopts it - cannot name a
+# repository-specific file to send them on to, so the brief was unreachable by
+# every tool it was written for. Inverting the two puts the brief where a tool
+# that knows nothing will find it, and the guide beside the branch notes it is
+# paired with.
+#
+# AGENTS.md and CLAUDE.md are excluded for one of the two reasons above rather
+# than both: they are this repository's own text under its own licence, so the
+# provenance half does not apply. Only the second does - they describe how this
+# repository is worked on, and an administrator unpacking the archive in a
+# maintenance window has no use for instructions addressed to whoever edits it.
+# CLAUDE.md imports AGENTS.md rather than repeating it, so neither carries
+# content the other does; excluding one and shipping the other would leave a
+# dangling import.
+#
+# .claude/ goes with them, and is listed beside .idea and .vscode rather than
+# among them: those are somebody's editor state and are gitignored, while this
+# one is committed on purpose - shared project hooks, which every clone should
+# get. What it configures is a tool that edits this repository, so an installed
+# instance has no more use for it than for the brief itself. tools/ is already
+# excluded, which is where the hook script it points at lives.
 #
 # doc/example-pack ships as source and only as source. Its vendor/ and its lock
 # are what appear when somebody follows its README and runs composer in there -
@@ -34,10 +67,14 @@
 .gitattributes
 .idea
 .vscode
+.claude
 composer.phar
 phpunit.xml
 AGENTS.md
+CLAUDE.md
+doc/itop-extension-guide.md
 doc/itop-branch-notes.md
+CODE_OF_CONDUCT.md
 phpcs.xml.dist
 exclude.txt
 .phpunit.result.cache

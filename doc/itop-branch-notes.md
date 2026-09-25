@@ -1,6 +1,6 @@
 # iTop branch notes — perishable facts
 
-Companion to [`AGENTS.md`](../AGENTS.md). **Everything here expires.** `AGENTS.md` holds rules that
+Companion to [`itop-extension-guide.md`](itop-extension-guide.md). **Everything here expires.** `itop-extension-guide.md` holds rules that
 do not depend on a version; this file holds the values those rules need, each pinned to a branch and
 a verification date.
 
@@ -12,19 +12,19 @@ REFRESH     at the start of every project, against the branch actually targeted
 
 **How to use this file.** Never quote a value from here without confirming it on your target branch.
 When a value here and the branch disagree, the branch wins — fix this file in the same commit
-(`AGENTS.md` §12.5). If a rule you want to write has no version in it, it belongs in `AGENTS.md`,
+(`itop-extension-guide.md` §12.5). If a rule you want to write has no version in it, it belongs in `itop-extension-guide.md`,
 not here.
 
 **What this file is not.** It records **upstream facts about iTop**. It does **not** record what
 this extension supports — that is [`.github/itop-support.json`](../.github/itop-support.json), which
 declares itself the single source of truth and is what CI actually computes from. Nor does it
 re-document this repository's own CI, which is [`doc/ci-itop-matrix.md`](ci-itop-matrix.md). When
-either of those and this file disagree, **they win** (`AGENTS.md` §0, rank 2 over rank 3). NEVER
+either of those and this file disagree, **they win** (`itop-extension-guide.md` §0, rank 2 over rank 3). NEVER
 copy a branch or PHP value from here into a claim about this extension.
 
 ---
 
-## 1. Release policy and branch status — `AGENTS.md` §1.1
+## 1. Release policy and branch status — `itop-extension-guide.md` §1.1
 
 | Track | Cadence | Support window |
 |---|---|---|
@@ -59,7 +59,7 @@ is a 404. Verified August 2026.
 
 ---
 
-## 2. PHP ranges — `AGENTS.md` §1.2
+## 2. PHP ranges — `itop-extension-guide.md` §1.2
 
 **What iTop supports**, per **patch** rather than per branch:
 
@@ -93,7 +93,7 @@ the narrower bound is ours and comes from `symfony/uid` and `webmozart/assert`.
 
 ---
 
-## 3. Database engines — `AGENTS.md` §1.3
+## 3. Database engines — `itop-extension-guide.md` §1.3
 
 - MariaDB preferred. MySQL 5.7+ supported but being phased out.
 - MySQL 8 removed the query cache — a measurable performance change on large instances.
@@ -101,7 +101,7 @@ the narrower bound is ours and comes from `symfony/uid` and `webmozart/assert`.
 
 ---
 
-## 4. Module dependency resolution — `AGENTS.md` §2.2
+## 4. Module dependency resolution — `itop-extension-guide.md` §2.2
 
 Source: `setup/modulediscovery.class.inc.php`, `DependencyIsResolved()`, confirmed at 3.2.2.
 
@@ -127,7 +127,7 @@ not something the declaration can express.
 
 ---
 
-## 5. `extension.xml` — elements the parser reads — `AGENTS.md` §2.3
+## 5. `extension.xml` — elements the parser reads — `itop-extension-guide.md` §2.3
 
 Source: `setup/extensionsmap.class.inc.php`, `iTopExtensionsMap::ReadDir()`. Six elements in 3.2.2;
 everything else is silently ignored.
@@ -145,7 +145,7 @@ Confirmed absent in 3.2.2: `itop_version_min`, `php_min_version`, `license`.
 
 ---
 
-## 6. Extension point deprecation status — `AGENTS.md` §3.2
+## 6. Extension point deprecation status — `itop-extension-guide.md` §3.2
 
 Status as of 3.2. Re-grep `@deprecated` in `application/applicationextension.inc.php` on your branch.
 
@@ -161,7 +161,7 @@ removed as of 3.2.2.
 
 ---
 
-## 7. Lifecycle events — `AGENTS.md` §3.3
+## 7. Lifecycle events — `itop-extension-guide.md` §3.3
 
 `iApplicationObjectExtension::OnDBInsert/OnDBUpdate/OnDBDelete/OnCheckToWrite…` are all
 `@deprecated 3.1.0 N°4756`.
@@ -178,7 +178,7 @@ Core events, declared in `application/datamodel.application.xml` `<events>`; eac
 
 ---
 
-## 8. Test harness pins — `AGENTS.md` §8.3
+## 8. Test harness pins — `itop-extension-guide.md` §8.3
 
 Read `tests/php-unit-tests/composer.json` on the target branch; values below are 3.2.2.
 
@@ -193,7 +193,7 @@ are PHPUnit 10+ and the suite will not run them. Doc-comments are deprecated in 
 
 ---
 
-## 9. CI / unattended setup — `AGENTS.md` §12.3
+## 9. CI / unattended setup — `itop-extension-guide.md` §12.3
 
 This repository's own install-verification chain is documented in
 [`doc/ci-itop-matrix.md`](ci-itop-matrix.md) — **read that, not this**. Only the upstream facts it
@@ -222,7 +222,7 @@ depends on are recorded here:
 
 ---
 
-## 10. Security config parameter names — `AGENTS.md` §6.9
+## 10. Security config parameter names — `itop-extension-guide.md` §6.9
 
 Verified in `core/config.class.inc.php` at 3.2.2. These have been renamed between branches — grep
 before use.
@@ -235,7 +235,7 @@ before use.
 
 ---
 
-## 11. Source file map — `AGENTS.md` §14
+## 11. Source file map — `itop-extension-guide.md` §14
 
 Paths confirmed at 3.2.2. Stable across several majors, but confirm on your branch.
 
@@ -262,7 +262,7 @@ Paths confirmed at 3.2.2. Stable across several majors, but confirm on your bran
 
 Copyright © 2026 Altioo. Licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), as a companion to
-[`AGENTS.md`](../AGENTS.md).
+[`itop-extension-guide.md`](itop-extension-guide.md).
 
 Every value in this file was verified against the iTop source on the date in the header and will go
 out of date. If you are reading a copy, check its date before trusting it, and re-verify against the

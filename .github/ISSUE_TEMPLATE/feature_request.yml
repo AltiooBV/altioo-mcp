@@ -1,0 +1,80 @@
+name: Feature request
+description: A tool, a resource, a prompt, a module parameter, or a change to one.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **This is the base extension, and it stays generic.** Anything specific to a business
+        domain belongs in a tool pack that declares this module as a dependency and registers
+        its own tools — [doc/extending.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/extending.md)
+        is that route, and it needs no change here. Finding out which side of that line an idea
+        falls on is most of what this form is for, and it is cheaper to find out here than in a
+        pull request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you cannot do today
+      description: >-
+        The task, not the patch. What is the assistant being asked to do, and where does it
+        stop?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: >-
+        If it is a new tool, resource or prompt, name it and say what it takes and returns. If
+        it is a module parameter, say what its default would be and why that default is the
+        safe one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why-base
+    attributes:
+      label: Why it belongs in the base extension rather than in a tool pack
+      description: >-
+        The test is roughly: does it map something iTop itself has, for every datamodel, or
+        does it encode a decision about how one organisation works?
+    validations:
+      required: true
+
+  - type: textarea
+    id: permissions
+    attributes:
+      label: What it reads and writes
+      description: >-
+        Every read and write goes through `UserRights`, and no tool may let a caller exceed
+        what they could do in the console. Which classes and attributes would this touch, and
+        does it write anything or apply a stimulus?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Would this change something already published?
+      description: >-
+        Three things are breaking here and mean a major version: a tool, resource or prompt
+        identifier; a class marked `@api`; the default of a module parameter. CHANGELOG.md
+        states the rule.
+      options:
+        - "No - purely additive"
+        - "Yes - it changes an identifier, an @api class, or a parameter default"
+        - "I am not sure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Would you like to implement it?
+      options:
+        - label: >-
+            I would open the pull request. (CONTRIBUTING.md has the rules the code is written
+            to; AI-assisted work is welcome and must be disclosed.)
+          required: false

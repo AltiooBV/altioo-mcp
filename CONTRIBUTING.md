@@ -6,14 +6,25 @@ Issues and pull requests are welcome on
 **Do not open a public issue for a suspected vulnerability.** [SECURITY.md](SECURITY.md) has
 the private channels and what we commit to.
 
-## The rules the code is written to
+**This project runs on the [Contributor Covenant](https://github.com/AltiooBV/altioo-mcp/blob/main/CODE_OF_CONDUCT.md),
+version 2.1**, across the issues, the pull requests and the review comments. It is the standard
+text rather than a house rewrite, so that nobody has to read a page to find out whether the
+usual terms apply: they do. Conduct reports go to <conduct@altioo.com>, which is a different
+mailbox from the security one and carries none of that file's timetable.
 
-[**AGENTS.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/AGENTS.md) is the
-development guide this repository follows, and it is worth reading before the first change
-rather than after the first review comment. It covers what an
-iTop extension may and may not do — never modifying core, the supported extension points,
+## The rules every change is written to
+
+[**doc/itop-extension-guide.md**](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-extension-guide.md)
+is the development guide this repository follows, and it is worth reading before the first
+change rather than after the first review comment. It covers what an iTop extension may and
+may not do — never modifying core, the supported extension points,
 `UserRights` on every read and write, dictionaries in XML, the coding standard, packaging and
 the release gate. Most review comments here are a pointer into one of its sections.
+
+**It governs documentation as much as code**, which is the half that gets missed: its §0 makes
+listing `doc/` and `.github/` a precondition for adding *any* document to this repository, so
+that a new one does not duplicate a document already there. A change that touches no PHP at all
+is still a change this guide is about.
 
 Two things about it are worth knowing up front:
 
@@ -23,15 +34,16 @@ Two things about it are worth knowing up front:
   which branch, where a constant lives in the core source — is in
   [doc/itop-branch-notes.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-branch-notes.md),
   which carries its own verification date. If you need to state a version to make a rule clear,
-  the rule goes in `AGENTS.md` and the version goes in the branch notes.
+  the rule goes in the guide and the version goes in the branch notes.
 - **When it is wrong, fix it in the same pull request as the work that revealed it.** That is
   the intended way to change it, and corrections are as welcome as code. A quietly wrong guide
   costs more than no guide.
 
-Both are linked to the repository rather than by relative path on purpose: they are the two
-documents `exclude.txt` keeps out of the release archive, being CC BY-SA 4.0 in an
-AGPL-3.0-or-later package. A copy of this file unpacked on an instance therefore has neither
-of them beside it, and a relative link would point at nothing.
+Both are linked to the repository rather than by relative path on purpose, and so is the code
+of conduct above: `exclude.txt` keeps all three out of the release archive, being Creative
+Commons — CC BY-SA 4.0 for the two guides, CC BY 4.0 for the Covenant — in an
+AGPL-3.0-or-later package. A copy of this file unpacked on an instance therefore has none of
+them beside it, and a relative link would point at nothing.
 
 It is a guide, not a permission slip: it describes how this project works, and it never
 overrides what the iTop source actually does. Where a repository file and the guide disagree,

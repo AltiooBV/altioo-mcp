@@ -25,7 +25,7 @@ require_once dirname(__DIR__).'/bootstrap.php';
  *
  * Enumerated in prose instead, that would be three lists of the same class
  * names, none of them read by anything, with the first class added to the
- * surface having to be remembered into all three - the drift AGENTS.md §12.1
+ * surface having to be remembered into all three - the drift the guide's §12.1
  * describes for version numbers, applied to a contract.
  *
  * This test is what makes the tag mean something,
