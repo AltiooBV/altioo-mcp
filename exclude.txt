@@ -44,6 +44,13 @@
 # content the other does; excluding one and shipping the other would leave a
 # dangling import.
 #
+# .claude/ goes with them, and is listed beside .idea and .vscode rather than
+# among them: those are somebody's editor state and are gitignored, while this
+# one is committed on purpose - shared project hooks, which every clone should
+# get. What it configures is a tool that edits this repository, so an installed
+# instance has no more use for it than for the brief itself. tools/ is already
+# excluded, which is where the hook script it points at lives.
+#
 # doc/example-pack ships as source and only as source. Its vendor/ and its lock
 # are what appear when somebody follows its README and runs composer in there -
 # a whole test framework, landing inside doc/ on a customer instance. .gitignore
@@ -60,6 +67,7 @@
 .gitattributes
 .idea
 .vscode
+.claude
 composer.phar
 phpunit.xml
 AGENTS.md

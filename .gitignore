@@ -27,6 +27,10 @@ composer.phar
 *.iml
 .vscode/
 
+# .claude/settings.json IS committed - the project hooks belong to everyone who
+# clones this. Only the personal overrides beside it are not.
+.claude/settings.local.json
+
 # PHPUnit
 .phpunit.result.cache
 .phpunit.cache/
