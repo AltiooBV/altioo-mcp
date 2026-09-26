@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!--
+	Static analysis over src/, the JSON-RPC surface handed an MCP client,
+	reaching MetaModel and UserRights directly (doc/security-summary.md §4).
+	CodeQL has no PHP support and phpcs (phpcs.xml.dist) is a coding-standard
+	linter, not a security scanner; this is the first static-security check
+	on this module's own PHP.
+
+	Psalm's taint analysis flag is deliberately not run here: it reproducibly
+	stalled partway through in every environment this was tried in,
+	independent of Psalm's version, of memory limits, and of pcntl
+	availability, so no baseline could be generated for it and shipping it
+	would either hang the job or pass vacuously having analysed nothing.
+	Plain analysis runs reliably and is what psalm-baseline.xml was built
+	from.
+
+	This job runs with no iTop checkout, so every core symbol this module
+	calls (MetaModel, DBObject, UserRights, cmdbAbstractObject, and the rest)
+	is genuinely undefined to Psalm here, not merely unresolved. The
+	UndefinedClass family below is suppressed for exactly that reason and no
+	other: "undefined" is not a finding when the definition was never going
+	to be in this tree. Nothing under vendor/ is scanned either, per
+	itop-extension-guide.md §7.1.
+
+	findUnusedCode is off for the same class of reason: this scan sees only
+	src/, never iTop calling an extension point by convention
+	(RegisterServiceProvider) or through InterfaceDiscovery, and never a tool
+	pack calling the @api surface from outside this repository. Every one of
+	those would read as unused code that plainly is not.
+
+	findUnusedBaselineEntry is off too: a baseline entry matches by file,
+	issue type and the exact reported code snippet, so an unrelated
+	reformat a line above is enough to make one stop matching. Turning this
+	on would fail the build on that drift rather than on anything new.
+	Regenerate psalm-baseline.xml by hand (Psalm's set-baseline flag) when
+	triaging the entries it already holds.
+-->
+<psalm
+	errorLevel="4"
+	resolveFromConfigFile="true"
+	errorBaseline="psalm-baseline.xml"
+	findUnusedBaselineEntry="false"
+	findUnusedCode="false"
+>
+	<projectFiles>
+		<directory name="src" />
+	</projectFiles>
+
+	<issueHandlers>
+		<UndefinedClass errorLevel="suppress" />
+		<UndefinedDocblockClass errorLevel="suppress" />
+		<UndefinedMethod errorLevel="suppress" />
+		<UndefinedInterfaceMethod errorLevel="suppress" />
+		<UndefinedPropertyFetch errorLevel="suppress" />
+		<UndefinedFunction errorLevel="suppress" />
+		<UndefinedConstant errorLevel="suppress" />
+		<MissingDependency errorLevel="suppress" />
+	</issueHandlers>
+</psalm>
