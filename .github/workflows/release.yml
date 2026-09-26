@@ -12,19 +12,18 @@ on:
   # exists rather than discovered to be broken by the tag itself.
   workflow_dispatch:
 
-permissions:
-  contents: write
-  # What attest-build-provenance signs with. The checksum answers "is this the
-  # file I downloaded", which is a question about the wire; provenance answers
-  # "did this repository's CI build it", which is the question an operator
-  # unzipping into a privileged directory of a live instance actually has.
-  id-token: write
-  attestations: write
-
 jobs:
   archive:
     name: Build, checksum and publish the archive
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # What attest-build-provenance signs with. The checksum answers "is this the
+      # file I downloaded", which is a question about the wire; provenance answers
+      # "did this repository's CI build it", which is the question an operator
+      # unzipping into a privileged directory of a live instance actually has.
+      id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
