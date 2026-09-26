@@ -3,8 +3,12 @@
 	Static analysis over src/, the JSON-RPC surface handed an MCP client,
 	reaching MetaModel and UserRights directly (doc/security-summary.md §4).
 	CodeQL has no PHP support and phpcs (phpcs.xml.dist) is a coding-standard
-	linter, not a security scanner; this is the first static-security check
-	on this module's own PHP.
+	linter, not a security scanner - but what runs here is Psalm's plain
+	type-correctness analysis, not a security check either: the taint
+	analysis flag that would actually look for a vulnerability class
+	(tainted input reaching MetaModel/UserRights) is off, for the reason
+	below. Until it can be turned on, nothing in this pipeline scans src/
+	for a vulnerability class.
 
 	Psalm's taint analysis flag is deliberately not run here: it reproducibly
 	stalled partway through in every environment this was tried in,

@@ -207,11 +207,13 @@ jobs:
         run: composer audit --locked
 
   # phpcs (the lint job) is a coding-standard linter, not a security scanner,
-  # and CodeQL has no PHP support - so nothing here has looked for a
-  # vulnerability class in src/ before. Psalm was chosen over Semgrep for its
+  # and CodeQL has no PHP support. Psalm was chosen over Semgrep for its
   # taint analysis, the relevant feature for a JSON-RPC surface that reaches
-  # MetaModel and UserRights directly (doc/security-summary.md §4) - psalm.xml
-  # explains why that flag is not actually run here yet.
+  # MetaModel and UserRights directly (doc/security-summary.md §4) - but that
+  # flag is not actually run here yet (psalm.xml explains why), so this job
+  # is plain type-correctness analysis, not vulnerability scanning. Nothing
+  # in this pipeline looks for a vulnerability class in src/ before that flag
+  # can be turned on.
   sast:
     name: Static analysis (Psalm)
     runs-on: ubuntu-latest
