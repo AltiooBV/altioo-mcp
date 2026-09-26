@@ -69,6 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # Tags are the input to this job, and a shallow clone has none.
           fetch-depth: 0
 
@@ -83,7 +84,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${BASELINE_REF:-}" ]; then
-            entries="[{\"ref\":\"${BASELINE_REF}\",\"label\":\"${BASELINE_REF} (given)\"}]"
+            entries=$(jq -nc --arg ref "$BASELINE_REF" \
+              '[{ref: $ref, label: ($ref + " (given)")}]')
           else
             # Release tags, oldest first. Both ends of the range, deduplicated
             # when there is only one - upgrading from a version to itself is a
@@ -108,9 +110,12 @@ jobs:
             oldest="${tags[0]}"
             newest="${tags[-1]}"
             if [ "$oldest" = "$newest" ]; then
-              entries="[{\"ref\":\"$oldest\",\"label\":\"$oldest (only release)\"}]"
+              entries=$(jq -nc --arg r "$oldest" \
+                '[{ref: $r, label: ($r + " (only release)")}]')
             else
-              entries="[{\"ref\":\"$oldest\",\"label\":\"$oldest (oldest, skip-version)\"},{\"ref\":\"$newest\",\"label\":\"$newest (previous release)\"}]"
+              entries=$(jq -nc --arg o "$oldest" --arg n "$newest" \
+                '[{ref: $o, label: ($o + " (oldest, skip-version)")},
+                  {ref: $n, label: ($n + " (previous release)")}]')
             fi
           fi
           echo "found=true" >> "$GITHUB_OUTPUT"
@@ -171,21 +176,34 @@ jobs:
 
       - name: This working copy - the version being upgraded *to*
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: The baseline - the version being upgraded *from*
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ matrix.ref }}
           path: baseline
           fetch-depth: 0
 
       - id: itop
+        env:
+          # resolve-itop-versions.php reads this off Combodo's own GitHub
+          # releases, so it is not a value this repository controls.
+          ITOP_ENTRY: ${{ needs.baselines.outputs.itop }}
         run: |
           set -euo pipefail
-          entry='${{ needs.baselines.outputs.itop }}'
           for k in php zip_url itop_tag itop_release; do
-            v=$(echo "$entry" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo $e[$argv[1]];' "$k")
-            echo "$k=$v" >> "$GITHUB_OUTPUT"
+            v=$(printf '%s' "$ITOP_ENTRY" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo $e[$argv[1]];' "$k")
+            # The delimiter form, not "$k=$v": a newline in $v would otherwise
+            # inject extra step outputs into $GITHUB_OUTPUT.
+            delim="ghadelim-$RANDOM-$RANDOM-$RANDOM"
+            {
+              echo "$k<<$delim"
+              echo "$v"
+              echo "$delim"
+            } >> "$GITHUB_OUTPUT"
           done
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2

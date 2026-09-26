@@ -58,6 +58,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
 | **Authenticity** | a [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) signed by the workflow. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo AltiooBV/altioo-mcp` |
+| **SBOM authenticity** | `sbom.cyclonedx.json` carries its own attestation, binding it to the *archive's* digest rather than standing as a file anyone could drop into the release — the subject verified is the zip, same as the provenance row above, distinguished by predicate type. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo AltiooBV/altioo-mcp --predicate-type https://cyclonedx.org/bom`. `licenses.json` is not separately attested — it is derived from the same `composer.lock` the SBOM covers |
 | **Refused at build time** | a tag that disagrees with `extension.xml`; a changelog with no dated heading for that version, or with entries left under `[Unreleased]`; a failing `composer validate --strict`; a `composer audit --locked` advisory; a red unit suite; a file in the zip granting a licence other than AGPL-3.0-or-later |
 
 The checksum answers *"is this the file I downloaded"*, which is a question about the wire.
@@ -88,6 +89,8 @@ as a quiet re-upload.
 | **Support period** | **five years of security fixes** from a minor version's release date — the EU Cyber Resilience Act's floor, committed to whether or not the Act ends up covering this extension. Earlier end-of-support would be announced six months ahead |
 | **How fixes reach existing clients** | CHANGELOG entry, GitHub release, and a GitHub Security Advisory. There is no auto-update and no callback: an instance changes when an administrator installs a new archive |
 | **Dependency monitoring** | `composer audit --locked` on every pull request **and again on the tag build** — an advisory published against a locked version is true of a tree nobody has touched since CI was last green |
+
+**Accepted risk:** `tools/ci/install-itop.sh`'s two downloads (a packaged iTop release and its matching test-harness tag) resolve their URL per matrix entry at run time, so unlike the phpcs phar in the local CI runner's Dockerfile, no static digest can be pinned against them — this is CI-only tooling, never shipped in the archive.
 
 Full text, including what is explicitly out of scope, in [SECURITY.md](../SECURITY.md).
 

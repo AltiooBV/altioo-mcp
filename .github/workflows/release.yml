@@ -12,22 +12,30 @@ on:
   # exists rather than discovered to be broken by the tag itself.
   workflow_dispatch:
 
+# Floor for any job this workflow gains later that doesn't set its own block -
+# ci.yml, itop-matrix.yml and upgrade.yml all keep this same default. Without
+# it, a job with no permissions: key of its own inherits the repository
+# default, which can be broader than read-only.
 permissions:
-  contents: write
-  # What attest-build-provenance signs with. The checksum answers "is this the
-  # file I downloaded", which is a question about the wire; provenance answers
-  # "did this repository's CI build it", which is the question an operator
-  # unzipping into a privileged directory of a live instance actually has.
-  id-token: write
-  attestations: write
+  contents: read
 
 jobs:
   archive:
     name: Build, checksum and publish the archive
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # What attest-build-provenance signs with. The checksum answers "is this the
+      # file I downloaded", which is a question about the wire; provenance answers
+      # "did this repository's CI build it", which is the question an operator
+      # unzipping into a privileged directory of a live instance actually has.
+      id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
@@ -196,6 +204,25 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ steps.archive.outputs.name }}.zip
+
+      # The provenance attestation above covers the zip. sbom.cyclonedx.json
+      # ships beside it - inside the archive too - and an approver reading
+      # doc/security-summary.md §1 has no way to tell it apart from a document
+      # anyone could have dropped into the release. This binds it to the
+      # archive's own digest the same way: the subject is the zip, not the
+      # SBOM file, so verification is against the zip too, distinguished from
+      # the provenance attestation above by its predicate type -
+      # `gh attestation verify <archive>.zip --repo <owner>/<repo>
+      # --predicate-type https://cyclonedx.org/bom` (that URI is
+      # actions/attest-sbom's, confirmed in its source rather than assumed;
+      # the provenance step above needs no such flag because
+      # https://slsa.dev/provenance/v1 is `gh attestation verify`'s default).
+      - name: Attest the bill of materials
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.archive.outputs.name }}.zip
+          sbom-path: sbom.cyclonedx.json
 
       # The checksum is published beside the archive so that "the file I
       # downloaded is the file CI built" is a question with an answer.

@@ -34,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
@@ -44,7 +46,11 @@ jobs:
           # --no-dev, so a linter added there is a package an operator can see
           # in the bill of materials but never runs. It is build tooling, and
           # it is installed like build tooling.
-          tools: composer:v2, phpcs
+          #
+          # Pinned to the same 4.0.4 as tools/ci/local/Dockerfile's phpcs.phar,
+          # so the coding standard this job enforces and the one the local
+          # runner installs never quietly diverge. Bump both together.
+          tools: composer:v2, phpcs:4.0.4
 
       # The standard is tools/phpcs/iTop - Combodo's, carrying no path of this
       # repository - and phpcs.xml.dist is what points it at this tree. The
@@ -60,6 +66,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # A context used where it does not exist is a *parse* error: GitHub
       # rejects the whole file and the workflow does not run at all, which
@@ -105,6 +113,29 @@ jobs:
           fi
           echo "every action is pinned to a 40-character commit SHA"
 
+      # Everything above is this repository's own, narrow checks. actionlint
+      # knows the shape of every context and expression GitHub itself
+      # accepts, which is what actually would have caught the unquoted
+      # interpolation into a shell line that upgrade.yml shipped with -
+      # neither check above reads inside a `run:` block at all.
+      #
+      # Fetched and verified the same way tools/ci/local/Dockerfile pins
+      # phpcs.phar, rather than through a third-party wrapper action: this is
+      # the one pin in this file that is not a git commit SHA, because
+      # rhysd/actionlint publishes prebuilt binaries and a checksum file, not
+      # a composite action.
+      - name: actionlint
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
   tests:
     name: Unit suite on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
@@ -119,6 +150,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
@@ -155,6 +188,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
@@ -171,6 +206,46 @@ jobs:
       - name: composer audit
         run: composer audit --locked
 
+  # phpcs (the lint job) is a coding-standard linter, not a security scanner,
+  # and CodeQL has no PHP support. Psalm was chosen over Semgrep for its
+  # taint analysis, the relevant feature for a JSON-RPC surface that reaches
+  # MetaModel and UserRights directly (doc/security-summary.md §4) - but that
+  # flag is not actually run here yet (psalm.xml explains why), so this job
+  # is plain type-correctness analysis, not vulnerability scanning. Nothing
+  # in this pipeline looks for a vulnerability class in src/ before that flag
+  # can be turned on.
+  sast:
+    name: Static analysis (Psalm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          # Build tooling, installed the way this job's neighbour installs
+          # phpcs: composer.lock ships inside the release archive and vendor/
+          # is built from it with --no-dev, so a static analyser living in
+          # require-dev would be a package an operator can see in the bill of
+          # materials but that never runs. Pinned for the same reason the
+          # lint job's phpcs is: psalm-baseline.xml is generated against one
+          # exact version, and an unpinned tool silently drifting to a newer
+          # release would make the baseline comparison meaningless.
+          tools: composer:v2, psalm:6.18.1
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Blocking: psalm-baseline.xml holds every finding this had on the day
+      # it was adopted, so a green run here means no *new* issue, not zero
+      # issues. See psalm.xml for what is suppressed and why, and for why
+      # this runs plain rather than with the taint-analysis flag.
+      - name: Static analysis over src/
+        run: psalm --php-version=8.2
+
   # The pack's README says `composer test`, and that is the first thing a pack
   # author does. It could not work: no phpunit configuration, no autoload-dev
   # for the namespace its own test declares, and the base extension - whose
@@ -181,6 +256,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
@@ -207,6 +284,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
