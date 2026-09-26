@@ -113,6 +113,29 @@ jobs:
           fi
           echo "every action is pinned to a 40-character commit SHA"
 
+      # Everything above is this repository's own, narrow checks. actionlint
+      # knows the shape of every context and expression GitHub itself
+      # accepts, which is what actually would have caught the unquoted
+      # interpolation into a shell line that upgrade.yml shipped with -
+      # neither check above reads inside a `run:` block at all.
+      #
+      # Fetched and verified the same way tools/ci/local/Dockerfile pins
+      # phpcs.phar, rather than through a third-party wrapper action: this is
+      # the one pin in this file that is not a git commit SHA, because
+      # rhysd/actionlint publishes prebuilt binaries and a checksum file, not
+      # a composite action.
+      - name: actionlint
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
   tests:
     name: Unit suite on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
