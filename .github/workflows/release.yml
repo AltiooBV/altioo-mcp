@@ -12,6 +12,13 @@ on:
   # exists rather than discovered to be broken by the tag itself.
   workflow_dispatch:
 
+# Floor for any job this workflow gains later that doesn't set its own block -
+# ci.yml, itop-matrix.yml and upgrade.yml all keep this same default. Without
+# it, a job with no permissions: key of its own inherits the repository
+# default, which can be broader than read-only.
+permissions:
+  contents: read
+
 jobs:
   archive:
     name: Build, checksum and publish the archive
