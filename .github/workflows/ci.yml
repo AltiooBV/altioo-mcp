@@ -46,7 +46,11 @@ jobs:
           # --no-dev, so a linter added there is a package an operator can see
           # in the bill of materials but never runs. It is build tooling, and
           # it is installed like build tooling.
-          tools: composer:v2, phpcs
+          #
+          # Pinned to the same 4.0.4 as tools/ci/local/Dockerfile's phpcs.phar,
+          # so the coding standard this job enforces and the one the local
+          # runner installs never quietly diverge. Bump both together.
+          tools: composer:v2, phpcs:4.0.4
 
       # The standard is tools/phpcs/iTop - Combodo's, carrying no path of this
       # repository - and phpcs.xml.dist is what points it at this tree. The

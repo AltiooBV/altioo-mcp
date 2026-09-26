@@ -90,6 +90,8 @@ as a quiet re-upload.
 | **How fixes reach existing clients** | CHANGELOG entry, GitHub release, and a GitHub Security Advisory. There is no auto-update and no callback: an instance changes when an administrator installs a new archive |
 | **Dependency monitoring** | `composer audit --locked` on every pull request **and again on the tag build** — an advisory published against a locked version is true of a tree nobody has touched since CI was last green |
 
+**Accepted risk:** `tools/ci/install-itop.sh`'s two downloads (a packaged iTop release and its matching test-harness tag) resolve their URL per matrix entry at run time, so unlike the phpcs phar in the local CI runner's Dockerfile, no static digest can be pinned against them — this is CI-only tooling, never shipped in the archive.
+
 Full text, including what is explicitly out of scope, in [SECURITY.md](../SECURITY.md).
 
 ## 4. Footprint and least privilege
