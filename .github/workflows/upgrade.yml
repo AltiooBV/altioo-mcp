@@ -69,6 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # Tags are the input to this job, and a shallow clone has none.
           fetch-depth: 0
 
@@ -175,10 +176,13 @@ jobs:
 
       - name: This working copy - the version being upgraded *to*
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: The baseline - the version being upgraded *from*
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ matrix.ref }}
           path: baseline
           fetch-depth: 0
