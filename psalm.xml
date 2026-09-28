@@ -7,8 +7,9 @@
 	type-correctness analysis, not a security check either: the taint
 	analysis flag that would actually look for a vulnerability class
 	(tainted input reaching MetaModel/UserRights) is off, for the reason
-	below. Until it can be turned on, nothing in this pipeline scans src/
-	for a vulnerability class.
+	below. The vulnerability-class scanning this flag cannot do here is done
+	instead by the progpilot job in ci.yml - see that job's comment for why
+	it was chosen over this flag and over the other scanners measured.
 
 	Psalm's taint analysis flag is deliberately not run here: not because it
 	hangs (measured clean in 2-4s across containerised and host runs, every

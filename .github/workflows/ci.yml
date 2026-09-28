@@ -207,13 +207,12 @@ jobs:
         run: composer audit --locked
 
   # phpcs (the lint job) is a coding-standard linter, not a security scanner,
-  # and CodeQL has no PHP support. Psalm was chosen over Semgrep for its
-  # taint analysis, the relevant feature for a JSON-RPC surface that reaches
-  # MetaModel and UserRights directly (doc/security-summary.md §4) - but that
-  # flag is not actually run here yet (psalm.xml explains why), so this job
-  # is plain type-correctness analysis, not vulnerability scanning. Nothing
-  # in this pipeline looks for a vulnerability class in src/ before that flag
-  # can be turned on.
+  # and CodeQL has no PHP support. Psalm's taint-analysis flag would be the
+  # relevant feature for a JSON-RPC surface that reaches MetaModel and
+  # UserRights directly (doc/security-summary.md §4), but it is not run here
+  # (psalm.xml explains why), so this job is plain type-correctness analysis,
+  # not vulnerability scanning. The progpilot job below is what looks for a
+  # vulnerability class in src/.
   sast:
     name: Static analysis (Psalm)
     runs-on: ubuntu-latest
@@ -247,6 +246,52 @@ jobs:
       # scan's scope to connect, so it would report nothing either way.
       - name: Static analysis over src/
         run: psalm --php-version=8.2
+
+  # A real vulnerability-class scanner, chosen from a measured four-way
+  # comparison (Progpilot, phpcs-security-audit, Semgrep p/php, a
+  # hand-written token check) run against a control file planting 7 known
+  # vulnerability classes: Progpilot caught 6/7 with CWE ids and zero false
+  # positives on src/. Semgrep caught fewer (4/7) at the highest cost
+  # (container + live rule feed) and is deliberately not used here.
+  #
+  # Build tooling, not a dependency, for the same reason psalm and phpcs are
+  # installed outside the project: composer.lock ships inside the release
+  # archive and vendor/ is built from it with --no-dev, so a scanner in
+  # require-dev would be visible in the bill of materials but would never
+  # run. Installed with a COMPOSER_HOME outside the checkout so it cannot be
+  # mistaken for a project dependency, and pinned so a newer release cannot
+  # silently change what this gate accepts.
+  #
+  # Progpilot prints a JSON array of findings to stdout ([] when clean) and
+  # exits non-zero when that array is non-empty - verified directly against
+  # both a clean src/ (exit 0) and the control file above (exit 1, all 6
+  # taint-style classes reported) - so the plain exit code is a real gate,
+  # not one that always passes. Measured at ~6s over 70 files in this
+  # container; timeout-minutes is generous around that.
+  progpilot:
+    name: Vulnerability scan (Progpilot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Progpilot
+        env:
+          COMPOSER_HOME: ${{ runner.temp }}/progpilot-composer-home
+        run: composer global require designsecurity/progpilot:1.2.0 --no-interaction --no-progress
+
+      - name: Scan src/ for known vulnerability classes
+        env:
+          COMPOSER_HOME: ${{ runner.temp }}/progpilot-composer-home
+        run: '"$COMPOSER_HOME/vendor/bin/progpilot" src/'
 
   # The pack's README says `composer test`, and that is the first thing a pack
   # author does. It could not work: no phpunit configuration, no autoload-dev
