@@ -242,7 +242,9 @@ jobs:
       # Blocking: psalm-baseline.xml holds every finding this had on the day
       # it was adopted, so a green run here means no *new* issue, not zero
       # issues. See psalm.xml for what is suppressed and why, and for why
-      # this runs plain rather than with the taint-analysis flag.
+      # this runs plain rather than with the taint-analysis flag: measured,
+      # the flag does not hang here, but it has no source or sink in this
+      # scan's scope to connect, so it would report nothing either way.
       - name: Static analysis over src/
         run: psalm --php-version=8.2
 

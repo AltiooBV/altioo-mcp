@@ -10,13 +10,20 @@
 	below. Until it can be turned on, nothing in this pipeline scans src/
 	for a vulnerability class.
 
-	Psalm's taint analysis flag is deliberately not run here: it reproducibly
-	stalled partway through in every environment this was tried in,
-	independent of Psalm's version, of memory limits, and of pcntl
-	availability, so no baseline could be generated for it and shipping it
-	would either hang the job or pass vacuously having analysed nothing.
-	Plain analysis runs reliably and is what psalm-baseline.xml was built
-	from.
+	Psalm's taint analysis flag is deliberately not run here: not because it
+	hangs (measured clean in 2-4s across containerised and host runs, every
+	PHP version this repo supports), but because it would be vacuous in this
+	scan's configuration. A positive control confirms the analyser itself
+	works - $_GET fed straight to echo is flagged TaintedHtml - but src/ gives
+	it no source and no sink to connect: input arrives as a PSR-7 object built
+	inside vendor/, which this config never scans (line 26 below), and the
+	sinks that matter (MetaModel, DBSearch, UserRights) are the same
+	UndefinedClass symbols suppressed two paragraphs down for having no iTop
+	checkout to resolve against. Stubbing the PSR-7 entry point as a taint
+	source was tried and still produced zero findings, because the taint
+	cannot propagate through an interface method Psalm never analyses. Both
+	ends of the graph are outside this file's scope by construction, not by a
+	stall. Plain analysis is what psalm-baseline.xml was built from.
 
 	This job runs with no iTop checkout, so every core symbol this module
 	calls (MetaModel, DBObject, UserRights, cmdbAbstractObject, and the rest)
