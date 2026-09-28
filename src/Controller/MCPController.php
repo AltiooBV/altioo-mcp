@@ -665,31 +665,35 @@ final class MCPController
 	}
 
 	/**
-	 * A caller-supplied name as one line that fits the audit row's column.
+	 * Caller-supplied text as one line, fit for an audit row.
 	 *
 	 * Every source of mcp_name is the caller's own text - a client's
 	 * self-description, a tool or prompt name that may match nothing, a
 	 * resource URI - and it is recorded before anything checks it. It is also
 	 * the class's naming attribute, so it is what every list of those rows
-	 * shows. A control character in it is someone making one row read as two,
-	 * or planting text for whoever (or whatever model) reviews the trail
-	 * later; a non-string is a malformed request, and is recorded as nothing.
+	 * shows. The row's message can carry the same text back: the SDK answers
+	 * an unknown tool with its name quoted in the error. A control character
+	 * in either is someone making one row read as two, or planting text for
+	 * whoever (or whatever model) reviews the trail later; a non-string is a
+	 * malformed request, and is recorded as nothing.
+	 *
+	 * @param int|null $iMaxChars What the column holds, or null for a text
+	 *                            column with no limit worth cutting to.
 	 */
-	private static function auditLabel(mixed $mValue): ?string
+	private static function auditLabel(mixed $mValue, ?int $iMaxChars = 255): ?string
 	{
 		if (!is_string($mValue)) {
 			return null;
 		}
 
-		$sValue = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $mValue);
-		if ($sValue === null) {
-			// Not valid UTF-8: nothing of it can be shown faithfully.
+		// Invalid UTF-8 would make the /u pattern fail outright; what is left
+		// after scrubbing still shows the reviewer that something odd arrived.
+		$sValue = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', mb_scrub($mValue, 'UTF-8')) ?? '');
+		if ($sValue === '') {
 			return null;
 		}
 
-		$sValue = trim($sValue);
-
-		return $sValue === '' ? null : mb_substr($sValue, 0, 255);
+		return $iMaxChars === null ? $sValue : mb_substr($sValue, 0, $iMaxChars);
 	}
 
 	/**
@@ -788,7 +792,7 @@ final class MCPController
 		try {
 			$oLog = new AltiooEventMCPService();
 			$oLog->SetTrim('userinfo', UserRights::GetUser());
-			$oLog->Set('message', $oResult->message);
+			$oLog->Set('message', self::auditLabel($oResult->message, null) ?? '');
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');

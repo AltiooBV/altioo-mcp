@@ -41,10 +41,12 @@ entry itself, not left to be inferred from it.
   from the caller's own text: the `clientInfo` a client sends at `initialize`, the tool or prompt
   name of a call (whether or not it matches anything), the URI of a resource read. It was stored
   as sent, so any valid token, with no scope and before any capability check, could make one row
-  read as several, or leave text for whoever — person or model — reviews the trail later. Control
-  characters are now replaced by a space, a value that is not a string is recorded as nothing,
-  and every one of the four is cut to the 255 characters the column holds, where before only
-  `clientInfo` was. Rows written before this release keep what they were given.
+  read as several, or leave text for whoever — person or model — reviews the trail later. The
+  row's message carried the same text a second way, because an unknown tool is answered with its
+  name quoted in the error. In both columns control characters are now replaced by a space, and
+  a value that is not a string is recorded as nothing. The element is cut to the 255 characters
+  its column holds for all four sources, where before only `clientInfo` was. Rows written before
+  this release keep what they were given.
 
 ## [1.0.0] - 2026-09-20
 
