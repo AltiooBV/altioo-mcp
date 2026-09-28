@@ -130,6 +130,8 @@ jobs:
           set -euo pipefail
           # The first stable entry the resolver returns: oldest supported
           # branch, floor PHP.
+          # Literal PHP passed to `php -r`; $a/$e are PHP variables, not shell ones.
+          # shellcheck disable=SC2016
           entry=$(php tools/ci/resolve-itop-versions.php --matrix | php -r '
             $a = json_decode(stream_get_contents(STDIN), true);
             foreach ($a["include"] as $e) {
@@ -139,6 +141,8 @@ jobs:
             exit(1);
           ')
           echo "entry=$entry" >> "$GITHUB_OUTPUT"
+          # Literal PHP passed to `php -r`; $e is a PHP variable, not a shell one.
+          # shellcheck disable=SC2016
           echo "upgrading on $(echo "$entry" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo "iTop {$e["itop_release"]} / PHP {$e["php"]}";')" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -195,6 +199,8 @@ jobs:
         run: |
           set -euo pipefail
           for k in php zip_url itop_tag itop_release; do
+            # Literal PHP passed to `php -r`; $e/$argv are PHP variables, not shell ones.
+            # shellcheck disable=SC2016
             v=$(printf '%s' "$ITOP_ENTRY" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo $e[$argv[1]];' "$k")
             # The delimiter form, not "$k=$v": a newline in $v would otherwise
             # inject extra step outputs into $GITHUB_OUTPUT.
