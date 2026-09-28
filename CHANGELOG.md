@@ -47,6 +47,18 @@ entry itself, not left to be inferred from it.
   a value that is not a string is recorded as nothing. The element is cut to the 255 characters
   its column holds for all four sources, where before only `clientInfo` was. Rows written before
   this release keep what they were given.
+- **The README no longer implies that disabling a tool disables what it does.** Its example for
+  `mcp_disabled_tools` was `core_object_delete`, and it never said that
+  `core_object_bulk_delete` stays callable, or that the same holds for the create and update
+  pairs. An operator following it literally believed deletion was off when it was not. The
+  setting now says that it withdraws exactly the names listed, and points to
+  `mcp_capabilities`, which grades every tool by what it declares, for stopping a kind of
+  operation. Nothing in the module changed. **If you listed a tool there in order to stop an
+  operation, check the instance:** leaving `delete` out of `mcp_capabilities` is what stops it.
+- **The README names the array the settings belong in.** It said "under `module_settings`";
+  iTop reads module settings only from the top-level `$MyModuleSettings`, and silently ignores
+  a block nested inside `$MySettings`, so a setting written there looked like a setting that
+  did not work.
 
 ## [1.0.0] - 2026-09-20
 

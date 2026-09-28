@@ -446,7 +446,7 @@ Four checks. Each one fails in a way that is much harder to diagnose later than 
    endpoint matches on the profile *name*, so a profile renamed in the console stops matching
    until `mcp_allowed_profiles` is updated to say the same thing.
 3. **The configuration block was written.** `conf/<env>/config-itop.php` should now contain an
-   `'altioo-mcp' => array(...)` block under `module_settings`, carrying the defaults in
+   `'altioo-mcp' => array(...)` entry in the `$MyModuleSettings` array, carrying the defaults in
    [Configuration](#configuration). If it is missing, the module is installed but every setting
    falls back to its compiled-in default, and editing the file is how you change them.
 4. **Only `index.php` is reachable.** `<itop-url>/env-production/altioo-mcp/index.php` should
@@ -478,7 +478,7 @@ survive on purpose and have to be removed by hand:
 | What survives | Where | What to do |
 |---|---|---|
 | The audit history | Class `AltiooEventMCPService`, stored across **`priv_event`** and **`priv_altioo_event_mcp_service`** | iTop leaves both behind for any removed module, so the trail outlives the extension. Do this *before* removing the module, while iTop can still read the class: export `SELECT AltiooEventMCPService` if you want to keep it, then delete the rows from the console. `AltiooEventMCPService` inherits `Event`, so the date, the user and the message live in `priv_event` and only the MCP columns are in the module's own table — an export of that one table is missing half of each row, and dropping it alone leaves the other half behind |
-| The module settings | The **`'altioo-mcp' => array(...)`** block under `module_settings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
+| The module settings | The **`'altioo-mcp' => array(...)`** entry in `$MyModuleSettings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
 
 Tokens keep their `MCP*` scope values as stored strings; those scopes simply stop meaning
 anything, and no token gains access to anything else as a result. The `MCP Services User`
@@ -674,7 +674,11 @@ add it to a `401` it never sees.
 
 ## Configuration
 
-All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
+All settings live in the `'altioo-mcp'` entry of the top-level `$MyModuleSettings` array in
+`conf/<env>/config-itop.php`, where the setup wrote them. **Not in `$MySettings`:** iTop reads
+module settings from `$MyModuleSettings` alone, and drops any `$MySettings` key it does not know
+without a word — so a block nested there changes nothing, and nothing says so. A kill switch
+written in the wrong array looks exactly like a kill switch that does not work.
 
 ```php
 'altioo-mcp' => array(
@@ -704,7 +708,7 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential |
-| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
+| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
@@ -901,6 +905,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 |---|---|
 | `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
+| A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
 | A client lists only some of the tools, and always the same number of them | That client ignores `nextCursor`, so it never asks for the second page. The page size is `mcp_pagination_limit`, which this module sets on every request — it defaults to 200, so the SDK's own 50 is never what you are seeing. Raise it if the instance registers more elements than that, and check nobody lowered it |
