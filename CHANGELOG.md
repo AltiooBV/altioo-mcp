@@ -34,6 +34,18 @@ entry itself, not left to be inferred from it.
   8.2, so an instance already running it is already above 3.3's floor — but a 3.2 instance still
   on 8.1 has to raise PHP before it can go to 3.3 at all.
 
+### Security
+
+- **A caller can no longer write a line break into the audit trail.** The element column of an
+  `AltiooEventMCPService` row — which is also the row's name in every list of them — is filled
+  from the caller's own text: the `clientInfo` a client sends at `initialize`, the tool or prompt
+  name of a call (whether or not it matches anything), the URI of a resource read. It was stored
+  as sent, so any valid token, with no scope and before any capability check, could make one row
+  read as several, or leave text for whoever — person or model — reviews the trail later. Control
+  characters are now replaced by a space, a value that is not a string is recorded as nothing,
+  and every one of the four is cut to the 255 characters the column holds, where before only
+  `clientInfo` was. Rows written before this release keep what they were given.
+
 ## [1.0.0] - 2026-09-20
 
 The first release. Nothing precedes it, so the entries below describe what the extension **is**

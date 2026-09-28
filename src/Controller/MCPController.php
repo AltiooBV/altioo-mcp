@@ -516,6 +516,7 @@ final class MCPController
 					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription($aParams),
 					default                              => null,
 				};
+				$sMcpName = self::auditLabel($sMcpName);
 			}
 		}
 
@@ -641,8 +642,8 @@ final class MCPController
 	/**
 	 * How an initialize request describes the client sending it.
 	 *
-	 * Free text written by the caller, so it is trimmed and cut to what the
-	 * column holds and never treated as anything but a label.
+	 * Free text written by the caller, so it is never treated as anything but
+	 * a label; auditLabel() makes it fit to store.
 	 *
 	 * @param array<string, mixed> $aParams The params of the initialize request.
 	 */
@@ -660,7 +661,35 @@ final class MCPController
 			return null;
 		}
 
-		return mb_substr($sVersion === '' ? $sName : $sName.' '.$sVersion, 0, 255);
+		return $sVersion === '' ? $sName : $sName.' '.$sVersion;
+	}
+
+	/**
+	 * A caller-supplied name as one line that fits the audit row's column.
+	 *
+	 * Every source of mcp_name is the caller's own text - a client's
+	 * self-description, a tool or prompt name that may match nothing, a
+	 * resource URI - and it is recorded before anything checks it. It is also
+	 * the class's naming attribute, so it is what every list of those rows
+	 * shows. A control character in it is someone making one row read as two,
+	 * or planting text for whoever (or whatever model) reviews the trail
+	 * later; a non-string is a malformed request, and is recorded as nothing.
+	 */
+	private static function auditLabel(mixed $mValue): ?string
+	{
+		if (!is_string($mValue)) {
+			return null;
+		}
+
+		$sValue = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $mValue);
+		if ($sValue === null) {
+			// Not valid UTF-8: nothing of it can be shown faithfully.
+			return null;
+		}
+
+		$sValue = trim($sValue);
+
+		return $sValue === '' ? null : mb_substr($sValue, 0, 255);
 	}
 
 	/**
