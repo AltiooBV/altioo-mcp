@@ -44,9 +44,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # phar for the same reason ci.yml installs it through setup-php rather than
 # through Composer: it is build tooling, and a linter in composer.lock is a
 # package an operator can see in the bill of materials but never runs.
+#
+# Pinned to a version and a digest rather than /releases/latest: a phar is
+# downloaded and then executed with no interpreter to sandbox it, so "whatever
+# is newest today" was both a moving target and an unverified one. Bumping the
+# version here is now a reviewable diff instead of a silent change the next
+# build happens to pick up.
+ARG PHPCS_VERSION=4.0.4
+ARG PHPCS_SHA256=4b010cd21d8bc8a17e2504792e3c77ef8259126f24caf7eafe7eddef1fa871e9
 RUN printf 'memory_limit=512M\n' > /usr/local/etc/php/conf.d/ci.ini \
  && curl -fsSL -o /usr/local/bin/phpcs \
-      https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/latest/download/phpcs.phar \
+      "https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/${PHPCS_VERSION}/phpcs.phar" \
+ && echo "${PHPCS_SHA256}  /usr/local/bin/phpcs" | sha256sum -c - \
  && chmod +x /usr/local/bin/phpcs
 
 ENV COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/work/.composer

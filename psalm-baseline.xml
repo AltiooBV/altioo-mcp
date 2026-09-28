@@ -1,0 +1,658 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="6.18.1@79465b8dc674127f442ae31ea114c11bc4dd7ed6">
+  <file src="src/Abstract/AbstractBulkTool.php">
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+  </file>
+  <file src="src/Abstract/AbstractObjectSearch.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Controller/MCPController.php">
+    <InvalidOperand>
+      <code><![CDATA[(microtime(true) - $fStarted) * 1000]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="src/Core/CoreExtensions.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public static function RegisterServiceProvider(): void]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Prompts/MyOpenTickets.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function isAvailable(): bool]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/ResourceTemplates/ClassDetail.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/ResourceTemplates/ObjectDocument.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getMimeType(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Resources/ClassList.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function read(): mixed]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Resources/CurrentUser.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function read(): mixed]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Resources/Instructions.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getMimeType(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function read(): mixed]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Resources/Version.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[protected function getResourceNamespace(): string]]></code>
+      <code><![CDATA[protected function getResourcePath(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?Annotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function read(): mixed]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ClassList.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter, $sMay))]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ClassSchema.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json(DatamodelReader::Describe($class, $include, $attributes, $required_only))]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/CurrentUser.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json(CurrentUserReader::Payload())]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/Instructions.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectApplyStimulus.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'stimulus'      => $stimulus,
+					'simulated'     => true,
+					'valid'         => true,
+					'state'         => $sCurrentState,
+					'would_move_to' => $sTargetState,
+					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WritePlan::Map($aChanges),
+					'overridden'    => WritePlan::Map($aOverridden),
+					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				])]]></code>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+			+ WritePlan::Identity($class, $id)
+			+ [
+				'stimulus'      => $stimulus,
+				'simulated'     => false,
+				'valid'         => true,
+				'state'         => $oObject->GetState(),
+				// The target is reported on a real call too, so the shape does
+				// not depend on simulate. The object is in it by now, which is
+				// what makes the pair readable: state === would_move_to says
+				// the transition happened.
+				'would_move_to' => $sTargetState,
+				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WritePlan::Map($aChanges),
+				'overridden'    => WritePlan::Map($aOverridden),
+					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+			])]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectAttach.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[['mimetype_note' => $sNote]]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array{mimetype_note?: string}]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function isAvailable(): bool]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectBulkCreate.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectBulkDelete.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectBulkUpdate.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectCreate.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $iCommittedId)
+				+ [
+					'simulated'  => false,
+					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'warning'    => MCPHelper::OpaqueFailure(
+						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
+						$e
+					),
+				])]]></code>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $iId)
+				+ [
+					'simulated'  => false,
+					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				]
+				+ self::credentialNote($class))]]></code>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, null)
+				+ self::credentialNote($class)
+				+ [
+					'simulated'  => true,
+					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				])]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectDelete.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+					+ WritePlan::Identity($class, $id)
+					+ [
+						'simulated'    => false,
+						'valid'        => true,
+						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+						'warning'      => MCPHelper::OpaqueFailure(
+							"The {$class}::{$id} was deleted, but the call failed after the deletion",
+							$e
+						),
+					])]]></code>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+			+ WritePlan::Identity($class, $id)
+			+ [
+				'simulated'    => $simulate,
+				'valid'        => true,
+				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+			])]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectFindByName.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectGet.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json([
+			'requested_class'  => $class,
+			'class' => $sFinalClass,
+			'object' => $aObject,
+		])]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectGetDocument.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectGetRelated.php">
+    <AssignmentToVoid>
+      <code><![CDATA[$oGraph]]></code>
+    </AssignmentToVoid>
+    <InvalidReturnStatement>
+      <code><![CDATA[$oGraph]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[void]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectHistory.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset))]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectSearchByClass.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json([
+					'requested_class'  => $class,
+					'class' => $class,
+					'filters' => $filters,
+					'total'   => 0,
+					'limit'   => $limit,
+					'offset'  => $offset,
+					'objects' => $aResults, // hides objects that the user shouldn't see
+				] + self::pagingFooter(0, $limit, $offset))]]></code>
+      <code><![CDATA[ToolOutput::Json([
+					'requested_class'  => $class,
+					'class' => $sSetClass,
+					'filters' => $filters,
+					'total'   => 0,
+					'limit'   => $limit,
+					'offset'  => $offset,
+					'objects' => $aResults, // hides objects that the user shouldn't see
+				] + self::pagingFooter(0, $limit, $offset))]]></code>
+      <code><![CDATA[ToolOutput::Json([
+				'requested_class'  => $class,
+				'class' => $class,
+				'filters' => $filters,
+				'total'   => 0,
+				'limit'   => $limit,
+				'offset'  => $offset,
+				'objects' => $aResults, // hides objects that the user shouldn't see
+			] + self::pagingFooter(0, $limit, $offset))]]></code>
+      <code><![CDATA[ToolOutput::Json([
+				'requested_class'  => $class,
+				'class' => $sSetClass,
+				'filters' => $filters,
+				'total'   => $iTotal,
+				'limit'   => $limit,
+				'offset'  => $offset,
+				'objects' => $aResults,
+			] + self::pagingFooter($iTotal, $limit, $offset))]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectSearchByOQL.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json([
+				'class' => $class,
+				'oql'       => $oql,
+				'total'     => $iTotal,
+				'limit'     => $limit,
+				'offset'    => $offset,
+				'objects'   => $aResults,
+			] + self::pagingFooter($iTotal, $limit, $offset))]]></code>
+      <code><![CDATA[ToolOutput::Json([
+				'class' => $class,
+				'oql' => $oql,
+				'total'   => 0,
+				'limit'   => $limit,
+				'offset'  => $offset,
+				'objects' => $aResults, // hides objects that the user shouldn't see
+			] + self::pagingFooter(0, $limit, $offset))]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/ObjectUpdate.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'simulated'  => false,
+					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				])]]></code>
+      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+				+ WritePlan::Identity($class, $id)
+				+ [
+					'simulated'  => true,
+					'valid'      => true,
+					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WritePlan::Map($aChanges),
+					'overridden' => WritePlan::Map($aOverridden),
+					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				])]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[array]]></code>
+    </InvalidReturnType>
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/SetObsoleteData.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Exception/MCPRequestRejectedException.php">
+    <RedundantCast>
+      <code><![CDATA[(int)$this->getCode()]]></code>
+    </RedundantCast>
+  </file>
+  <file src="src/Helper/DatamodelReader.php">
+    <RedundantCondition>
+      <code><![CDATA[!empty($aRelated)]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
+      <code><![CDATA[empty($aRelated)]]></code>
+    </RedundantCondition>
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+    <TypeDoesNotContainType>
+      <code><![CDATA[$oAttDef instanceof AttributeCaseLog]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeDate]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeEmailAddress]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeURL]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Helper/DocumentAccess.php">
+    <InvalidOperand>
+      <code><![CDATA[round($iBytes / 1024, 1)]]></code>
+      <code><![CDATA[round($iBytes / 1048576, 1)]]></code>
+    </InvalidOperand>
+  </file>
+  <file src="src/Helper/LogAPILogger.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public function log($level, $message, array $context = []): void]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Helper/MCPHttp.php">
+    <InvalidArgument>
+      <code><![CDATA[$_SERVER[$sKey] ?? null]]></code>
+      <code><![CDATA[$_SERVER[$sKey] ?? null]]></code>
+    </InvalidArgument>
+    <RedundantCondition>
+      <code><![CDATA[is_string($sExisting)]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA[null]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Helper/ObjectSerializer.php">
+    <RedundantCondition>
+      <code><![CDATA[$oAttDef instanceof AttributeExternalField]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA[$oAttDef instanceof AttributeBlob]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeCaseLog]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeLinkedSet]]></code>
+      <code><![CDATA[$oAttDef instanceof AttributeLinkedSet]]></code>
+      <code><![CDATA[$oAttDef instanceof iAttributeNoGroupBy]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Helper/ToolOutput.php">
+    <RedundantCondition>
+      <code><![CDATA[$mResult->content]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
+      <code><![CDATA[[]]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Helper/WritePlan.php">
+    <InvalidArrayOffset>
+      <code><![CDATA[$aChanges[$sAttCode]]]></code>
+      <code><![CDATA[$aChanges[$sAttCode]]]></code>
+    </InvalidArrayOffset>
+    <NoValue>
+      <code><![CDATA[$sAttCode]]></code>
+      <code><![CDATA[$sAttCode]]></code>
+    </NoValue>
+    <RedundantCast>
+      <code><![CDATA[(string) $value]]></code>
+    </RedundantCast>
+    <RedundantCondition>
+      <code><![CDATA[!is_string($sAttCode)]]></code>
+    </RedundantCondition>
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+    <TypeDoesNotContainType>
+      <code><![CDATA[$sAttCode === 'finalclass']]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Models/MCPResult.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public function jsonSerialize(): array]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Server/Session/StatelessSessionStore.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public function destroy(Uuid $id): bool]]></code>
+      <code><![CDATA[public function exists(Uuid $id): bool]]></code>
+      <code><![CDATA[public function gc(): array]]></code>
+      <code><![CDATA[public function read(Uuid $id): string|false]]></code>
+      <code><![CDATA[public function write(Uuid $id, string $data): bool]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Service/MCPService.php">
+    <InvalidArgument>
+      <code><![CDATA[MCPLog::class]]></code>
+    </InvalidArgument>
+    <TypeDoesNotContainType>
+      <code><![CDATA[is_array($aSerialized)]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Service/TokenScopes.php">
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+    <TypeDoesNotContainType>
+      <code><![CDATA['is_string']]></code>
+    </TypeDoesNotContainType>
+  </file>
+</files>
