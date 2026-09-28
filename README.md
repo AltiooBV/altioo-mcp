@@ -1088,6 +1088,9 @@ Known and deliberate, so that none of them is a discovery made after installing:
   are clipped, but `core_object_get` returns every readable attribute unless `output_fields`
   says otherwise; a deliberately wide `output_fields => *` over thousands of objects is still
   your cost to pay.
+- **No rate limit.** Each call is bounded, but calls are not counted: one valid token can keep
+  the instance busy for everyone else. Throttle at the web server — see
+  [SECURITY.md](SECURITY.md#hardening-the-deployment).
 - **The audit trail grows.** One `AltiooEventMCPService` row per audited call, with no built-in purge
   — set retention as you do for iTop's other event classes.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.

@@ -59,6 +59,10 @@ entry itself, not left to be inferred from it.
   iTop reads module settings only from the top-level `$MyModuleSettings`, and silently ignores
   a block nested inside `$MySettings`, so a setting written there looked like a setting that
   did not work.
+- **The documentation now says the endpoint has no rate limit, and where to put one.** Every
+  call is bounded, but calls are not counted, so a single valid token can load the instance for
+  all its users. SECURITY.md's threat model says so, and its hardening list gives a web-server
+  throttle keyed on the credential. Nothing in the module changed.
 
 ## [1.0.0] - 2026-09-20
 
