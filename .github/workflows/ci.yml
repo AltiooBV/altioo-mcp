@@ -307,7 +307,10 @@ jobs:
                    vendor/autoload.php tests/php-unit-tests/bootstrap.php; do
             test -e "$f" || { echo "missing from the package: $f"; exit 1; }
           done
-          ! grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests|\.htaccess|web\.config)' exclude.txt
+          if grep -qxE '(README\.md|doc|LICENSE|SECURITY\.md|CHANGELOG\.md|tests|\.htaccess|web\.config)' exclude.txt; then
+            echo "exclude.txt lists a file that must ship; remove it from exclude.txt"
+            exit 1
+          fi
           test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
 
       # Exercised on every change rather than only at a tag: a bill of
@@ -319,6 +322,8 @@ jobs:
           composer sbom > /tmp/sbom.json
           composer licenses --no-dev --format=json > /tmp/licenses.json
           php -r 'json_decode(file_get_contents("/tmp/sbom.json"), true, 512, JSON_THROW_ON_ERROR);'
+          # Literal PHP passed to `php -r`; $a/$n are PHP variables, not shell ones.
+          # shellcheck disable=SC2016
           php -r '
             $a = json_decode(file_get_contents("/tmp/sbom.json"), true);
             $n = count($a["components"] ?? []);
