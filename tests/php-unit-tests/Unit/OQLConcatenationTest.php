@@ -120,6 +120,23 @@ $oSearch = DBObjectSearch::FromOQL(
     [self::ID_PARAMETER => $iId]
 );
 PHP;
+		// Every file in src/ is namespaced, so a leading backslash is the
+		// ordinary way to reach a global class without importing it - and it
+		// tokenises as T_NAME_FULLY_QUALIFIED rather than T_STRING. Matching
+		// only the imported spelling made one character enough to walk past
+		// this check.
+		$sFullyQualifiedDBObjectSearch = <<<'PHP'
+<?php
+$oSearch = \DBObjectSearch::FromOQL("SELECT Person WHERE id = " . $sId);
+PHP;
+		$sFullyQualifiedDBSearch = <<<'PHP'
+<?php
+$oSearch = \DBSearch::FromOQL("SELECT Person WHERE id = " . $sId, $aBindings);
+PHP;
+		$sFullyQualifiedInterpolated = <<<'PHP'
+<?php
+$oSearch = \DBObjectSearch::FromOQL("SELECT {$sClass} WHERE {$sKey} = :id", [':id' => $iId]);
+PHP;
 
 		$this->assertNotEmpty(
 			OQLConcatenationScanner::findViolations($sConcatenatedDBObjectSearch),
@@ -148,6 +165,19 @@ PHP;
 			[],
 			OQLConcatenationScanner::findViolations($sConcatenatedBindParameterName),
 			'Concatenating a class constant (a fixed bind-parameter name, as in ObjectQuery::ById()) is not a variable landing in the query text and must not be flagged.'
+		);
+		$this->assertNotEmpty(
+			OQLConcatenationScanner::findViolations($sFullyQualifiedDBObjectSearch),
+			'\\DBObjectSearch::FromOQL() is the same call as the imported spelling and must be caught: a leading backslash must not be a way past this check.'
+		);
+		$this->assertNotEmpty(
+			OQLConcatenationScanner::findViolations($sFullyQualifiedDBSearch),
+			'\\DBSearch::FromOQL() with a concatenated query string must be caught.'
+		);
+		$this->assertSame(
+			[],
+			OQLConcatenationScanner::findViolations($sFullyQualifiedInterpolated),
+			'The fully-qualified spelling must not change what counts as safe: interpolation stays unflagged.'
 		);
 	}
 }
