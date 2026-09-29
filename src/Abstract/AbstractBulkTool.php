@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
@@ -347,6 +348,13 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			$sBadTarget = WritePlan::RefusalForExternalKey($sClass, $sAttCode, $value);
 			if ($sBadTarget !== null) {
 				$aIssues[] = $sBadTarget;
+				continue;
+			}
+			// A mention is a notification: held to what the console would
+			// have let this user write, and to a per-call cap. See MentionPolicy.
+			$sBadMention = MentionPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadMention !== null) {
+				$aIssues[] = $sBadMention;
 				continue;
 			}
 

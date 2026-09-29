@@ -530,6 +530,15 @@
       -->
       <mcp_pagination_limit type="integer">200</mcp_pagination_limit>
       <!--
+        Distinct objects one call may @mention in the case-log entries it
+        writes. A mention fires TriggerOnObjectMention - usually a mail - and
+        here the markup is whatever the caller types, where the console offers
+        it one autocomplete pick at a time. Mentions are also held to the
+        classes in mentions.allowed_classes and to objects the caller can see.
+        0 turns mentions off for this endpoint.
+      -->
+      <mcp_max_mentions type="integer">5</mcp_max_mentions>
+      <!--
         Largest document served or accepted through this endpoint, in bytes.
         Reading an object never returns file content - it returns the name, the
         type, the size and the URI - so this bounds the one call that does ask

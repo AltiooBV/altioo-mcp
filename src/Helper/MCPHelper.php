@@ -115,6 +115,18 @@ class MCPHelper
 	const DEFAULT_PAGINATION_LIMIT = 200;
 
 	/**
+	 * Distinct objects one call may @mention in the case-log entries it
+	 * writes. Each mention can fire TriggerOnObjectMention - usually a mail -
+	 * and the markup that carries it is whatever the caller types here, where
+	 * the console only offers it one autocomplete pick at a time. 0 turns
+	 * mentions off for this endpoint. See MentionPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_MAX_MENTIONS = 'mcp_max_mentions';
+	const DEFAULT_MAX_MENTIONS = 5;
+
+	/**
 	 * URL of the RFC 9728 protected-resource metadata document, when an
 	 * OAuth-terminating proxy in front of iTop serves one. Advertised in the
 	 * WWW-Authenticate challenge of a 401; empty means no such parameter.
@@ -820,6 +832,23 @@ class MCPHelper
 		}
 
 		return $iLimit;
+	}
+
+	/**
+	 * Distinct objects one call may mention, as configured.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function GetMaxMentions(): int
+	{
+		$iMax = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_MAX_MENTIONS, self::DEFAULT_MAX_MENTIONS);
+		if (!is_int($iMax) || $iMax < 0) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_MAX_MENTIONS."' should be a non-negative integer");
+
+			return self::DEFAULT_MAX_MENTIONS;
+		}
+
+		return $iMax;
 	}
 
 	/**

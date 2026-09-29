@@ -46,6 +46,18 @@ entry itself, not left to be inferred from it.
 
 ### Security
 
+- **An @mention written here is held to what the console would allow, and capped.** A mention
+  is markup iTop reads out of a new case-log entry and turns into a `TriggerOnObjectMention`,
+  usually a mail. The console only writes that markup through its autocomplete, but this
+  endpoint took it as typed, so one `core_object_update` could mention any class, any id, as
+  many as fit; a red-team pass sent 27 mails that way. Every write tool now refuses an entry
+  that mentions a class outside iTop's `mentions.allowed_classes`, an object the caller cannot
+  see, or more distinct objects in one call than the new `mcp_max_mentions` setting allows
+  (default 5, `0` turns mentions off here). The refusal says which rule failed, and a dry run
+  reports it the same way. The parsing is iTop's own, so markup sent as plain text is caught
+  too. **Behaviour change:** a caller that relied on mentioning more than five people in one
+  call, or a class other than those configured, is now refused; raise `mcp_max_mentions` if
+  that is intended.
 - **`MCP-advisory` now exists on a token.** In 1.0.0 it was read, tested and documented, but
   the datamodel never declared it on `PersonalToken` or `UserToken`. iTop drops an undeclared
   value from a scope set when it is saved, without an error, so a token meant to be
