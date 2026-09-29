@@ -62,7 +62,8 @@ entry itself, not left to be inferred from it.
   pairs. An operator following it literally believed deletion was off when it was not. The
   setting now says that it withdraws exactly the names listed, and points to
   `mcp_capabilities`, which grades every tool by what it declares, for stopping a kind of
-  operation. Nothing in the module changed. **If you listed a tool there in order to stop an
+  operation, and `log/error.log` names the bulk or single sibling an entry left callable, at
+  every request until it is listed too. **If you listed a tool there in order to stop an
   operation, check the instance:** leaving `delete` out of `mcp_capabilities` is what stops it.
 - **The README names the array the settings belong in.** It said "under `module_settings`";
   iTop reads module settings only from the top-level `$MyModuleSettings`, and silently ignores
