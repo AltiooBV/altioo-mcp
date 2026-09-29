@@ -80,11 +80,17 @@ time this repository tests what happens to an instance a client already has.
 `module.altioo-mcp.php` — `ModuleMetadataTest` fails if they drift — with a
 [CHANGELOG.md](../CHANGELOG.md) entry under a dated heading, not under `[Unreleased]`.
 
+The number moves with the first change that needs it, not on the day of the tag: the change
+that makes a release minor or major sets the three files, and its entries go under
+`## [x.y.z] - Unreleased` instead of `[Unreleased]`, so a build deployed for testing already
+says which version it is on its way to. `ModuleMetadataTest` requires that heading to exist;
+the date stays out of it until the tag, below.
+
 **Dates, on the day of the tag and not before.** Two files carry one, and both were once
 written ahead of a release that had not happened:
 
 1. **[CHANGELOG.md](../CHANGELOG.md)** — fold everything under `[Unreleased]` into the version
-   heading and date it `## [x.y.z] - YYYY-MM-DD`. Anything left under `[Unreleased]` ships in
+   heading, and replace its `Unreleased` with the date: `## [x.y.z] - YYYY-MM-DD`. Anything left under `[Unreleased]` ships in
    the tag without appearing in its notes, which is how a reader ends up unable to tell what a
    version contains. [release.yml](../.github/workflows/release.yml) refuses the tag on either
    count, so this is checked rather than remembered.

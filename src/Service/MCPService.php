@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service;
 
+use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
@@ -121,6 +123,7 @@ final class MCPService
 		$builder = self::registerPrompts($builder, $aDisabled, $oPolicy);
 
 		self::warnAboutSettingsThatMatchNothing($aDisabled);
+		self::warnAboutBulkSiblingsLeftOn($aDisabled);
 
 		return $builder->build();
 	}
@@ -144,7 +147,10 @@ final class MCPService
 			$oPolicy,
 			self::internalFormatOf(\AttributeDateTime::class),
 			self::internalFormatOf(\AttributeDate::class),
-			self::servedPromptNames($oPolicy)
+			self::servedPromptNames($oPolicy),
+			MCPHelper::GetMaxMentions(),
+			MentionPolicy::AllowedClasses(),
+			MCPHelper::RefusesFormulaValues()
 		);
 	}
 
@@ -267,6 +273,87 @@ final class MCPService
 				$aKnownToolsets === [] ? '(none)' : implode(', ', array_keys($aKnownToolsets))
 			));
 		}
+	}
+
+	/**
+	 * Tells the log when mcp_disabled_tools turns off one half of a
+	 * single/bulk pair and leaves the other half callable.
+	 *
+	 * The setting withdraws the names it lists, not the job they do, and the
+	 * pair is where that surprises people: an operator who lists
+	 * core_object_delete to stop deletions still has core_object_bulk_delete,
+	 * up to a hundred objects per call. The README says so; this says it where
+	 * the operator is looking when the switch "does not work". Warned rather
+	 * than refused, like the stale entries above - and silenced the only way
+	 * that means anything, by listing the sibling too.
+	 *
+	 * @param array<int, string> $aDisabled
+	 */
+	private static function warnAboutBulkSiblingsLeftOn(array $aDisabled): void
+	{
+		if ($aDisabled === []) {
+			return;
+		}
+
+		$aTools = [];
+		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
+			$aTools[$sName] = ['class' => get_class($oTool), 'bulk' => $oTool instanceof AbstractBulkTool];
+		}
+
+		foreach (self::bulkSiblingsLeftOn($aDisabled, $aTools) as $sDisabled => $sSibling) {
+			MCPHelper::LogError(sprintf(
+				"'%s' turns off %s but not %s, which does the same job %s. List %s as well, "
+				."or leave the grade out of '%s' to stop the operation whichever tool asks for it.",
+				MCPHelper::MODULE_SETTING_DISABLED,
+				$sDisabled,
+				$sSibling,
+				$aTools[$sSibling]['bulk'] ? 'for many objects in one call' : 'one object at a time',
+				$sSibling,
+				MCPHelper::MODULE_SETTING_CAPABILITIES
+			));
+		}
+	}
+
+	/**
+	 * Each disabled tool whose single/bulk sibling is still on, mapped to
+	 * that sibling.
+	 *
+	 * A pair is declared rather than listed: a tool extending
+	 * AbstractBulkTool is the bulk form of the registered tool whose
+	 * qualified name is its own without "bulk_" - core_object_bulk_delete and
+	 * core_object_delete - so a pack's pairs are found the same way as ours.
+	 * An entry may name the tool or its class, as the kill switch accepts
+	 * both.
+	 *
+	 * @param array<int, string>                               $aDisabled
+	 * @param array<string, array{class: string, bulk: bool}> $aTools Keyed by qualified name.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function bulkSiblingsLeftOn(array $aDisabled, array $aTools): array
+	{
+		$isOff = static fn (string $sName): bool => in_array($sName, $aDisabled, true)
+			|| in_array($aTools[$sName]['class'], $aDisabled, true);
+
+		$aLeftOn = [];
+		foreach ($aTools as $sBulk => $aBulk) {
+			if (!$aBulk['bulk'] || !str_contains($sBulk, 'bulk_')) {
+				continue;
+			}
+
+			$sSingle = preg_replace('/(^|_)bulk_/', '$1', $sBulk, 1);
+			if ($sSingle === null || $sSingle === $sBulk || !isset($aTools[$sSingle])) {
+				continue;
+			}
+
+			if ($isOff($sSingle) && !$isOff($sBulk)) {
+				$aLeftOn[$sSingle] = $sBulk;
+			} elseif ($isOff($sBulk) && !$isOff($sSingle)) {
+				$aLeftOn[$sBulk] = $sSingle;
+			}
+		}
+
+		return $aLeftOn;
 	}
 
 	/**

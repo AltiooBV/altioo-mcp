@@ -106,7 +106,7 @@ the [README](../README.md#what-the-install-changes):
   redefined;
 - one file, `index.php`, published as `env-production/altioo-mcp/index.php` in the compiled
   environment and answering on the same terms at the `extensions/` path it was unpacked to;
-- one `module_settings` block in `conf/<env>/config-itop.php`.
+- one `'altioo-mcp'` entry in `$MyModuleSettings` in `conf/<env>/config-itop.php`.
 
 | Question | Answer |
 |---|---|

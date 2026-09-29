@@ -20,6 +20,8 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.1.0] - Unreleased
+
 ### Added
 
 - **iTop 3.3 is now a supported branch**, alongside 3.2. The install matrix runs against iTop
@@ -33,6 +35,79 @@ entry itself, not left to be inferred from it.
   ours:** 3.2 accepts PHP 8.1, 3.3 refuses anything below 8.2. This extension has always needed
   8.2, so an instance already running it is already above 3.3's floor — but a 3.2 instance still
   on 8.1 has to raise PHP before it can go to 3.3 at all.
+
+### Fixed
+
+- **A call no longer answers with eight `Set-Cookie` headers, or leaves a session behind.**
+  iTop's login opens a PHP session even for this stateless endpoint, and reopens it for every
+  value it stores. Each reopening sent a fresh cookie to a client that had presented none, and
+  every call left a session file for the garbage collector. The session is now destroyed before
+  the answer is written, and its cookies are withdrawn. The endpoint never read that session
+  back, so no client behaviour changes. A client that stored the cookie was holding a
+  token-mode session, which iTop refuses without its token, and now it is not sent at all.
+
+### Security
+
+- **Text a spreadsheet would run as a formula is refused on the way in.** A value starting —
+  after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — `=HYPERLINK(…)` stored in `Server.name` was
+  the red-team case — runs as soon as the data reaches a spreadsheet: iTop's CSV export does not
+  neutralise it, REST returns it as stored, and an assistant reading it here may build the CSV
+  itself. Every write tool now refuses such a value on a text attribute, and says why. A value
+  that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone
+  numbers, negative numbers and dates are unaffected; case logs and secret attributes are not
+  checked. Reads return values unchanged, and every reader is told to quote such cells when it
+  builds a CSV. **Behaviour change:** a write that relied on a leading `=`, `+`, `-` or `@` — `@jdoe`
+  included — is refused; `mcp_refuse_formula_values => false` turns the check off. SECURITY.md
+  has an OQL query for values that arrived another way.
+- **An @mention written here is held to what the console would allow, and capped.** A mention
+  is markup iTop reads out of a new case-log entry and turns into a `TriggerOnObjectMention`,
+  usually a mail. The console only writes that markup through its autocomplete, but this
+  endpoint took it as typed, so one `core_object_update` could mention any class, any id, as
+  many as fit; a red-team pass sent 27 mails that way. Every write tool now refuses an entry
+  that mentions a class outside iTop's `mentions.allowed_classes`, an object the caller cannot
+  see, or more distinct objects in one call than the new `mcp_max_mentions` setting allows
+  (default 5, `0` turns mentions off here). The refusal says which rule failed, and a dry run
+  reports it the same way. The parsing is iTop's own, so markup sent as plain text is caught
+  too. **Behaviour change:** a caller that relied on mentioning more than five people in one
+  call, or a class other than those configured, is now refused; raise `mcp_max_mentions` if
+  that is intended.
+- **`MCP-advisory` now exists on a token.** In 1.0.0 it was read, tested and documented, but
+  the datamodel never declared it on `PersonalToken` or `UserToken`. iTop drops an undeclared
+  value from a scope set when it is saved, without an error, so a token meant to be
+  `MCP-write` + `MCP-advisory` was stored as plain `MCP-write` and wrote for real — the one
+  outcome that scope exists to rule out. The value is now declared on both classes, and a test
+  requires every scope the code interprets to be declared there. **Migration:** after the
+  setup has recompiled the datamodel, open every token that was meant to rehearse and add
+  **MCP: advisory** to its scope. The value it lost was dropped when the token was saved, so
+  nothing brings it back on its own. Until you do, those tokens write.
+- **A caller can no longer write a line break into the audit trail.** The element column of an
+  `AltiooEventMCPService` row — which is also the row's name in every list of them — is filled
+  from the caller's own text: the `clientInfo` a client sends at `initialize`, the tool or prompt
+  name of a call (whether or not it matches anything), the URI of a resource read. It was stored
+  as sent, so any valid token, with no scope and before any capability check, could make one row
+  read as several, or leave text for whoever — person or model — reviews the trail later. The
+  row's message carried the same text a second way, because an unknown tool is answered with its
+  name quoted in the error. In both columns control characters are now replaced by a space, and
+  a value that is not a string is recorded as nothing. The element is cut to the 255 characters
+  its column holds for all four sources, where before only `clientInfo` was. Rows written before
+  this release keep what they were given.
+- **The README no longer implies that disabling a tool disables what it does.** Its example for
+  `mcp_disabled_tools` was `core_object_delete`, and it never said that
+  `core_object_bulk_delete` stays callable, or that the same holds for the create and update
+  pairs. An operator following it literally believed deletion was off when it was not. The
+  setting now says that it withdraws exactly the names listed, and points to
+  `mcp_capabilities`, which grades every tool by what it declares, for stopping a kind of
+  operation, and `log/error.log` names the bulk or single sibling an entry left callable, at
+  every request until it is listed too. **If you listed a tool there in order to stop an
+  operation, check the instance:** leaving `delete` out of `mcp_capabilities` is what stops it.
+- **The README names the array the settings belong in.** It said "under `module_settings`";
+  iTop reads module settings only from the top-level `$MyModuleSettings`, and silently ignores
+  a block nested inside `$MySettings`, so a setting written there looked like a setting that
+  did not work.
+- **The documentation now says the endpoint has no rate limit, and where to put one.** Every
+  call is bounded, but calls are not counted, so a single valid token can load the instance for
+  all its users. SECURITY.md's threat model says so, and its hardening list gives a web-server
+  throttle keyed on the credential. Nothing in the module changed.
 
 ## [1.0.0] - 2026-09-20
 

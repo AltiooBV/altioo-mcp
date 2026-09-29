@@ -32,7 +32,7 @@ class MCPHelper
 	 * Helper/. A breaking change to any of those is a major bump; a new
 	 * optional hook with a default implementation is a minor one.
 	 */
-	const VERSION = '1.0.0';
+	const VERSION = '1.1.0';
 
 	/**
 	 * The mcp/sdk release line this module vendors, loads and is tested
@@ -113,6 +113,26 @@ class MCPHelper
 	 */
 	const MODULE_SETTING_PAGINATION_LIMIT = 'mcp_pagination_limit';
 	const DEFAULT_PAGINATION_LIMIT = 200;
+
+	/**
+	 * Distinct objects one call may @mention in the case-log entries it
+	 * writes. Each mention can fire TriggerOnObjectMention - usually a mail -
+	 * and the markup that carries it is whatever the caller types here, where
+	 * the console only offers it one autocomplete pick at a time. 0 turns
+	 * mentions off for this endpoint. See MentionPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_MAX_MENTIONS = 'mcp_max_mentions';
+	const DEFAULT_MAX_MENTIONS = 5;
+
+	/**
+	 * Whether a text value that a spreadsheet would run as a formula is
+	 * refused on the way in. On unless explicitly false. See FormulaPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_REFUSE_FORMULA_VALUES = 'mcp_refuse_formula_values';
 
 	/**
 	 * URL of the RFC 9728 protected-resource metadata document, when an
@@ -820,6 +840,36 @@ class MCPHelper
 		}
 
 		return $iLimit;
+	}
+
+	/**
+	 * Distinct objects one call may mention, as configured.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function GetMaxMentions(): int
+	{
+		$iMax = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_MAX_MENTIONS, self::DEFAULT_MAX_MENTIONS);
+		if (!is_int($iMax) || $iMax < 0) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_MAX_MENTIONS."' should be a non-negative integer");
+
+			return self::DEFAULT_MAX_MENTIONS;
+		}
+
+		return $iMax;
+	}
+
+	/**
+	 * Whether formula-shaped text is refused on the way in.
+	 *
+	 * Anything but an explicit false keeps it on: a setting that guards data
+	 * leaving the instance should not be turned off by a typo.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function RefusesFormulaValues(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_REFUSE_FORMULA_VALUES, true) !== false;
 	}
 
 	/**

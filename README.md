@@ -446,7 +446,7 @@ Four checks. Each one fails in a way that is much harder to diagnose later than 
    endpoint matches on the profile *name*, so a profile renamed in the console stops matching
    until `mcp_allowed_profiles` is updated to say the same thing.
 3. **The configuration block was written.** `conf/<env>/config-itop.php` should now contain an
-   `'altioo-mcp' => array(...)` block under `module_settings`, carrying the defaults in
+   `'altioo-mcp' => array(...)` entry in the `$MyModuleSettings` array, carrying the defaults in
    [Configuration](#configuration). If it is missing, the module is installed but every setting
    falls back to its compiled-in default, and editing the file is how you change them.
 4. **Only `index.php` is reachable.** `<itop-url>/env-production/altioo-mcp/index.php` should
@@ -478,7 +478,7 @@ survive on purpose and have to be removed by hand:
 | What survives | Where | What to do |
 |---|---|---|
 | The audit history | Class `AltiooEventMCPService`, stored across **`priv_event`** and **`priv_altioo_event_mcp_service`** | iTop leaves both behind for any removed module, so the trail outlives the extension. Do this *before* removing the module, while iTop can still read the class: export `SELECT AltiooEventMCPService` if you want to keep it, then delete the rows from the console. `AltiooEventMCPService` inherits `Event`, so the date, the user and the message live in `priv_event` and only the MCP columns are in the module's own table — an export of that one table is missing half of each row, and dropping it alone leaves the other half behind |
-| The module settings | The **`'altioo-mcp' => array(...)`** block under `module_settings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
+| The module settings | The **`'altioo-mcp' => array(...)`** entry in `$MyModuleSettings` in `conf/<env>/config-itop.php` | Delete the block. It is inert once the module is gone, but it is also the thing that quietly reapplies your old settings if the extension is ever reinstalled |
 
 Tokens keep their `MCP*` scope values as stored strings; those scopes simply stop meaning
 anything, and no token gains access to anything else as a result. The `MCP Services User`
@@ -545,7 +545,9 @@ Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint �
 client has no way to follow a redirect to an identity provider — and neither can a session
 cookie: a request that brings no credential of its own is refused `401` before the session is
 even looked at, and one that brings a credential has its session reset before the login runs.
-Either way the cookie decides nothing.
+Either way the cookie decides nothing — and the endpoint sets none: the session iTop's login
+opens is destroyed before the answer is sent, so no `Set-Cookie` goes out and no session file
+stays behind.
 
 **3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
 shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits
@@ -674,28 +676,37 @@ add it to a `401` it never sees.
 
 ## Configuration
 
-All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
+All settings live in the `'altioo-mcp'` entry of the top-level `$MyModuleSettings` array in
+`conf/<env>/config-itop.php`, where the setup wrote them. **Not in `$MySettings`:** iTop reads
+module settings from `$MyModuleSettings` alone, and drops any `$MySettings` key it does not know
+without a word — so a block nested there changes nothing, and nothing says so. A kill switch
+written in the wrong array looks exactly like a kill switch that does not work.
 
 ```php
-'altioo-mcp' => array(
-    'secure_mcp_services' => true,
-    'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
-    'mcp_allowed_hosts' => array(),
-    'mcp_allowed_origins' => array(),
-    'mcp_disabled_tools' => array(),
-    'mcp_enabled_toolsets' => array(),
-    'mcp_capabilities' => array(),
-    'mcp_read_only' => false,
-    'mcp_allow_access_administration' => false,
-    'mcp_allow_privilege_escalation' => false,
-    'mcp_max_document_bytes' => 5242880,
-    'mcp_pagination_limit' => 200,
-    'mcp_protected_resource_metadata' => '',
-    'mcp_source_url' => '',
-    'log_mcp_service' => true,
-    'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
-    'log_mcp_level' => 'info',
-),
+$MyModuleSettings = array(
+    // ... the entries other modules already have here stay as they are ...
+    'altioo-mcp' => array(
+        'secure_mcp_services' => true,
+        'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
+        'mcp_allowed_hosts' => array(),
+        'mcp_allowed_origins' => array(),
+        'mcp_disabled_tools' => array(),
+        'mcp_enabled_toolsets' => array(),
+        'mcp_capabilities' => array(),
+        'mcp_read_only' => false,
+        'mcp_allow_access_administration' => false,
+        'mcp_allow_privilege_escalation' => false,
+        'mcp_max_document_bytes' => 5242880,
+        'mcp_pagination_limit' => 200,
+        'mcp_max_mentions' => 5,
+        'mcp_refuse_formula_values' => true,
+        'mcp_protected_resource_metadata' => '',
+        'mcp_source_url' => '',
+        'log_mcp_service' => true,
+        'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
+        'log_mcp_level' => 'info',
+    ),
+);
 ```
 
 | Setting | Default | Effect |
@@ -704,13 +715,15 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
 | `mcp_allowed_profiles` | `Administrator`, `MCP Services User` | Profiles allowed through the endpoint |
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential |
-| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart |
+| `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
 | `mcp_allow_access_administration` | `false` | Whether the classes that decide what a caller may do — `PersonalToken`, `UserToken`, `User`, iTop's `URP_*` — may be written here at all. Off, every write tool refuses them whatever the caller's iTop rights say, because a caller able to write them can widen the credential it was handed. On, the caller may administer *other* people's access — onboard a user, retire somebody's token — and still never its own: not the token it authenticated with, not another token of its own, not its own account or profile links. That self-guard is unconditional and this setting does not reach it. Reads are unaffected either way. This setting has nothing to say about iTop's synchronisation classes, which are graded on where the definition points and on your own rights over that class — see [SECURITY.md](SECURITY.md) |
 | `mcp_allow_privilege_escalation` | `false` | **An escalation switch, not a feature switch.** It governs `Trigger`, `Action` (so `ActionEmail`, whose recipients are OQL queries), the links between them, `AsyncTask` (so `AsyncSendEmail`, the mail queue the cron drains), the `RemoteApplicationConnection` a webhook calls through, the `Oauth2Client`/`OAuthClient` tokens the instance authenticates outward with, and iTop's `AuditRule`/`AuditCategory`/`AuditDomain` checks. Those are refused because no tool here sends mail, calls a URL, invokes a static method by name or authenticates outward as this instance — so "could the caller have done this itself" answers **no for every caller, administrator included**, and there is no profile that makes it yes. Turning it on is an operator consenting to the endpoint granting more than the credential it was called with. It is *not* needed to let an assistant do ordinary automation work: a caller that can already write a class directly may arrange the same writes through a mechanism without this setting, graded on its own rights. Reads are unaffected either way. See [SECURITY.md](SECURITY.md) before turning it on |
 | `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
+| `mcp_max_mentions` | `5` | Distinct objects one call may @mention in the case-log entries it writes. A mention is markup iTop turns into a notification, and here the caller types that markup directly, where the console offers it one autocomplete pick at a time. Mentions are also held to the classes in iTop's `mentions.allowed_classes` and to objects the caller can see; a value breaking any of the three is refused, and says which. `0` turns mentions off for this endpoint |
+| `mcp_refuse_formula_values` | `true` | Refuse a text value that starts — after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — what a spreadsheet runs as a formula (CSV injection) once the data is exported by iTop, returned by REST, or turned into a CSV by an assistant. A value that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone numbers, negative numbers and dates are unaffected. Case logs and secret attributes are not checked. Values that reach iTop some other way are not checked either — see [SECURITY.md](SECURITY.md#hardening-the-deployment) for finding them. Anything but an explicit `false` keeps it on |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. This module sets it on every request, so the SDK's own default of 50 never applies. What is past the limit is paged behind a cursor, which a client that ignores `nextCursor` never asks for — those elements then exist, are callable, and are advertised to nobody |
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
@@ -901,6 +914,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 |---|---|
 | `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
+| A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
 | `mcp_enabled_toolsets` set, and almost no tools listed | A misspelt toolset name serves nothing rather than everything. The log names the entries that matched nothing, and lists the toolsets this instance actually has |
 | A client lists only some of the tools, and always the same number of them | That client ignores `nextCursor`, so it never asks for the second page. The page size is `mcp_pagination_limit`, which this module sets on every request — it defaults to 200, so the SDK's own 50 is never what you are seeing. Raise it if the instance registers more elements than that, and check nobody lowered it |
@@ -1083,6 +1097,9 @@ Known and deliberate, so that none of them is a discovery made after installing:
   are clipped, but `core_object_get` returns every readable attribute unless `output_fields`
   says otherwise; a deliberately wide `output_fields => *` over thousands of objects is still
   your cost to pay.
+- **No rate limit.** Each call is bounded, but calls are not counted: one valid token can keep
+  the instance busy for everyone else. Throttle at the web server — see
+  [SECURITY.md](SECURITY.md#hardening-the-deployment).
 - **The audit trail grows.** One `AltiooEventMCPService` row per audited call, with no built-in purge
   — set retention as you do for iTop's other event classes.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.
