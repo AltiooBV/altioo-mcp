@@ -60,6 +60,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Allow the MCP tools that create and modify, and those that read. Not the ones that delete]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP: delete]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Allow the MCP tools that delete]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-advisory" _delta="force"><![CDATA[MCP: advisory]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-advisory+" _delta="force"><![CDATA[Every MCP write tool this token reaches rehearses: it proposes changes and commits none]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP: datamodel toolset]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restrict this token to the tools that describe classes and attributes]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP: objects toolset]]></entry>
@@ -80,6 +82,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Allow the MCP tools that create and modify, and those that read. Not the ones that delete]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP: delete]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Allow the MCP tools that delete]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-advisory" _delta="force"><![CDATA[MCP: advisory]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-advisory+" _delta="force"><![CDATA[Every MCP write tool this token reaches rehearses: it proposes changes and commits none]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP: datamodel toolset]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restrict this token to the tools that describe classes and attributes]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP: objects toolset]]></entry>

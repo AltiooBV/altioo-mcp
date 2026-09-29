@@ -36,6 +36,15 @@ entry itself, not left to be inferred from it.
 
 ### Security
 
+- **`MCP-advisory` now exists on a token.** In 1.0.0 it was read, tested and documented, but
+  the datamodel never declared it on `PersonalToken` or `UserToken`. iTop drops an undeclared
+  value from a scope set when it is saved, without an error, so a token meant to be
+  `MCP-write` + `MCP-advisory` was stored as plain `MCP-write` and wrote for real — the one
+  outcome that scope exists to rule out. The value is now declared on both classes, and a test
+  requires every scope the code interprets to be declared there. **Migration:** after the
+  setup has recompiled the datamodel, open every token that was meant to rehearse and add
+  **MCP: advisory** to its scope. The value it lost was dropped when the token was saved, so
+  nothing brings it back on its own. Until you do, those tokens write.
 - **A caller can no longer write a line break into the audit trail.** The element column of an
   `AltiooEventMCPService` row — which is also the row's name in every list of them — is filled
   from the caller's own text: the `clientInfo` a client sends at `initialize`, the tool or prompt

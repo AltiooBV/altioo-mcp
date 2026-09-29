@@ -17,6 +17,9 @@
             <value id="MCP-delete" _delta="define">
               <code>MCP-delete</code>
             </value>
+            <value id="MCP-advisory" _delta="define">
+              <code>MCP-advisory</code>
+            </value>
             <value id="MCP-toolset-datamodel" _delta="define">
               <code>MCP-toolset-datamodel</code>
             </value>
@@ -54,6 +57,9 @@
             </value>
             <value id="MCP-delete" _delta="define">
               <code>MCP-delete</code>
+            </value>
+            <value id="MCP-advisory" _delta="define">
+              <code>MCP-advisory</code>
             </value>
             <value id="MCP-toolset-datamodel" _delta="define">
               <code>MCP-toolset-datamodel</code>
