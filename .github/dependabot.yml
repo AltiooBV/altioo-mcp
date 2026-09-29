@@ -9,7 +9,7 @@
 #
 # Wednesday, because the other schedules are already taken and a quiet
 # repository should not produce all its noise on one morning: itop-matrix.yml
-# runs Monday, ci.yml and upgrade.yml run Tuesday.
+# runs Monday, ci.yml and upgrade.yml run Tuesday, security.yml Thursday.
 
 version: 2
 updates:
@@ -77,10 +77,52 @@ updates:
       - "dependencies"
       - "ci"
 
-# doc/example-pack is deliberately absent. It carries its own composer.json but
-# its composer.lock is gitignored on purpose - the pack is a template, and a
-# lock committed in doc/ would pin whichever versions were current when it was
-# last touched onto every reader who follows its README. Dependabot updating a
-# lock that is not supposed to exist would defeat that. ci.yml runs the pack's
-# own `composer install` on every change, which is what actually keeps it
-# resolvable.
+  # The pinned scanner security.yml runs and tools/ci/local/Dockerfile installs.
+  #
+  # It needs an entry of its own because the composer entry at the top of this
+  # file is `directory: "/"`, which does not reach a second composer project
+  # elsewhere in the tree. Without this, the lock that exists precisely so the
+  # scanner and its fifteen transitive dependencies are pinned would be the one
+  # pinned thing in this repository that nothing ever moves - and a lock nobody
+  # updates is how a pin becomes a stale pin rather than a reproducible one.
+  # Same argument as the actions entry above: pinning is only sustainable when
+  # something else does the bumping.
+  #
+  # Read differently from the root entry, though. Nothing here ships: the
+  # release archive is built from the root composer.lock with --no-dev, so a
+  # bump changes what CI accepts, never what an operator installs. The expected
+  # surprise is therefore the opposite one - a newer scanner knows more
+  # vulnerability classes, so it can turn the gate red on code that did not
+  # change. That is the check doing its job, not the bump breaking it.
+  #
+  # Grouped into one pull request: sixteen locked packages, mostly symfony and
+  # nikic transitives, is sixteen pull requests a week about a linter nobody
+  # reads the dependency tree of.
+  - package-ecosystem: "composer"
+    directory: "/tools/ci/local/progpilot"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+    groups:
+      progpilot:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+
+# doc/example-pack is deliberately absent - the tree's third composer project,
+# left out for the opposite reason to the one just added above. It carries its
+# own composer.json, but its composer.lock is gitignored on purpose: the pack is
+# a template, and a lock committed in doc/ would pin whichever versions were
+# current when it was last touched onto every reader who follows its README.
+# Dependabot updating a lock that is not supposed to exist would defeat that.
+# ci.yml runs the pack's own `composer install` on every change, which is what
+# actually keeps it resolvable.
