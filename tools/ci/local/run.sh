@@ -14,7 +14,7 @@
 # script from tools/ci/ that the workflow step runs; what this file adds is the
 # machine to run it on.
 #
-#   tools/ci/local/run.sh unit                  the ci.yml unit job, on 8.2
+#   tools/ci/local/run.sh unit                  ci.yml's unit, lint and Psalm jobs, on 8.2
 #   tools/ci/local/run.sh unit 8.4              the same, on the ceiling
 #   tools/ci/local/run.sh matrix                itop-matrix.yml, iTop 3.2 on 8.2
 #   tools/ci/local/run.sh matrix 3.2 8.4        the same branch, on the ceiling
@@ -62,17 +62,23 @@ ITOP_ADMIN_PWD='Admin*2026!'
 
 say() { printf '\n\033[1m>>> %s\033[0m\n' "$*"; }
 
-image_for() { echo "altioo-ci:php$1"; }
+# The image is built once per PHP version and per version of the Dockerfile,
+# and then reused. It used to be one tag per PHP version, reused whatever the
+# Dockerfile said since, with a note to rebuild by hand: a tool added there
+# (Psalm, the first time) was then simply absent on every machine that had built
+# the image before, and the step failed with "not found". The tag now carries a
+# hash of the Dockerfile, so an edited one gets its own image - and two working
+# copies on different Dockerfiles each keep theirs, rather than rebuilding the
+# one shared tag every time a run switches between them.
+dockerfile_hash() { sha256sum "$REPO/tools/ci/local/Dockerfile" | cut -c1-12; }
+image_for() { echo "altioo-ci:php$1-$(dockerfile_hash)"; }
 runner_name() { echo "itop-ci-php${1//./}"; }
 
-# The image is built once per PHP version and then reused. Rebuild it by hand -
-# `docker build --build-arg PHP_VERSION=8.2 -t altioo-ci:php8.2 tools/ci/local` -
-# after editing the Dockerfile.
 need_image() {
 	local sPhp=$1 sImage
 	sImage=$(image_for "$sPhp")
 	if [ -z "$(docker images -q "$sImage")" ]; then
-		say "building $sImage (once; a few minutes)"
+		say "building $sImage for this tools/ci/local/Dockerfile (once; a few minutes)"
 		docker build --build-arg PHP_VERSION="$sPhp" -t "$sImage" "$REPO/tools/ci/local"
 	fi
 }
@@ -153,10 +159,20 @@ need_runner() {
 		local sMounted
 		sMounted=$(docker inspect "$sName" \
 			--format '{{range .Mounts}}{{if eq .Destination "/src"}}{{.Source}}{{end}}{{end}}' 2>/dev/null) || sMounted=
-		if [ "$sMounted" = "$REPO" ]; then
+		# And the image: a container keeps the one it was started from, so a
+		# runner started for another Dockerfile - an older one, or another
+		# working copy's - lacks whatever this one adds.
+		local sRunning sCurrent
+		sRunning=$(docker inspect "$sName" --format '{{.Image}}' 2>/dev/null) || sRunning=
+		sCurrent=$(docker image inspect "$(image_for "$sPhp")" --format '{{.Id}}' 2>/dev/null) || sCurrent=
+		if [ "$sMounted" = "$REPO" ] && [ "$sRunning" = "$sCurrent" ]; then
 			return
 		fi
-		say "$sName is bound to ${sMounted:-nothing}, not $REPO - recreating it"
+		if [ "$sMounted" != "$REPO" ]; then
+			say "$sName is bound to ${sMounted:-nothing}, not $REPO - recreating it"
+		else
+			say "$sName runs another image than $(image_for "$sPhp") - recreating it"
+		fi
 		docker rm -f "$sName" >/dev/null 2>&1 || true
 	fi
 	need_net
@@ -177,9 +193,10 @@ cmd_build() {
 	say "$(image_for "$sPhp") ready"
 }
 
-# ci.yml's `tests` job and its `lint` job: everything that needs neither a
-# database nor an iTop, which is everything that fails while a change is being
-# written. An ephemeral container, because none of it is worth keeping.
+# ci.yml's `tests` job, its `lint` job and its Psalm job: everything that needs
+# neither a database nor an iTop, which is everything that fails while a change
+# is being written. Psalm runs as ci.yml runs it - --php-version=8.2 whichever
+# PHP this container has, since that is the target the baseline was built for. An ephemeral container, because none of it is worth keeping.
 cmd_unit() {
 	local sPhp=${1:-8.2}
 	need_image "$sPhp"; need_runner "$sPhp"
@@ -210,6 +227,7 @@ composer validate --strict --no-check-publish
 composer install --no-interaction --no-progress
 composer check-platform-reqs
 phpcs
+psalm --php-version=8.2
 composer test:unit
 INNER
 	run_script "$sPhp" unit.sh "/work/unit-$sPhp"
@@ -345,7 +363,7 @@ cmd_down() {
 	docker rm -f "$DB_CONTAINER" >/dev/null 2>&1 || true
 	docker volume rm "$VOLUME" >/dev/null 2>&1 || true
 	docker network rm "$NET" >/dev/null 2>&1 || true
-	echo "the altioo-ci:* images are kept - docker rmi them to reclaim the build"
+	echo "the altioo-ci:* images are kept, one per PHP version and Dockerfile - docker rmi the ones you no longer need"
 }
 
 case "${1:-}" in

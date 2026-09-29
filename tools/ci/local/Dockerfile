@@ -6,7 +6,10 @@
 # workflows get from `setup-php` and from the runner image is assembled here,
 # and nothing else is: this is not a development environment.
 #
-#   docker build --build-arg PHP_VERSION=8.2 -t altioo-ci:php8.2 tools/ci/local
+#   docker build --build-arg PHP_VERSION=8.2 -t altioo-ci:php8.2-<hash> tools/ci/local
+#
+# where <hash> is the first 12 hex digits of this file's sha256 - run.sh picks
+# the image by it, so an edited Dockerfile gets its own image.
 #
 # tools/ci/local/run.sh builds it for you; this file is here to be read and
 # edited when a version stops installing.
@@ -57,6 +60,20 @@ RUN printf 'memory_limit=512M\n' > /usr/local/etc/php/conf.d/ci.ini \
       "https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/${PHPCS_VERSION}/phpcs.phar" \
  && echo "${PHPCS_SHA256}  /usr/local/bin/phpcs" | sha256sum -c - \
  && chmod +x /usr/local/bin/phpcs
+
+# Psalm, for ci.yml's static-analysis job, on the same terms as phpcs above:
+# build tooling fetched as a phar rather than required through Composer, and
+# pinned to the version ci.yml passes to setup-php (psalm:6.18.1), because
+# psalm-baseline.xml is generated against one exact version. Keep the two in
+# step - a local run on another version compares against a baseline it was not
+# built from. The digest was taken on first download; the phar reports the
+# same commit (79465b8) as the release Composer resolves for 6.18.1.
+ARG PSALM_VERSION=6.18.1
+ARG PSALM_SHA256=bda02df4550afb1a78e6de203519e8d489ac9358181aeae7a854e9286c1815a5
+RUN curl -fsSL -o /usr/local/bin/psalm \
+      "https://github.com/vimeo/psalm/releases/download/${PSALM_VERSION}/psalm.phar" \
+ && echo "${PSALM_SHA256}  /usr/local/bin/psalm" | sha256sum -c - \
+ && chmod +x /usr/local/bin/psalm
 
 ENV COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/work/.composer
 WORKDIR /work

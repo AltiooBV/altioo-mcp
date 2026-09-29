@@ -183,7 +183,7 @@ extension does not support.
 nothing else installed:
 
 ```bash
-tools/ci/local/run.sh unit            # ci.yml's unit job and its linter, on 8.2
+tools/ci/local/run.sh unit            # ci.yml's unit job, its linter and Psalm, on 8.2
 tools/ci/local/run.sh unit 8.4        # the same, on the ceiling of the range
 tools/ci/local/run.sh matrix          # itop-matrix.yml, iTop 3.2, on 8.2
 tools/ci/local/run.sh matrix 3.2 8.4  # the same branch, on the ceiling
@@ -200,8 +200,9 @@ an experiment is how an untested branch becomes a published claim. That order is
 naming the branch is what makes it testable, and reverting is what keeps it from being a promise.
 
 It runs the same `tools/ci/` scripts the workflow steps run; the only thing it adds is the
-machine. The image is built once per PHP version and the installed iTop is kept in a Docker
-volume, which is what makes `integration` a two-second loop rather than a ten-minute one — the
+machine. The image is built once per PHP version and per version of its Dockerfile — the tag
+carries a hash of it, so a tool added there is never missing from an image built before — and
+the installed iTop is kept in a Docker volume, which is what makes `integration` a two-second loop rather than a ten-minute one — the
 loop an integration test actually gets written in. `matrix` records a verdict per step and
 carries on, the way `fail-fast: false` lets the real matrix finish.
 
