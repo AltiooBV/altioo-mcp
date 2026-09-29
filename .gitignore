@@ -22,12 +22,12 @@ composer.phar
 /doc/example-pack/.phpunit.result.cache
 /doc/example-pack/.phpunit.cache/
 
-# Same case, same reason: a Composer-installed copy of a CI tool kept outside
-# the project's own require-dev (ci.yml's progpilot job does this with a
-# COMPOSER_HOME under $RUNNER_TEMP, precisely so it cannot be mistaken for a
-# project dependency), landed under tools/ci/local/ for reproducing that job
-# locally. Build tooling, not something this repository ships or should track.
-/tools/ci/local/progpilot/
+# The pinned scanner security.yml runs, and that tools/ci/local/Dockerfile
+# installs into the local runner image. Anchored for the same reason as the
+# block above. Its lock, unlike the example pack's, *is* committed and must
+# stay that way: pinning the scanner's fifteen transitive dependencies is the
+# whole point of the project existing rather than a `composer global require`.
+/tools/ci/local/progpilot/vendor/
 
 # PHPStorm / IDEs
 .idea/

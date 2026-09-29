@@ -1,0 +1,13 @@
+{
+    "description": "Progpilot, the vulnerability-class scanner security.yml's progpilot job runs over src/. Pinned with a committed lock so the scanner AND its transitive dependencies are reproducible: `composer global require` pins only the named package and re-resolves the rest on every run, which was the one input to this pipeline that was not reproducible. It lives inside the local runner's Docker build context so that the image and the CI job install from the same lock rather than from two independent resolutions. 1.3.0 requires PHP >= 8.3, above this extension's own 8.2 floor - it analyses source and never runs inside an instance, so the interpreter it needs is unrelated to the range the extension supports. Build tooling, like phpcs and psalm: never a dependency of the extension, and never in the release archive, which is built from the root composer.lock with --no-dev.",
+    "require": {
+        "designsecurity/progpilot": "1.3.0"
+    },
+    "config": {
+        "platform": {
+            "php": "8.3.0"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

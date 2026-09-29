@@ -75,5 +75,29 @@ RUN curl -fsSL -o /usr/local/bin/psalm \
  && echo "${PSALM_SHA256}  /usr/local/bin/psalm" | sha256sum -c - \
  && chmod +x /usr/local/bin/psalm
 
+# Progpilot, the vulnerability-class scanner security.yml's progpilot job runs over
+# src/. Installed from progpilot/composer.lock, committed beside this file, so
+# that the image and the CI job run the same scanner and the same transitive
+# dependencies - `composer global require` would have pinned only the named
+# package and re-resolved the other fifteen on every run. That lock is the
+# reason this tooling project sits inside the build context rather than under
+# tools/ elsewhere in the tree.
+#
+# 1.3.0 requires PHP >= 8.3, above this extension's own 8.2 floor. The scanner
+# reads source and never runs inside an instance, so the interpreter it needs
+# says nothing about the range the extension supports - but it does mean the
+# 8.2 image, built to exercise that floor, cannot carry it. The guard below is
+# what keeps `run.sh lint` on 8.2 building instead of failing on a tool it has
+# no use for; the CI job pins 8.3 for the same reason.
+COPY progpilot/composer.json progpilot/composer.lock /opt/progpilot/
+RUN if php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);'; then \
+      COMPOSER_HOME=/tmp/composer composer install --working-dir=/opt/progpilot \
+        --no-interaction --no-progress \
+      && ln -s /opt/progpilot/vendor/bin/progpilot /usr/local/bin/progpilot \
+      && progpilot --version; \
+    else \
+      echo "progpilot 1.3.0 needs PHP >= 8.3; this image is $(php -r 'echo PHP_VERSION;') and does not carry it"; \
+    fi
+
 ENV COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/work/.composer
 WORKDIR /work
