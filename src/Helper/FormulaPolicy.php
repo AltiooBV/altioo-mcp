@@ -66,7 +66,14 @@ final class FormulaPolicy
 			// An unknown attribute is refused by the write itself, in its own words.
 			return null;
 		}
-		if (!$oAttDef instanceof AttributeString || $oAttDef instanceof AttributeCaseLog || $oAttDef instanceof iAttributeNoGroupBy) {
+		// The exclusions first. Both are AttributeString subclasses in iTop,
+		// but static analysis runs without iTop and cannot know it: asked in
+		// the other order, it reads "an AttributeString that is a case log" as
+		// a contradiction.
+		if ($oAttDef instanceof AttributeCaseLog || $oAttDef instanceof iAttributeNoGroupBy) {
+			return null;
+		}
+		if (!$oAttDef instanceof AttributeString) {
 			return null;
 		}
 
