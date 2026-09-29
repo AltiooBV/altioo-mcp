@@ -681,25 +681,28 @@ without a word — so a block nested there changes nothing, and nothing says so.
 written in the wrong array looks exactly like a kill switch that does not work.
 
 ```php
-'altioo-mcp' => array(
-    'secure_mcp_services' => true,
-    'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
-    'mcp_allowed_hosts' => array(),
-    'mcp_allowed_origins' => array(),
-    'mcp_disabled_tools' => array(),
-    'mcp_enabled_toolsets' => array(),
-    'mcp_capabilities' => array(),
-    'mcp_read_only' => false,
-    'mcp_allow_access_administration' => false,
-    'mcp_allow_privilege_escalation' => false,
-    'mcp_max_document_bytes' => 5242880,
-    'mcp_pagination_limit' => 200,
-    'mcp_protected_resource_metadata' => '',
-    'mcp_source_url' => '',
-    'log_mcp_service' => true,
-    'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
-    'log_mcp_level' => 'info',
-),
+$MyModuleSettings = array(
+    // ... the entries other modules already have here stay as they are ...
+    'altioo-mcp' => array(
+        'secure_mcp_services' => true,
+        'mcp_allowed_profiles' => array('Administrator', 'MCP Services User'),
+        'mcp_allowed_hosts' => array(),
+        'mcp_allowed_origins' => array(),
+        'mcp_disabled_tools' => array(),
+        'mcp_enabled_toolsets' => array(),
+        'mcp_capabilities' => array(),
+        'mcp_read_only' => false,
+        'mcp_allow_access_administration' => false,
+        'mcp_allow_privilege_escalation' => false,
+        'mcp_max_document_bytes' => 5242880,
+        'mcp_pagination_limit' => 200,
+        'mcp_protected_resource_metadata' => '',
+        'mcp_source_url' => '',
+        'log_mcp_service' => true,
+        'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
+        'log_mcp_level' => 'info',
+    ),
+);
 ```
 
 | Setting | Default | Effect |
