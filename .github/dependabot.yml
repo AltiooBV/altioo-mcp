@@ -27,6 +27,12 @@ updates:
       interval: "weekly"
       day: "wednesday"
       time: "06:00"
+    # A newly published version is not proposed until it has been out this
+    # long -- a quarantine against a release that turns out compromised or
+    # broken in its first days, which is exactly the shape mcp/sdk matters in:
+    # pre-1.0 and vendored into the archive every operator unzips.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       # Matches the convention in CONTRIBUTING.md: build: for dependencies.
@@ -52,6 +58,13 @@ updates:
       interval: "weekly"
       day: "wednesday"
       time: "06:00"
+    # Same quarantine as the composer entry, and for a reason that argues for
+    # it even more here: an action runs with this repository's CI privileges
+    # the moment its pin moves, where a composer dependency merely ships
+    # inside the archive. A compromised release is the same class of risk
+    # either way.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     groups:
       actions:

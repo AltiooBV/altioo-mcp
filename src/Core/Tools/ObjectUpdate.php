@@ -18,6 +18,8 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
+use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -247,6 +249,19 @@ class ObjectUpdate extends AbstractMCPTool
 			$sBadTarget = WritePlan::RefusalForExternalKey($class, $sAttCode, $value);
 			if ($sBadTarget !== null) {
 				$aIssues[$sAttCode] = $sBadTarget;
+				continue;
+			}
+			// A mention is a notification: held to what the console would
+			// have let this user write, and to a per-call cap. See MentionPolicy.
+			$sBadMention = MentionPolicy::RefusalFor($class, $sAttCode, $value);
+			if ($sBadMention !== null) {
+				$aIssues[$sAttCode] = $sBadMention;
+				continue;
+			}
+			// Text a spreadsheet would run as a formula. See FormulaPolicy.
+			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
+			if ($sBadFormula !== null) {
+				$aIssues[$sAttCode] = $sBadFormula;
 				continue;
 			}
 

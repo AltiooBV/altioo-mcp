@@ -72,15 +72,20 @@ final class ServerInstructions
 	 * @param string|null  $sDateTimeFormat  AttributeDateTime's internal format, as a date() pattern, or null when it could not be read.
 	 * @param string|null  $sDateFormat      AttributeDate's own internal format, likewise. Read separately because it is a separate accessor: AttributeDate extends AttributeDateTime and overrides it, and nothing holds the two in any particular relation.
 	 *
+	 * @param int|null     $iMaxMentions     mcp_max_mentions, or null to say nothing about mentions.
+	 * @param array<int, string> $aMentionClasses mentions.allowed_classes, values only.
+	 * @param bool         $bRefusesFormulas mcp_refuse_formula_values.
+	 *
 	 * @since 1.0.0 Narrowed by the caller's access policy; previously took no argument.
+	 * @since 1.1.0 Told the mention and formula rules a write is held to.
 	 */
-	public static function Text(AccessPolicy $oPolicy, ?string $sDateTimeFormat = null, ?string $sDateFormat = null, array $aPrompts = []): string
+	public static function Text(AccessPolicy $oPolicy, ?string $sDateTimeFormat = null, ?string $sDateFormat = null, array $aPrompts = [], ?int $iMaxMentions = null, array $aMentionClasses = [], bool $bRefusesFormulas = false): string
 	{
 		$aParts = [
 			self::PREAMBLE,
 			self::datamodelSection($oPolicy),
 			self::readingSection($oPolicy, $sDateTimeFormat, $sDateFormat),
-			self::writingSection($oPolicy),
+			self::writingSection($oPolicy, $iMaxMentions, $aMentionClasses, $bRefusesFormulas),
 			self::historySection($oPolicy),
 			self::promptSection($aPrompts),
 			self::WHATEVER_IS_SERVED,
@@ -118,6 +123,53 @@ final class ServerInstructions
 			."\n".implode(', ', $aPrompts).'.'
 			."\n".'- They are fetched through prompts/get rather than called as tools. If your client'
 			."\n".'does not list them, say the name to the user rather than rebuilding the query by hand.';
+	}
+
+	/**
+	 * The formula rule, said before a write is refused for it rather than
+	 * after. See FormulaPolicy.
+	 */
+	private static function formulaBullet(bool $bRefusesFormulas): string
+	{
+		if (!$bRefusesFormulas) {
+			return '';
+		}
+
+		return "\n".'- A text value may not start with =, +, -, @, a tab or a carriage return unless it'
+			."\n".'is a number: a spreadsheet would run it as a formula, so the write is refused.'
+			."\n".'A phone number such as +33 1 23 45 67 89 is fine. Otherwise drop the leading'
+			."\n".'character or reword.';
+	}
+
+	/**
+	 * How to @mention someone, and what this instance allows.
+	 *
+	 * A mention is markup nothing else here describes, and a model that is
+	 * never told the shape either cannot mention anyone or guesses one the
+	 * parser ignores - iTop's pattern wants data-object-class before
+	 * data-object-key, on an <a>. The limits are said up front, with this
+	 * instance's own classes and number, because the alternative is learning
+	 * them one refused write at a time. See MentionPolicy.
+	 *
+	 * @param array<int, string> $aMentionClasses
+	 */
+	private static function mentionBullet(?int $iMaxMentions, array $aMentionClasses): string
+	{
+		if ($iMaxMentions === null) {
+			return '';
+		}
+
+		if ($iMaxMentions === 0 || $aMentionClasses === []) {
+			return "\n".'- @mentions are turned off here. Name people in plain words in a case log entry.';
+		}
+
+		$sClass = $aMentionClasses[0];
+
+		return "\n".'- To @mention in a case log, send the entry as {"add_item": {"message": "...",'
+			."\n".'"format": "html"}} with <a data-object-class="'.$sClass.'" data-object-key="12">@Name</a>'
+			."\n".'in the message, class before key, using the id of the object. Each mention notifies'
+			."\n".'the object it names. Only '.implode(', ', $aMentionClasses).' objects you can see may be mentioned,'
+			."\n".'and at most '.$iMaxMentions.' distinct objects in one call; anything else is refused.';
 	}
 
 	/**
@@ -231,6 +283,9 @@ final class ServerInstructions
 			."\n".'you name what you need in output_fields, and long texts, case logs and link sets are'
 			."\n".'cut unless you name them.'
 			."\n".'- OQL has no ORDER BY clause. Sort with the order_by and order_direction arguments.'
+			."\n".'- Values come back as stored. If you turn them into CSV or a spreadsheet, put a single'
+			."\n".'quote before any cell that starts with =, +, -, @, a tab or a carriage return: a'
+			."\n".'spreadsheet would otherwise run it as a formula.'
 			."\n".$sDates;
 	}
 
@@ -249,7 +304,7 @@ final class ServerInstructions
 	 * cannot, it plants the belief that deletion here is reversible by
 	 * default - a belief that outlives the tool name it arrived with.
 	 */
-	private static function writingSection(AccessPolicy $oPolicy): string
+	private static function writingSection(AccessPolicy $oPolicy, ?int $iMaxMentions, array $aMentionClasses, bool $bRefusesFormulas): string
 	{
 		if (!$oPolicy->allowsToolset(self::TOOLSET_OBJECTS) || !self::mayChangeSomething($oPolicy)) {
 			return '';
@@ -262,7 +317,9 @@ final class ServerInstructions
 			."\n".'- comment takes the reason the user gave, in one short sentence, and it is'
 			."\n".'recorded in the object\'s history beside the user and the tool. Leave it out'
 			."\n".'rather than restating the call: "customer confirmed the laptop came back" is'
-			."\n".'worth recording, "updating the ticket" is not.';
+			."\n".'worth recording, "updating the ticket" is not.'
+			.self::formulaBullet($bRefusesFormulas)
+			.self::mentionBullet($iMaxMentions, $aMentionClasses);
 
 		if (!$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE)) {
 			return $sText;

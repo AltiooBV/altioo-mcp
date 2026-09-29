@@ -535,6 +535,10 @@ reference.
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |
 | An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included |
+| Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element and the message recorded on each row are reduced to one line before they are stored, and the element is cut to its column. It is still what the caller declared, never verified: it names a well-behaved client, it does not authenticate one |
+| One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted. An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
+| Mass notification through @mentions — hand-written mention markup in a case-log entry, naming any class and any number of objects, each firing `TriggerOnObjectMention` | Mentions are held to iTop's `mentions.allowed_classes` and to objects the caller can see, and one call may mention at most `mcp_max_mentions` distinct objects (default 5, `0` for none). The parser and the trigger are iTop's; this caps what the endpoint lets through to them |
+| Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |
 | Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
 | Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
 | Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
@@ -588,6 +592,45 @@ records two). In particular, and specifically relevant here:
   not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Review `AltiooEventMCPService` retention against your own data-retention policy.
+- **Rate-limit and cap concurrency in the web server or proxy in front of the endpoint.** The
+  module counts nothing, and it is the wrong place to: by the time its first line runs, iTop has
+  already loaded its datamodel, so a limiter there would still pay most of the cost of every call
+  it refused, and it would need state shared across stateless PHP workers. A request refused by
+  the web server never starts PHP. Cover both paths the file answers at (`env-<env>/` and
+  `extensions/`), and key the limit on the credential as well as the address, since one token
+  can be used from many addresses. In nginx, for example — adapt the path prefix and the rates:
+
+  ```nginx
+  # http {} context - both headers, or switching to Auth-Token walks around the limit
+  limit_req_zone  "$http_authorization$http_auth_token" zone=mcp_token:10m rate=5r/s;
+  limit_conn_zone "$http_authorization$http_auth_token" zone=mcp_token_conn:10m;
+
+  # server {} context
+  location ~ ^/(env-[^/]+|extensions)/altioo-mcp/index\.php$ {
+      limit_req  zone=mcp_token burst=20 nodelay;
+      limit_conn mcp_token_conn 4;
+      limit_req_status  429;
+      limit_conn_status 429;
+      # ... the PHP handling this location already had
+  }
+  ```
+
+  Key on both headers a token can arrive in, `Authorization` and `Auth-Token`. The zone holds
+  them in the web server's memory, as the web server
+  already does for every request it handles. On Apache, `mod_qos` does the same job. Beyond
+  per-token limits, the PHP-FPM pool's `pm.max_children` is what bounds the whole instance: keep
+  it at what the database can serve, not what the hardware can fork.
+- **Look for formula-shaped values that arrived another way.** `mcp_refuse_formula_values` checks
+  what is written through this endpoint, not the console, REST, CSV import or a synchronisation.
+  OQL has `REGEXP`, so a text attribute you export can be checked directly — one query per class
+  and attribute, in the console's query tool or through `core_object_search_by_oql`:
+
+  ```sql
+  SELECT Server WHERE name REGEXP '^ *[-=+@]' AND name NOT REGEXP '^ *[-+]+[0-9 ().-]*$'
+  ```
+
+  The second condition leaves out phone numbers, negative numbers and dates, which is what the
+  endpoint lets through too. A leading tab or carriage return is not matched by this pattern.
 
 ## Dependencies
 

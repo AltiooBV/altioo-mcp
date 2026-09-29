@@ -60,6 +60,8 @@
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP : suppression]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-advisory" _delta="force"><![CDATA[MCP : consultatif]]></entry>
+        <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-advisory+" _delta="force"><![CDATA[Tous les outils MCP d'écriture que ce jeton atteint simulent : il propose des modifications et n'en applique aucune]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP : outils modèle de données]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
         <entry id="Class:PersonalToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP : outils objets]]></entry>
@@ -80,6 +82,8 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-write+" _delta="force"><![CDATA[Autoriser les outils MCP qui créent et modifient, ainsi que ceux qui lisent. Pas ceux qui suppriment]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete" _delta="force"><![CDATA[MCP : suppression]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-delete+" _delta="force"><![CDATA[Autoriser les outils MCP qui suppriment]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-advisory" _delta="force"><![CDATA[MCP : consultatif]]></entry>
+        <entry id="Class:UserToken/Attribute:scope/Value:MCP-advisory+" _delta="force"><![CDATA[Tous les outils MCP d'écriture que ce jeton atteint simulent : il propose des modifications et n'en applique aucune]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel" _delta="force"><![CDATA[MCP : outils modèle de données]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-datamodel+" _delta="force"><![CDATA[Restreindre ce jeton aux outils qui décrivent les classes et les attributs]]></entry>
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-objects" _delta="force"><![CDATA[MCP : outils objets]]></entry>

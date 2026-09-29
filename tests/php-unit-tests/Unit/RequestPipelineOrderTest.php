@@ -217,4 +217,46 @@ class RequestPipelineOrderTest extends TestCase
 			'the token scopes must be read while the credential still exists'
 		);
 	}
+
+	/**
+	 * The session the login created is destroyed, and its cookies withdrawn,
+	 * after the tools have run and before a byte of the answer is written.
+	 * Earlier and a tool loses the session iTop keeps its rights cache in;
+	 * later and both the headers and the session are out of reach, so the
+	 * call does nothing and the eight Set-Cookie headers are back.
+	 */
+	public function testTheSessionIsDiscardedBetweenTheToolsAndTheAnswer(): void
+	{
+		$this->assertComesBefore('MCPService::run', 'discardRequestSession', 'the session must outlive the tools');
+		$this->assertComesBefore('discardRequestSession', 'emitResponse', 'the session must go before the answer is written');
+	}
+
+	/**
+	 * A refused login or a failed call answers through the exception path,
+	 * and leaves the same session behind unless that path discards it too.
+	 */
+	public function testTheErrorPathDiscardsItAsWell(): void
+	{
+		$sCode = $this->pipeline();
+		$sCatch = (string) substr($sCode, (int) strpos($sCode, 'catch ('));
+
+		$iDiscard = strpos($sCatch, 'discardRequestSession');
+		$iOutput = strpos($sCatch, 'outputJsonResultException');
+
+		$this->assertIsInt($iDiscard, 'the exception path no longer discards the session');
+		$this->assertIsInt($iOutput, 'the exception path no longer answers');
+		$this->assertLessThan($iOutput, $iDiscard, 'the session must go before the error is written');
+	}
+
+	/**
+	 * Under the CLI there is no session and iTop's helper declines to start
+	 * one; the discard must be a quiet no-op there rather than a warning
+	 * from session_destroy().
+	 */
+	public function testWithNoSessionItDoesNothing(): void
+	{
+		(new ReflectionMethod(MCPController::class, 'discardRequestSession'))->invoke(null);
+
+		$this->assertSame('', session_id());
+	}
 }

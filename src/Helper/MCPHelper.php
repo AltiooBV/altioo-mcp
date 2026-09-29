@@ -115,6 +115,26 @@ class MCPHelper
 	const DEFAULT_PAGINATION_LIMIT = 200;
 
 	/**
+	 * Distinct objects one call may @mention in the case-log entries it
+	 * writes. Each mention can fire TriggerOnObjectMention - usually a mail -
+	 * and the markup that carries it is whatever the caller types here, where
+	 * the console only offers it one autocomplete pick at a time. 0 turns
+	 * mentions off for this endpoint. See MentionPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_MAX_MENTIONS = 'mcp_max_mentions';
+	const DEFAULT_MAX_MENTIONS = 5;
+
+	/**
+	 * Whether a text value that a spreadsheet would run as a formula is
+	 * refused on the way in. On unless explicitly false. See FormulaPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_REFUSE_FORMULA_VALUES = 'mcp_refuse_formula_values';
+
+	/**
 	 * URL of the RFC 9728 protected-resource metadata document, when an
 	 * OAuth-terminating proxy in front of iTop serves one. Advertised in the
 	 * WWW-Authenticate challenge of a 401; empty means no such parameter.
@@ -820,6 +840,36 @@ class MCPHelper
 		}
 
 		return $iLimit;
+	}
+
+	/**
+	 * Distinct objects one call may mention, as configured.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function GetMaxMentions(): int
+	{
+		$iMax = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_MAX_MENTIONS, self::DEFAULT_MAX_MENTIONS);
+		if (!is_int($iMax) || $iMax < 0) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_MAX_MENTIONS."' should be a non-negative integer");
+
+			return self::DEFAULT_MAX_MENTIONS;
+		}
+
+		return $iMax;
+	}
+
+	/**
+	 * Whether formula-shaped text is refused on the way in.
+	 *
+	 * Anything but an explicit false keeps it on: a setting that guards data
+	 * leaving the instance should not be turned off by a typo.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function RefusesFormulaValues(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_REFUSE_FORMULA_VALUES, true) !== false;
 	}
 
 	/**

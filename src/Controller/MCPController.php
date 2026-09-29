@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
 use CMDBObject;
@@ -114,6 +115,9 @@ final class MCPController
 
 			$oKPI->ComputeAndReport('Parameters validated');
 			$aRequestResponse = MCPService::run($oPolicy);
+			// Last moment the session can go: once the body is out, neither
+			// the headers nor the session can be touched.
+			self::discardRequestSession();
 			// Emit response and extract info for logging
 			$oResult = self::emitResponse($aRequestResponse['response']);
 			$oKPI->ComputeAndReport('Operation finished');
@@ -125,12 +129,57 @@ final class MCPController
 			$oResult = self::buildErrorResult($e);
 			$oResult->mcpMethod = MCPHelper::MCP_METHOD_EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
+			self::discardRequestSession();
 			self::outputJsonResultException($oResult);
 		}
 
 		$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000);
 
 		self::logIfConfigured($oResult);
+	}
+
+	/**
+	 * Ends the PHP session the login opened for this request, and withdraws
+	 * the cookies that announced it.
+	 *
+	 * The endpoint is stateless and never reads that session back - a
+	 * request without its own credential is refused before it is consulted,
+	 * and one with a credential resets it. But iTop's login still creates
+	 * one, and Session::Set() reopens it for every value it stores, each
+	 * session_start() sending a fresh Set-Cookie for a client that presented
+	 * none: eight identical headers per call, and a session file per call left
+	 * on the server for the garbage collector. Nothing in it is useful to
+	 * anyone after this response.
+	 *
+	 * A deliberate exception to the guide's §6.1 "no session restarts": this
+	 * reopens only the session this request itself created, in order to
+	 * destroy it, and touches no session setting. Replaying the cookie against
+	 * the console was not the reason - authent-token already refuses a
+	 * token-mode session presented without its token - but there is no longer
+	 * a cookie to replay either.
+	 *
+	 * Must run before anything is written to the wire. After that neither the
+	 * headers nor the session can be changed, and this does nothing.
+	 */
+	private static function discardRequestSession(): void
+	{
+		if (headers_sent()) {
+			return;
+		}
+
+		if (session_id() !== '') {
+			// Reopened through iTop's own helper, so its bookkeeping agrees,
+			// and destroyed through PHP, which runs iTop's session handler -
+			// the one that also removes its session-tracking file.
+			Session::Start();
+			if (session_status() === PHP_SESSION_ACTIVE) {
+				$_SESSION = [];
+				session_destroy();
+			}
+			Session::WriteClose();
+		}
+
+		header_remove('Set-Cookie');
 	}
 
 	/**
@@ -516,6 +565,7 @@ final class MCPController
 					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription($aParams),
 					default                              => null,
 				};
+				$sMcpName = self::auditLabel($sMcpName);
 			}
 		}
 
@@ -641,8 +691,8 @@ final class MCPController
 	/**
 	 * How an initialize request describes the client sending it.
 	 *
-	 * Free text written by the caller, so it is trimmed and cut to what the
-	 * column holds and never treated as anything but a label.
+	 * Free text written by the caller, so it is never treated as anything but
+	 * a label; auditLabel() makes it fit to store.
 	 *
 	 * @param array<string, mixed> $aParams The params of the initialize request.
 	 */
@@ -660,7 +710,39 @@ final class MCPController
 			return null;
 		}
 
-		return mb_substr($sVersion === '' ? $sName : $sName.' '.$sVersion, 0, 255);
+		return $sVersion === '' ? $sName : $sName.' '.$sVersion;
+	}
+
+	/**
+	 * Caller-supplied text as one line, fit for an audit row.
+	 *
+	 * Every source of mcp_name is the caller's own text - a client's
+	 * self-description, a tool or prompt name that may match nothing, a
+	 * resource URI - and it is recorded before anything checks it. It is also
+	 * the class's naming attribute, so it is what every list of those rows
+	 * shows. The row's message can carry the same text back: the SDK answers
+	 * an unknown tool with its name quoted in the error. A control character
+	 * in either is someone making one row read as two, or planting text for
+	 * whoever (or whatever model) reviews the trail later; a non-string is a
+	 * malformed request, and is recorded as nothing.
+	 *
+	 * @param int|null $iMaxChars What the column holds, or null for a text
+	 *                            column with no limit worth cutting to.
+	 */
+	private static function auditLabel(mixed $mValue, ?int $iMaxChars = 255): ?string
+	{
+		if (!is_string($mValue)) {
+			return null;
+		}
+
+		// Invalid UTF-8 would make the /u pattern fail outright; what is left
+		// after scrubbing still shows the reviewer that something odd arrived.
+		$sValue = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', mb_scrub($mValue, 'UTF-8')) ?? '');
+		if ($sValue === '') {
+			return null;
+		}
+
+		return $iMaxChars === null ? $sValue : mb_substr($sValue, 0, $iMaxChars);
 	}
 
 	/**
@@ -759,7 +841,7 @@ final class MCPController
 		try {
 			$oLog = new AltiooEventMCPService();
 			$oLog->SetTrim('userinfo', UserRights::GetUser());
-			$oLog->Set('message', $oResult->message);
+			$oLog->Set('message', self::auditLabel($oResult->message, null) ?? '');
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
