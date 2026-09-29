@@ -34,6 +34,16 @@ entry itself, not left to be inferred from it.
   8.2, so an instance already running it is already above 3.3's floor — but a 3.2 instance still
   on 8.1 has to raise PHP before it can go to 3.3 at all.
 
+### Fixed
+
+- **A call no longer answers with eight `Set-Cookie` headers, or leaves a session behind.**
+  iTop's login opens a PHP session even for this stateless endpoint, and reopens it for every
+  value it stores. Each reopening sent a fresh cookie to a client that had presented none, and
+  every call left a session file for the garbage collector. The session is now destroyed before
+  the answer is written, and its cookies are withdrawn. The endpoint never read that session
+  back, so no client behaviour changes. A client that stored the cookie was holding a
+  token-mode session, which iTop refuses without its token, and now it is not sent at all.
+
 ### Security
 
 - **`MCP-advisory` now exists on a token.** In 1.0.0 it was read, tested and documented, but

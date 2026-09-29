@@ -545,7 +545,9 @@ Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint �
 client has no way to follow a redirect to an identity provider — and neither can a session
 cookie: a request that brings no credential of its own is refused `401` before the session is
 even looked at, and one that brings a credential has its session reset before the login runs.
-Either way the cookie decides nothing.
+Either way the cookie decides nothing — and the endpoint sets none: the session iTop's login
+opens is destroyed before the answer is sent, so no `Set-Cookie` goes out and no session file
+stays behind.
 
 **3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
 shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits

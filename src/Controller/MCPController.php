@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
 use CMDBObject;
@@ -114,6 +115,9 @@ final class MCPController
 
 			$oKPI->ComputeAndReport('Parameters validated');
 			$aRequestResponse = MCPService::run($oPolicy);
+			// Last moment the session can go: once the body is out, neither
+			// the headers nor the session can be touched.
+			self::discardRequestSession();
 			// Emit response and extract info for logging
 			$oResult = self::emitResponse($aRequestResponse['response']);
 			$oKPI->ComputeAndReport('Operation finished');
@@ -125,12 +129,57 @@ final class MCPController
 			$oResult = self::buildErrorResult($e);
 			$oResult->mcpMethod = MCPHelper::MCP_METHOD_EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
+			self::discardRequestSession();
 			self::outputJsonResultException($oResult);
 		}
 
 		$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000);
 
 		self::logIfConfigured($oResult);
+	}
+
+	/**
+	 * Ends the PHP session the login opened for this request, and withdraws
+	 * the cookies that announced it.
+	 *
+	 * The endpoint is stateless and never reads that session back - a
+	 * request without its own credential is refused before it is consulted,
+	 * and one with a credential resets it. But iTop's login still creates
+	 * one, and Session::Set() reopens it for every value it stores, each
+	 * session_start() sending a fresh Set-Cookie for a client that presented
+	 * none: eight identical headers per call, and a session file per call left
+	 * on the server for the garbage collector. Nothing in it is useful to
+	 * anyone after this response.
+	 *
+	 * A deliberate exception to the guide's §6.1 "no session restarts": this
+	 * reopens only the session this request itself created, in order to
+	 * destroy it, and touches no session setting. Replaying the cookie against
+	 * the console was not the reason - authent-token already refuses a
+	 * token-mode session presented without its token - but there is no longer
+	 * a cookie to replay either.
+	 *
+	 * Must run before anything is written to the wire. After that neither the
+	 * headers nor the session can be changed, and this does nothing.
+	 */
+	private static function discardRequestSession(): void
+	{
+		if (headers_sent()) {
+			return;
+		}
+
+		if (session_id() !== '') {
+			// Reopened through iTop's own helper, so its bookkeeping agrees,
+			// and destroyed through PHP, which runs iTop's session handler -
+			// the one that also removes its session-tracking file.
+			Session::Start();
+			if (session_status() === PHP_SESSION_ACTIVE) {
+				$_SESSION = [];
+				session_destroy();
+			}
+			Session::WriteClose();
+		}
+
+		header_remove('Set-Cookie');
 	}
 
 	/**
