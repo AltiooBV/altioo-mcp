@@ -8,13 +8,15 @@
 	analysis flag that would actually look for a vulnerability class
 	(tainted input reaching MetaModel/UserRights) is off, for the reason
 	below. The vulnerability-class scanning this flag cannot do here is done
-	instead by the progpilot job in ci.yml - see that job's comment for why
-	it was chosen over this flag and over the other scanners measured.
+	instead by the progpilot job in .github/workflows/security.yml - see that
+	workflow for why that scanner was chosen over this flag and over the other
+	scanners measured.
 
 	Psalm's taint analysis flag is deliberately not run here: not because it
-	hangs (measured clean in 2-4s across containerised and host runs, every
-	PHP version this repo supports), but because it would be vacuous in this
-	scan's configuration. A positive control confirms the analyser itself
+	hangs (measured clean in 2-4s on PHP 8.2 in the local runner container and
+	on 8.5.4 on a developer host, warm cache and cold - 8.3 and 8.4 were not
+	measured, so this says nothing about them), but because it would be vacuous
+	in this scan's configuration. A positive control confirms the analyser itself
 	works - $_GET fed straight to echo is flagged TaintedHtml - but src/ gives
 	it no source and no sink to connect: input arrives as a PSR-7 object built
 	inside vendor/, which this config never scans (line 26 below), and the
