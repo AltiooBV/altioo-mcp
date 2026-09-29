@@ -78,7 +78,7 @@ CI across the declared PHP range, and the archive has been unzipped, installed t
 setup and connected to from a real MCP client on at least one iTop 3.2 instance — the gate is
 written down in [doc/release-checklist.md](doc/release-checklist.md), and each release records
 the iTop patch and the PHP version its own run used under **Tested on** in
-[CHANGELOG.md](CHANGELOG.md). 1.0.0 has not been released, so that line names nothing yet.
+[CHANGELOG.md](CHANGELOG.md).
 Combinations outside that are expected to work from the ranges above rather than
 observed; if one of them is the one you run, say so and it can be added to the gate.
 
@@ -484,8 +484,7 @@ Tokens keep their `MCP*` scope values as stored strings; those scopes simply sto
 anything, and no token gains access to anything else as a result. The `MCP Services User`
 profile disappears with the datamodel; users who held it keep their other profiles untouched.
 
-**Upgrading to a later version of this extension.** 1.0.0 is the first release, so nothing
-installed today is an upgrade. From the next version on: back up, take a maintenance window,
+**Upgrading to a later version of this extension.** Back up, take a maintenance window,
 unzip the new version over the old directory and re-run the setup, and read
 [CHANGELOG.md](CHANGELOG.md) first — a major version means an identifier or a default that
 clients and tool packs depend on has changed.
