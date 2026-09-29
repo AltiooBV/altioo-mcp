@@ -20,6 +20,8 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.1.0] - Unreleased
+
 ### Added
 
 - **iTop 3.3 is now a supported branch**, alongside 3.2. The install matrix runs against iTop
