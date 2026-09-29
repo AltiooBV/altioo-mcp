@@ -20,7 +20,16 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.1.0] - Unreleased
+## [1.1.0] - 2026-09-29
+
+A minor release for one reason: it adds a supported iTop branch. The module itself is unchanged
+from 1.0.0 — no source file, datamodel or dependency differs — so an upgrade from 1.0.0 changes
+what is claimed, not what runs. Tagged 2026-09-29, which opens this minor's five-year window in
+[SECURITY.md](SECURITY.md#support-period).
+
+**Tested on.** iTop **3.3.0** on PHP **8.4** — installed through iTop's own unattended setup
+by a local run of the install matrix, then exercised by the module's integration suite and by
+calling the endpoint over HTTP. iTop 3.2 coverage is as recorded under 1.0.0 below.
 
 ### Added
 
