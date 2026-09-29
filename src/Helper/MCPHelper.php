@@ -127,6 +127,14 @@ class MCPHelper
 	const DEFAULT_MAX_MENTIONS = 5;
 
 	/**
+	 * Whether a text value that a spreadsheet would run as a formula is
+	 * refused on the way in. On unless explicitly false. See FormulaPolicy.
+	 *
+	 * @since 1.1.0
+	 */
+	const MODULE_SETTING_REFUSE_FORMULA_VALUES = 'mcp_refuse_formula_values';
+
+	/**
 	 * URL of the RFC 9728 protected-resource metadata document, when an
 	 * OAuth-terminating proxy in front of iTop serves one. Advertised in the
 	 * WWW-Authenticate challenge of a 401; empty means no such parameter.
@@ -849,6 +857,19 @@ class MCPHelper
 		}
 
 		return $iMax;
+	}
+
+	/**
+	 * Whether formula-shaped text is refused on the way in.
+	 *
+	 * Anything but an explicit false keeps it on: a setting that guards data
+	 * leaving the instance should not be turned off by a typo.
+	 *
+	 * @since 1.1.0
+	 */
+	public static function RefusesFormulaValues(): bool
+	{
+		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_REFUSE_FORMULA_VALUES, true) !== false;
 	}
 
 	/**

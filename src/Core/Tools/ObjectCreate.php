@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -183,6 +184,12 @@ class ObjectCreate extends AbstractMCPTool
 			$sBadMention = MentionPolicy::RefusalFor($class, $sAttCode, $value);
 			if ($sBadMention !== null) {
 				$aIssues[$sAttCode] = $sBadMention;
+				continue;
+			}
+			// Text a spreadsheet would run as a formula. See FormulaPolicy.
+			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
+			if ($sBadFormula !== null) {
+				$aIssues[$sAttCode] = $sBadFormula;
 				continue;
 			}
 

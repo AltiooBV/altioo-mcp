@@ -74,12 +74,10 @@ final class MentionPolicy
 			return null;
 		}
 
-		$aAllowed = MetaModel::GetConfig()->Get('mentions.allowed_classes');
-
 		return self::Evaluate(
 			$sAttCode,
 			$aMentioned,
-			is_array($aAllowed) ? array_values(array_filter($aAllowed, 'is_string')) : [],
+			self::AllowedClasses(),
 			MCPHelper::GetMaxMentions(),
 			// IsParentClass() throws on an unknown class, and a typo in
 			// mentions.allowed_classes is an operator's, not the caller's.
@@ -96,6 +94,23 @@ final class MentionPolicy
 				}
 			}
 		);
+	}
+
+	/**
+	 * The classes this instance lets a user mention: mentions.allowed_classes,
+	 * whose keys are the autocomplete markers and do not matter here.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function AllowedClasses(): array
+	{
+		try {
+			$aAllowed = MetaModel::GetConfig()->Get('mentions.allowed_classes');
+		} catch (Throwable $e) {
+			return [];
+		}
+
+		return is_array($aAllowed) ? array_values(array_filter($aAllowed, 'is_string')) : [];
 	}
 
 	/**

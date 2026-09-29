@@ -46,6 +46,17 @@ entry itself, not left to be inferred from it.
 
 ### Security
 
+- **Text a spreadsheet would run as a formula is refused on the way in.** A value starting —
+  after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — `=HYPERLINK(…)` stored in `Server.name` was
+  the red-team case — runs as soon as the data reaches a spreadsheet: iTop's CSV export does not
+  neutralise it, REST returns it as stored, and an assistant reading it here may build the CSV
+  itself. Every write tool now refuses such a value on a text attribute, and says why. A value
+  that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone
+  numbers, negative numbers and dates are unaffected; case logs and secret attributes are not
+  checked. Reads return values unchanged, and every reader is told to quote such cells when it
+  builds a CSV. **Behaviour change:** a write that relied on a leading `=`, `+`, `-` or `@` — `@jdoe`
+  included — is refused; `mcp_refuse_formula_values => false` turns the check off. SECURITY.md
+  has an OQL query for values that arrived another way.
 - **An @mention written here is held to what the console would allow, and capped.** A mention
   is markup iTop reads out of a new case-log entry and turns into a `TriggerOnObjectMention`,
   usually a mail. The console only writes that markup through its autocomplete, but this

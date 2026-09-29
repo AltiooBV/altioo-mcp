@@ -539,6 +539,13 @@
       -->
       <mcp_max_mentions type="integer">5</mcp_max_mentions>
       <!--
+        Refuse a text value starting with =, +, -, @, a tab or a carriage
+        return, which a spreadsheet runs as a formula once the data is
+        exported or copied into one. Number-like values (phone numbers,
+        negative numbers, dates) pass. Off only when explicitly false.
+      -->
+      <mcp_refuse_formula_values type="bool">true</mcp_refuse_formula_values>
+      <!--
         Largest document served or accepted through this endpoint, in bytes.
         Reading an object never returns file content - it returns the name, the
         type, the size and the URI - so this bounds the one call that does ask

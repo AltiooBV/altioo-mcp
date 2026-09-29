@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -149,6 +151,49 @@ class MentionPolicyTest extends TestCase
 		}
 
 		$this->assertGreaterThanOrEqual(4, count($aFound), 'expected the create, update, stimulus and bulk write paths');
+	}
+
+	/**
+	 * A writer is told how to mention and what this instance allows, before
+	 * a write is refused for it - with the instance's own class and limit.
+	 */
+	public function testAWriterIsToldHowToMentionAndTheLimits(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write']), null, null, [], 3, ['Person', 'Team']);
+
+		$this->assertStringContainsString('data-object-class="Person" data-object-key="12"', $sText);
+		$this->assertStringContainsString('Person, Team objects you can see', $sText);
+		$this->assertStringContainsString('at most 3 distinct objects in one call', $sText);
+	}
+
+	/**
+	 * The example must be one iTop's parser actually finds. The pattern is
+	 * copied from utils::GetMentionedObjectsFromText() (iTop 3.2), which is
+	 * not loadable here; it wants the class before the key.
+	 */
+	public function testTheTaughtMarkupIsWhatItopParses(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write']), null, null, [], 5, ['Person']);
+
+		$this->assertSame(1, preg_match('/<a\s*([^>]*)data-object-class="([^"]*)"\s.*data-object-key="([^"]*)"/Ui', html_entity_decode($sText), $aMatch));
+		$this->assertSame('Person', $aMatch[2]);
+		$this->assertSame('12', $aMatch[3]);
+	}
+
+	public function testZeroOrNoClassSaysMentionsAreOff(): void
+	{
+		foreach ([[0, ['Person']], [5, []]] as [$iMax, $aClasses]) {
+			$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write']), null, null, [], $iMax, $aClasses);
+			$this->assertStringContainsString('@mentions are turned off here', $sText);
+			$this->assertStringNotContainsString('data-object-class', $sText);
+		}
+	}
+
+	public function testAReaderIsToldNothingAboutMentioning(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-read']), null, null, [], 5, ['Person']);
+
+		$this->assertStringNotContainsString('mention', $sText);
 	}
 
 	/**

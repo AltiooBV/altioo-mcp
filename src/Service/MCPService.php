@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
@@ -146,7 +147,10 @@ final class MCPService
 			$oPolicy,
 			self::internalFormatOf(\AttributeDateTime::class),
 			self::internalFormatOf(\AttributeDate::class),
-			self::servedPromptNames($oPolicy)
+			self::servedPromptNames($oPolicy),
+			MCPHelper::GetMaxMentions(),
+			MentionPolicy::AllowedClasses(),
+			MCPHelper::RefusesFormulaValues()
 		);
 	}
 

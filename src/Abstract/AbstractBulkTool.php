@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
@@ -355,6 +356,12 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			$sBadMention = MentionPolicy::RefusalFor($sClass, $sAttCode, $value);
 			if ($sBadMention !== null) {
 				$aIssues[] = $sBadMention;
+				continue;
+			}
+			// Text a spreadsheet would run as a formula. See FormulaPolicy.
+			$sBadFormula = FormulaPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadFormula !== null) {
+				$aIssues[] = $sBadFormula;
 				continue;
 			}
 

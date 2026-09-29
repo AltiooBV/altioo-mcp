@@ -536,6 +536,7 @@ reference.
 | Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element and the message recorded on each row are reduced to one line before they are stored, and the element is cut to its column. It is still what the caller declared, never verified: it names a well-behaved client, it does not authenticate one |
 | One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted. An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
 | Mass notification through @mentions — hand-written mention markup in a case-log entry, naming any class and any number of objects, each firing `TriggerOnObjectMention` | Mentions are held to iTop's `mentions.allowed_classes` and to objects the caller can see, and one call may mention at most `mcp_max_mentions` distinct objects (default 5, `0` for none). The parser and the trigger are iTop's; this caps what the endpoint lets through to them |
+| Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |
 | Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
 | Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
 | Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
@@ -617,6 +618,17 @@ records two). In particular, and specifically relevant here:
   already does for every request it handles. On Apache, `mod_qos` does the same job. Beyond
   per-token limits, the PHP-FPM pool's `pm.max_children` is what bounds the whole instance: keep
   it at what the database can serve, not what the hardware can fork.
+- **Look for formula-shaped values that arrived another way.** `mcp_refuse_formula_values` checks
+  what is written through this endpoint, not the console, REST, CSV import or a synchronisation.
+  OQL has `REGEXP`, so a text attribute you export can be checked directly — one query per class
+  and attribute, in the console's query tool or through `core_object_search_by_oql`:
+
+  ```sql
+  SELECT Server WHERE name REGEXP '^ *[-=+@]' AND name NOT REGEXP '^ *[-+]+[0-9 ().-]*$'
+  ```
+
+  The second condition leaves out phone numbers, negative numbers and dates, which is what the
+  endpoint lets through too. A leading tab or carriage return is not matched by this pattern.
 
 ## Dependencies
 
