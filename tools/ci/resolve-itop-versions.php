@@ -46,6 +46,17 @@ const TAGS_API = 'https://api.github.com/repos/Combodo/iTop/tags?per_page=100';
 const FILES_RSS = 'https://sourceforge.net/projects/itop/rss?path=/itop&limit=100';
 const PAGES = 4; // ~400 tags, back past 2.6. More than enough for any live branch.
 
+/** The module's own extension_code, read once, for a User-Agent nobody has to update by hand. */
+function module_code(): string
+{
+	static $sCode = null;
+	if ($sCode === null) {
+		$sCode = (string)(simplexml_load_file(__DIR__.'/../../extension.xml')->extension_code ?? 'itop-extension');
+	}
+
+	return $sCode;
+}
+
 /**
  * A tag this script understands, or null.
  *
@@ -82,7 +93,7 @@ function parse_tag(string $sTag): ?array
 function fetch_tags(): array
 {
 	$aHeaders = [
-		'User-Agent: altioo-mcp-ci',
+		'User-Agent: '.module_code().'-ci',
 		'Accept: application/vnd.github+json',
 	];
 	// Unauthenticated the API allows 60 calls an hour per runner IP, which a
@@ -128,7 +139,7 @@ function fetch_tags(): array
 function resolve_zip(string $sBranch, bool $bAllowPre): ?array
 {
 	$sRss = @file_get_contents(FILES_RSS, false, stream_context_create([
-		'http' => ['header' => 'User-Agent: altioo-mcp-ci', 'timeout' => 30],
+		'http' => ['header' => 'User-Agent: '.module_code().'-ci', 'timeout' => 30],
 	]));
 	if ($sRss === false) {
 		fwrite(STDERR, "could not reach the SourceForge file listing\n");

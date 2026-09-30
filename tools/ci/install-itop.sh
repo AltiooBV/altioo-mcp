@@ -84,10 +84,10 @@ ITOP_URL="${ITOP_URL:-http://127.0.0.1:8080/}"
 ITOP_ADMIN_USER="${ITOP_ADMIN_USER:-admin}"
 ITOP_ADMIN_PWD="${ITOP_ADMIN_PWD:-Admin*2026!}"
 
-MODULE_CODE=altioo-mcp
-# Extracted the way release.yml extracts it, from the file the setup itself
-# reads. Used below to tell "installed" from "installed, but the copy from the
-# run before this one".
+# Both extracted the way release.yml extracts them, from the file the setup
+# itself reads. MODULE_VERSION is used below to tell "installed" from
+# "installed, but the copy from the run before this one".
+MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "$MODULE_SRC/extension.xml" | head -1)
 MODULE_VERSION=$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' "$MODULE_SRC/extension.xml" | head -1)
 
 echo "::group::Fetching iTop $ITOP_ZIP_URL"

@@ -191,6 +191,10 @@ jobs:
           path: baseline
           fetch-depth: 0
 
+      - name: Module code, read from extension.xml
+        run: |
+          echo "MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' extension.xml | head -1)" >> "$GITHUB_ENV"
+
       - id: itop
         env:
           # resolve-itop-versions.php reads this off Combodo's own GitHub
@@ -270,7 +274,7 @@ jobs:
             --no-configuration \
             --bootstrap unittestautoload.php \
             --testdox \
-            "${ITOP_DIR}/env-production/altioo-mcp/tests/php-unit-tests/Integration"
+            "${ITOP_DIR}/env-production/${MODULE_CODE}/tests/php-unit-tests/Integration"
 
       - name: Keep the logs of a failed run
         if: failure()

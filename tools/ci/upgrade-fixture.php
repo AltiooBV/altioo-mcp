@@ -66,10 +66,21 @@ function check(string $sWhat, bool $bOk, string $sDetail = ''): void
 	}
 }
 
+/** This module's own extension_code, read from its repository checkout - never a literal. */
+function module_code(): string
+{
+	static $sCode = null;
+	if ($sCode === null) {
+		$sCode = (string)(simplexml_load_file(__DIR__.'/../../extension.xml')->extension_code ?? '');
+	}
+
+	return $sCode;
+}
+
 /** The version iTop is running, read the way the runtime reads it. */
 function installed_version(string $sItopDir): string
 {
-	$oXml = @simplexml_load_file($sItopDir.'/extensions/altioo-mcp/extension.xml');
+	$oXml = @simplexml_load_file($sItopDir.'/extensions/'.module_code().'/extension.xml');
 
 	return (string)($oXml->version ?? '');
 }
@@ -126,7 +137,7 @@ if ($sAction === 'seed') {
 	// chmods it back to 0770 before touching it. An administrator editing the
 	// file by hand does the same thing.
 	@chmod($sConfigFile, 0770);
-	$oConfig->SetModuleSetting('altioo-mcp', FIXTURE_SETTING, FIXTURE_SETTING_VALUE);
+	$oConfig->SetModuleSetting(module_code(), FIXTURE_SETTING, FIXTURE_SETTING_VALUE);
 	$oConfig->WriteToFile();
 	// Left owner-writable rather than restored to 0440. What this fixture is
 	// about is the *value* surviving the upgrade, not the permission bits, and
@@ -134,7 +145,7 @@ if ($sAction === 'seed') {
 	// that has nothing to do with the module.
 	@chmod($sConfigFile, 0640);
 	$aState['setting'] = [FIXTURE_SETTING => FIXTURE_SETTING_VALUE];
-	echo "  set altioo-mcp/".FIXTURE_SETTING." = ".FIXTURE_SETTING_VALUE." in $sConfigFile\n";
+	echo "  set ".module_code()."/".FIXTURE_SETTING." = ".FIXTURE_SETTING_VALUE." in $sConfigFile\n";
 
 	$aState['event_count'] = (int)(new DBObjectSet(new DBObjectSearch(FIXTURE_CLASS)))->Count();
 
@@ -225,9 +236,9 @@ check(
 // The tuning. Read through MetaModel, which is how the module's own code reads
 // it, so a value that survived in the file but not in the compiled config still
 // fails here.
-$mSetting = MetaModel::GetModuleSetting('altioo-mcp', FIXTURE_SETTING, null);
+$mSetting = MetaModel::GetModuleSetting(module_code(), FIXTURE_SETTING, null);
 check(
-	'altioo-mcp/'.FIXTURE_SETTING.' kept the administrator\'s value',
+	module_code().'/'.FIXTURE_SETTING.' kept the administrator\'s value',
 	(int)$mSetting === (int)$aState['setting'][FIXTURE_SETTING],
 	'reads '.var_export($mSetting, true).', was set to '.$aState['setting'][FIXTURE_SETTING]
 );

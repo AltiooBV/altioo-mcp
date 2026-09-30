@@ -20,6 +20,9 @@ set -euo pipefail
 : "${ITOP_DIR:?set ITOP_DIR to the installed iTop}"
 : "${ITOP_TOKEN:?set ITOP_TOKEN to a personal token carrying an MCP scope}"
 
+MODULE_SRC="${MODULE_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "$MODULE_SRC/extension.xml" | head -1)
+
 HOST="${SMOKE_HOST:-127.0.0.1}"
 PORT="${SMOKE_PORT:-8080}"
 BASE="http://${HOST}:${PORT}"
@@ -37,8 +40,8 @@ PROTOCOL_VERSION="${MCP_PROTOCOL_VERSION:-2025-06-18}"
 # extensions/ it is not, so the package was loaded twice, PHP fatalled on the
 # redeclared autoloader class, and every call to that URL was a 500. From the
 # wire that bug is a status code, which is all this step reads.
-ENDPOINT="${BASE}/env-${ITOP_ENV}/altioo-mcp/index.php"
-ALT_ENDPOINT="${BASE}/extensions/altioo-mcp/index.php"
+ENDPOINT="${BASE}/env-${ITOP_ENV}/${MODULE_CODE}/index.php"
+ALT_ENDPOINT="${BASE}/extensions/${MODULE_CODE}/index.php"
 
 INITIALIZE='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"$PROTOCOL_VERSION"'","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
 
