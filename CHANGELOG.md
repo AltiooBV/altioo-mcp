@@ -20,10 +20,10 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-09-29
+## [1.1.0] - 2026-09-30
 
 iTop 3.3 becomes a supported branch, and a red-team pass over 1.0.0 is fixed. Tagged
-2026-09-29, which opens this minor's five-year window in
+2026-09-30, which opens this minor's five-year window in
 [SECURITY.md](SECURITY.md#support-period).
 
 **Read the Security section before upgrading.** It carries one migration and two behaviour
