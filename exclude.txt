@@ -51,6 +51,13 @@
 # instance has no more use for it than for the brief itself. tools/ is already
 # excluded, which is where the hook script it points at lives.
 #
+# psalm.xml and psalm-baseline.xml are the same case as phpcs.xml.dist: they
+# configure a CI job that analyses this tree, and an installed copy has no
+# analyser to point them at. The baseline is also a list of every finding the
+# analysis had on the day it was cut - accepted here with a reason in psalm.xml,
+# but without that context a map of where to look is all it would be on an
+# instance.
+#
 # doc/example-pack ships as source and only as source. Its vendor/ and its lock
 # are what appear when somebody follows its README and runs composer in there -
 # a whole test framework, landing inside doc/ on a customer instance. .gitignore
@@ -76,6 +83,8 @@ doc/itop-extension-guide.md
 doc/itop-branch-notes.md
 CODE_OF_CONDUCT.md
 phpcs.xml.dist
+psalm.xml
+psalm-baseline.xml
 exclude.txt
 .phpunit.result.cache
 .phpunit.cache

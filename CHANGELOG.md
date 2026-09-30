@@ -22,14 +22,19 @@ entry itself, not left to be inferred from it.
 
 ## [1.1.0] - 2026-09-29
 
-A minor release for one reason: it adds a supported iTop branch. The module itself is unchanged
-from 1.0.0 — no source file, datamodel or dependency differs — so an upgrade from 1.0.0 changes
-what is claimed, not what runs. Tagged 2026-09-29, which opens this minor's five-year window in
+iTop 3.3 becomes a supported branch, and a red-team pass over 1.0.0 is fixed. Tagged
+2026-09-29, which opens this minor's five-year window in
 [SECURITY.md](SECURITY.md#support-period).
 
-**Tested on.** iTop **3.3.0** on PHP **8.4** — installed through iTop's own unattended setup
-by a local run of the install matrix, then exercised by the module's integration suite and by
-calling the endpoint over HTTP. iTop 3.2 coverage is as recorded under 1.0.0 below.
+**Read the Security section before upgrading.** It carries one migration and two behaviour
+changes. The migration: `MCP-advisory` is now declared on tokens, but a token saved under 1.0.0
+lost that scope silently and keeps writing for real until an administrator re-adds it after the
+setup has recompiled. The behaviour changes: writes now refuse values a spreadsheet would run as
+a formula, and @mentions beyond what the console allows. Both come with a setting to relax them.
+
+**Tested on.** iTop **3.2.3-2** and **3.3.0**, each on PHP **8.2** and **8.4** — installed
+through iTop's own unattended setup by the CI install matrix, then exercised by the module's
+integration suite and by calling the endpoint over HTTP. The unit suite runs on 8.2, 8.3 and 8.4.
 
 ### Added
 
