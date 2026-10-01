@@ -131,32 +131,36 @@ jobs:
         id: archive
         run: |
           set -euo pipefail
+          module=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' extension.xml | head -1)
           version=$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' extension.xml | head -1)
-          name="altioo-mcp-${version}"
+          name="${module}-${version}"
 
-          # The module has to unzip as extensions/altioo-mcp/, so the directory
-          # name inside the archive is the module code and nothing else.
-          mkdir -p "build/altioo-mcp"
+          # The module has to unzip as extensions/<module code>/, so the
+          # directory name inside the archive is the module code and nothing else.
+          mkdir -p "build/${module}"
           # exclude.txt is the single source of truth for what stays out; rsync
           # reads it directly so the list cannot drift from what CI does.
           rsync -a --exclude-from=exclude.txt \
                 --exclude 'build' --exclude 'sbom.cyclonedx.json' --exclude 'licenses.json' \
-                ./ "build/altioo-mcp/"
+                ./ "build/${module}/"
 
           # The archive carries its own inventory: an instance found in a year's
           # time can answer what it is running without reaching the internet.
-          cp sbom.cyclonedx.json licenses.json "build/altioo-mcp/"
+          cp sbom.cyclonedx.json licenses.json "build/${module}/"
 
-          ( cd build && zip -qr "../${name}.zip" altioo-mcp )
+          ( cd build && zip -qr "../${name}.zip" "${module}" )
           sha256sum "${name}.zip" > "${name}.zip.sha256"
 
           echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "module=${module}" >> "$GITHUB_OUTPUT"
           cat "${name}.zip.sha256"
 
       - name: The archive contains what it is supposed to, and nothing else
+        env:
+          MODULE_CODE: ${{ steps.archive.outputs.module }}
         run: |
           set -euo pipefail
-          cd build/altioo-mcp
+          cd "build/${MODULE_CODE}"
           # .htaccess and web.config are this module's entire HTTP guard, and
           # each says in its own comments to keep it in step with the other.
           # Neither was in this list. A guard missing from the archive does not
@@ -166,8 +170,8 @@ jobs:
           # cleanly.
           for f in index.php README.md SECURITY.md CHANGELOG.md CONTRIBUTING.md LICENSE \
                    .htaccess web.config \
-                   extension.xml module.altioo-mcp.php datamodel.altioo-mcp.xml \
-                   datamodel.altioo-mcp.dict.en-us.xml datamodel.altioo-mcp.dict.fr-fr.xml \
+                   extension.xml "module.${MODULE_CODE}.php" "datamodel.${MODULE_CODE}.xml" \
+                   "datamodel.${MODULE_CODE}.dict.en-us.xml" "datamodel.${MODULE_CODE}.dict.fr-fr.xml" \
                    doc/clients.md vendor/autoload.php tests/php-unit-tests/bootstrap.php \
                    sbom.cyclonedx.json licenses.json; do
             test -e "$f" || { echo "missing from the package: $f"; exit 1; }

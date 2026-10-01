@@ -103,5 +103,9 @@ doc/example-pack/composer.lock
 assets/img/screenshots
 tools
 build
-altioo-mcp-*.zip
-altioo-mcp-*.zip.sha256
+# The archive release.yml assembles and its checksum. Named after this
+# module's own extension code and version, neither of which this pattern
+# names, so it needs no edit if the module is ever renamed or this file
+# templated into another repository.
+*.zip
+*.zip.sha256

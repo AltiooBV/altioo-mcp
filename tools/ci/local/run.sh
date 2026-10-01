@@ -46,7 +46,7 @@
 set -euo pipefail
 
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
-MODULE_CODE=altioo-mcp
+MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "$REPO/extension.xml" | head -1)
 
 # Shared by every subcommand, and deliberately not namespaced per branch: one
 # database server and one network serve every version under test, and the

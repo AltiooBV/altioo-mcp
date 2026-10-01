@@ -49,7 +49,7 @@ ITOP_URL="${ITOP_URL:-http://127.0.0.1:8080/}"
 ITOP_ADMIN_USER="${ITOP_ADMIN_USER:-admin}"
 ITOP_ADMIN_PWD="${ITOP_ADMIN_PWD:-Admin*2026!}"
 
-MODULE_CODE=altioo-mcp
+MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "$MODULE_SRC/extension.xml" | head -1)
 TARGET_ENV=production
 CONFIG_FILE="$ITOP_DIR/conf/$TARGET_ENV/config-itop.php"
 

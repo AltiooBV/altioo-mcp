@@ -187,6 +187,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Module code, read from extension.xml
+        run: |
+          echo "MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' extension.xml | head -1)" >> "$GITHUB_ENV"
+
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: ${{ matrix.php }}
@@ -229,7 +233,7 @@ jobs:
             --no-configuration \
             --bootstrap unittestautoload.php \
             --testdox \
-            "${ITOP_DIR}/env-production/altioo-mcp/tests/php-unit-tests/Integration"
+            "${ITOP_DIR}/env-production/${MODULE_CODE}/tests/php-unit-tests/Integration"
 
       # One step, because the token exists only between these two lines.
       - name: Datamodel checks, then the endpoint over HTTP
