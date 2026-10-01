@@ -22,6 +22,13 @@ composer.phar
 /doc/example-pack/.phpunit.result.cache
 /doc/example-pack/.phpunit.cache/
 
+# Same case, same reason: a Composer-installed copy of a CI tool kept outside
+# the project's own require-dev (ci.yml's progpilot job does this with a
+# COMPOSER_HOME under $RUNNER_TEMP, precisely so it cannot be mistaken for a
+# project dependency), landed under tools/ci/local/ for reproducing that job
+# locally. Build tooling, not something this repository ships or should track.
+/tools/ci/local/progpilot/
+
 # PHPStorm / IDEs
 .idea/
 *.iml
