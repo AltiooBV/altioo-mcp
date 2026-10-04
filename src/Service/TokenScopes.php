@@ -31,6 +31,13 @@ final class TokenScopes
 	private const TOKEN_CLASSES = ['PersonalToken', 'UserToken'];
 
 	/**
+	 * The modes authent-token logs in under: TokenLoginExtension's, and
+	 * LegacyTokenLoginExtension's, which is the same class registered a second
+	 * time under its old name and reads the credential the same way.
+	 */
+	private const TOKEN_LOGIN_MODES = ['token', 'rest-token'];
+
+	/**
 	 * Every MCP scope this instance declares, to be pushed as context tags
 	 * before login.
 	 *
@@ -152,6 +159,32 @@ final class TokenScopes
 	public static function RequestCarriesAToken(): bool
 	{
 		return MCPHttp::CurrentAuthToken() !== null;
+	}
+
+	/**
+	 * Whether iTop's account of the login agrees that this module saw the
+	 * token it logged in with.
+	 *
+	 * RequestCarriesAToken() decides from the headers, and the headers are
+	 * this module's view of the request. authent-token keeps its own view,
+	 * and it has been wider: a token it found somewhere this module does not
+	 * look logged in, and was then served under the instance-wide policy with
+	 * none of its scopes applied. The mode iTop records on connecting -
+	 * Session 'login_mode' - says which plugin actually let the caller in, so
+	 * a token login this module cannot account for is refused rather than
+	 * served. Whatever the next place a token can hide turns out to be, it
+	 * ends here.
+	 *
+	 * The other disagreement - a token seen, a different mode connected - is
+	 * not refused: the scopes of a token that did not log anyone in can only
+	 * narrow, and an undecryptable one is graded read-only.
+	 *
+	 * @param mixed $mLoginMode What iTop recorded, read by the caller.
+	 * @since 1.1.1
+	 */
+	public static function LoginIsAccountedFor(mixed $mLoginMode): bool
+	{
+		return !in_array($mLoginMode, self::TOKEN_LOGIN_MODES, true) || self::RequestCarriesAToken();
 	}
 
 	/**
