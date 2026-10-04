@@ -83,6 +83,7 @@ final class MCPController
 
 			MCPHttp::PromoteBearerToAuthToken();
 			self::rejectUnlessACredentialWasPresented();
+			self::rejectATokenSentAsAParameter();
 
 			LoginWebPage::ResetSession();
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
@@ -95,6 +96,11 @@ final class MCPController
 			if ($iRet !== LoginWebPage::EXIT_CODE_OK) {
 				throw self::createAuthException($iRet);
 			}
+
+			// Before the policy is decided, because the policy is what this
+			// protects: a token login whose token this module did not see
+			// would be graded as no token at all.
+			self::rejectATokenLoginNotAccountedFor();
 
 			// The scopes are the last thing that needs the raw credential, so
 			// they are read here and the credential dropped immediately after.
@@ -311,6 +317,57 @@ final class MCPController
 
 		throw new MCPAuthException(
 			'The MCP endpoint requires a credential on every request; a browser session is not one.',
+			MCPResult::UNAUTHORIZED
+		);
+	}
+
+	/**
+	 * Refuses a token sent as a request parameter, before it can log in.
+	 *
+	 * See MCPHttp::CarriesATokenAsAParameter() for why. Refused before the
+	 * session reset for the same reason as the checks above it: nothing that
+	 * is going to be refused anyway should cost a console user their session.
+	 *
+	 * @throws MCPAuthException
+	 */
+	private static function rejectATokenSentAsAParameter(): void
+	{
+		if (!MCPHttp::CarriesATokenAsAParameter()) {
+			return;
+		}
+
+		MCPHelper::LogError('Refused an MCP request carrying auth_token as a request parameter. The endpoint reads a token from the Authorization or Auth-Token header only.');
+
+		throw new MCPAuthException(
+			'Send the token in the Authorization header (Bearer) or the Auth-Token header. '
+			.'A token passed as the auth_token request parameter is refused: a URL is written to access logs.',
+			MCPResult::UNAUTHORIZED
+		);
+	}
+
+	/**
+	 * Refuses a token login whose token this module was not shown.
+	 *
+	 * The backstop behind rejectATokenSentAsAParameter(): that one closes the
+	 * hole as it is known today, this one closes it as iTop reports it. See
+	 * TokenScopes::LoginIsAccountedFor().
+	 *
+	 * @throws MCPAuthException
+	 */
+	private static function rejectATokenLoginNotAccountedFor(): void
+	{
+		$mLoginMode = Session::Get('login_mode');
+		if (TokenScopes::LoginIsAccountedFor($mLoginMode)) {
+			return;
+		}
+
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: iTop logged it in under login mode '%s' with a token this module was not shown, so the token's scopes could not be applied.",
+			is_string($mLoginMode) ? $mLoginMode : gettype($mLoginMode)
+		));
+
+		throw new MCPAuthException(
+			'Send the token in the Authorization header (Bearer) or the Auth-Token header.',
 			MCPResult::UNAUTHORIZED
 		);
 	}
