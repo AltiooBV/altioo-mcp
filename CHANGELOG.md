@@ -18,6 +18,37 @@ Removal of anything on that surface comes at least one minor release after a `@d
 naming its replacement. Migration steps an administrator has to take are called out in the
 entry itself, not left to be inferred from it.
 
+## [Unreleased]
+
+**After upgrading, read `log/error.log`.** A setting this release now refuses to guess at is
+reported there on every request, and may have changed what the instance serves — see the second
+Security entry.
+
+### Security
+
+- **A scoped token could run without its scopes.** iTop's `authent-token` accepts a token from
+  the `Auth-Token` header or, without it, from an `auth_token` URL or form parameter; this
+  endpoint read the header only. On an instance whose `allowed_login_types` puts `token` ahead
+  of `basic`, or leaves `basic` out, a request carrying the token as a parameter, beside any
+  `Authorization` header that was not a Bearer, logged in as the token's owner and was served
+  the instance-wide policy: an `MCP-read` or `MCP-toolset-*` token could do
+  whatever the instance allowed, and its audit row named no token. Reproduced on iTop 3.2 with
+  `form|external|token|basic`: an `MCP-read` token was served `core_object_create`. iTop's
+  default order, `form|external|basic|token`, refused the same request, because `basic` claims
+  any `Authorization` header first. Such a request is now refused
+  before login, and a login iTop records as a token login is refused after it unless the
+  endpoint saw that token in a header. Clients sending the token in `Authorization: Bearer` or
+  `Auth-Token`, which is every configuration the README describes, are unaffected.
+- **A mistyped security setting no longer fails open.** `secure_mcp_services`, `mcp_read_only`
+  and `log_mcp_service` were compared against `true`, so `'true'` or `1` turned the profile check
+  off, left the instance writable, or stopped the audit, with nothing logged. `mcp_capabilities`
+  or `mcp_enabled_toolsets` written as anything but an array served everything. Every boolean
+  setting now takes a PHP boolean only, and any other value is logged and read as the answer
+  that refuses more; the two lists, when they are not arrays, serve nothing. **This changes
+  behaviour for an instance that wrote one of these as a string:** `'mcp_read_only' => 'false'`
+  now makes it read-only, and `'mcp_capabilities' => 'read'` now serves nothing — write
+  `false` and `array('read')`. The README has the rule beside the settings table.
+
 ## [1.0.0] - 2026-09-20
 
 The first release. Nothing precedes it, so the entries below describe what the extension **is**

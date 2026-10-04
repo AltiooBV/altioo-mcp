@@ -621,7 +621,9 @@ does not connect, are in [doc/clients.md](doc/clients.md).
 ```
 
 `Auth-Token: <your-itop-token>` works too, and is the header iTop's own `authent-token` module
-reads natively. Prefer it if `Authorization` never reaches PHP in your deployment: under
+reads natively. Those two headers are the only places a token is read from: `authent-token` also
+accepts an `auth_token` URL or form parameter, and this endpoint refuses a request carrying one —
+a URL is what access logs and proxies record. Prefer `Auth-Token` if `Authorization` never reaches PHP in your deployment: under
 FastCGI, Apache drops that header unless `CGIPassAuth On` (or an equivalent
 `SetEnvIf Authorization` rewrite) is in effect.
 
@@ -692,6 +694,12 @@ All settings live under the `altioo-mcp` module in `conf/<env>/config-itop.php`:
     'log_mcp_level' => 'info',
 ),
 ```
+
+The `true`/`false` settings take a PHP boolean. Any other value — `'true'`, `1`, `'false'`, `0` —
+is reported in `log/error.log` on every request and read as whichever answer refuses more: the
+profile check on, the instance read-only, the audit written, and the two
+`mcp_allow_*` switches off. `mcp_capabilities` and `mcp_enabled_toolsets` take an array; any other
+value is reported the same way and serves nothing until it is corrected.
 
 | Setting | Default | Effect |
 |---|---|---|
