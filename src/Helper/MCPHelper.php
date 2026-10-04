@@ -73,6 +73,9 @@ class MCPHelper
 
 	const MODULE_SETTING_SOURCE_URL = 'mcp_source_url';
 
+	/** Whether callers must hold one of mcp_allowed_profiles. */
+	const MODULE_SETTING_SECURE = 'secure_mcp_services';
+
 	const MODULE_SETTING_LOG = 'log_mcp_service';
 	const DEFAULT_LOG_SETTING = true;
 	const MODULE_SETTING_LOG_METHOD = 'log_mcp_method';
@@ -613,7 +616,7 @@ class MCPHelper
 		$aCapabilities = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_CAPABILITIES, []);
 		if (!is_array($aCapabilities)) {
 			$sType = gettype($aCapabilities);
-			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_CAPABILITIES."' should be an array instead of $sType");
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_CAPABILITIES."' should be an array instead of $sType. Nothing is served until it is corrected.");
 			$aCapabilities = [];
 		}
 
@@ -627,7 +630,92 @@ class MCPHelper
 	 */
 	public static function IsReadOnly(): bool
 	{
-		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_READ_ONLY, false) === true;
+		return self::ReadSwitch(self::MODULE_SETTING_READ_ONLY, false, true);
+	}
+
+	/**
+	 * Whether mcp_capabilities or mcp_enabled_toolsets holds something other
+	 * than a list.
+	 *
+	 * GetCapabilities() and GetEnabledToolsets() answer an empty list then,
+	 * which is the spelling of "everything" - so a line meant to narrow the
+	 * endpoint, written as 'read' instead of array('read'), opened it fully.
+	 * Something was meant and none of it can be honoured, which is the case
+	 * AccessPolicy::Of() already answers with nothing for a list of unknown
+	 * grades. The caller serves nothing on true; the readers above log why.
+	 *
+	 * @since 1.1.1
+	 */
+	public static function AccessSettingsAreMalformed(): bool
+	{
+		foreach ([self::MODULE_SETTING_CAPABILITIES, self::MODULE_SETTING_ENABLED_TOOLSETS] as $sSetting) {
+			if (!is_array(utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, $sSetting, []))) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether callers must hold one of mcp_allowed_profiles.
+	 *
+	 * @since 1.1.1
+	 */
+	public static function IsAccessRestricted(): bool
+	{
+		return self::ReadSwitch(self::MODULE_SETTING_SECURE, true, true);
+	}
+
+	/**
+	 * Whether a call earns an audit row at all.
+	 *
+	 * @since 1.1.1
+	 */
+	public static function LogsCalls(): bool
+	{
+		return self::ReadSwitch(self::MODULE_SETTING_LOG, self::DEFAULT_LOG_SETTING, true);
+	}
+
+	/**
+	 * A boolean module setting, read so that a mistyped value fails safe.
+	 *
+	 * Comparing against true reads 'true', 1 and 'yes' as false, and comparing
+	 * against false reads 'false' and 0 as true; either one fails open for
+	 * half the switches it is used on. Neither guess is made here: a value
+	 * that is not a PHP boolean is logged and read as $bSafe, which is
+	 * whichever answer refuses more - the profile check on, the instance
+	 * read-only, the audit written, the escalation switches off.
+	 *
+	 * @since 1.1.1
+	 */
+	private static function ReadSwitch(string $sSetting, bool $bDefault, bool $bSafe): bool
+	{
+		return self::SwitchFrom($sSetting, utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, $sSetting, $bDefault), $bSafe);
+	}
+
+	/**
+	 * The decision ReadSwitch() makes, given the value it read.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @internal
+	 * @since 1.1.1
+	 */
+	public static function SwitchFrom(string $sSetting, mixed $mValue, bool $bSafe): bool
+	{
+		if (is_bool($mValue)) {
+			return $mValue;
+		}
+
+		self::LogError(sprintf(
+			"Itop configuration parameter '%s' should be true or false, not %s. It is read as %s until it is corrected.",
+			$sSetting,
+			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue),
+			$bSafe ? 'true' : 'false'
+		));
+
+		return $bSafe;
 	}
 
 	/**
@@ -641,14 +729,14 @@ class MCPHelper
 	 * somebody's token - and buys nothing at all where the caller's own
 	 * access is concerned, because the self-guard does not consult this.
 	 *
-	 * Compared strictly against true, like every other boolean here: a
+	 * Read through ReadSwitch(), like every other boolean here: a
 	 * configuration holding the string 'false' must not read as permission.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function AllowsAccessAdministration(): bool
 	{
-		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION, false) === true;
+		return self::ReadSwitch(self::MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION, false, false);
 	}
 
 	/**
@@ -663,7 +751,7 @@ class MCPHelper
 	 */
 	public static function AllowsPrivilegeEscalation(): bool
 	{
-		return utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION, false) === true;
+		return self::ReadSwitch(self::MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION, false, false);
 	}
 
 	/**
@@ -683,7 +771,7 @@ class MCPHelper
 		$aToolsets = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ENABLED_TOOLSETS, []);
 		if (!is_array($aToolsets)) {
 			$sType = gettype($aToolsets);
-			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_ENABLED_TOOLSETS."' should be an array instead of $sType");
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_ENABLED_TOOLSETS."' should be an array instead of $sType. Nothing is served until it is corrected.");
 
 			return [];
 		}

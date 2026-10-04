@@ -88,7 +88,7 @@ final class MCPController
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
 			$oKPI->ComputeAndReport('User login');
 
-			if ($iRet === LoginWebPage::EXIT_CODE_OK && self::isMCPAccessRestricted() && !self::userHasMCPProfile()) {
+			if ($iRet === LoginWebPage::EXIT_CODE_OK && MCPHelper::IsAccessRestricted() && !self::userHasMCPProfile()) {
 				$iRet = LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
 			}
 
@@ -321,11 +321,6 @@ final class MCPController
 			'Send the token in the Authorization header (Bearer) or the Auth-Token header.',
 			MCPResult::UNAUTHORIZED
 		);
-	}
-
-	private static function isMCPAccessRestricted(): bool
-	{
-		return utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'secure_mcp_services', true) === true;
 	}
 
 	private static function userHasMCPProfile(): bool
@@ -792,7 +787,7 @@ final class MCPController
 
 	private static function logIfConfigured(MCPResult $oResult): void
 	{
-		if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG, MCPHelper::DEFAULT_LOG_SETTING) !== true) {
+		if (!MCPHelper::LogsCalls()) {
 			return;
 		}
 
