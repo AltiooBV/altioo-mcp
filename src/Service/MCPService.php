@@ -641,6 +641,12 @@ final class MCPService
 	{
 		$oConfigured = AccessPolicy::Of(MCPHelper::GetCapabilities(), MCPHelper::GetEnabledToolsets());
 
+		if (MCPHelper::AccessSettingsAreMalformed()) {
+			// The readers above answered "everything" and logged why. A token
+			// cannot widen nothing, so there is nothing left to narrow.
+			return AccessPolicy::Nothing();
+		}
+
 		if (MCPHelper::IsReadOnly()) {
 			// mcp_read_only is narrowing, not overriding: an instance that
 			// also names grades gets whichever of the two is smaller, and an
