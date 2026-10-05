@@ -30,10 +30,8 @@ through iTop's own unattended setup by the install matrix, then exercised by the
 integration suite and by calling the endpoint over HTTP. The unit suite runs on 8.2, 8.3 and 8.4.
 The token fix was also reproduced over HTTP before and after, on 3.2.3-2 with PHP 8.4.
 
-**Both fixes apply to 1.0.0 as well, and no 1.0.1 is issued.** An instance on 1.0.x takes them
-by upgrading to 1.1.1, which means taking 1.1.0 on the way: read the top of its entry below for
-the one migration step (re-adding `MCP-advisory` to tokens saved under 1.0.0) and the two
-behaviour changes it carries.
+**Both fixes apply to 1.0.0 as well**, and ship for it as **1.0.1**, so an instance on 1.0.x can
+take them without taking 1.1.0's behaviour changes.
 
 **After upgrading, read `log/error.log`.** A setting this release now refuses to guess at is
 reported there on every request, and may have changed what the instance serves — see the second
