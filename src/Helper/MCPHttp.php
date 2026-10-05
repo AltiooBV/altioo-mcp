@@ -26,6 +26,13 @@ final class MCPHttp
 	private const AUTH_TOKEN_KEY = 'HTTP_AUTH_TOKEN';
 
 	/**
+	 * Where authent-token looks when that header is absent: a request
+	 * parameter, read through utils::ReadParam() - so $_REQUEST, which is the
+	 * query string and the form body.
+	 */
+	private const AUTH_TOKEN_PARAMETER = 'auth_token';
+
+	/**
 	 * The REDIRECT_ prefixed twin is what survives when the header reaches PHP
 	 * through a mod_rewrite pass instead of directly.
 	 */
@@ -244,6 +251,33 @@ final class MCPHttp
 	{
 		self::$sAuthToken = null;
 		unset($_SERVER[self::AUTH_TOKEN_KEY]);
+	}
+
+	/**
+	 * Whether the request carries a token as a parameter rather than a header.
+	 *
+	 * authent-token accepts one there and this module never reads one there,
+	 * so a token sent that way logged in with nobody applying its scopes: the
+	 * caller was served the instance-wide policy, and its audit row named no
+	 * token. Refusing the parameter outright is the narrow answer. Reading it
+	 * as well would keep a credential working in the one place - a URL - that
+	 * access logs and proxies record by default.
+	 *
+	 * Asked whatever headers are present. Alongside an Auth-Token header the
+	 * parameter is ignored by iTop and harmless here, but a rule with an
+	 * exception is a rule someone has to re-derive.
+	 *
+	 * @since 1.0.1
+	 */
+	public static function CarriesATokenAsAParameter(): bool
+	{
+		foreach ([$_GET, $_POST, $_REQUEST] as $aParameters) {
+			if (array_key_exists(self::AUTH_TOKEN_PARAMETER, $aParameters)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/** The Auth-Token header as it arrived, or null when there is none. */

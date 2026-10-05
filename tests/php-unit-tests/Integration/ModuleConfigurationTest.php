@@ -29,7 +29,7 @@ require_once __DIR__.'/../bootstrap.php';
 class ModuleConfigurationTest extends ItopDataTestCaseAlias
 {
 	/**
-	 * Read by MCPController::isMCPAccessRestricted(). A setting reachable in
+	 * Read by MCPHelper::IsAccessRestricted(). A setting reachable in
 	 * code but absent from module_parameters leaves admins no way to discover
 	 * it, so this pins the declaration alongside the default.
 	 */
