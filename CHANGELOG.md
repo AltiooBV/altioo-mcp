@@ -20,7 +20,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-10-05
 
 A security patch for 1.0.0: the two fixes 1.1.1 carries, backported, and nothing else. An instance
 on 1.0.x takes them here without taking 1.1.0's behaviour changes. No datamodel change, no new
