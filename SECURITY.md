@@ -128,7 +128,10 @@ never widens anything.
 narrowed by `mcp_read_only`, narrowed by the calling token's scopes — and a tool the result does
 not allow is **never registered on that connection**. It is not hidden from `tools/list` while
 staying callable: on that session it does not exist, and `tools/call` answers accordingly. A token
-whose scopes cannot be read falls back to read-only rather than to everything.
+whose scopes cannot be read falls back to read-only rather than to everything. A token is read
+from the `Authorization` and `Auth-Token` headers only: a request carrying it as an `auth_token`
+parameter — which `authent-token` would accept — is refused before login, and a login iTop
+records as a token login the endpoint cannot match to one of those headers is refused after it.
 
 `MCP` everything · `MCP-read` read · `MCP-write` read and write, not delete · `MCP-delete` delete ·
 `MCP-toolset-<name>` that toolset only · **`MCP-advisory`** every write tool it can reach rehearses.

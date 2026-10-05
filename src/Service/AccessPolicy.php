@@ -83,6 +83,17 @@ final class AccessPolicy
 	}
 
 	/**
+	 * No grade and no toolset: what an instance whose access settings cannot
+	 * be read is served. See MCPHelper::AccessSettingsAreMalformed().
+	 *
+	 * @since 1.1.1
+	 */
+	public static function Nothing(): self
+	{
+		return new self([], []);
+	}
+
+	/**
 	 * Whether every write this policy allows must rehearse instead of writing.
 	 *
 	 * A modifier rather than a grade: it does not decide which tools are
