@@ -20,6 +20,18 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.0.1] - Unreleased
+
+A security patch for 1.0.0: the two fixes 1.1.1 carries, backported, and nothing else. An instance
+on 1.0.x takes them here without taking 1.1.0's behaviour changes. No datamodel change, no new
+setting and no changed default.
+
+**Tested on.** iTop **3.2.3-2**, on PHP **8.2** and **8.4** — the branch 1.0.x supports — installed
+through iTop's own unattended setup by the install matrix, then exercised by the module's
+integration suite and by calling the endpoint over HTTP. The unit suite runs on 8.2, 8.3 and 8.4.
+The token fix was also checked over HTTP on the installed 1.0.1, on 3.2.3-2 with PHP 8.4: a token
+sent as a parameter is refused.
+
 **After upgrading, read `log/error.log`.** A setting this release now refuses to guess at is
 reported there on every request, and may have changed what the instance serves — see the second
 Security entry.
