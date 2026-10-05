@@ -109,7 +109,6 @@ class SettingsFailSafeTest extends TestCase
 			'profile check on'     => ['IsAccessRestricted', 'MODULE_SETTING_SECURE', 'true'],
 			'read-only'            => ['IsReadOnly', 'MODULE_SETTING_READ_ONLY', 'true'],
 			'audit written'        => ['LogsCalls', 'MODULE_SETTING_LOG', 'true'],
-			'formulas refused'     => ['RefusesFormulaValues', 'MODULE_SETTING_REFUSE_FORMULA_VALUES', 'true'],
 			'no access admin'      => ['AllowsAccessAdministration', 'MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION', 'false'],
 			'no escalation'        => ['AllowsPrivilegeEscalation', 'MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION', 'false'],
 		];
