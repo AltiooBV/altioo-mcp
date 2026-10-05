@@ -644,7 +644,7 @@ class MCPHelper
 	 * AccessPolicy::Of() already answers with nothing for a list of unknown
 	 * grades. The caller serves nothing on true; the readers above log why.
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function AccessSettingsAreMalformed(): bool
 	{
@@ -660,7 +660,7 @@ class MCPHelper
 	/**
 	 * Whether callers must hold one of mcp_allowed_profiles.
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function IsAccessRestricted(): bool
 	{
@@ -670,7 +670,7 @@ class MCPHelper
 	/**
 	 * Whether a call earns an audit row at all.
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function LogsCalls(): bool
 	{
@@ -687,7 +687,7 @@ class MCPHelper
 	 * whichever answer refuses more - the profile check on, the instance
 	 * read-only, the audit written, the escalation switches off.
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	private static function ReadSwitch(string $sSetting, bool $bDefault, bool $bSafe): bool
 	{
@@ -700,7 +700,7 @@ class MCPHelper
 	 * Public for the unit suite, which has no configuration to read from.
 	 *
 	 * @internal
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function SwitchFrom(string $sSetting, mixed $mValue, bool $bSafe): bool
 	{

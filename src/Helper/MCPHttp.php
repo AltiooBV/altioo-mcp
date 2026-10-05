@@ -267,7 +267,7 @@ final class MCPHttp
 	 * parameter is ignored by iTop and harmless here, but a rule with an
 	 * exception is a rule someone has to re-derive.
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function CarriesATokenAsAParameter(): bool
 	{

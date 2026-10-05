@@ -180,7 +180,7 @@ final class TokenScopes
 	 * narrow, and an undecryptable one is graded read-only.
 	 *
 	 * @param mixed $mLoginMode What iTop recorded, read by the caller.
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function LoginIsAccountedFor(mixed $mLoginMode): bool
 	{

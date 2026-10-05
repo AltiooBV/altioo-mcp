@@ -86,7 +86,7 @@ final class AccessPolicy
 	 * No grade and no toolset: what an instance whose access settings cannot
 	 * be read is served. See MCPHelper::AccessSettingsAreMalformed().
 	 *
-	 * @since 1.1.1
+	 * @since 1.0.1
 	 */
 	public static function Nothing(): self
 	{
