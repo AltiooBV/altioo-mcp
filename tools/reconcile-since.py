@@ -15,8 +15,15 @@ Usage: tools/reconcile-since.py <module-root> <baseline-rev> <released> <next>
   <module-root>   the module directory, i.e. "." from the repository root
   <baseline-rev>  the git revision the released version was cut at, e.g. v0.9.0
   <released>      the version already published, written on anything present at
-                  <baseline-rev>
+                  <baseline-rev> whose docblock there carried no @since of its own
   <next>          the version being prepared, written on anything newer
+
+A symbol present at <baseline-rev> keeps the @since it carried there. That
+tag was reconciled when <baseline-rev> was released, so it already names the
+version the symbol first appeared in; writing <released> over it instead would
+flatten every earlier release into the latest one - which is what happened the
+first time this ran with a third version in the history (1.1.1, over a tree
+whose tags said 1.0.0 and 1.1.0).
 
 Called by nothing: it rewrites source, so it is run by a person who then reads
 the diff. Named in doc/release-checklist.md, under "@since tags".
@@ -28,7 +35,7 @@ import re, subprocess, sys, os
 
 ROOT, BASE, RELEASED, NEXT = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
-DECL_CLASS = re.compile(r'^(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+\w+')
+DECL_CLASS = re.compile(r'^(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+(\w+)')
 DECL_MEMBER = re.compile(r'^\t(?:(?:final|abstract)\s+)?(?:public|protected)(?:\s+static)?\s+function\s+(\w+)')
 RE_SINCE = re.compile(r'@since\s+\d+\.\d+\.\d+')
 
@@ -52,6 +59,23 @@ def attached_docblock(lines, i):
     return (j, end) if j >= 0 else None
 
 
+def baseline_since(old_lines, is_class, name):
+    """The @since the declaration carried at <baseline-rev>, else None."""
+    for j, line in enumerate(old_lines):
+        m = DECL_CLASS.match(line) if is_class else DECL_MEMBER.match(line)
+        if not m or m.group(1) != name:
+            continue
+        block = attached_docblock(old_lines, j)
+        if block is None:
+            return None
+        for k in range(block[0], block[1] + 1):
+            found = RE_SINCE.search(old_lines[k])
+            if found:
+                return found.group(0).split()[-1]
+        return None
+    return None
+
+
 changed = files = 0
 missing = []
 for dirpath, _, filenames in os.walk(os.path.join(ROOT, 'src')):
@@ -61,6 +85,7 @@ for dirpath, _, filenames in os.walk(os.path.join(ROOT, 'src')):
         path = os.path.join(dirpath, fn)
         rel = os.path.relpath(path, ROOT)
         old = baseline_source(rel)
+        old_lines = old.split('\n') if old is not None else []
         lines = open(path, encoding='utf-8').read().split('\n')
         dirty = False
 
@@ -73,10 +98,13 @@ for dirpath, _, filenames in os.walk(os.path.join(ROOT, 'src')):
             if old is None:
                 want = NEXT                       # the whole file postdates the release
             elif mc:
-                want = RELEASED                   # file existed, so its class did
-            else:
+                # File existed, so its class did, at whatever version it says.
+                want = baseline_since(old_lines, True, mc.group(1)) or RELEASED
+            elif re.search(r'function\s+' + mm.group(1) + r'\b', old):
                 # A changed signature keeps its original @since; only absence is new.
-                want = RELEASED if re.search(r'function\s+' + mm.group(1) + r'\b', old) else NEXT
+                want = baseline_since(old_lines, False, mm.group(1)) or RELEASED
+            else:
+                want = NEXT
 
             block = attached_docblock(lines, i)
             if block is None:

@@ -20,6 +20,19 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.1.1] - Unreleased
+
+A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it
+without a feature review. No datamodel change, no new setting and no changed default.
+
+**Tested on.** iTop **3.2.3-2** and **3.3.0**, each on PHP **8.2** and **8.4** — installed
+through iTop's own unattended setup by the install matrix, then exercised by the module's
+integration suite and by calling the endpoint over HTTP. The unit suite runs on 8.2, 8.3 and 8.4.
+The token fix was also reproduced over HTTP before and after, on 3.2.3-2 with PHP 8.4.
+
+**Both fixes apply to 1.0.0 as well**, and ship for it as **1.0.1**, so an instance on 1.0.x can
+take them without taking 1.1.0's behaviour changes.
+
 **After upgrading, read `log/error.log`.** A setting this release now refuses to guess at is
 reported there on every request, and may have changed what the instance serves — see the second
 Security entry.
@@ -48,6 +61,13 @@ Security entry.
   behaviour for an instance that wrote one of these as a string:** `'mcp_read_only' => 'false'`
   now makes it read-only, and `'mcp_capabilities' => 'read'` now serves nothing — write
   `false` and `array('read')`. The README has the rule beside the settings table.
+
+## [1.0.1] - Unreleased
+
+The two security fixes of 1.1.1, backported to 1.0.x, and nothing else — released from the
+`maint/1.0.x` branch rather than from `main`. The 1.1.1 entry above describes both, and what an
+instance whose settings were written as strings will see. 1.0.1 was tested on iTop 3.2.3-2, PHP
+8.2 and 8.4, the branch 1.0.x supports.
 
 ## [1.1.0] - 2026-09-30
 
