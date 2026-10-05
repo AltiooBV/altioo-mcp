@@ -20,17 +20,45 @@ permissions:
   contents: read
 
 jobs:
-  archive:
-    name: Build, checksum and publish the archive
+  # The unit suite needs require-dev - phpunit and everything it pulls in - and
+  # running it means executing that code. It runs here, in a job that can read
+  # the repository and nothing else, and never in the job that builds what is
+  # signed: a compromised development dependency running beside the archive
+  # could edit vendor/ or src/ before the zip step, and the attestation further
+  # down would then vouch for the edited archive as this repository's CI build.
+  tests:
+    name: Unit suite against the tagged tree
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      # What attest-build-provenance signs with. The checksum answers "is this the
-      # file I downloaded", which is a question about the wire; provenance answers
-      # "did this repository's CI build it", which is the question an operator
-      # unzipping into a privileged directory of a live instance actually has.
-      id-token: write
-      attestations: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Unit suite
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          composer test:unit
+
+  # Builds the archive from production dependencies only. Read-only: nothing
+  # here can publish, sign or write to the repository, so whatever runs during
+  # the build has nothing to borrow.
+  archive:
+    name: Build and check the archive
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      name: ${{ steps.archive.outputs.name }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,24 +120,16 @@ jobs:
       # tree nobody has touched since CI was last green. mcp/sdk is pre-1.0 and
       # vendored into the archive that operators unzip without ever running
       # composer, so this is the last moment anything looks.
+      # It reads the lock, so nothing needs installing first - and nothing
+      # from require-dev ever lands in this job.
       - name: Advisories against the locked versions
-        run: |
-          set -euo pipefail
-          composer install --no-interaction --no-progress
-          composer audit --locked
+        run: composer audit --locked
 
       # What store users unzip into extensions/: production dependencies only,
       # nothing from require-dev, and vendor/ present because they will never
       # run composer themselves.
       - name: Build the production vendor tree
         run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
-
-      - name: Unit suite against the shipped tree
-        run: |
-          set -euo pipefail
-          composer install --no-interaction --no-progress
-          composer test:unit
-          composer install --no-dev --no-interaction --no-progress --optimize-autoloader
 
       # vendor/ ships, so what is in it is not an implementation detail - it is
       # the audit surface, and an operator asked to install this is entitled to
@@ -200,6 +220,34 @@ jobs:
             ${{ steps.archive.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
+          if-no-files-found: error
+
+  # The only job with write access, and it runs none of this repository's code
+  # and none of its dependencies: no checkout, no PHP, no composer. It takes
+  # the files the read-only build produced, signs them and attaches them.
+  publish:
+    name: Attest and publish
+    needs: archive
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # What attest-build-provenance signs with. The checksum answers "is this the
+      # file I downloaded", which is a question about the wire; provenance answers
+      # "did this repository's CI build it", which is the question an operator
+      # unzipping into a privileged directory of a live instance actually has.
+      id-token: write
+      attestations: write
+    env:
+      NAME: ${{ needs.archive.outputs.name }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.archive.outputs.name }}
+
+      # The archive the build job checksummed is the one about to be signed.
+      - name: The checksum still matches
+        run: sha256sum -c "${NAME}.zip.sha256"
 
       # The checksum proves the file did not change in transit. It does not
       # prove this repository built it - anyone can publish a zip and a
@@ -207,10 +255,9 @@ jobs:
       # commit and the repository that produced it, verifiable with
       # `gh attestation verify <archive>.zip --repo <owner>/<repo>`.
       - name: Attest that this repository's CI built the archive
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ steps.archive.outputs.name }}.zip
+          subject-path: ${{ needs.archive.outputs.name }}.zip
 
       # The provenance attestation above covers the zip. sbom.cyclonedx.json
       # ships beside it - inside the archive too - and an approver reading
@@ -225,20 +272,18 @@ jobs:
       # the provenance step above needs no such flag because
       # https://slsa.dev/provenance/v1 is `gh attestation verify`'s default).
       - name: Attest the bill of materials
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
-          subject-path: ${{ steps.archive.outputs.name }}.zip
+          subject-path: ${{ needs.archive.outputs.name }}.zip
           sbom-path: sbom.cyclonedx.json
 
       # The checksum is published beside the archive so that "the file I
       # downloaded is the file CI built" is a question with an answer.
       - name: Attach everything to the release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
-            ${{ steps.archive.outputs.name }}.zip
-            ${{ steps.archive.outputs.name }}.zip.sha256
+            ${{ needs.archive.outputs.name }}.zip
+            ${{ needs.archive.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
