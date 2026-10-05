@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
 use CMDBObject;
