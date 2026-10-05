@@ -20,7 +20,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.1.1] - Unreleased
+## [1.1.1] - 2026-10-05
 
 A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it
 without a feature review. No datamodel change, no new setting and no changed default.
@@ -62,7 +62,7 @@ Security entry.
   now makes it read-only, and `'mcp_capabilities' => 'read'` now serves nothing — write
   `false` and `array('read')`. The README has the rule beside the settings table.
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-10-05
 
 The two security fixes of 1.1.1, backported to 1.0.x, and nothing else — released from the
 `maint/1.0.x` branch rather than from `main`. The 1.1.1 entry above describes both, and what an
