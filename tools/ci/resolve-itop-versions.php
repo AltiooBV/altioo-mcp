@@ -129,14 +129,21 @@ function fetch_tags(): array
 }
 
 /**
- * URL of the newest packaged zip of a branch.
+ * URL of the newest packaged zip of a branch - or, when the branch is pinned,
+ * of the pinned release.
  *
  * The archive name carries a build number nobody can predict and a release
  * label that does not always match the git tag - 3.2.2's archive is
  * iTop-3.2.2-1-17851.zip, published under a tag called 3.2.2 - so the listing
- * has to be read rather than a URL constructed.
+ * has to be read rather than a URL constructed. For the same reason a pin
+ * matches either the label itself or the label without its re-spin suffix,
+ * and among several re-spins of a pinned patch the newest is taken.
+ *
+ * A pin used to change only the label and the harness tag: the zip was still
+ * the newest one, so pinning away from a broken patch installed that patch
+ * anyway, under the name of the one that was asked for.
  */
-function resolve_zip(string $sBranch, bool $bAllowPre): ?array
+function resolve_zip(string $sBranch, bool $bAllowPre, ?string $sPin = null): ?array
 {
 	$sRss = @file_get_contents(FILES_RSS, false, stream_context_create([
 		'http' => ['header' => 'User-Agent: '.module_code().'-ci', 'timeout' => 30],
@@ -155,7 +162,13 @@ function resolve_zip(string $sBranch, bool $bAllowPre): ?array
 		if ($aParsed === null || $aParsed['branch'] !== $sBranch) {
 			continue;
 		}
-		if (!$aParsed['stable'] && !$bAllowPre) {
+		if ($sPin !== null) {
+			// The pin is the choice; stability is not asked about a release
+			// somebody named.
+			if ($aParsed['tag'] !== $sPin && preg_replace('/-\d+$/', '', $aParsed['tag']) !== $sPin) {
+				continue;
+			}
+		} elseif (!$aParsed['stable'] && !$bAllowPre) {
 			continue;
 		}
 		if ($aBest === null || $aParsed['key'] > $aBest['key']) {
@@ -196,12 +209,14 @@ foreach ($argv as $sArg) {
 	}
 	$sBranch = substr($sArg, 6);
 	$bAllowPre = false;
+	$sPin = null;
 	foreach ($aSupport['branches'] as $aBranch) {
 		if ($aBranch['branch'] === $sBranch) {
 			$bAllowPre = (bool)($aBranch['allow_prerelease'] ?? false);
+			$sPin = $aBranch['pin'] ?? null;
 		}
 	}
-	$aZip = resolve_zip($sBranch, $bAllowPre);
+	$aZip = resolve_zip($sBranch, $bAllowPre, $sPin);
 	if ($aZip === null) {
 		fwrite(STDERR, "no packaged release found for branch $sBranch\n");
 		exit(1);
@@ -217,18 +232,23 @@ $bFailed = false;
 foreach ($aSupport['branches'] as $aBranch) {
 	$sBranch = $aBranch['branch'];
 	$bAllowPre = (bool)($aBranch['allow_prerelease'] ?? false);
+	$sPin = $aBranch['pin'] ?? null;
 
 	// The release, not the tag, is what gets installed - so it is what decides
 	// which version this branch resolves to.
-	$aZip = resolve_zip($sBranch, $bAllowPre);
+	$aZip = resolve_zip($sBranch, $bAllowPre, $sPin);
 	if ($aZip === null) {
-		fwrite(STDERR, "no packaged release found for the declared branch $sBranch"
-			.($bAllowPre ? '' : ' (pre-releases are not allowed for it)')."\n");
+		fwrite(STDERR, $sPin !== null
+			? "the pinned release $sPin of branch $sBranch is not in the packaged releases\n"
+			: "no packaged release found for the declared branch $sBranch"
+				.($bAllowPre ? '' : ' (pre-releases are not allowed for it)')."\n");
 		$bFailed = true;
 		continue;
 	}
 
-	$sRelease = $aBranch['pin'] ?? $aZip['release'];
+	// The label of the zip that will be installed, so that what the matrix
+	// reports and what it installs cannot differ.
+	$sRelease = $aZip['release'];
 	$sTag = pair_tag($sRelease, $aTags);
 	if ($sTag === null) {
 		// Not fatal here. The install still happens; it is the integration
