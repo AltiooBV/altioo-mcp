@@ -235,12 +235,20 @@ jobs:
             --testdox \
             "${ITOP_DIR}/env-production/${MODULE_CODE}/tests/php-unit-tests/Integration"
 
-      # One step, because the token exists only between these two lines.
+      # One step, because the token exists only between these lines. It is
+      # taken by its prefix, never as "the last line", and the check lines
+      # around it are printed rather than swallowed.
       - name: Datamodel checks, then the endpoint over HTTP
         run: |
           set -euo pipefail
-          token=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER" | tail -1)
-          echo "::add-mask::$token"
+          if ! out=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER"); then
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          token=$(printf '%s\n' "$out" | sed -n 's/^http-smoke-token: //p')
+          if [ -n "$token" ]; then echo "::add-mask::$token"; fi
+          printf '%s\n' "$out" | grep -v '^http-smoke-token: ' || true
+          [ -n "$token" ] || { echo "::error::checks/module-smoke.php minted no token for the HTTP smoke"; exit 1; }
           ITOP_TOKEN="$token" tools/ci/http-smoke.sh
 
       # The setup log is the only account of why a module was not selected, and

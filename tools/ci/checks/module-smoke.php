@@ -12,7 +12,7 @@
  * datamodel change.
  *
  * Also mints the token the HTTP smoke test uses, into $sHttpSmokeToken - the
- * generic harness echoes it on the last line of stdout if this file set it.
+ * generic harness echoes it, prefixed `http-smoke-token: `, if this file set it.
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later

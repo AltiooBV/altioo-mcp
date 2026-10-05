@@ -10,10 +10,14 @@
  * That split is what lets a template extracted from this repository carry
  * the harness without carrying this module's own checks.
  *
- * Prints the token secret the per-repo checks minted on the last line of
- * stdout, and nothing else there, so the caller can read it with `tail -1`.
- * It is a throwaway credential for a throwaway instance; it is still written
- * to stdout only, never to a file the job archives.
+ * If the per-repo checks minted a token for the HTTP smoke ($sHttpSmokeToken),
+ * prints it last, on a line of its own prefixed `http-smoke-token: `, so the
+ * caller can tell it from the check lines. It used to be read as the last line
+ * whatever that was: a check printing after it, or a checks file that minted
+ * nothing, would have handed the HTTP smoke some other line as a bearer token
+ * and ::add-mask:: would have hidden which. It is a throwaway credential for a
+ * throwaway instance; it is still written to stdout only, never to a file the
+ * job archives.
  *
  * Usage: php tools/ci/itop-smoke.php <itop-dir> <admin-login>
  *
@@ -71,5 +75,5 @@ if (count($aFailures) > 0) {
 }
 
 if ($sHttpSmokeToken !== null && $sHttpSmokeToken !== '') {
-	echo $sHttpSmokeToken."\n";
+	echo 'http-smoke-token: '.$sHttpSmokeToken."\n";
 }
