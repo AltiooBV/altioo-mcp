@@ -7,6 +7,10 @@ a verification date.
 ```
 VERIFIED    iTop 3.2.2 source, paths cited inline
 AS OF       August 2026
+RE-VERIFIED 2026-10-05, against the packaged 3.2.3-2 and 3.3.0: branch status (§1),
+            PHP constants (§2), extension.xml elements (§5), extension-point
+            deprecations (§6, §7), harness pins (§8), and every path cited here.
+            Not re-checked: the wiki statements (§1) and database engines (§3).
 REFRESH     at the start of every project, against the branch actually targeted
 ```
 
@@ -66,7 +70,7 @@ is a 404. Verified August 2026.
 | iTop | PHP |
 |---|---|
 | 3.2.0–3.2.2 | 8.1 → 8.3 (8.4 known issues) |
-| 3.2.3-1 | 8.1 → 8.4 |
+| 3.2.3-1, 3.2.3-2 | 8.1 → 8.4 |
 | 3.3.x | 8.2 → 8.4 |
 
 **What this extension tests on** is a different statement, and lives in
@@ -141,30 +145,34 @@ everything else is silently ignored.
 | `mandatory` | `bMandatory` | compared to literal string `'true'` |
 | `more_info_url` | `sMoreInfoUrl` | Hub "more information" link; MUST NOT be empty |
 
-Confirmed absent in 3.2.2: `itop_version_min`, `php_min_version`, `license`.
+Confirmed absent in 3.2.2, 3.2.3-2 and 3.3.0: `itop_version_min`, `php_min_version`, `license`.
 
 ---
 
 ## 6. Extension point deprecation status — `itop-extension-guide.md` §3.2
 
-Status as of 3.2. Re-grep `@deprecated` in `application/applicationextension.inc.php` on your branch.
+Status as of 3.2, and what 3.3.0 removed. Re-grep `@deprecated` on your branch: in
+`application/applicationextension.inc.php` up to 3.2, and under `application/applicationextension/`
+from 3.3, where the interfaces were split into one file each.
 
 | Interface | Status (3.2) |
 |---|---|
 | `iEventServiceSetup` | **preferred**, available 3.1+ |
-| `iApplicationObjectExtension` | **deprecated 3.1.0** → events |
-| `iPageUIExtension` | **deprecated 3.0.0** → `iPageUIBlockExtension` |
+| `iApplicationObjectExtension` | **deprecated 3.1.0** → events; **removed 3.3.0** |
+| `iPageUIExtension` | **deprecated 3.0.0** → `iPageUIBlockExtension`; **removed 3.3.0** |
 | all others in the §3.2 catalogue | supported at 3.2 |
 
-Deprecated APIs keep working until the release that removes them — neither of the above had been
-removed as of 3.2.2.
+Deprecated APIs keep working until the release that removes them, and for these two that release
+was 3.3.0: neither interface is declared anywhere in it, and `cmdbabstract.class.inc.php` records
+the first as `@since 3.3.0 N°8210 - Remove iApplicationObjectExtension`. Both are still present
+in 3.2.3-2. A module implementing either fails on 3.3 rather than degrading.
 
 ---
 
 ## 7. Lifecycle events — `itop-extension-guide.md` §3.3
 
 `iApplicationObjectExtension::OnDBInsert/OnDBUpdate/OnDBDelete/OnCheckToWrite…` are all
-`@deprecated 3.1.0 N°4756`.
+`@deprecated 3.1.0 N°4756`, and gone with their interface at 3.3.0 (§6).
 
 Core events, declared in `application/datamodel.application.xml` `<events>`; each names the method it
 `<replaces>`:
@@ -180,7 +188,8 @@ Core events, declared in `application/datamodel.application.xml` `<events>`; eac
 
 ## 8. Test harness pins — `itop-extension-guide.md` §8.3
 
-Read `tests/php-unit-tests/composer.json` on the target branch; values below are 3.2.2.
+Read `tests/php-unit-tests/composer.json` on the target branch; values below are 3.2.2, and
+unchanged at 3.2.3-2 and 3.3.0 (both lock `phpunit/phpunit` 9.6.34).
 
 | Pin | Value at 3.2.2 |
 |---|---|
