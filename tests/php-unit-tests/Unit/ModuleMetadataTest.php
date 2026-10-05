@@ -354,7 +354,7 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/** Lines of exclude.txt that name something, comments and blanks dropped. */
-	private static function excludedFromPackage(): array
+	private static function excludeLines(): array
 	{
 		$aOut = [];
 		foreach (file(self::ROOT.'/exclude.txt', FILE_IGNORE_NEW_LINES) as $sLine) {
@@ -365,6 +365,32 @@ class ModuleMetadataTest extends TestCase
 		}
 
 		return $aOut;
+	}
+
+	/**
+	 * What exclude.txt keeps out, as paths relative to the repository root -
+	 * the entries without the leading slash that anchors them there.
+	 */
+	private static function excludedFromPackage(): array
+	{
+		return array_map(static fn (string $sLine): string => ltrim($sLine, '/'), self::excludeLines());
+	}
+
+	/**
+	 * rsync matches an exclude entry with no leading slash at any depth:
+	 * "tools" and "build" also dropped vendor/<package>/tools/ and
+	 * vendor/<package>/build/ from the archive, so a production dependency
+	 * shipping either would have lost it with nothing to say so. Only the
+	 * macOS junk names are meant at every level.
+	 */
+	public function testEveryExcludeEntryIsAnchoredAtTheRoot(): void
+	{
+		$aUnanchored = array_values(array_filter(
+			self::excludeLines(),
+			static fn (string $sLine): bool => !str_starts_with($sLine, '/') && !in_array($sLine, ['.DS_Store', '._*'], true)
+		));
+
+		$this->assertSame([], $aUnanchored, 'exclude.txt entries without a leading / match at any depth: '.implode(', ', $aUnanchored));
 	}
 
 	/**

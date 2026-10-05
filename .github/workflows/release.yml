@@ -161,7 +161,7 @@ jobs:
           # exclude.txt is the single source of truth for what stays out; rsync
           # reads it directly so the list cannot drift from what CI does.
           rsync -a --exclude-from=exclude.txt \
-                --exclude 'build' --exclude 'sbom.cyclonedx.json' --exclude 'licenses.json' \
+                --exclude '/build' --exclude '/sbom.cyclonedx.json' --exclude '/licenses.json' \
                 ./ "build/${module}/"
 
           # The archive carries its own inventory: an instance found in a year's
