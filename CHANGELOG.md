@@ -62,6 +62,13 @@ Security entry.
   now makes it read-only, and `'mcp_capabilities' => 'read'` now serves nothing — write
   `false` and `array('read')`. The README has the rule beside the settings table.
 
+## [1.0.1] - Unreleased
+
+The two security fixes of 1.1.1, backported to 1.0.x, and nothing else — released from the
+`maint/1.0.x` branch rather than from `main`. The 1.1.1 entry above describes both, and what an
+instance whose settings were written as strings will see. 1.0.1 was tested on iTop 3.2.3-2, PHP
+8.2 and 8.4, the branch 1.0.x supports.
+
 ## [1.1.0] - 2026-09-30
 
 iTop 3.3 becomes a supported branch, and a red-team pass over 1.0.0 is fixed. Tagged
