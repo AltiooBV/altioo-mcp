@@ -38,6 +38,9 @@ composer.phar
 # clones this. Only the personal overrides beside it are not.
 .claude/settings.local.json
 
+# Python bytecode, written beside tools/reconcile-since.py whenever it runs.
+__pycache__/
+
 # PHPUnit
 .phpunit.result.cache
 .phpunit.cache/
