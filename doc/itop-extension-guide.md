@@ -54,10 +54,16 @@ found nothing, because a finding from an earlier pass usually invalidates the wo
 review. The blue team is the exception: its input *is* every earlier finding. Rules 1–8 above are the
 precondition — a pass that asserts something it did not verify is not a pass.
 
-The order is red, then purple, then blue. Pass 1 is the one that intends harm. Passes 2–7 are third
-parties with interests of their own — the vendor, other modules, clients, an approver, a licensee —
-who mean no harm and are not on the owner's side. Passes 8–9 are the owner's side: the blue team, which
-reviews what every earlier pass found, then the maintainer's final read of what will ship.
+The order is red, then purple, then blue. Passes 1–2 intend harm. Passes 3–10 are third parties with
+interests of their own — the vendor, other modules, clients, an automated client, the people whose
+data it handles, an approver, a licensee — who mean no harm and are not on the owner's side. Passes
+11–12 are the owner's side: the
+blue team, which reviews what every earlier pass found, then the maintainer's final read of what will
+ship.
+
+Passes 2 and 7 apply only to an extension that exposes an interface a program calls — a REST provider,
+an MCP or other agent endpoint, a webhook receiver. For any other, the pass states *not applicable* and
+why; that is a result, not silence.
 
 Per pass: state findings as `<section-ref> · <file:line> · <what breaks, concretely>`. A pass with no
 findings MUST say so explicitly; silence is not a result.
@@ -65,14 +71,17 @@ findings MUST say so explicitly; silence is not a result.
 | # | Lens | The question it asks | Governing § | Blocks release |
 |---|---|---|---|---|
 | 1 | **Red team** | What can a logged-in low-privilege user reach, read, change, or crash — and what does the module hand them that iTop didn't? | §6 (all) | **Yes** |
-| 2 | **Combodo / product fit** | Would this survive the next patch release, and is every hook a declared extension point? | §3.1–3.6, §4, §5 | **Yes** |
-| 3 | **Neighbouring extension** | What breaks when this is installed beside modules it never met? | §3.7, §7.2 | **Yes** |
-| 4 | **Upgrading client** | What silently loses data or configuration when an old install jumps to this version? | §9.7, §3.4 | **Yes** |
-| 5 | **Installing client / operator** | Can an admin who did not write this install, run, diagnose and remove it from the docs alone? | §9.1–9.6, §8 | Yes for delivery |
-| 6 | **Auditor** | Can the module be approved without reading its code? | §9.8, §6.10, §10.3 | Yes for public/regulated |
-| 7 | **Downstream / competitor** | Is the licence coherent, and does anything force a fork instead of an extension? | §10, §11 | No — backlog |
-| 8 | **Blue team** | For every finding above, and for the attack nobody found: would the operator notice it, could they stop it, and could they recover? | §9.6, §9.8, §6.7, §6.10, §12.4 | **Yes** when an incident would go unnoticed, could not be stopped, or could not be undone; otherwise backlog |
-| 9 | **Maintainer** | Is this still shippable in two years, across branches nobody has released yet? | §12, §1 | No — backlog |
+| 2 | **Hostile or steered agent client** | Holding a valid token, acting at machine speed, and following instructions its user never gave — planted in a ticket, an email, a page it reads — what can a program make the module do that the token's owner never asked for? | §6.2–6.4, §6.7 | **Yes**, where it applies |
+| 3 | **Combodo / product fit** | Would this survive the next patch release, and is every hook a declared extension point? | §3.1–3.6, §4, §5 | **Yes** |
+| 4 | **Neighbouring extension** | What breaks when this is installed beside modules it never met? | §3.7, §7.2 | **Yes** |
+| 5 | **Upgrading client** | What silently loses data or configuration when an old install jumps to this version? | §9.7, §3.4 | **Yes** |
+| 6 | **Installing client / operator** | Can an admin who did not write this install, run, diagnose and remove it from the docs alone? | §9.1–9.6, §8 | Yes for delivery |
+| 7 | **Agent client and the person behind it** | A client that means no harm but wants its task done: does it get around the module's intent — a refused action reached another way, more access or data than the task needs, a refused, dry-run or partial result read as done? And does the person who delegated to it get what they asked for, and an honest account of what was not done? | §6.2, §6.3, §9.6 | **Yes** when a refused action succeeds another way or a partial result reads as success; otherwise backlog |
+| 8 | **Data owner** | The people the data is about — requesters, contacts, staff: where does their data go that iTop alone would not send it, is it limited to what the caller needed, and can the instance owner see it, switch it off and tell them? | §6.7, §6.3, §9.6, §9.3 | **Yes** when personal data leaves the instance by a route the operator cannot see or switch off; otherwise backlog |
+| 9 | **Auditor** | Can the module be approved without reading its code? | §9.8, §6.10, §10.3 | Yes for public/regulated |
+| 10 | **Downstream / competitor** | Is the licence coherent, and does anything force a fork instead of an extension? | §10, §11 | No — backlog |
+| 11 | **Blue team** | For every finding above, and for the attack nobody found: would the operator notice it, could they stop it, and could they recover? | §9.6, §9.8, §6.7, §6.10, §12.4 | **Yes** when an incident would go unnoticed, could not be stopped, or could not be undone; otherwise backlog |
+| 12 | **Maintainer** | Is this still shippable in two years, across branches nobody has released yet? | §12, §1 | No — backlog |
 
 **Pass detail** — what to actually open:
 
@@ -80,23 +89,46 @@ findings MUST say so explicitly; silence is not a result.
    listeners, background jobs, `utils::ReadParam()` call sites) and check each against §6.3–6.6. Grep
    for the §6.1 forbidden calls, `|raw`, string-built OQL, `getMessage()` reaching output, and
    `Access-Control-Allow-Origin`. Assume the reviewer is the attacker, not the author.
-2. **Combodo fit.** Grep for edits or writes under `datamodels/`, `core/`, `application/`, `sources/`,
+2. **Hostile or steered agent client.** Only where the module exposes an interface a program calls;
+   otherwise *not applicable*, with the reason. Assume the attacker never touches the endpoint: they
+   write the text the client reads. List every field the interface returns that someone other than
+   the caller could have written — descriptions, comments, email bodies, names, extracted attachment
+   text — and for each method that writes, deletes or sends, ask what one planted instruction makes it
+   do with the caller's rights. Then check what holds without the client's cooperation: server-side
+   scopes and rights, a dry run or confirmation the server enforces rather than one the client is asked
+   to respect, limits on bulk and rate, and no route by which the caller changes its own credential or
+   rights. A control that works only if the model obeys a tool description is not a control.
+3. **Combodo fit.** Grep for edits or writes under `datamodels/`, `core/`, `application/`, `sources/`,
    `lib/`, `env-production/`. Check every hook against the §3.2 catalogue and its deprecation status,
    every `_delta`, and the §4/§5 conventions. Findings here are architectural — cheapest to fix now,
    most expensive after release.
-3. **Neighbouring extension.** Check prefixes on class codes, tables, menu ids, process/lock names;
+4. **Neighbouring extension.** Check prefixes on class codes, tables, menu ids, process/lock names;
    delta width; listener priority and `EventException` use; duplicated `lib/` libraries. Verify on an
    instance with other modules installed, not a bare one.
-4. **Upgrading client.** Read every `ModuleInstallerAPI` method as if `$sPreviousVersion` were the
+5. **Upgrading client.** Read every `ModuleInstallerAPI` method as if `$sPreviousVersion` were the
    oldest supported version and as if it ran twice. Check for removed attributes/classes, renamed
    profiles and parameters, changed defaults.
-5. **Installing client / operator.** Read the README as the only documentation that exists, against
+6. **Installing client / operator.** Read the README as the only documentation that exists, against
    the §9.3 table. Confirm the archive shape (§9.1) and that the test suites behave per §8.1–8.2.
-6. **Auditor.** Check the artifacts exist and are current (§9.8 table), and that non-interactive
+7. **Agent client and the person behind it.** Same applicability as pass 2. Take each refusal the
+   interface can return and look for another method, parameter or sequence that reaches the same
+   result. Check that a refused, dry-run or partially applied call cannot be read as success — a
+   status field says what happened, not only prose. Check what the default page size, field list and
+   search scope hand a client that asked for less, and that descriptions and errors say what to do next
+   rather than inviting a retry by another route. Then read it as the person who delegated: what the
+   client can tell them was done, refused or left undone, and whether the change history names them
+   and the client, not only an account.
+8. **Data owner.** Trace every route by which data about people leaves where iTop keeps it: interface
+   responses — and, for an agent client, on to its model provider — exports, logs, notifications,
+   outbound calls. For each, check that iTop's own visibility still applies (profiles, organisation
+   filtering, portal scopes), that it carries only what the caller needed (§6.7), that an operator can
+   see it happened and switch it off (§9.6), and that the README tells the instance owner it happens
+   (§9.3), since they are the one who has to tell the people it concerns.
+9. **Auditor.** Check the artifacts exist and are current (§9.8 table), and that non-interactive
    writes set the change origin.
-7. **Downstream / competitor.** Check the three licence declarations agree, bundled dependency
+10. **Downstream / competitor.** Check the three licence declarations agree, bundled dependency
    licences, `@api` surface and semver, and hard-coded client-specific values.
-8. **Blue team.** Take each finding from passes 1–7 in turn and answer four questions, each with a
+11. **Blue team.** Take each finding from passes 1–10 in turn and answer four questions, each with a
    file, setting or log/audit record as evidence: **prevented** — which control stops it; **detected**
    — which log entry, audit row or change-history record would show it, and does that record name
    the actor *and* the credential; **contained** — what an operator can switch off or revoke without
@@ -107,7 +139,7 @@ findings MUST say so explicitly; silence is not a result.
    audit trail survives its own failure modes — logging switched off, a failed log write, a retention
    purge; `SECURITY.md` names a channel and a response window someone actually holds. A red finding
    with no detection and no containment is what this pass blocks on.
-9. **Maintainer.** Check version consistency across the four files, changelog quality, CI matrix
+12. **Maintainer.** Check version consistency across the four files, changelog quality, CI matrix
    coverage, and whether the branch notes have gone stale against the branch targeted (§12.5).
 
 ---
@@ -799,7 +831,10 @@ export, hook or API tool leaks the same way.
 
 **Threat model.** The extension runs **inside the iTop PHP process, with DB credentials, the session,
 and the admin's trust already granted**. Nothing sandboxes it. Design against a logged-in
-low-privilege user — portal user, junior agent — probing what the module exposes.
+low-privilege user — portal user, junior agent — probing what the module exposes. If the module
+exposes an interface a program calls, design also against that program: it holds a valid token, acts
+faster than a person, and can be steered by anything it reads, so an instruction planted in a ticket by
+someone with no access to the module arrives with the caller's rights.
 
 ### 6.1 Never change global runtime state
 
