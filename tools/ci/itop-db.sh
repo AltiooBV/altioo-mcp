@@ -15,6 +15,8 @@
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 
 itop_sql() {
+	# Literal PHP passed to `php -r`; $o/$r/$a are PHP variables, not shell ones.
+	# shellcheck disable=SC2016
 	DB_QUERY="$1" php -r '
 		$o = @new mysqli(getenv("DB_HOST"), getenv("DB_USER"), getenv("DB_PWD"), getenv("DB_NAME"), (int)getenv("DB_PORT"));
 		if ($o->connect_errno) { fwrite(STDERR, $o->connect_error."\n"); exit(1); }

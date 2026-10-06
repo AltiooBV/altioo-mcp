@@ -57,7 +57,7 @@ VOLUME=itop-ci-work
 DB_PWD=itop
 
 # A throwaway instance on a throwaway machine, same as the workflow's env block.
-ITOP_ADMIN_USER=admin
+ITOP_ADMIN_USER='admin'
 ITOP_ADMIN_PWD='Admin*2026!'
 
 say() { printf '\n\033[1m>>> %s\033[0m\n' "$*"; }
@@ -125,8 +125,7 @@ need_db() {
 		fi
 	fi
 
-	local i
-	for i in $(seq 1 60); do
+	for _ in $(seq 1 60); do
 		[ "$(docker inspect -f '{{.State.Health.Status}}' "$DB_CONTAINER")" = healthy ] && return
 		sleep 2
 	done
