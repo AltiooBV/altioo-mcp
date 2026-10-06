@@ -41,6 +41,12 @@ composer.phar
 # Python bytecode, written beside tools/reconcile-since.py whenever it runs.
 __pycache__/
 
+# Review findings name real gaps, so they stay on the machine that wrote them.
+# The persona list beside them is tracked: it is what a review runs, and it
+# says nothing SECURITY.md's threat model does not already publish.
+/review/*
+!/review/review-personas.md
+
 # PHPUnit
 .phpunit.result.cache
 .phpunit.cache/
