@@ -128,8 +128,11 @@ curl -s -o "$BODY" \
 # bulk tools declare a per-object status of {"ok","error"} in their output
 # schema - so a substring test on the body reports a JSON-RPC error on a call
 # that returned every tool correctly. Only a top-level `error` member is one.
+# Literal PHP passed to `php -r`; $a and $argv are PHP variables, not shell ones.
+# shellcheck disable=SC2016
 RPC_ERROR=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo isset($a["error"]) ? json_encode($a["error"]) : "";' "$BODY")
 [ -z "$RPC_ERROR" ] || { echo "--- response ---"; cat "$BODY"; fail "tools/list returned a JSON-RPC error: $RPC_ERROR"; }
+# shellcheck disable=SC2016
 COUNT=$(php -r '$a=json_decode(file_get_contents($argv[1]),true); echo count($a["result"]["tools"] ?? []);' "$BODY")
 echo "   $COUNT tools advertised"
 [ "$COUNT" -gt 0 ] || { echo "--- response ---"; cat "$BODY"; fail "tools/list advertised no tools"; }
