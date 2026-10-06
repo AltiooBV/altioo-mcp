@@ -76,7 +76,7 @@ findings MUST say so explicitly; silence is not a result.
 | 4 | **Neighbouring extension** | What breaks when this is installed beside modules it never met? | §3.7, §7.2 | **Yes** |
 | 5 | **Upgrading client** | What silently loses data or configuration when an old install jumps to this version? | §9.7, §3.4 | **Yes** |
 | 6 | **Installing client / operator** | Can an admin who did not write this install, run, diagnose and remove it from the docs alone? | §9.1–9.6, §8 | Yes for delivery |
-| 7 | **Agent client and the person behind it** | A client that means no harm but wants its task done: does it get around the module's intent — a refused action reached another way, more access or data than the task needs, a refused, dry-run or partial result read as done? And does the person who delegated to it get what they asked for, and an honest account of what was not done? | §6.2, §6.3, §9.6 | **Yes** when a refused action succeeds another way or a partial result reads as success; otherwise backlog |
+| 7 | **Agent client and the person behind it** | A client that means well: do its tool descriptions, errors and dry-run results let it act correctly, with no silent partial write? One that wants its task done: does it get around the module's intent — a refused action reached another way, more access or data than the task needs, a refused, dry-run or partial result read as done? And does the person who delegated get only what they asked for, and an honest account of what was not done? | §6.2, §6.3, §9.6 | **Yes** when a refused action succeeds another way or a partial result reads as success; otherwise backlog |
 | 8 | **Data owner** | The people the data is about — requesters, contacts, staff: where does their data go that iTop alone would not send it, is it limited to what the caller needed, and can the instance owner see it, switch it off and tell them? | §6.7, §6.3, §9.6, §9.3 | **Yes** when personal data leaves the instance by a route the operator cannot see or switch off; otherwise backlog |
 | 9 | **Auditor** | Can the module be approved without reading its code? | §9.8, §6.10, §10.3 | Yes for public/regulated |
 | 10 | **Downstream / competitor** | Is the licence coherent, and does anything force a fork instead of an extension? | §10, §11 | No — backlog |
@@ -110,14 +110,17 @@ findings MUST say so explicitly; silence is not a result.
    profiles and parameters, changed defaults.
 6. **Installing client / operator.** Read the README as the only documentation that exists, against
    the §9.3 table. Confirm the archive shape (§9.1) and that the test suites behave per §8.1–8.2.
-7. **Agent client and the person behind it.** Same applicability as pass 2. Take each refusal the
-   interface can return and look for another method, parameter or sequence that reaches the same
-   result. Check that a refused, dry-run or partially applied call cannot be read as success — a
+7. **Agent client and the person behind it.** Same applicability as pass 2. First as a client that
+   means well: read every description, error and dry-run result as the only documentation it has,
+   and check it says enough to make the correct next call — which argument was wrong, what a dry run
+   would change, what to ask the person — and that no write applies part of a request without saying
+   which part. Then as one that wants its task done: take each refusal the interface can return and
+   look for another method, parameter or sequence that reaches the same result. Check that a refused, dry-run or partially applied call cannot be read as success — a
    status field says what happened, not only prose. Check what the default page size, field list and
    search scope hand a client that asked for less, and that descriptions and errors say what to do next
-   rather than inviting a retry by another route. Then read it as the person who delegated: what the
-   client can tell them was done, refused or left undone, and whether the change history names them
-   and the client, not only an account.
+   rather than inviting a retry by another route. Then read it as the person who delegated: that a
+   request touches only what they asked for, that the client can tell them what was done, refused or
+   left undone, and that the change history names them and the client, not only an account.
 8. **Data owner.** Trace every route by which data about people leaves where iTop keeps it: interface
    responses — and, for an agent client, on to its model provider — exports, logs, notifications,
    outbound calls. For each, check that iTop's own visibility still applies (profiles, organisation
