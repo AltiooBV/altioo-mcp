@@ -155,7 +155,8 @@ passed or not. [ci-itop-matrix.md](ci-itop-matrix.md) explains what each check i
 3. **`publish`**, on a tag only, is the one job that can sign and write. It runs none of this
    repository's code and none of its dependencies: it downloads what `build` produced,
    checks the zip against the digest `build` reported as a job output (not against the
-   `.sha256` travelling beside it, which anything able to replace the zip could replace too), adds the build-provenance and SBOM attestations, and
+   `.sha256` travelling beside it, which anything able to replace the zip could replace too) and the SBOM and licence
+   inventory against their copies inside it, adds the build-provenance and SBOM attestations, and
    attaches the four files to the release.
 
 The split is the point: a compromised development dependency runs in `tests`, which holds
