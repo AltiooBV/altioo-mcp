@@ -20,6 +20,19 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Packaging
+
+- **The archive is signed by a job that runs none of this repository's code.** The release used
+  to install the development dependencies, run the unit suite, build the zip and sign it in one
+  job holding write and signing permissions, so a compromised test dependency could have edited
+  `vendor/` or `src/` and the provenance attestation would have vouched for it. Tests and the
+  build now run in read-only jobs; the job that attests and publishes only downloads the built
+  files and checks their checksum. Verification is unchanged (`gh attestation verify`).
+- **Files inside vendored packages are no longer stripped by the root's exclude list.** Entries
+  such as `tools`, `build` or `.github` matched at every depth, so the same names inside a
+  dependency were silently dropped from the archive. They are now matched at the root only. On
+  this release the visible difference is the dependencies' own `.gitignore` and `.gitattributes`.
+
 ## [1.1.1] - 2026-10-05
 
 A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it

@@ -63,7 +63,9 @@ Three fields change the outcome:
   Those jobs are `continue-on-error`: a beta breaking is something to know on the Monday it
   breaks, not something to fail a contributor's pull request with.
 - **`pin`** — an exact tag, when a patch is known broken and the fault is not ours. Say why,
-  in the file, next to the pin.
+  in the file, next to the pin. It selects the packaged release that is installed, not only
+  the label the job is named after, and a pin that matches no packaged release fails the run
+  instead of falling back to the newest.
 
 This file is also the answer to "which versions do you support" on the Hub listing and in the
 README. Keeping one list rather than three is the point of it.
