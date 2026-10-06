@@ -20,6 +20,23 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Packaging
+
+- **The archive is signed by a job that runs none of this repository's code.** The release used
+  to install the development dependencies, run the unit suite, build the zip and sign it in one
+  job holding write and signing permissions, so a compromised test dependency could have edited
+  `vendor/` or `src/` and the provenance attestation would have vouched for it. Tests and the
+  build now run in read-only jobs; the job that attests and publishes only downloads the built
+  files and checks them against the digest the build job reported. Verification is unchanged
+  (`gh attestation verify`).
+- **Files inside vendored packages are no longer stripped by the root's exclude list.** Entries
+  such as `tools`, `build` or `.github` matched at every depth, so the same names inside a
+  dependency were silently dropped from the archive. They are now matched at the root only. On
+  this release the visible difference is a few files from the dependencies' own repositories: the
+  `.gitignore` and `.gitattributes` of `mcp/sdk` and `psr/*`, and the `.github/` directory of
+  `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
+  serve `index.php` only.
+
 ## [1.1.1] - 2026-10-05
 
 A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it

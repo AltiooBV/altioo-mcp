@@ -49,9 +49,15 @@ against the branch you target. If you find a branch number here, it is a bug in 
 ### Review procedure — persona passes
 
 For reviewing an extension (whole codebase, or a change) rather than writing one. **Run the passes in
-the order below and do not reorder them:** each pass assumes the previous one found nothing, because
-a finding from an earlier pass usually invalidates the work a later pass would review. Rules 1–8
-above are the precondition — a pass that asserts something it did not verify is not a pass.
+the order below and do not reorder them:** each pass up to the blue team assumes the previous one
+found nothing, because a finding from an earlier pass usually invalidates the work a later pass would
+review. The blue team is the exception: its input *is* every earlier finding. Rules 1–8 above are the
+precondition — a pass that asserts something it did not verify is not a pass.
+
+The order is red, then purple, then blue. Pass 1 is the one that intends harm. Passes 2–7 are third
+parties with interests of their own — the vendor, other modules, clients, an approver, a licensee —
+who mean no harm and are not on the owner's side. Passes 8–9 are the owner's side: the blue team, which
+reviews what every earlier pass found, then the maintainer's final read of what will ship.
 
 Per pass: state findings as `<section-ref> · <file:line> · <what breaks, concretely>`. A pass with no
 findings MUST say so explicitly; silence is not a result.
@@ -65,7 +71,8 @@ findings MUST say so explicitly; silence is not a result.
 | 5 | **Installing client / operator** | Can an admin who did not write this install, run, diagnose and remove it from the docs alone? | §9.1–9.6, §8 | Yes for delivery |
 | 6 | **Auditor** | Can the module be approved without reading its code? | §9.8, §6.10, §10.3 | Yes for public/regulated |
 | 7 | **Downstream / competitor** | Is the licence coherent, and does anything force a fork instead of an extension? | §10, §11 | No — backlog |
-| 8 | **Maintainer** | Is this still shippable in two years, across branches nobody has released yet? | §12, §1 | No — backlog |
+| 8 | **Blue team** | For every finding above, and for the attack nobody found: would the operator notice it, could they stop it, and could they recover? | §9.6, §9.8, §6.7, §6.10, §12.4 | **Yes** when an incident would go unnoticed, could not be stopped, or could not be undone; otherwise backlog |
+| 9 | **Maintainer** | Is this still shippable in two years, across branches nobody has released yet? | §12, §1 | No — backlog |
 
 **Pass detail** — what to actually open:
 
@@ -89,7 +96,18 @@ findings MUST say so explicitly; silence is not a result.
    writes set the change origin.
 7. **Downstream / competitor.** Check the three licence declarations agree, bundled dependency
    licences, `@api` surface and semver, and hard-coded client-specific values.
-8. **Maintainer.** Check version consistency across the four files, changelog quality, CI matrix
+8. **Blue team.** Take each finding from passes 1–7 in turn and answer four questions, each with a
+   file, setting or log/audit record as evidence: **prevented** — which control stops it; **detected**
+   — which log entry, audit row or change-history record would show it, and does that record name
+   the actor *and* the credential; **contained** — what an operator can switch off or revoke without
+   uninstalling (a setting, a profile, a token), and when that takes effect; **recovered** — can the
+   change be undone from history, and can a fixed release reach existing installs (§12.4 advisory
+   path, §6.10 verifiable archive). Then the defence as a whole, independent of any finding: refused
+   and failed calls leave a trace an operator can find (§9.6); no log carries anything from §6.7; the
+   audit trail survives its own failure modes — logging switched off, a failed log write, a retention
+   purge; `SECURITY.md` names a channel and a response window someone actually holds. A red finding
+   with no detection and no containment is what this pass blocks on.
+9. **Maintainer.** Check version consistency across the four files, changelog quality, CI matrix
    coverage, and whether the branch notes have gone stale against the branch targeted (§12.5).
 
 ---

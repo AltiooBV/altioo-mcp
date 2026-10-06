@@ -66,30 +66,37 @@
 # pack's own instructions would ship them. Two filters, and this is the case
 # where only one of them was looking.
 
+# Every entry is anchored with a leading slash except the two macOS junk names,
+# which are meant at any depth. rsync matches an unanchored entry at every
+# level: "tools" and "build" also dropped vendor/<package>/tools/ and
+# vendor/<package>/build/, so a production dependency shipping either would
+# have lost it from the archive with nothing to say so. ModuleMetadataTest
+# fails on an unanchored entry.
+
 .DS_Store
 ._*
-.git
-.github
-.gitignore
-.gitattributes
-.idea
-.vscode
-.claude
-composer.phar
-phpunit.xml
-AGENTS.md
-CLAUDE.md
-doc/itop-extension-guide.md
-doc/itop-branch-notes.md
-CODE_OF_CONDUCT.md
-phpcs.xml.dist
-psalm.xml
-psalm-baseline.xml
-exclude.txt
-.phpunit.result.cache
-.phpunit.cache
-doc/example-pack/vendor
-doc/example-pack/composer.lock
+/.git
+/.github
+/.gitignore
+/.gitattributes
+/.idea
+/.vscode
+/.claude
+/composer.phar
+/phpunit.xml
+/AGENTS.md
+/CLAUDE.md
+/doc/itop-extension-guide.md
+/doc/itop-branch-notes.md
+/CODE_OF_CONDUCT.md
+/phpcs.xml.dist
+/psalm.xml
+/psalm-baseline.xml
+/exclude.txt
+/.phpunit.result.cache
+/.phpunit.cache
+/doc/example-pack/vendor
+/doc/example-pack/composer.lock
 
 # assets/img/screenshots is listing material: it exists to be uploaded to the
 # Hub and to be re-uploaded the next time that page is edited, which is why it
@@ -100,12 +107,12 @@ doc/example-pack/composer.lock
 # If a screenshot is ever embedded in the README, that one has to ship: a
 # shipped README with a broken image is worse than a larger archive. Move it up
 # to assets/img/ and leave this rule covering only what the Hub needs.
-assets/img/screenshots
-tools
-build
+/assets/img/screenshots
+/tools
+/build
 # The archive release.yml assembles and its checksum. Named after this
 # module's own extension code and version, neither of which this pattern
 # names, so it needs no edit if the module is ever renamed or this file
 # templated into another repository.
-*.zip
-*.zip.sha256
+/*.zip
+/*.zip.sha256

@@ -20,17 +20,52 @@ permissions:
   contents: read
 
 jobs:
-  archive:
-    name: Build, checksum and publish the archive
+  # The unit suite needs require-dev - phpunit and everything it pulls in - and
+  # running it means executing that code. It runs here, in a job that can read
+  # the repository and nothing else, and never in the job that builds what is
+  # signed: a compromised development dependency running beside the archive
+  # could edit vendor/ or src/ before the zip step, and the attestation further
+  # down would then vouch for the edited archive as this repository's CI build.
+  tests:
+    name: Unit suite against the tagged tree
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      # What attest-build-provenance signs with. The checksum answers "is this the
-      # file I downloaded", which is a question about the wire; provenance answers
-      # "did this repository's CI build it", which is the question an operator
-      # unzipping into a privileged directory of a live instance actually has.
-      id-token: write
-      attestations: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Unit suite
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          composer test:unit
+
+  # Builds the archive from production dependencies only. Read-only: nothing
+  # here can publish, sign or write to the repository, so whatever runs during
+  # the build has nothing to borrow.
+  build:
+    name: Build and check the archive
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      name: ${{ steps.archive.outputs.name }}
+      # The digest travels as a job output, not only inside the artifact.
+      # Artifacts of a run can be deleted and re-uploaded with the run's
+      # ACTIONS_RUNTIME_TOKEN, which code running in the tests job above can
+      # reach; a .sha256 riding in the same artifact as the zip would then be
+      # replaced with it. Only this job's own steps can set its outputs.
+      sha256: ${{ steps.archive.outputs.sha256 }}
+      module: ${{ steps.archive.outputs.module }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,24 +127,16 @@ jobs:
       # tree nobody has touched since CI was last green. mcp/sdk is pre-1.0 and
       # vendored into the archive that operators unzip without ever running
       # composer, so this is the last moment anything looks.
+      # It reads the lock, so nothing needs installing first - and nothing
+      # from require-dev ever lands in this job.
       - name: Advisories against the locked versions
-        run: |
-          set -euo pipefail
-          composer install --no-interaction --no-progress
-          composer audit --locked
+        run: composer audit --locked
 
       # What store users unzip into extensions/: production dependencies only,
       # nothing from require-dev, and vendor/ present because they will never
       # run composer themselves.
       - name: Build the production vendor tree
         run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
-
-      - name: Unit suite against the shipped tree
-        run: |
-          set -euo pipefail
-          composer install --no-interaction --no-progress
-          composer test:unit
-          composer install --no-dev --no-interaction --no-progress --optimize-autoloader
 
       # vendor/ ships, so what is in it is not an implementation detail - it is
       # the audit surface, and an operator asked to install this is entitled to
@@ -141,7 +168,7 @@ jobs:
           # exclude.txt is the single source of truth for what stays out; rsync
           # reads it directly so the list cannot drift from what CI does.
           rsync -a --exclude-from=exclude.txt \
-                --exclude 'build' --exclude 'sbom.cyclonedx.json' --exclude 'licenses.json' \
+                --exclude '/build' --exclude '/sbom.cyclonedx.json' --exclude '/licenses.json' \
                 ./ "build/${module}/"
 
           # The archive carries its own inventory: an instance found in a year's
@@ -151,8 +178,11 @@ jobs:
           ( cd build && zip -qr "../${name}.zip" "${module}" )
           sha256sum "${name}.zip" > "${name}.zip.sha256"
 
-          echo "name=${name}" >> "$GITHUB_OUTPUT"
-          echo "module=${module}" >> "$GITHUB_OUTPUT"
+          {
+            echo "name=${name}"
+            echo "module=${module}"
+            echo "sha256=$(cut -d' ' -f1 "${name}.zip.sha256")"
+          } >> "$GITHUB_OUTPUT"
           cat "${name}.zip.sha256"
 
       - name: The archive contains what it is supposed to, and nothing else
@@ -200,6 +230,59 @@ jobs:
             ${{ steps.archive.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
+          if-no-files-found: error
+
+  # The only job with write access, and it runs none of this repository's code
+  # and none of its dependencies: no checkout, no PHP, no composer. It takes
+  # the files the read-only build produced, signs them and attaches them.
+  publish:
+    name: Attest and publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # What attest-build-provenance signs with. The checksum answers "is this the
+      # file I downloaded", which is a question about the wire; provenance answers
+      # "did this repository's CI build it", which is the question an operator
+      # unzipping into a privileged directory of a live instance actually has.
+      id-token: write
+      attestations: write
+    env:
+      NAME: ${{ needs.build.outputs.name }}
+      SHA256: ${{ needs.build.outputs.sha256 }}
+      MODULE: ${{ needs.build.outputs.module }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build.outputs.name }}
+
+      # The archive the build job checksummed is the one about to be signed.
+      # Compared against the build job's output, not against the .sha256 in
+      # the artifact: that file arrives beside the zip and anything able to
+      # replace one can replace both.
+      - name: The archive is the one the build job produced
+        run: |
+          set -euo pipefail
+          test -n "$SHA256" || { echo "the build job reported no digest"; exit 1; }
+          echo "${SHA256}  ${NAME}.zip" | sha256sum -c -
+          echo "${SHA256}  ${NAME}.zip" | cmp -s - "${NAME}.zip.sha256" \
+            || { echo "${NAME}.zip.sha256 in the artifact disagrees with the build job"; exit 1; }
+
+      # The SBOM is attested below and the licence inventory attached, and both
+      # arrive in the artifact beside the zip - so the digest check above does
+      # not cover them, and anything able to replace the artifact could have
+      # the attestation sign a different inventory for the genuine zip. The
+      # zip, now verified, carries its own copy of each at <module>/<file>;
+      # the published ones must be those, byte for byte.
+      - name: The SBOM and licence inventory are the ones inside the archive
+        run: |
+          set -euo pipefail
+          test -n "$MODULE" || { echo "the build job reported no module code"; exit 1; }
+          for f in sbom.cyclonedx.json licenses.json; do
+            unzip -p "${NAME}.zip" "${MODULE}/${f}" | cmp -s - "$f" \
+              || { echo "$f in the artifact differs from ${MODULE}/${f} inside ${NAME}.zip"; exit 1; }
+          done
 
       # The checksum proves the file did not change in transit. It does not
       # prove this repository built it - anyone can publish a zip and a
@@ -207,10 +290,9 @@ jobs:
       # commit and the repository that produced it, verifiable with
       # `gh attestation verify <archive>.zip --repo <owner>/<repo>`.
       - name: Attest that this repository's CI built the archive
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ steps.archive.outputs.name }}.zip
+          subject-path: ${{ needs.build.outputs.name }}.zip
 
       # The provenance attestation above covers the zip. sbom.cyclonedx.json
       # ships beside it - inside the archive too - and an approver reading
@@ -225,20 +307,18 @@ jobs:
       # the provenance step above needs no such flag because
       # https://slsa.dev/provenance/v1 is `gh attestation verify`'s default).
       - name: Attest the bill of materials
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
-          subject-path: ${{ steps.archive.outputs.name }}.zip
+          subject-path: ${{ needs.build.outputs.name }}.zip
           sbom-path: sbom.cyclonedx.json
 
       # The checksum is published beside the archive so that "the file I
       # downloaded is the file CI built" is a question with an answer.
       - name: Attach everything to the release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
-            ${{ steps.archive.outputs.name }}.zip
-            ${{ steps.archive.outputs.name }}.zip.sha256
+            ${{ needs.build.outputs.name }}.zip
+            ${{ needs.build.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json

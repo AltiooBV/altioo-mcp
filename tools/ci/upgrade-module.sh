@@ -53,6 +53,7 @@ MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "$MODU
 TARGET_ENV=production
 CONFIG_FILE="$ITOP_DIR/conf/$TARGET_ENV/config-itop.php"
 
+# shellcheck source=itop-db.sh source-path=SCRIPTDIR
 . "$(dirname "${BASH_SOURCE[0]}")/itop-db.sh"
 
 test -f "$ITOP_DIR/approot.inc.php" || { echo "::error::not an iTop tree: $ITOP_DIR"; exit 1; }
@@ -222,14 +223,22 @@ EXTENSION_SOURCE=$(itop_sql "SELECT source FROM \`${DB_PREFIX}priv_extension_ins
 if [ ! -d "$ITOP_DIR/env-$TARGET_ENV/$MODULE_CODE" ]; then
   echo "--- what is actually on disk ---"
   echo "ITOP_DIR=$ITOP_DIR  TARGET_ENV=$TARGET_ENV  MODULE_CODE=$MODULE_CODE"
+  # find rather than ls: names are printed as they are, whatever they contain.
+  # `grep .` turns "listed nothing" into a failure, so each fallback line runs
+  # exactly when there was nothing to show; sed rather than head, so a long
+  # listing is cut without a SIGPIPE that pipefail would read as one.
   echo "env directories:"
-  ls -d "$ITOP_DIR"/env-* 2>/dev/null || echo "  none"
-  echo "entries in env-$TARGET_ENV: $(ls "$ITOP_DIR/env-$TARGET_ENV" 2>/dev/null | wc -l)"
-  ls "$ITOP_DIR/env-$TARGET_ENV" 2>/dev/null | grep -i -E 'altioo|mcp' | sed 's/^/  match: /' || echo "  no entry matching altioo or mcp"
+  find "$ITOP_DIR" -mindepth 1 -maxdepth 1 -type d -name 'env-*' -printf '  %f\n' 2>/dev/null \
+    | sort | grep . || echo "  none"
+  echo "entries in env-$TARGET_ENV: $(find "$ITOP_DIR/env-$TARGET_ENV" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l)"
+  find "$ITOP_DIR/env-$TARGET_ENV" -mindepth 1 -maxdepth 1 -iname "*${MODULE_CODE}*" -printf '  match: %f\n' 2>/dev/null \
+    | sort | grep . || echo "  no entry matching $MODULE_CODE"
   echo "extensions/:"
-  ls "$ITOP_DIR/extensions" 2>/dev/null | sed 's/^/  /' || echo "  none"
+  find "$ITOP_DIR/extensions" -mindepth 1 -maxdepth 1 -printf '  %f\n' 2>/dev/null \
+    | sort | grep . || echo "  none"
   echo "extensions/$MODULE_CODE contents:"
-  ls "$ITOP_DIR/extensions/$MODULE_CODE" 2>/dev/null | head -20 | sed 's/^/  /' || echo "  absent"
+  find "$ITOP_DIR/extensions/$MODULE_CODE" -mindepth 1 -maxdepth 1 -printf '  %f\n' 2>/dev/null \
+    | sort | grep . | sed -n '1,20p' || echo "  absent"
   fail "env-$TARGET_ENV/$MODULE_CODE does not exist - recorded as upgraded but not compiled"
 fi
 

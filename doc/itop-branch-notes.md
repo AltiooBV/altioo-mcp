@@ -90,10 +90,11 @@ Read off tag `3.3.0` on 2026-09-21, and agreeing with both the `latest:` and the
 requirements pages: `PHP_MIN_VERSION = '8.2.0'`, `PHP_NOT_VALIDATED_VERSION = '8.5.0'`,
 `MYSQL_MIN_VERSION = '5.7.0'`, `MYSQL_NOT_VALIDATED_VERSION = ''` (no ceiling warning at all).
 
-One consequence worth keeping in view: on 3.3 this extension's declared range and iTop's
-*validated* range are the same interval. `composer.json` says `>=8.2 <8.5`; 3.3 refuses below
-8.2.0 and warns from 8.5.0. On 3.2 they differ — iTop's floor is 8.1 there and ours is 8.2, so
-the narrower bound is ours and comes from `symfony/uid` and `webmozart/assert`.
+One consequence worth keeping in view: an extension's declared range (`composer.json`,
+`.github/itop-support.json`) can be narrower than iTop's validated range on one branch and equal
+to it on another — on 3.3 iTop refuses below 8.2.0 and warns from 8.5.0, while 3.2's floor is
+8.1. When the extension's floor is above iTop's, the reason is usually a locked dependency;
+say which one where the range is declared, not here.
 
 ---
 

@@ -57,7 +57,7 @@ VOLUME=itop-ci-work
 DB_PWD=itop
 
 # A throwaway instance on a throwaway machine, same as the workflow's env block.
-ITOP_ADMIN_USER=admin
+ITOP_ADMIN_USER='admin'
 ITOP_ADMIN_PWD='Admin*2026!'
 
 say() { printf '\n\033[1m>>> %s\033[0m\n' "$*"; }
@@ -125,8 +125,7 @@ need_db() {
 		fi
 	fi
 
-	local i
-	for i in $(seq 1 60); do
+	for _ in $(seq 1 60); do
 		[ "$(docker inspect -f '{{.State.Health.Status}}' "$DB_CONTAINER")" = healthy ] && return
 		sleep 2
 	done
@@ -305,8 +304,11 @@ step "the module's integration suite" module_integration
 
 smoke() {
 	cd "$sDest" || return 1
-	local sToken
-	sToken=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER" | tail -1) || return 1
+	local sOut sToken
+	sOut=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER") || { printf '%s\n' "$sOut"; return 1; }
+	printf '%s\n' "$sOut" | grep -v '^http-smoke-token: '
+	sToken=$(printf '%s\n' "$sOut" | sed -n 's/^http-smoke-token: //p')
+	[ -n "$sToken" ] || { echo "checks/module-smoke.php minted no token for the HTTP smoke"; return 1; }
 	ITOP_TOKEN="$sToken" tools/ci/http-smoke.sh
 }
 step "datamodel checks, then the endpoint over HTTP" smoke

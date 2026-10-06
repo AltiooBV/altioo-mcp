@@ -64,6 +64,7 @@ MODULE_SRC="${MODULE_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 # records through the same path. Sourced here rather than where it is used, so
 # that a missing file fails in the first second of a run and not after an
 # install.
+# shellcheck source=itop-db.sh source-path=SCRIPTDIR
 . "$(dirname "${BASH_SOURCE[0]}")/itop-db.sh"
 ITOP_DIR="${ITOP_DIR:-${RUNNER_TEMP:-/tmp}/itop}"
 

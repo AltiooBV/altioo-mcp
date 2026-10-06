@@ -144,13 +144,26 @@ entries run `continue-on-error`, so a branch resolving to a beta or rc reports g
 passed or not. [ci-itop-matrix.md](ci-itop-matrix.md) explains what each check is for.
 
 **The archive is built by CI, not by hand.** Pushing a `v*` tag runs
-[release.yml](../.github/workflows/release.yml), which refuses a tag that disagrees with
-`extension.xml`, builds the production vendor tree on PHP 8.2, assembles the zip from
-`exclude.txt`, and attaches four files to the release: the archive, its `.sha256`, a CycloneDX
-`sbom.cyclonedx.json` and `licenses.json`. The last two also go *inside* the archive, so an
-instance found in a year's time can answer what it is running without reaching the internet.
-`workflow_dispatch` runs the same build without publishing, which is how to exercise it before
-the tag exists.
+[release.yml](../.github/workflows/release.yml), in three jobs that never share a machine:
+
+1. **`tests`** runs the unit suite with the development dependencies, which means running
+   their code. It can read the repository and nothing else.
+2. **`build`** refuses a tag that disagrees with `extension.xml` or the changelog, audits the
+   lock, builds the production vendor tree on PHP 8.2, assembles the zip from `exclude.txt`
+   and checks what it must and must not carry, with its `.sha256`, a CycloneDX
+   `sbom.cyclonedx.json` and `licenses.json`. Also read-only.
+3. **`publish`**, on a tag only, is the one job that can sign and write. It runs none of this
+   repository's code and none of its dependencies: it downloads what `build` produced,
+   checks the zip against the digest `build` reported as a job output (not against the
+   `.sha256` travelling beside it, which anything able to replace the zip could replace too) and the SBOM and licence
+   inventory against their copies inside it, adds the build-provenance and SBOM attestations, and
+   attaches the four files to the release.
+
+The split is the point: a compromised development dependency runs in `tests`, which holds
+nothing worth taking, and cannot reach the archive the attestation vouches for. The SBOM and
+licence inventory also go *inside* the archive, so an instance found in a year's time can
+answer what it is running without reaching the internet. `workflow_dispatch` runs `tests` and
+`build` without publishing, which is how to exercise it before the tag exists.
 
 Publish the SHA-256 wherever the download is announced. `vendor/` ships, so "the file I
 downloaded is the file CI built" has to be a question with an answer.
