@@ -27,11 +27,15 @@ entry itself, not left to be inferred from it.
   job holding write and signing permissions, so a compromised test dependency could have edited
   `vendor/` or `src/` and the provenance attestation would have vouched for it. Tests and the
   build now run in read-only jobs; the job that attests and publishes only downloads the built
-  files and checks their checksum. Verification is unchanged (`gh attestation verify`).
+  files and checks them against the digest the build job reported. Verification is unchanged
+  (`gh attestation verify`).
 - **Files inside vendored packages are no longer stripped by the root's exclude list.** Entries
   such as `tools`, `build` or `.github` matched at every depth, so the same names inside a
   dependency were silently dropped from the archive. They are now matched at the root only. On
-  this release the visible difference is the dependencies' own `.gitignore` and `.gitattributes`.
+  this release the visible difference is a few files from the dependencies' own repositories: the
+  `.gitignore` and `.gitattributes` of `mcp/sdk` and `psr/*`, and the `.github/` directory of
+  `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
+  serve `index.php` only.
 
 ## [1.1.1] - 2026-10-05
 

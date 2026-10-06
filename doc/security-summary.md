@@ -55,6 +55,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 | | |
 |---|---|
 | **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| **Signed by** | a job of its own that runs none of this repository's code and none of its dependencies. The unit suite, which installs and executes the development dependencies, and the build, which installs the production ones, each run in a separate read-only job; the signing job only downloads the build's files, checks the zip against the digest the build job reported, and attests it |
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
 | **Authenticity** | a [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) signed by the workflow. Verify with `gh attestation verify altioo-mcp-<version>.zip --repo AltiooBV/altioo-mcp` |
