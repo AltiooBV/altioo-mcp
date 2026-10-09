@@ -396,9 +396,22 @@ outside the barrier on the reasoning above — that a recoverable secret is the 
 which is why a device or mailbox password is deliberately not matched. That reasoning covers a
 device password and does not cover a token this instance authenticates to a third party with,
 which a caller can replace with its own or read back through something else it wrote. They sit
-behind `mcp_allow_privilege_escalation` with the rest of the outbound machinery. The wider
-question — every class holding any recoverable secret — is deliberately still open, and the
-recoverable-type exclusion above still stands for the cases it was written for.
+behind `mcp_allow_privilege_escalation` with the rest of the outbound machinery.
+
+**Nor any other secret it would read back to log in with.** Naming the classes covers what iTop
+ships — in 3.2 every recoverable secret in its own datamodel sits on one of the classes above, a
+`RemoteApplicationConnection` or an `Action` — and does not cover what an extension adds: a
+mail-to-ticket mailbox stores its password in `AttributePassword` on a class nothing here names,
+and a caller replacing that password beside the login and the server points the instance's own
+mail collection at a server it chose. The rule is therefore on the attribute, not the class.
+Any value whose type is `AttributePassword` or `AttributeEncryptedString` (and so
+`AttributeEncryptedPassword`, which extends it) is refused by every write tool — set or cleared,
+on any class — unless `mcp_allow_privilege_escalation` is on, and the schema says so on the
+attribute before a write is tried. The rest of the object stays writable: the class-level reasoning
+above, that a mailbox or a device is ordinary object data, still holds for everything on it but
+the secret. This refuses more than the dangerous case, knowingly — a password kept on a CI for a
+person to read and nothing to use is refused the same way, because nothing in the datamodel tells
+the two apart. Set those in the console.
 
 That barrier is about writing them. **Reading them turned out to be half-open**, which is worth
 stating plainly because it was checked in response to this review rather than known. Masking on
@@ -544,6 +557,7 @@ reference.
 | Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |
 | Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
 | Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
+| Repointing a login the instance makes elsewhere — a mail-to-ticket mailbox's password, or any secret an extension stores to authenticate outward with | Any `AttributePassword` or `AttributeEncryptedString` value, on any class, is refused by every write tool unless the same setting is on; the rest of the object stays writable |
 | Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |

@@ -1141,6 +1141,13 @@ final class DatamodelReader
 			];
 		}
 
+		// Said here rather than only at write time: modify answers for the
+		// caller's profile, which this refusal does not consult.
+		$sSecretRefusal = SecretPolicy::RefusalGiven($oAttDef, $oAttDef->GetCode(), MCPHelper::AllowsPrivilegeEscalation());
+		if ($sSecretRefusal !== null) {
+			return ['writeHint' => $sSecretRefusal];
+		}
+
 		return [];
 	}
 

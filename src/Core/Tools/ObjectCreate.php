@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
@@ -190,6 +191,12 @@ class ObjectCreate extends AbstractMCPTool
 			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
 			if ($sBadFormula !== null) {
 				$aIssues[$sAttCode] = $sBadFormula;
+				continue;
+			}
+			// A secret the instance logs in to something else with. See SecretPolicy.
+			$sBadSecret = SecretPolicy::RefusalFor($class, $sAttCode, $value);
+			if ($sBadSecret !== null) {
+				$aIssues[$sAttCode] = $sBadSecret;
 				continue;
 			}
 

@@ -240,12 +240,11 @@ final class AccessGrants
 	 * makes Contact read-only by inference is worse than one that misses a
 	 * connection class a future branch adds.
 	 *
-	 * Not listed, and a deliberate gap: Oauth2Client, which
-	 * RemoteOauthConnection points at and which holds an outbound client
-	 * secret. Outbound secrets are stored in the recoverable attribute types
-	 * this module deliberately does not treat as credentials - see
-	 * CREDENTIAL_ATTRIBUTE - and widening that here would be a different
-	 * restriction wearing this one's name.
+	 * Oauth2Client and OAuthClient, which RemoteOauthConnection and the
+	 * mailbox side point at, are listed below by name. A secret on any other
+	 * class - one an extension adds - is not a reason to refuse the class:
+	 * SecretPolicy refuses the attribute holding it, and leaves the rest of
+	 * the object writable.
 	 */
 	private const AUTOMATION_ROOTS = [
 		'Trigger',
@@ -626,8 +625,9 @@ final class AccessGrants
 	 *
 	 * So the recoverable types are deliberately not matched. A datamodel
 	 * extension may legitimately keep a mailbox or device password on an
-	 * object, and refusing to write those would be an unrelated restriction
-	 * wearing this one's name. iTop's own addon/authentication category is
+	 * object, and refusing to write the whole object for it would be an
+	 * unrelated restriction wearing this one's name. The secret itself is
+	 * refused by SecretPolicy, one attribute at a time. iTop's own addon/authentication category is
 	 * left alone for the same reason: SynchroDataSource carries it, and a
 	 * synchro source is not a credential.
 	 *
