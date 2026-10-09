@@ -110,6 +110,10 @@
 /assets/img/screenshots
 /tools
 /build
+# review/ holds the persona list a review runs, and on a working copy the
+# findings beside it: how this repository is worked on, like AGENTS.md, with
+# nothing an installed copy has a use for.
+/review
 # The archive release.yml assembles and its checksum. Named after this
 # module's own extension code and version, neither of which this pattern
 # names, so it needs no edit if the module is ever renamed or this file

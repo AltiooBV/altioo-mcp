@@ -62,3 +62,12 @@ Neither this file nor `CLAUDE.md` is in the release archive, and neither is the 
 is kept out for two reasons, `exclude.txt` says which; these two for one of them only. They
 describe how this repository is worked on, and an administrator unpacking the archive in a
 maintenance window has no use for instructions addressed to whoever edits it.
+
+## 7. Agent skills
+
+Settings agent skills read here.
+
+- **Guide:** [`doc/itop-extension-guide.md`](doc/itop-extension-guide.md) — §1 above.
+- **Review:** [`review/review-personas.md`](review/review-personas.md) — the guide's passes plus
+  three this repository adds for the agent calling the endpoint and the people whose data it
+  reads. Findings go beside it and are gitignored; only the list is tracked.
