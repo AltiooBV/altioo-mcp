@@ -650,7 +650,9 @@ final class DatamodelReader
 				return $aRights + ['restricted' => sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass)];
 			}
 
-			if (!AccessGrants::IsBarred($sClass)) {
+			$bListed = AccessGrants::IsOperatorListed($sClass, MCPHelper::GetEscalationClasses());
+			$bBarred = AccessGrants::IsBarred($sClass);
+			if (!$bBarred && !$bListed) {
 				return $aRights + ['restricted' => null];
 			}
 
@@ -678,6 +680,27 @@ final class DatamodelReader
 			$aRights['restricted'] = sprintf(AccessGrants::RECORDING_REFUSAL, $sClass);
 
 			return $aRights;
+		}
+
+		// Listed by the operator: refused while the setting is off, as
+		// RefusalGiven() does, ahead of the built-in families. With it on, a
+		// class nothing else here knows is an ordinary write, and one that is
+		// also built in is graded below as it would be anyway.
+		if ($bListed) {
+			if (!$bEscalationAllowed) {
+				foreach ($aGates as $sGate) {
+					$aRights[$sGate] = 'no';
+				}
+
+				return $aRights + ['restricted' => sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, $sClass)];
+			}
+
+			if (!$bBarred) {
+				return $aRights + ['restricted' => sprintf(
+					'%s is listed in mcp_privilege_escalation_classes, and mcp_allow_privilege_escalation is on, so it may be written here.',
+					$sClass
+				)];
+			}
 		}
 
 		if ($bDetection && !$bGranting) {

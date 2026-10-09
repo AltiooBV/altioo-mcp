@@ -30,6 +30,18 @@ entry itself, not left to be inferred from it.
 - **A request with no credential is told so.** Its message spoke of a browser session even when
   no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
 
+### Added
+
+- **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
+  The built-in list names what iTop ships and cannot know an extension's class that stores work
+  something else carries out later — a scheduled mass update, a script runner — whose rows were
+  ordinary writes here while the job they stage runs from the cron with nobody's rights checked.
+  Listed classes, and their subclasses, are refused by every write tool unless
+  `mcp_allow_privilege_escalation` is on, and `core_class_schema` says so. It only adds refusals.
+  A value that is not a list of class names is logged and read as every class; a name the
+  datamodel does not have is logged at every request. Empty by default, so nothing changes until
+  it is set.
+
 ### Packaging
 
 - **The archive is signed by a job that runs none of this repository's code.** The release used

@@ -477,6 +477,20 @@ parent chain, and fails unless each is either behind a rule or named in that tes
 so a class added here without that decision being made fails at the moment it is added. That test
 is exactly what did not exist when `AltiooEventMCPService` was written.
 
+Neither reaches a class **another extension** adds, and that gap is the operator's to close,
+because only the operator knows what is installed. The case that matters is a class whose rows are
+work something else carries out later — a scheduled mass update storing "this query, this
+attribute, this value", a script runner. Writing a row of it is an ordinary write here, graded on
+the caller's rights over that class; the job it stages then runs from the cron with nobody's
+rights checked, and one row reading `SELECT PersonalToken` → `scope = MCP-write` is the token
+escalation the access barrier exists to stop, carried out one step removed. Nothing in a
+datamodel says "the cron executes this row" — a stored query is as often a saved search as a job
+— so no rule here guesses. `mcp_privilege_escalation_classes` is where an operator lists such
+classes (subclasses included): writing them is then refused like the built-in automation family,
+unless `mcp_allow_privilege_escalation` is on. **Before installing an extension that runs stored
+work, list its classes there**, or deny writing them to the profiles in `mcp_allowed_profiles` —
+the second does not hold for `Administrator`, which iTop lets write everything.
+
 **And it does not write another account's personal rows unless an operator says so.**
 `appUserPreferences` carries a `userid`, and iTop's own API for it — `GetPref()`/`SetPref()` —
 only ever touches the account it is called by; the console offers no way to edit someone else's.
@@ -557,6 +571,7 @@ reference.
 | Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |
 | Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
 | Stealing or replacing the tokens the instance uses against third parties | `Oauth2Client`, its subclasses and `OAuthClient` are behind the same setting |
+| An assistant staging work an extension's job carries out later — a scheduled mass update or script runner row whose query reaches classes the barrier protects, run by the cron with no rights checked | Nothing built in, since no datamodel says which classes the cron executes: the operator lists them in `mcp_privilege_escalation_classes`, and writing them is then refused unless `mcp_allow_privilege_escalation` is on |
 | Repointing a login the instance makes elsewhere — a mail-to-ticket mailbox's password, or any secret an extension stores to authenticate outward with | Any `AttributePassword` or `AttributeEncryptedString` value, on any class, is refused by every write tool unless the same setting is on; the rest of the object stays writable |
 | Disabling the checks that would flag a mess to a human | `AuditRule`, `AuditCategory`, `AuditDomain`, same setting |
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
