@@ -70,7 +70,7 @@ findings MUST say so explicitly; silence is not a result.
 | 4 | **Upgrading client** | What silently loses data or configuration when an old install jumps to this version? | §9.7, §3.4 | **Yes** |
 | 5 | **Installing client / operator** | Can an admin who did not write this install, run, diagnose and remove it from the docs alone? | §9.1–9.6, §8 | Yes for delivery |
 | 6 | **Auditor** | Can the module be approved without reading its code? | §9.8, §6.10, §10.3 | Yes for public/regulated |
-| 7 | **Downstream / competitor** | Is the licence coherent, and does anything force a fork instead of an extension? | §10, §11 | No — backlog |
+| 7 | **Downstream / competitor** | Is the licence coherent, does anything force a fork instead of an extension — and does Combodo or another vendor already sell what this does, or have it on a roadmap? | §10, §11 | No — backlog |
 | 8 | **Blue team** | For every finding above, and for the attack nobody found: would the operator notice it, could they stop it, and could they recover? | §9.6, §9.8, §6.7, §6.10, §12.4 | **Yes** when an incident would go unnoticed, could not be stopped, or could not be undone; otherwise backlog |
 | 9 | **Maintainer** | Is this still shippable in two years, across branches nobody has released yet? | §12, §1 | No — backlog |
 
@@ -95,7 +95,11 @@ findings MUST say so explicitly; silence is not a result.
 6. **Auditor.** Check the artifacts exist and are current (§9.8 table), and that non-interactive
    writes set the change origin.
 7. **Downstream / competitor.** Check the three licence declarations agree, bundled dependency
-   licences, `@api` surface and semver, and hard-coded client-specific values.
+   licences, `@api` surface and semver, and hard-coded client-specific values. Then look at the
+   market: Combodo's own modules and roadmap, iTop Hub listings, and partners' catalogues, for an
+   extension doing the same thing — sold or free. Say what this one does that it does not, or what
+   happens to users of this one the day iTop ships it natively. Cite each source and the date you
+   looked: a catalogue changes faster than this guide.
 8. **Blue team.** Take each finding from passes 1–7 in turn and answer four questions, each with a
    file, setting or log/audit record as evidence: **prevented** — which control stops it; **detected**
    — which log entry, audit row or change-history record would show it, and does that record name
