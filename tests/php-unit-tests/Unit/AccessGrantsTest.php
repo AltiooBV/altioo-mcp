@@ -257,7 +257,8 @@ class AccessGrantsTest extends TestCase
 	 * client secret and webhook auth_pwd both do. Those are ordinary object
 	 * data - a mailbox password on a mailbox, a login on a CI - and a barrier
 	 * that swallowed them would be refusing writes that have nothing to do
-	 * with who may call this endpoint.
+	 * with who may call this endpoint. The secret attribute itself is
+	 * SecretPolicy's, and SecretPolicyTest pins it.
 	 */
 	public function testTheRecoverableSecretTypesAreDeliberatelyNotMatched(): void
 	{
