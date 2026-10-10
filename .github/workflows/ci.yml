@@ -326,6 +326,25 @@ jobs:
           composer install --no-interaction --no-progress
           composer test
 
+  # The guide and the branch notes are the same text in every extension made
+  # from the template, each repository holding its own copy. On a pull request
+  # a difference is a warning - the copy here may well be the newer one; on the
+  # weekly run it fails, so a drift nobody resolved does not stay quiet. Not
+  # run in the template itself, which is what the copies are compared with.
+  shared-docs:
+    name: Shared documents match the template
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare with the template
+        env:
+          SHARED_DOCS_STRICT: ${{ github.event_name == 'schedule' }}
+        run: tools/ci/shared-docs-check.sh
+
   package:
     name: Release archive builds
     runs-on: ubuntu-latest
