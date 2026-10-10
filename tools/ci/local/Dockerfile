@@ -14,7 +14,9 @@
 # tools/ci/local/run.sh builds it for you; this file is here to be read and
 # edited when a version stops installing.
 ARG PHP_VERSION=8.2
-FROM php:${PHP_VERSION}-cli
+# Docker Hub's official image, through Amazon ECR Public like the workflows'
+# MariaDB: no anonymous pull quota to run out of.
+FROM public.ecr.aws/docker/library/php:${PHP_VERSION}-cli
 
 # The extension list is the one both workflows pass to setup-php, plus what the
 # setup itself needs from the machine:

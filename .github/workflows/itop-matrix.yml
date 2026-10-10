@@ -161,8 +161,13 @@ jobs:
       mariadb:
         # What iTop is developed against and what most instances run. The
         # version is pinned: a database that changes under us would turn every
-        # job red at once with a cause nobody would look for here.
-        image: mariadb:10.11
+        # job red at once with a cause nobody would look for here. Docker Hub's
+        # official image, pulled through Amazon ECR Public: Docker Hub allows
+        # 100 anonymous pulls per 6 hours per IP, and the IPs are shared with
+        # every other workflow on GitHub's runners, so the pull failed for
+        # reasons that had nothing to do with us. ECR Public throttles to one
+        # pull a second, which the runner's own retry absorbs.
+        image: public.ecr.aws/docker/library/mariadb:10.11
         env:
           MARIADB_ROOT_PASSWORD: itop
         ports:
