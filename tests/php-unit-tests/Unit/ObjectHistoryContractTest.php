@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use PHPUnit\Framework\TestCase;
@@ -259,6 +260,11 @@ class ObjectHistoryContractTest extends TestCase
 	 * tool added to any of them later is covered by this test on the day it is
 	 * registered rather than on the day someone remembers.
 	 *
+	 * Resource templates count as much as tools: a {class} in a URI is a class
+	 * argument by another name. The scan once covered tools only, and the
+	 * document template served CMDBChangeOpSetAttributeBlob.prevdata - every
+	 * replaced file on the instance, by id - beside a tool refusing it.
+	 *
 	 * @dataProvider objectFacingToolProvider
 	 */
 	public function testNoObjectToolWillTouchTheChangeLog(string $sName, string $sClass): void
@@ -271,9 +277,11 @@ class ObjectHistoryContractTest extends TestCase
 	}
 
 	/**
-	 * Every registered tool whose toolset is about objects, their documents or
-	 * their relations. The datamodel and server toolsets describe rather than
-	 * fetch, and the history toolset is the surface itself.
+	 * Every registered tool and resource template whose toolset is about
+	 * objects, their documents or their relations. The datamodel and server
+	 * toolsets describe rather than fetch, and the history toolset is the
+	 * surface itself. Fixed resources take no class, so there is nothing for
+	 * them to ask.
 	 *
 	 * @return array<string, array{0: string, 1: string}>
 	 */
@@ -282,17 +290,38 @@ class ObjectHistoryContractTest extends TestCase
 		MCPRegistry::Clear();
 		CoreExtensions::RegisterServiceProvider();
 
-		$aCases = [];
+		$aToolsets = ['objects', 'documents', 'relations'];
+		$aTools = [];
 		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
-			if (in_array($oTool->getToolset(), ['objects', 'documents', 'relations'], true)) {
-				$aCases[$sName] = [$sName, get_class($oTool)];
+			if (in_array($oTool->getToolset(), $aToolsets, true)) {
+				$aTools[$sName] = [$sName, get_class($oTool)];
+			}
+		}
+		$aTemplates = [];
+		foreach (MCPRegistry::GetResourceTemplates() as $sUriTemplate => $oTemplate) {
+			if (in_array($oTemplate->getToolset(), $aToolsets, true)) {
+				$aTemplates[$sUriTemplate] = [$sUriTemplate, get_class($oTemplate)];
 			}
 		}
 		MCPRegistry::Clear();
 
-		self::assertNotEmpty($aCases, 'no object-facing tool was found; the scan has stopped working');
+		self::assertNotEmpty($aTools, 'no object-facing tool was found; the scan has stopped working');
+		self::assertNotEmpty($aTemplates, 'no object-facing resource template was found; the scan has stopped reading them');
 
-		return $aCases;
+		return $aTools + $aTemplates;
+	}
+
+	/**
+	 * And beneath the doors, the one place every document read goes through,
+	 * so that a door added later without the check still refuses.
+	 */
+	public function testEveryDocumentReadRefusesTheChangeLog(): void
+	{
+		$this->assertStringContainsString(
+			'IsReserved',
+			$this->bodyOf(DocumentAccess::class, 'Fetch'),
+			'DocumentAccess::Fetch() reads a blob without asking whether its class is the change log'
+		);
 	}
 
 	/** Reserved roots cover their subclasses, which is what a list would not. */
