@@ -38,6 +38,7 @@ Rejected: mirroring the portal, where search follows the scopes and bricks only 
 describe offers. It is never wider than the portal, but it is wider than what the operator
 believes they configured.
 
-Enforced by: not yet machine-checkable, because portal mode serves no tool yet. The step that
-adds search by class adds a test refusing a class that no granted brick reaches, while the user
-holds a read scope on it.
+Enforced by: `PortalPolicyTest::testAClassWithAReadScopeThatNoBrickReachesIsNotOffered`
+(integration suite), on describe since 1.2.0: in the stock portal the user's own organisation
+has a read scope and no brick, and is neither listed nor described. The step that adds search
+by class extends it to search.
