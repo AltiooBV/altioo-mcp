@@ -232,7 +232,9 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	 * Both conditions, because they answer different things
 	 * (doc/adr/0001-portal-mode-bricks-bound-discovery.md): a class with a
 	 * read scope that no brick offers is absent, and so is a class a brick
-	 * reaches that the scopes refuse - in the stock portal, an Incident.
+	 * reaches that the scopes refuse - in the stock portal, a Change or a
+	 * Problem, which the Ticket scope pins out by finalclass. Those are the
+	 * agents' classes, and an end user never sees one in the portal.
 	 *
 	 * @return array<int, string>
 	 */
@@ -245,7 +247,8 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			}
 
 			foreach (MetaModel::EnumChildClasses($sRoot, ENUM_CHILD_CLASSES_ALL) as $sClass) {
-				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass) && $oPolicy->ReadSet($sClass) !== null) {
+				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass)
+					&& $oPolicy->ReachedBy($sClass) !== [] && $oPolicy->ReadSet($sClass) !== null) {
 					$aClasses[$sClass] = true;
 				}
 			}

@@ -76,6 +76,7 @@ final class PortalPolicy
 	 * @param object                                  $oLifecycle LifecycleValidatorHelper.
 	 * @param array<string, array<string, mixed>>     $aForms     The portal's forms, by class then mode.
 	 * @param array<string, array<int, string>>       $aReach     Class => ids of the granted bricks reaching it.
+	 * @param array<string, array<string, array<int, DBSearch|null>>> $aBrickSets Class => brick id => the brick's own queries on it, null where it names the class outright.
 	 * @param array<int, array<string, mixed>>        $aLists     The granted bricks' named lists.
 	 * @param array<int, array<string, mixed>>        $aCreates   The granted bricks' create actions.
 	 * @param array<int, string>                      $aProfiles  The user's profiles, as the scopes are keyed.
@@ -86,6 +87,7 @@ final class PortalPolicy
 		private readonly object $oLifecycle,
 		private readonly array $aForms,
 		private readonly array $aReach,
+		private readonly array $aBrickSets,
 		private readonly array $aLists,
 		private readonly array $aCreates,
 		private readonly array $aProfiles,
@@ -130,6 +132,13 @@ final class PortalPolicy
 	 * portal's AddScopeToQuery(): that one leaves a query on a class with no
 	 * scope unfiltered and reports it in a boolean, which a caller that forgets
 	 * to look at turns into "every object".
+	 *
+	 * Null too when the scope can never hold an object of the class. A child
+	 * class inherits its parent's scope, and a portal author keeps end users
+	 * out of a subclass by pinning finalclass in it - the stock Ticket scope
+	 * allows only UserRequest and Incident, which leaves Change and Problem a
+	 * scope that matches nothing. The portal shows them nothing, and so does
+	 * this: such a class is not one the user can see.
 	 */
 	public function ReadSet(string $sClass): ?DBSearch
 	{
@@ -137,7 +146,12 @@ final class PortalPolicy
 			return null;
 		}
 
-		return $this->oScopes->GetScopeFilterForProfiles($this->aProfiles, $sClass, UR_ACTION_READ);
+		$oScope = $this->oScopes->GetScopeFilterForProfiles($this->aProfiles, $sClass, UR_ACTION_READ);
+		if ($oScope === null || !self::canHoldAnyOf($oScope, self::concreteClasses($sClass))) {
+			return null;
+		}
+
+		return $oScope;
 	}
 
 	/**
@@ -172,6 +186,10 @@ final class PortalPolicy
 	 * The ids of the granted bricks that reach a class, through itself or a
 	 * parent. Empty means no brick offers it, and it is not offered here.
 	 *
+	 * A brick on a parent reaches the class only if its own query can hold
+	 * one: the stock "ongoing tickets" brick pins finalclass to UserRequest
+	 * and Incident, so it is not a way to a Change.
+	 *
 	 * @return array<int, string>
 	 */
 	public function ReachedBy(string $sClass): array
@@ -180,7 +198,23 @@ final class PortalPolicy
 			return [];
 		}
 
-		return self::BricksReaching($this->aReach, MetaModel::EnumParentClasses($sClass, ENUM_PARENT_CLASSES_ALL));
+		$aConcrete = self::concreteClasses($sClass);
+		$aLineage = MetaModel::EnumParentClasses($sClass, ENUM_PARENT_CLASSES_ALL);
+
+		return array_values(array_filter(
+			self::BricksReaching($this->aReach, $aLineage),
+			function (string $sBrick) use ($aLineage, $aConcrete): bool {
+				foreach ($aLineage as $sReached) {
+					foreach ($this->aBrickSets[$sReached][$sBrick] ?? [] as $oSet) {
+						if ($oSet === null || self::canHoldAnyOf($oSet, $aConcrete)) {
+							return true;
+						}
+					}
+				}
+
+				return false;
+			}
+		));
 	}
 
 	/**
@@ -372,6 +406,25 @@ final class PortalPolicy
 	}
 
 	/**
+	 * Whether a query bounded by these finalclass conditions can return an
+	 * object of any of these classes.
+	 *
+	 * @param array<int, string>|null $aAllowed  The classes finalclass is pinned to, or null when it is not.
+	 * @param array<int, string>      $aDenied   The classes finalclass is told to differ from.
+	 * @param array<int, string>      $aConcrete The concrete classes an object of the class asked about can be.
+	 */
+	public static function CanHold(?array $aAllowed, array $aDenied, array $aConcrete): bool
+	{
+		foreach ($aConcrete as $sClass) {
+			if (($aAllowed === null || in_array($sClass, $aAllowed, true)) && !in_array($sClass, $aDenied, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Reads a portal's configuration and the bricks granted to the current user.
 	 *
 	 * @throws MCPPortalException
@@ -422,7 +475,7 @@ final class PortalPolicy
 			(new Lists($oDesign))->Process($oContainer);
 			$aConf = $oContainer->getParameter('combodo.portal.instance.conf');
 
-			[$aReach, $aLists, $aCreates] = self::granted($oBricks->GetBricks() ?? []);
+			[$aReach, $aBrickSets, $aLists, $aCreates] = self::granted($oBricks->GetBricks() ?? []);
 		} catch (\Throwable $oException) {
 			throw new MCPPortalException(MCPHelper::OpaqueFailure(sprintf("Could not read portal '%s'", $sPortal), $oException), 0, $oException);
 		}
@@ -433,6 +486,7 @@ final class PortalPolicy
 			$oLifecycle,
 			is_array($aConf['forms'] ?? null) ? $aConf['forms'] : [],
 			$aReach,
+			$aBrickSets,
 			$aLists,
 			$aCreates,
 			array_values(array_map('strval', UserRights::ListProfiles()))
@@ -453,11 +507,12 @@ final class PortalPolicy
 	 *
 	 * @param iterable<int, object> $aBricks
 	 *
-	 * @return array{0: array<string, array<int, string>>, 1: array<int, array<string, mixed>>, 2: array<int, array<string, mixed>>}
+	 * @return array{0: array<string, array<int, string>>, 1: array<string, array<string, array<int, DBSearch|null>>>, 2: array<int, array<string, mixed>>, 3: array<int, array<string, mixed>>}
 	 */
 	private static function granted(iterable $aBricks): array
 	{
 		$aReach = [];
+		$aBrickSets = [];
 		$aLists = [];
 		$aCreates = [];
 
@@ -465,8 +520,10 @@ final class PortalPolicy
 			$sBrick = (string)$oBrick->GetId();
 
 			if ($oBrick instanceof ManageBrick) {
-				$sClass = DBSearch::FromOQL($oBrick->GetOql())->GetClass();
+				$oSet = DBSearch::FromOQL($oBrick->GetOql());
+				$sClass = $oSet->GetClass();
 				$aReach[$sClass][] = $sBrick;
+				$aBrickSets[$sClass][$sBrick][] = $oSet;
 
 				$aGrouping = $oBrick->GetGrouping();
 				$aTabs = [];
@@ -484,10 +541,11 @@ final class PortalPolicy
 					'grouped_by' => $aGrouping['areas']['attribute'] ?? null,
 				];
 			} elseif ($oBrick instanceof BrowseBrick) {
-				self::levels($sBrick, \Dict::S((string)$oBrick->GetTitle()), $oBrick->GetLevels(), [], $aReach, $aLists, $aCreates);
+				self::levels($sBrick, \Dict::S((string)$oBrick->GetTitle()), $oBrick->GetLevels(), [], $aReach, $aBrickSets, $aLists, $aCreates);
 			} elseif ($oBrick instanceof CreateBrick) {
 				$sClass = (string)$oBrick->GetClass();
 				$aReach[$sClass][] = $sBrick;
+				$aBrickSets[$sClass][$sBrick][] = null;
 				$aCreates[] = [
 					'action' => $sBrick,
 					'class'  => $sClass,
@@ -498,7 +556,7 @@ final class PortalPolicy
 			}
 		}
 
-		return [$aReach, $aLists, $aCreates];
+		return [$aReach, $aBrickSets, $aLists, $aCreates];
 	}
 
 	/**
@@ -507,14 +565,17 @@ final class PortalPolicy
 	 * @param array<int, array<string, mixed>>        $aLevels
 	 * @param array<int, string>                      $aPath   The level ids above this one.
 	 * @param array<string, array<int, string>>       $aReach
+	 * @param array<string, array<string, array<int, DBSearch|null>>> $aBrickSets
 	 * @param array<int, array<string, mixed>>        $aLists
 	 * @param array<int, array<string, mixed>>        $aCreates
 	 */
-	private static function levels(string $sBrick, string $sTitle, array $aLevels, array $aPath, array &$aReach, array &$aLists, array &$aCreates): void
+	private static function levels(string $sBrick, string $sTitle, array $aLevels, array $aPath, array &$aReach, array &$aBrickSets, array &$aLists, array &$aCreates): void
 	{
 		foreach ($aLevels as $aLevel) {
-			$sClass = DBSearch::FromOQL((string)$aLevel['oql'])->GetClass();
+			$oSet = DBSearch::FromOQL((string)$aLevel['oql']);
+			$sClass = $oSet->GetClass();
 			$aReach[$sClass][] = $sBrick;
+			$aBrickSets[$sClass][$sBrick][] = $oSet;
 
 			$aLevelPath = array_merge($aPath, [(string)$aLevel['id']]);
 			$sList = $sBrick.'/'.implode('/', $aLevelPath);
@@ -534,6 +595,8 @@ final class PortalPolicy
 
 				$sCreated = (string)$aAction['factory']['value'];
 				$aReach[$sCreated][] = $sBrick;
+				// Created by name: nothing narrows which class it is.
+				$aBrickSets[$sCreated][$sBrick][] = null;
 				$aCreates[] = [
 					'action' => $sList.'/'.$sAction,
 					'class'  => $sCreated,
@@ -543,8 +606,121 @@ final class PortalPolicy
 				];
 			}
 
-			self::levels($sBrick, $sTitle, $aLevel['levels'] ?? [], $aLevelPath, $aReach, $aLists, $aCreates);
+			self::levels($sBrick, $sTitle, $aLevel['levels'] ?? [], $aLevelPath, $aReach, $aBrickSets, $aLists, $aCreates);
 		}
+	}
+
+	/**
+	 * The concrete classes an object of a class can be: itself and its
+	 * subclasses, abstract ones left out.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function concreteClasses(string $sClass): array
+	{
+		return array_values(array_filter(
+			MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL),
+			static fn (string $sChild): bool => !MetaModel::IsAbstract($sChild)
+		));
+	}
+
+	/**
+	 * Whether a query can return an object of any of these classes, as far
+	 * as its finalclass conditions say.
+	 *
+	 * Read from the top-level AND of each query only, and only where the
+	 * condition is the selected alias's finalclass against literal values.
+	 * Anything else - a parameter, an OR, a condition written the other way
+	 * round - is no conclusion, and the answer stays yes: this can only ever
+	 * take a class away, never offer one.
+	 *
+	 * Typed object rather than DBSearch: the static analysis runs without
+	 * iTop, and cannot know that the two kinds of search below are DBSearches.
+	 *
+	 * @param object             $oSearch   A DBSearch.
+	 * @param array<int, string> $aConcrete
+	 */
+	private static function canHoldAnyOf(object $oSearch, array $aConcrete): bool
+	{
+		if ($oSearch instanceof \DBUnionSearch) {
+			foreach ($oSearch->GetSearches() as $oMember) {
+				if (self::canHoldAnyOf($oMember, $aConcrete)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		if (!$oSearch instanceof \DBObjectSearch) {
+			return true;
+		}
+
+		$aAllowed = null;
+		$aDenied = [];
+		foreach (self::conjuncts($oSearch->GetCriteria()) as $oCondition) {
+			if (!$oCondition instanceof \BinaryExpression) {
+				continue;
+			}
+
+			$oField = $oCondition->GetLeftExpr();
+			if (!$oField instanceof \FieldExpression || $oField->GetName() !== 'finalclass' || $oField->GetParent() !== $oSearch->GetClassAlias()) {
+				continue;
+			}
+
+			$aValues = self::literals($oCondition->GetRightExpr());
+			if ($aValues === null) {
+				continue;
+			}
+
+			switch (strtoupper((string)$oCondition->GetOperator())) {
+				case '=':
+				case 'IN':
+					$aAllowed = $aAllowed === null ? $aValues : array_values(array_intersect($aAllowed, $aValues));
+					break;
+				case '!=':
+				case 'NOT IN':
+					$aDenied = array_merge($aDenied, $aValues);
+					break;
+			}
+		}
+
+		return self::CanHold($aAllowed, $aDenied, $aConcrete);
+	}
+
+	/**
+	 * The terms of an expression's top-level AND, or the expression itself.
+	 *
+	 * @return array<int, object>
+	 */
+	private static function conjuncts(object $oExpression): array
+	{
+		if ($oExpression instanceof \BinaryExpression && strtoupper((string)$oExpression->GetOperator()) === 'AND') {
+			return array_merge(self::conjuncts($oExpression->GetLeftExpr()), self::conjuncts($oExpression->GetRightExpr()));
+		}
+
+		return [$oExpression];
+	}
+
+	/**
+	 * The literal values of a scalar or a list of scalars, or null for
+	 * anything else.
+	 *
+	 * @return array<int, string>|null
+	 */
+	private static function literals(object $oExpression): ?array
+	{
+		$aItems = $oExpression instanceof \ListExpression ? $oExpression->GetItems() : [$oExpression];
+
+		$aValues = [];
+		foreach ($aItems as $oItem) {
+			if (!$oItem instanceof \ScalarExpression) {
+				return null;
+			}
+			$aValues[] = (string)$oItem->GetValue();
+		}
+
+		return $aValues;
 	}
 
 	/**
