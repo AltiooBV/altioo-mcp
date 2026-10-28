@@ -87,18 +87,22 @@ entry itself, not left to be inferred from it.
   the console, or the operator turns that setting on, which lifts the outbound class barriers too.
   SECURITY.md has the reasoning; this closes the question it had left open.
 
-- **Old versions of documents could be read through the document resource.** iTop keeps the
-  replaced contents of a file in the change log, as `CMDBChangeOpSetAttributeBlob.prevdata`.
-  `core_object_get_document` refused that class with the rest of the change log; the
-  `itop://core/document/{class}/{id}/{att_code}` template, which reads the same documents, did
-  not. Change-log rows carry no organisation and no attribute right of their own, and iTop's
-  stock profiles grant read on them through `*`, Portal user included — so any account served
-  the `documents` toolset, which is on by default, could walk the ids and read the earlier
-  version of any file replaced on any object, outside its silo and past an attribute right
-  refused to it today. Affects 1.0.0 to 1.1.1. The template now refuses it as the tool does, and
-  `DocumentAccess::Fetch()`, which both go through, refuses it again beneath them. Clients
-  reading documents of ordinary objects are unaffected. Until an instance is upgraded, leaving
-  `documents` out of `mcp_enabled_toolsets` closes it.
+- **Old versions of documents could be read through the document resource, by an account
+  granted the change log.** iTop keeps the replaced contents of a file in the change log, as
+  `CMDBChangeOpSetAttributeBlob.prevdata`. `core_object_get_document` refused that class with
+  the rest of the change log; the `itop://core/document/{class}/{id}/{att_code}` template, which
+  reads the same documents, did not. Change-log rows carry no organisation and no attribute right
+  of their own, so an account allowed to read `CMDBChangeOp` and served the `documents` toolset,
+  which is on by default, could walk the ids and read the earlier version of any file replaced on
+  any object, outside its silo and past an attribute right refused to it today. Among iTop's
+  stock profiles only Administrator holds that read, and it gains nothing by it: `*` covers
+  `bizmodel` classes only, the change log is `grant_by_profile`, and SuperUser's grant on it is
+  bulk read, which this read does not consult — so Portal user and the other stock profiles were
+  never exposed. An instance with a custom profile granting read on `CMDBChangeOp` was. Affects
+  1.0.0 to 1.1.1. The template now refuses it as the tool does, and `DocumentAccess::Fetch()`,
+  which both go through, refuses it again beneath them. Clients reading documents of ordinary
+  objects are unaffected. Until an instance is upgraded, leaving `documents` out of
+  `mcp_enabled_toolsets`, or the read out of the custom profile, closes it.
 
 ## [1.1.1] - 2026-10-05
 
