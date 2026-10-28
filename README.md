@@ -554,7 +554,10 @@ tells the client what this user's portal offers:
 
 - the classes a brick granted to the user reaches — a class with a read scope that no brick
   offers is left out, as is one a brick offers that the scopes refuse
-  ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md));
+  ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md)). So is a subclass the
+  portal pins out by `finalclass`: the stock Ticket scope allows only `UserRequest` and
+  `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered, as the portal
+  never shows them;
 - for each, whether the scopes let the user read and change objects of it, the create actions
   that make one, and the stimuli the portal's lifecycle allows;
 - the fields the portal's forms show for viewing, editing and creating one, read-only and

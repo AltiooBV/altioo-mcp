@@ -79,7 +79,9 @@ entry itself, not left to be inferred from it.
   actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
   is read with the portal's own code — its brick collection, scope and lifecycle helpers and form
   merge — so a customised portal is described as customised, and it reads no object. A class
-  with a read scope that no granted brick reaches is not offered (doc/adr/0001). A form field
+  with a read scope that no granted brick reaches is not offered (doc/adr/0001), nor is a subclass
+  whose inherited scope pins `finalclass` to other classes — in the stock portal, `Change` and
+  `Problem`, which an end user never sees there. A form field
   marked `read_only` in `<fields>` is reported read-only, although iTop's portal shows it
   writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
   cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
