@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalTestBrick;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -162,6 +163,15 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 
 		$this->assertContains('UserRequest', $aOffered, 'the class the scope does allow is still offered');
 		$this->assertContains('ongoing-tickets-for-portal-user', $oPolicy->ReachedBy('UserRequest'));
+	}
+
+	/**
+	 * A custom brick class extending a stock type is read as that type
+	 * (doc/adr/0002): it declares its data the way its parent does.
+	 */
+	public function testACustomBrickClassIsReadAsTheStockTypeItExtends(): void
+	{
+		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind(PortalTestBrick::class));
 	}
 
 	/** A class the portal never mentions is refused like an unknown one. */

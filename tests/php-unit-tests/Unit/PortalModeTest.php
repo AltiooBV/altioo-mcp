@@ -238,6 +238,23 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * iTop's own three data bricks are read, by name, so this holds without
+	 * the portal module loaded; a class that is none of them, nor a subclass
+	 * of one, reaches nothing (doc/adr/0002). A subclass read as its parent
+	 * is held by the integration suite, where the parent exists.
+	 */
+	public function testTheStockBrickTypesAreReadAndNothingElse(): void
+	{
+		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\ManageBrick'));
+		$this->assertSame(PortalPolicy::BRICK_BROWSE, PortalPolicy::BrickKind('\\Combodo\\iTop\\Portal\\Brick\\BrowseBrick'));
+		$this->assertSame(PortalPolicy::BRICK_CREATE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\CreateBrick'));
+
+		$this->assertNull(PortalPolicy::BrickKind('Acme\\Portal\\Brick\\MyTicketsBrick'), 'a class that extends none of them');
+		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\FilterBrick'), 'a brick that holds no data of its own');
+		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\UserProfileBrick'));
+	}
+
+	/**
 	 * A child class inherits its parent's scope, and a portal keeps end users
 	 * out of the agents' subclasses by pinning finalclass in it: the stock
 	 * Ticket scope allows UserRequest and Incident, so a Change can never be
