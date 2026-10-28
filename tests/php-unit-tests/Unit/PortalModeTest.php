@@ -9,14 +9,17 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -30,8 +33,8 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * "Portal user" reads every bizmodel class through UserRights, so the whole
  * of what keeps a portal user to their portal is that nothing written for the
- * console is served to them. Until an element enforces the portal's rules
- * itself, portal mode serves nothing, and these tests hold it there.
+ * console is served to them. Only this module's elements that enforce the
+ * portal's rules themselves are, and these tests hold it there.
  */
 class PortalModeTest extends TestCase
 {
@@ -40,10 +43,13 @@ class PortalModeTest extends TestCase
 		PortalMode::Forget();
 	}
 
-	private function isHidden(object $oElement, string $sIdentifier): bool
+	/**
+	 * @param array<int, string> $aDisabled
+	 */
+	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null): bool
 	{
 		return (new ReflectionMethod(MCPService::class, 'isHidden'))
-			->invoke(null, $sIdentifier, $oElement, [], AccessPolicy::Unrestricted());
+			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted());
 	}
 
 	/**
@@ -107,10 +113,10 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * Every kind of element, under the widest policy there is: nothing is
-	 * served in portal mode, because nothing yet enforces the portal's rules.
+	 * Every kind of element, under the widest policy there is: none written
+	 * for the console is served in portal mode.
 	 */
-	public function testNothingIsServedInPortalMode(): void
+	public function testNoConsoleElementIsServedInPortalMode(): void
 	{
 		$aElements = [
 			'test_fixture_tool'            => new FixtureTool(),
@@ -131,6 +137,107 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * The one tool written for the portal is served there, and only there: a
+	 * console user has the schema tools, and an answer about a portal they
+	 * are not in would describe someone else's rights.
+	 */
+	public function testThePortalDescriptionIsServedInPortalModeOnly(): void
+	{
+		$oDescribe = new PortalDescribe();
+
+		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe'), 'not to a console user');
+
+		PortalMode::Remember('itop-portal');
+
+		$this->assertFalse($this->isHidden($oDescribe, 'core_portal_describe'), 'to a portal user');
+	}
+
+	/**
+	 * A pack cannot declare itself portal-aware yet. PortalPolicy is not on
+	 * the surface it may build on, so the declaration would be a console tool
+	 * reaching the portal - the one thing portal mode exists to prevent.
+	 */
+	public function testAPackElementDeclaringItselfPortalAwareIsNotServed(): void
+	{
+		PortalMode::Remember('itop-portal');
+
+		$this->assertFalse(PortalMode::Serves(new PortalAwarePackTool()));
+		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
+		$this->assertTrue(PortalMode::Serves(new PortalDescribe()));
+	}
+
+	/**
+	 * Portal mode widens nothing: what the operator turned off and what the
+	 * token's scopes leave out stay off for a portal user too.
+	 */
+	public function testTheUsualFiltersStillNarrowWhatPortalModeServes(): void
+	{
+		PortalMode::Remember('itop-portal');
+		$oDescribe = new PortalDescribe();
+
+		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe', ['core_portal_describe']), 'by identifier');
+		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe', [PortalDescribe::class]), 'by class');
+		$this->assertTrue(
+			$this->isHidden($oDescribe, 'core_portal_describe', [], AccessPolicy::Of([], ['objects'])),
+			'by a toolset list that leaves its toolset out'
+		);
+		$this->assertTrue(
+			$this->isHidden($oDescribe, 'core_portal_describe', [], AccessPolicy::Nothing()),
+			'by a policy serving nothing'
+		);
+	}
+
+	/**
+	 * iTop stores a form field's read_only as "readonly" and reads it back
+	 * as "read_only", so the portal shows the field writable. The operator
+	 * wrote read-only, and that is the narrower reading.
+	 */
+	public function testAFormFieldWrittenReadOnlyIsReadOnly(): void
+	{
+		$aForm = PortalPolicy::WithReadOnlyHonoured([
+			'type'   => 'custom_list',
+			'fields' => [
+				'title'       => ['readonly' => true],
+				'description' => ['readonly' => false],
+				'impact'      => [],
+			],
+		]);
+
+		$this->assertTrue($aForm['fields']['title']['read_only']);
+		$this->assertArrayNotHasKey('read_only', $aForm['fields']['description']);
+		$this->assertArrayNotHasKey('read_only', $aForm['fields']['impact']);
+	}
+
+	/** A zlist form has no field options to honour, and is left as it is. */
+	public function testAZlistFormIsLeftAlone(): void
+	{
+		$aForm = ['type' => 'zlist', 'fields' => 'details'];
+
+		$this->assertSame($aForm, PortalPolicy::WithReadOnlyHonoured($aForm));
+	}
+
+	/**
+	 * A brick on a class reaches its subclasses, and a class no brick reaches
+	 * is not offered - whatever scope the user holds on it
+	 * (doc/adr/0001-portal-mode-bricks-bound-discovery.md).
+	 */
+	public function testABrickReachesItsClassAndItsSubclassesOnly(): void
+	{
+		$aReach = [
+			'Ticket'             => ['ongoing-tickets', 'all-tickets'],
+			'ServiceSubcategory' => ['services'],
+			'UserRequest'        => ['services'],
+		];
+
+		$this->assertSame(
+			['ongoing-tickets', 'all-tickets', 'services'],
+			PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Ticket', 'UserRequest'])
+		);
+		$this->assertSame(['ongoing-tickets', 'all-tickets'], PortalPolicy::BricksReaching($aReach, ['Ticket', 'Incident']));
+		$this->assertSame([], PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
+	}
+
+	/**
 	 * The console's instructions describe the console's tools, and a pack's
 	 * describe its own. Neither is served here.
 	 */
@@ -143,6 +250,7 @@ class PortalModeTest extends TestCase
 		$this->assertSame(ServerInstructions::PortalText('partner-portal'), $sText);
 		$this->assertStringContainsString('"partner-portal"', $sText);
 		$this->assertStringNotContainsString('OQL', $sText);
+		$this->assertStringContainsString('core_portal_describe', $sText);
 	}
 
 	/**
