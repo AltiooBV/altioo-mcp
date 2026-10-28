@@ -363,10 +363,14 @@ TEXT;
 
 	private const PORTAL_MODE = <<<'TEXT'
 This server is an iTop instance, and this connection belongs to a user of its portal
-"%s" rather than of its console. It is served in portal mode, and this version of the
-server serves no tool, resource or prompt in that mode yet. Nothing you could ask here
-would be answered: tell the user that their request cannot be handled through this
-connection yet, and that the portal itself is where to make it.
+"%s" rather than of its console. It is served in portal mode: what the user may do here
+is what that portal lets them do, read from the portal's own configuration.
+
+This version serves one tool in that mode, core_portal_describe, which says what the
+portal offers this user: the classes they can work with, the fields of each, how objects
+are created and which state changes they may apply. It reads no object. Searching,
+reading, creating and updating objects are not served through this connection yet: tell
+the user so, and that the portal itself is where to do them.
 TEXT;
 
 	private const WHATEVER_IS_SERVED = <<<'TEXT'
