@@ -69,5 +69,6 @@ Settings agent skills read here.
 
 - **Guide:** [`doc/itop-extension-guide.md`](doc/itop-extension-guide.md) — §1 above.
 - **Review:** [`review/review-personas.md`](review/review-personas.md) — the guide's passes plus
-  three this repository adds for the agent calling the endpoint and the people whose data it
-  reads. Findings go beside it and are gitignored; only the list is tracked.
+  the ones this repository adds, for the agent calling the endpoint, the client organisation's
+  end-user behind it, and the people whose data it reads. Findings go beside it and are
+  gitignored; only the list is tracked.

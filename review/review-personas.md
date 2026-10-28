@@ -9,7 +9,9 @@ here; this file holds only what this extension adds.
 is a program: an AI agent calling the MCP endpoint with a user's token. Nothing in the guide asks
 what that client does, what can be made to do it, or where the data it reads goes next.
 [`SECURITY.md`](../SECURITY.md), "Threat model", answers much of it, and these passes are what
-checks that it still does.
+checks that it still does. And the guide's low-privilege user is measured against iTop's
+`UserRights`, while the narrowest person this endpoint serves — someone at a client organisation —
+may get their rights from a portal configuration that `UserRights` knows nothing about.
 
 **Findings** go beside this file, one per review, named `<date>-<kind>.md`. They are gitignored —
 they name real gaps — and only this file is tracked. `exclude.txt` keeps the folder out of the
@@ -48,7 +50,28 @@ release archive.
 - **Blocks:** release when a refused action succeeds another way or a partial result reads as
   success; otherwise backlog.
 
-### Data owner — purple, after the agent client above
+### Company end-user — purple, after the agent client above
+
+- **Question:** someone at a client organisation holding the narrowest access the instance hands
+  out — a console account with a profile or two, filtered to its own organisation, or a portal
+  user once the endpoint serves one — whose assistant asks on their behalf. Does it get exactly
+  what that person's own screens give them, no more, and no less without saying why? Can they
+  get from no token to a working client without an administrator at every step? Do refusals and
+  tool descriptions make sense to someone who has never seen the console? Can they see, and
+  revoke, what was done in their name?
+- **Open:** the tools run as such an account, never as an administrator: a profile-limited user
+  with `URP_UserOrg` rows, and a portal-only user wherever one is served. Compare every read and
+  write against what that person's console or portal shows. For a portal user the baseline is
+  the portal's scopes and forms, not `UserRights`, which grants `Portal user` read on every
+  `bizmodel` class — and the guide's red team, run for this account, measures against that
+  baseline too. Then refusal texts, for console vocabulary (class codes, OQL, profile names)
+  and for what they reveal about other organisations' objects; README "Granting access", as the
+  path from no token to a working client; and the token list and audit rows this person can
+  reach, for what they can see of their own calls.
+- **Blocks:** release when the account reads or writes past what its own console or portal
+  shows it; otherwise backlog.
+
+### Data owner — purple, after the company end-user above
 
 - **Question:** the people the data is about — callers, agents, contacts: where does their data go
   that iTop alone would not send it, is it limited to what the caller needed, and can the instance
