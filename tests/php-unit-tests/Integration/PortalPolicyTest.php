@@ -109,9 +109,9 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 
 	/**
 	 * A class a granted brick reaches that the scopes give the user none of -
-	 * Incident, under the stock ticket bricks, where incident management is
-	 * installed. Found rather than named, because which modules an instance
-	 * has decides whether there is one.
+	 * Change or Problem under the stock ticket bricks, or Incident where its
+	 * module is installed without a scope. Found rather than named, because
+	 * which modules an instance has decides whether there is one.
 	 */
 	public function testAClassABrickReachesThatTheScopesRefuseIsNotOffered(): void
 	{
@@ -120,18 +120,48 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$sRefused = null;
 		foreach (array_keys($oPolicy->Reach()) as $sRoot) {
 			foreach (MetaModel::EnumChildClasses($sRoot, ENUM_CHILD_CLASSES_ALL) as $sClass) {
-				if (!MetaModel::IsAbstract($sClass) && $oPolicy->ReadSet($sClass) === null) {
+				if (!MetaModel::IsAbstract($sClass) && $oPolicy->ReachedBy($sClass) !== [] && $oPolicy->ReadSet($sClass) === null) {
 					$sRefused = $sClass;
 					break 2;
 				}
 			}
 		}
 		if ($sRefused === null) {
-			$this->markTestSkipped('Every concrete class the stock bricks reach has a read scope on this instance (no incident management installed).');
+			$this->markTestSkipped('Every concrete class the stock bricks reach has a read scope on this instance.');
 		}
 
 		$this->assertNotSame([], $oPolicy->ReachedBy($sRefused));
 		$this->assertNotContains($sRefused, $this->offeredClasses());
+	}
+
+	/**
+	 * Change and Problem are Tickets, so the ticket bricks reach their parent,
+	 * and they inherit the Ticket scope - which pins finalclass to UserRequest
+	 * and Incident. An end user never sees one in the portal, and they are not
+	 * offered here; nor is the "ongoing" brick, pinned the same way, a way to
+	 * one.
+	 */
+	public function testTheAgentsTicketClassesAreNotOffered(): void
+	{
+		$oPolicy = PortalPolicy::ForCurrentRequest();
+		$aOffered = $this->offeredClasses();
+
+		$iChecked = 0;
+		foreach (['Change', 'Problem'] as $sClass) {
+			if (!MetaModel::IsValidClass($sClass)) {
+				continue;
+			}
+			$iChecked++;
+			$this->assertNull($oPolicy->ReadSet($sClass), "{$sClass} inherits a scope that can hold none");
+			$this->assertNotContains('ongoing-tickets-for-portal-user', $oPolicy->ReachedBy($sClass));
+			$this->assertNotContains($sClass, $aOffered);
+		}
+		if ($iChecked === 0) {
+			$this->markTestSkipped('Neither change nor problem management is installed.');
+		}
+
+		$this->assertContains('UserRequest', $aOffered, 'the class the scope does allow is still offered');
+		$this->assertContains('ongoing-tickets-for-portal-user', $oPolicy->ReachedBy('UserRequest'));
 	}
 
 	/** A class the portal never mentions is refused like an unknown one. */

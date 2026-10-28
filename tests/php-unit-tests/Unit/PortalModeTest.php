@@ -238,6 +238,24 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * A child class inherits its parent's scope, and a portal keeps end users
+	 * out of the agents' subclasses by pinning finalclass in it: the stock
+	 * Ticket scope allows UserRequest and Incident, so a Change can never be
+	 * in it. Such a class is hidden, as the portal hides it.
+	 */
+	public function testAFinalclassConditionThatExcludesEveryConcreteClassHidesIt(): void
+	{
+		$aPinned = ['UserRequest', 'Incident'];
+
+		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['UserRequest']));
+		$this->assertFalse(PortalPolicy::CanHold($aPinned, [], ['Change']));
+		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['Change', 'Incident']), 'one concrete class the scope allows is enough');
+		$this->assertFalse(PortalPolicy::CanHold(null, ['Change', 'Problem'], ['Change']), 'excluded by NOT IN');
+		$this->assertTrue(PortalPolicy::CanHold(null, [], ['Change']), 'no condition, no conclusion');
+		$this->assertFalse(PortalPolicy::CanHold(null, [], []), 'a class with no concrete class holds nothing');
+	}
+
+	/**
 	 * The console's instructions describe the console's tools, and a pack's
 	 * describe its own. Neither is served here.
 	 */
