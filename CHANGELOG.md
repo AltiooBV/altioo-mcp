@@ -63,6 +63,17 @@ entry itself, not left to be inferred from it.
   datamodel does not have is logged at every request. Empty by default, so nothing changes until
   it is set.
 
+- **Portal mode, first step: portal-only users are sorted, and served nothing.** A user with no
+  console is still refused unless the new `mcp_portals` setting, empty by default, lists one of
+  their portals. When it does, they are let in only with a token, linked to a contact, and holding
+  a profile in `mcp_allowed_profiles` — that one even with `secure_mcp_services` off — in the
+  first listed portal by rank they may enter. What they are served is nothing: no tool, resource
+  or prompt, a pack's included, and instructions telling the client to use the portal. iTop's
+  `Portal user` profile reads every class, and what narrows it is the portal's own configuration,
+  which nothing here enforces yet; reading tools that do are the next step. Console logins take
+  exactly the path they took before, because portal mode starts only from the refusal iTop
+  already returned for them.
+
 ### Packaging
 
 - **The archive is signed by a job that runs none of this repository's code.** The release used
