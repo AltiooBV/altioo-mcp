@@ -188,6 +188,11 @@ final class MCPService
 	 */
 	public static function InstructionsFor(AccessPolicy $oPolicy): string
 	{
+		$sPortal = PortalMode::Current();
+		if ($sPortal !== null) {
+			return ServerInstructions::PortalText($sPortal);
+		}
+
 		return ServerInstructions::Text(
 			$oPolicy,
 			self::internalFormatOf(\AttributeDateTime::class),
@@ -585,6 +590,15 @@ final class MCPService
 	 */
 	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy): bool
 	{
+		// Portal mode serves only what enforces the portal's rules itself, and
+		// nothing does yet. Every element here asks UserRights, which grants
+		// "Portal user" read on every bizmodel class - so an element not
+		// written for the portal, a pack's included, would serve that user the
+		// instance. First, so that no filter below can be what lets one through.
+		if (PortalMode::Current() !== null) {
+			return true;
+		}
+
 		if (!$oElement->isAvailable()) {
 			return true;
 		}

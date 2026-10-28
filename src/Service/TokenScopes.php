@@ -188,6 +188,19 @@ final class TokenScopes
 	}
 
 	/**
+	 * Whether the caller was let in by a token this module saw - both views
+	 * agreeing, which is stricter than LoginIsAccountedFor(), where a token
+	 * presented beside some other login passes.
+	 *
+	 * @param mixed $mLoginMode What iTop recorded, read by the caller.
+	 * @since 1.2.0
+	 */
+	public static function LoginWasAToken(mixed $mLoginMode): bool
+	{
+		return in_array($mLoginMode, self::TOKEN_LOGIN_MODES, true) && self::RequestCarriesAToken();
+	}
+
+	/**
 	 * The scopes held by the presented token.
 	 *
 	 * Called after a successful login, so decrypting the same credential again

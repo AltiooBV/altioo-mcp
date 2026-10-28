@@ -285,6 +285,14 @@ class MCPHelper
 	const MODULE_SETTING_DISABLED = 'mcp_disabled_tools';
 
 	/**
+	 * Portals whose users are served in portal mode. Empty means portal mode
+	 * is off, which is the default and the behaviour of every earlier version.
+	 *
+	 * @since 1.2.0
+	 */
+	const MODULE_SETTING_PORTALS = 'mcp_portals';
+
+	/**
 	 * Pseudo-method stamped on the audit row when the request died before its
 	 * JSON-RPC method could be read. Must match an entry of log_mcp_method,
 	 * otherwise exceptions are silently dropped from the audit trail.
@@ -1049,5 +1057,28 @@ class MCPHelper
 		}
 
 		return array_values(array_filter($aDisabled, 'is_string'));
+	}
+
+	/**
+	 * Portal ids served in portal mode, or an empty list when it is off.
+	 *
+	 * A value that is not a list turns portal mode off rather than on: the
+	 * safe reading of a setting that admits people is the one admitting
+	 * nobody, which is also what every earlier version did.
+	 *
+	 * @return array<int, string>
+	 * @since 1.2.0
+	 */
+	public static function GetServedPortals(): array
+	{
+		$aPortals = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTALS, []);
+		if (!is_array($aPortals)) {
+			$sType = gettype($aPortals);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTALS."' should be an array instead of $sType. Portal mode is off until it is corrected.");
+
+			return [];
+		}
+
+		return array_values(array_filter($aPortals, 'is_string'));
 	}
 }

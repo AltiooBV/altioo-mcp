@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
@@ -88,6 +89,12 @@ final class MCPController
 			LoginWebPage::ResetSession();
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
 			$oKPI->ComputeAndReport('User login');
+
+			// Only ever from the console refusal, so a console login reaches
+			// none of it and goes on exactly as before portal mode existed.
+			if ($iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED) {
+				$iRet = self::admitInPortalMode();
+			}
 
 			if ($iRet === LoginWebPage::EXIT_CODE_OK && MCPHelper::IsAccessRestricted() && !self::userHasMCPProfile()) {
 				$iRet = LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
@@ -373,6 +380,87 @@ final class MCPController
 		);
 	}
 
+	/**
+	 * Lets a user with no console in under portal mode, or leaves the console
+	 * refusal as it was.
+	 *
+	 * Reached only after DoLogin() returned EXIT_CODE_PORTALUSERNOTAUTHORIZED,
+	 * which iTop returns from ChangeLocation(), after the login itself has
+	 * succeeded - so the user is authenticated here, and UserRights answers
+	 * for them. Taking portal mode from that one refusal, rather than logging
+	 * in with DoLoginEx(null) and sorting users afterwards, is what keeps
+	 * every console login on the path it has always taken.
+	 *
+	 * With mcp_portals empty nothing is read and the refusal stands. A user in
+	 * none of the listed portals gets that same refusal, with a log line
+	 * saying why. The other failures are portal mode's own and are told to
+	 * the caller as what to change, on the usual split: the caller learns what
+	 * to fix, the log names who.
+	 *
+	 * @throws MCPAuthException For a refusal that is portal mode's own.
+	 */
+	private static function admitInPortalMode(): int
+	{
+		$aServed = MCPHelper::GetServedPortals();
+		if ($aServed === []) {
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
+		}
+
+		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed);
+		$sRefusal = PortalMode::RefusalOf(
+			$sPortal,
+			TokenScopes::LoginWasAToken(Session::Get('login_mode')),
+			(int)UserRights::GetContactId() > 0,
+			self::userHasMCPProfile()
+		);
+
+		if ($sRefusal === null) {
+			PortalMode::Remember($sPortal);
+
+			return LoginWebPage::EXIT_CODE_OK;
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' is allowed into none of the portals in '%s' (%s).",
+				UserRights::GetUser(),
+				MCPHelper::MODULE_SETTING_PORTALS,
+				implode(', ', $aServed)
+			));
+
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NOT_A_TOKEN) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' did not log in with a token.",
+				UserRights::GetUser()
+			));
+
+			throw new MCPAuthException(
+				'A user without console access is served with a token only. Send it in the '
+				.'Authorization header (Bearer) or the Auth-Token header.',
+				MCPResult::UNAUTHORIZED
+			);
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NO_CONTACT) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' is linked to no contact.",
+				UserRights::GetUser()
+			));
+
+			throw new MCPAuthException(
+				'This account is linked to no contact, which an iTop portal requires. '
+				.'Ask an administrator to link it to the person it belongs to.',
+				MCPResult::UNAUTHORIZED
+			);
+		}
+
+		// REFUSED_NO_MCP_PROFILE, answered and logged as it is for a console user.
+		return LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
+	}
+
 	private static function userHasMCPProfile(): bool
 	{
 		/** @var \User $oUser */
@@ -489,14 +577,17 @@ final class MCPController
 		MCPHelper::LogError(sprintf(
 			"Refused an MCP request: '%s' authenticated but holds no profile granting access to the "
 			.'console, so there is no interface for this endpoint to serve. A portal-only user cannot '
-			.'use the MCP services whatever their token scopes or MCP profile are.',
-			UserRights::GetUser()
+			.'use the MCP services whatever their token scopes or MCP profile are, unless portal mode '
+			."serves one of their portals ('%s').",
+			UserRights::GetUser(),
+			MCPHelper::MODULE_SETTING_PORTALS
 		));
 
 		return new MCPAuthException(
 			'This user has no access to the iTop console. The MCP services serve what the console '
 			.'serves, so a portal-only user cannot reach them - the account needs a profile granting '
-			.'console access in addition to whatever lets it through the MCP gate.',
+			.'console access in addition to whatever lets it through the MCP gate, or an administrator '
+			.'has to serve its portal in portal mode (the mcp_portals module parameter).',
 			MCPResult::UNAUTHORIZED
 		);
 	}

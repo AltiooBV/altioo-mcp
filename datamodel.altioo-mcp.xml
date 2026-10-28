@@ -451,6 +451,17 @@
       -->
       <mcp_disabled_tools type="array"/>
       <!--
+        Portal mode: the ids of the iTop portals (itop-portal, or a custom
+        portal's id) whose users this endpoint may serve although they have no
+        console. Empty, the default, means portal mode is off and a portal-only
+        user is refused, as always. Such a user is served only with a token,
+        linked to a contact, holding a profile in mcp_allowed_profiles, and in
+        the first portal by rank that is both allowed to them and listed here.
+        Portal mode serves no tool, resource or prompt yet: see the README,
+        "Portal-only users".
+      -->
+      <mcp_portals type="array"/>
+      <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",
         "relations", "documents", "history" and "server", each with a matching

@@ -96,6 +96,24 @@ final class ServerInstructions
 	}
 
 	/**
+	 * The instructions for a connection served in portal mode.
+	 *
+	 * A text of its own rather than the console's narrowed, because every
+	 * section of that one - and every pack's contribution - describes tools
+	 * this connection is not served: a model told how to search and write
+	 * here would try, and be told nothing exists. What a pack says is left out
+	 * on the same rule as its tools, which portal mode serves only when they
+	 * declare that they enforce the portal's rules.
+	 *
+	 * @param string $sPortal The portal id the request is served in.
+	 * @since 1.2.0
+	 */
+	public static function PortalText(string $sPortal): string
+	{
+		return sprintf(self::PORTAL_MODE, $sPortal);
+	}
+
+	/**
 	 * The prompts this caller is served, named where a model will see them.
 	 *
 	 * A prompt is fetched by the client, not by the model: it lands in
@@ -341,6 +359,14 @@ final class ServerInstructions
 This server is an iTop instance: a CMDB and an ITSM ticketing system. Objects belong
 to classes (UserRequest, Incident, Person, Server, ...) defined by this instance's own
 datamodel, which is customised per deployment.
+TEXT;
+
+	private const PORTAL_MODE = <<<'TEXT'
+This server is an iTop instance, and this connection belongs to a user of its portal
+"%s" rather than of its console. It is served in portal mode, and this version of the
+server serves no tool, resource or prompt in that mode yet. Nothing you could ask here
+would be answered: tell the user that their request cannot be handled through this
+connection yet, and that the portal itself is where to make it.
 TEXT;
 
 	private const WHATEVER_IS_SERVED = <<<'TEXT'

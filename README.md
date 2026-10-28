@@ -528,7 +528,27 @@ The MCP services serve what the console serves, so a portal-only user is refused
 `MCP Services User` and a correctly scoped token — the endpoint answers that the user has no
 console access, and `log/error.log` names the account. Neither `mcp_allowed_profiles` nor
 `secure_mcp_services` lifts this: it is iTop's login deciding the user has no interface to be
-sent to, before any of this extension's gates are reached.
+sent to, before any of this extension's gates are reached. Only `mcp_portals` does, below.
+
+**Portal-only users: portal mode.** `mcp_portals`, empty by default, lists the portals (by id,
+such as `itop-portal`) whose users this endpoint may serve without a console. A portal-only
+user is then let in only when all of these hold, and refused otherwise, with `log/error.log`
+naming the account and the condition:
+
+- they logged in with a token, not a password;
+- their account is linked to a contact;
+- they hold a profile in `mcp_allowed_profiles` — required in portal mode even with
+  `secure_mcp_services` off, since turning the check off for console users was never a decision
+  about people with no console;
+- one of the portals they are allowed into is listed. The first by rank is used, as iTop's own
+  login does; two portals are never combined.
+
+**In this version portal mode serves nothing.** iTop's `Portal user` profile reads every class;
+what keeps a portal user to their own requests is the portal's configuration — its scopes and
+forms — which iTop's rights checks never consult. No tool, resource or prompt here enforces that
+configuration yet, so none is served in portal mode, a pack's included: the client connects,
+lists nothing, and is told to use the portal. Portal mode exists so far to let the way users
+are sorted be tried on a real instance before any data is served through it.
 
 **2. A credential iTop accepts.** Authentication is delegated to iTop's login stack
 (`LoginWebPage::DoLogin()`), so any login mode iTop can perform **non-interactively** works
@@ -701,6 +721,7 @@ $MyModuleSettings = array(
         'mcp_allowed_hosts' => array(),
         'mcp_allowed_origins' => array(),
         'mcp_disabled_tools' => array(),
+        'mcp_portals' => array(),
         'mcp_enabled_toolsets' => array(),
         'mcp_capabilities' => array(),
         'mcp_read_only' => false,
@@ -733,6 +754,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and against `Host` again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential. The MCP SDK also refuses, with `403`, a request whose `Origin` is neither listed here nor the endpoint's own — so a desktop client that sends one has to be listed too, and so does the endpoint's own `https://` origin behind a proxy that terminates TLS without setting `HTTPS` for PHP |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
+| `mcp_portals` | *(empty)* | Portal ids whose portal-only users are served in portal mode; empty means portal mode is off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **nothing is served in portal mode yet** |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
@@ -1110,6 +1132,8 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.
+- **Portal-only users are served nothing yet.** Portal mode sorts them in and serves no tool,
+  resource or prompt to them — see [Granting access](#granting-access).
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`
