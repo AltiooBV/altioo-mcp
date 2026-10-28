@@ -73,6 +73,17 @@ entry itself, not left to be inferred from it.
   which nothing here enforces yet; reading tools that do are the next step. Console logins take
   exactly the path they took before, because portal mode starts only from the refusal iTop
   already returned for them.
+- **Portal mode, second step: `core_portal_describe` says what a portal user's portal offers.**
+  The first element served in portal mode, and the only one: the classes a brick granted to the
+  user reaches, whether the portal's scopes let them read and change objects of each, its create
+  actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
+  is read with the portal's own code — its brick collection, scope and lifecycle helpers and form
+  merge — so a customised portal is described as customised, and it reads no object. A class
+  with a read scope that no granted brick reaches is not offered (doc/adr/0001). A form field
+  marked `read_only` in `<fields>` is reported read-only, although iTop's portal shows it
+  writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
+  cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
+  operator or a token narrowed to other toolsets does not get it.
 
 ### Packaging
 
