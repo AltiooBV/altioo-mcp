@@ -590,12 +590,14 @@ final class MCPService
 	 */
 	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy): bool
 	{
-		// Portal mode serves only what enforces the portal's rules itself, and
-		// nothing does yet. Every element here asks UserRights, which grants
-		// "Portal user" read on every bizmodel class - so an element not
-		// written for the portal, a pack's included, would serve that user the
-		// instance. First, so that no filter below can be what lets one through.
-		if (PortalMode::Current() !== null) {
+		// Portal mode serves only what enforces the portal's rules itself.
+		// Every other element asks UserRights, which grants "Portal user" read
+		// on every bizmodel class - so an element not written for the portal,
+		// a pack's included, would serve that user the instance. First, so
+		// that no filter below can be what lets one through; the ones below
+		// still narrow what it lets through, because portal mode widens
+		// nothing.
+		if (PortalMode::Current() !== null && !PortalMode::Serves($oElement)) {
 			return true;
 		}
 
