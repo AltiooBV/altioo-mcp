@@ -69,6 +69,10 @@ final class PortalPolicy
 	/** A BrowseBrick action that opens a creation form. */
 	private const ACTION_CREATE_FROM_THIS = 'create_from_this';
 
+	public const BRICK_MANAGE = 'manage';
+	public const BRICK_BROWSE = 'browse';
+	public const BRICK_CREATE = 'create';
+
 	private static ?self $oCurrent = null;
 
 	/**
@@ -406,6 +410,31 @@ final class PortalPolicy
 	}
 
 	/**
+	 * What a brick class is to portal mode: one of iTop's own ManageBrick,
+	 * BrowseBrick and CreateBrick, or nothing.
+	 *
+	 * A subclass of one of them is read as that type (doc/adr/0002): a custom
+	 * brick class extending ManageBrick still declares its data the way a
+	 * ManageBrick does, and reads stay bounded by the scopes whatever its
+	 * controller adds. A class that is none of them - one extending
+	 * PortalBrick directly, a FilterBrick - reaches nothing.
+	 */
+	public static function BrickKind(string $sBrickClass): ?string
+	{
+		$sBrickClass = ltrim($sBrickClass, '\\');
+
+		foreach ([ManageBrick::class => self::BRICK_MANAGE, BrowseBrick::class => self::BRICK_BROWSE, CreateBrick::class => self::BRICK_CREATE] as $sType => $sKind) {
+			// By name first, so that the answer does not need the portal
+			// module loaded for the stock classes themselves.
+			if ($sBrickClass === $sType || is_a($sBrickClass, $sType, true)) {
+				return $sKind;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Whether a query bounded by these finalclass conditions can return an
 	 * object of any of these classes.
 	 *
@@ -503,7 +532,9 @@ final class PortalPolicy
 	 * often the one doing the work.
 	 *
 	 * A create_from_this whose class is chosen by a method rather than named
-	 * is left out: what that method does is PHP, and is never guessed.
+	 * is left out: what that method does is PHP, and is never guessed. So is
+	 * a brick that is none of iTop's three data types nor a subclass of one
+	 * ({@see BrickKind()}).
 	 *
 	 * @param iterable<int, object> $aBricks
 	 *
@@ -518,8 +549,9 @@ final class PortalPolicy
 
 		foreach ($aBricks as $oBrick) {
 			$sBrick = (string)$oBrick->GetId();
+			$sKind = self::BrickKind(get_class($oBrick));
 
-			if ($oBrick instanceof ManageBrick) {
+			if ($sKind === self::BRICK_MANAGE) {
 				$oSet = DBSearch::FromOQL($oBrick->GetOql());
 				$sClass = $oSet->GetClass();
 				$aReach[$sClass][] = $sBrick;
@@ -533,16 +565,16 @@ final class PortalPolicy
 
 				$aLists[] = [
 					'list'       => $sBrick,
-					'kind'       => 'manage',
+					'kind'       => self::BRICK_MANAGE,
 					'title'      => \Dict::S((string)$oBrick->GetTitle()),
 					'class'      => $sClass,
 					'tabs'       => $aTabs,
 					'tabs_by'    => $aGrouping['tabs']['attribute'] ?? null,
 					'grouped_by' => $aGrouping['areas']['attribute'] ?? null,
 				];
-			} elseif ($oBrick instanceof BrowseBrick) {
+			} elseif ($sKind === self::BRICK_BROWSE) {
 				self::levels($sBrick, \Dict::S((string)$oBrick->GetTitle()), $oBrick->GetLevels(), [], $aReach, $aBrickSets, $aLists, $aCreates);
-			} elseif ($oBrick instanceof CreateBrick) {
+			} elseif ($sKind === self::BRICK_CREATE) {
 				$sClass = (string)$oBrick->GetClass();
 				$aReach[$sClass][] = $sBrick;
 				$aBrickSets[$sClass][$sBrick][] = null;
@@ -582,7 +614,7 @@ final class PortalPolicy
 
 			$aLists[] = [
 				'list'       => $sList,
-				'kind'       => 'browse',
+				'kind'       => self::BRICK_BROWSE,
 				'title'      => isset($aLevel['title']) ? \Dict::S((string)$aLevel['title']) : $sTitle,
 				'class'      => $sClass,
 				'parent_att' => $aLevel['parent_att'] ?? null,
