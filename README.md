@@ -557,7 +557,9 @@ tells the client what this user's portal offers:
   ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md)). So is a subclass the
   portal pins out by `finalclass`: the stock Ticket scope allows only `UserRequest` and
   `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered, as the portal
-  never shows them;
+  never shows them. ManageBrick, BrowseBrick and CreateBrick are read, and a custom brick
+  class extending one is read as that type; a brick class extending none of them offers nothing
+  here ([doc/adr/0002](doc/adr/0002-portal-mode-reads-brick-subclasses-as-their-parent.md));
 - for each, whether the scopes let the user read and change objects of it, the create actions
   that make one, and the stimuli the portal's lifecycle allows;
 - the fields the portal's forms show for viewing, editing and creating one, read-only and

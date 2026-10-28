@@ -81,7 +81,9 @@ entry itself, not left to be inferred from it.
   merge — so a customised portal is described as customised, and it reads no object. A class
   with a read scope that no granted brick reaches is not offered (doc/adr/0001), nor is a subclass
   whose inherited scope pins `finalclass` to other classes — in the stock portal, `Change` and
-  `Problem`, which an end user never sees there. A form field
+  `Problem`, which an end user never sees there. ManageBrick, BrowseBrick and CreateBrick are read,
+  and a custom brick class extending one is read as that type; one extending none of them offers
+  nothing (doc/adr/0002). A form field
   marked `read_only` in `<fields>` is reported read-only, although iTop's portal shows it
   writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
   cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
