@@ -308,6 +308,36 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * A create action names its class, or leaves it to a method the portal
+	 * runs on the object the user picks - iTop's own itop-full-itil does that
+	 * to the services brick wherever incidents and requests are both
+	 * installed. That one is kept, with no class, rather than dropped: it is
+	 * how the stock portal opens a ticket there.
+	 */
+	public function testACreateActionIsKeptWhetherItsClassIsNamedOrChosen(): void
+	{
+		$aNamed = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+			'type'    => 'create_from_this',
+			'factory' => ['type' => 'class', 'value' => 'UserRequest'],
+			'rules'   => ['contact-to-userrequest'],
+		], 'ServiceSubcategory', 'New request');
+		$this->assertSame('UserRequest', $aNamed['class']);
+		$this->assertNull($aNamed['factory_method']);
+		$this->assertSame(['contact-to-userrequest'], $aNamed['rules']);
+
+		$aChosen = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+			'type'    => 'create_from_this',
+			'factory' => ['type' => 'method', 'value' => '\\Ticket::CreateFromServiceSubcategory'],
+		], 'ServiceSubcategory', 'New request');
+		$this->assertNull($aChosen['class'], 'never guessed');
+		$this->assertSame('\\Ticket::CreateFromServiceSubcategory', $aChosen['factory_method']);
+		$this->assertSame('ServiceSubcategory', $aChosen['from']);
+
+		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'view'], 'Service', ''), 'not a create action');
+		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'create_from_this', 'factory' => ['type' => 'method', 'value' => '']], 'Service', ''));
+	}
+
+	/**
 	 * A child class inherits its parent's scope, and a portal keeps end users
 	 * out of the agents' subclasses by pinning finalclass in it: the stock
 	 * Ticket scope allows UserRequest and Incident, so a Change can never be
