@@ -309,6 +309,13 @@ own `DoCheckToWrite()`. An attribute's `modify` sits beside `readOnly` rather th
 because they fail for different reasons — `readOnly` is the datamodel refusing everybody and no
 administrator can grant it, `modify` is this caller being refused something somebody can.
 
+A write is also held to what the console's form would offer in the object's state
+([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)). The state attribute changes
+only through `core_object_apply_stimulus`. A field the state locks is refused, and so are
+stopwatches, a case log value that is not a new entry, a link set the console does not edit from
+its host, and an external key outside its allowed values. The refusal names the tool that can
+make the change.
+
 `bulkCreate` is the one key iTop does not answer. There is no `UR_ACTION_BULK_CREATE`, so
 `core_object_bulk_create` is gated on `UR_ACTION_CREATE` and `UR_ACTION_BULK_MODIFY` together
 and the block reports the stricter of the two. The other two bulk tools pair with the rights
