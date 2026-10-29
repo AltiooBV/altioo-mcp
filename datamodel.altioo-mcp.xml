@@ -453,16 +453,31 @@
       <!--
         Portal mode: the ids of the iTop portals (itop-portal, or a custom
         portal's id) whose users this endpoint may serve although they have no
-        console. Empty, the default, means portal mode is off and a portal-only
-        user is refused, as always. Such a user is served only with a token,
-        linked to a contact, holding a profile in mcp_allowed_profiles, and in
-        the first portal by rank that is both allowed to them and listed here.
-        Portal mode serves only core_portal_describe so far, which reads the
-        portal's own configuration and no object, and the server
-        instructions; it needs iTop 3.2.2 or later: see the README,
-        "Portal-only users".
+        console. "*", the default, means every portal: a portal-only user is
+        then let in by the profiles they hold, like a console user. Empty turns
+        portal mode off, and a portal-only user is refused, as before it
+        existed. Such a user is served only with a token that expires (see
+        mcp_portal_token_max_days), linked to a contact, holding a profile in
+        mcp_allowed_profiles, and in the first portal by rank that is both
+        allowed to them and served here. Portal mode serves only
+        core_portal_describe so far, which reads the portal's own
+        configuration and no object, and the server instructions; it needs
+        iTop 3.2.2 or later: see the README, "Portal-only users".
       -->
-      <mcp_portals type="array"/>
+      <mcp_portals type="array">
+        <item>*</item>
+      </mcp_portals>
+      <!--
+        Portal mode: how many days ahead a token may still be valid to be
+        accepted. A token that never expires is refused, and so is one that
+        expires later than this from now. A portal user's token may be one
+        they minted themselves - every personal token needs its owner's
+        profile in authent-token's personal_tokens_allowed_profiles, and that
+        lets their portal session create tokens with any expiry - so this is
+        what keeps a forgotten one from being a key to their portal for good.
+        90 is altioo-oauth-server's own max_grant_days. 0 lifts the bound.
+      -->
+      <mcp_portal_token_max_days type="integer">90</mcp_portal_token_max_days>
       <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",

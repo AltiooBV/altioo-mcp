@@ -301,6 +301,17 @@ class MCPHelper
 	const MODULE_SETTING_PORTALS = 'mcp_portals';
 
 	/**
+	 * How many days ahead a token may still be valid to be accepted in portal
+	 * mode. 0 lifts the bound.
+	 *
+	 * @since 1.2.0
+	 */
+	const MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS = 'mcp_portal_token_max_days';
+
+	/** The default bound: altioo-oauth-server's own max_grant_days. */
+	const DEFAULT_PORTAL_TOKEN_MAX_DAYS = 90;
+
+	/**
 	 * Pseudo-method stamped on the audit row when the request died before its
 	 * JSON-RPC method could be read. Must match an entry of log_mcp_method,
 	 * otherwise exceptions are silently dropped from the audit trail.
@@ -1097,6 +1108,8 @@ class MCPHelper
 
 	/**
 	 * Portal ids served in portal mode, or an empty list when it is off.
+	 * PortalMode::ANY_PORTAL, the default, serves every portal: who is let in
+	 * is then decided by the profiles a user holds.
 	 *
 	 * A value that is not a list turns portal mode off rather than on: the
 	 * safe reading of a setting that admits people is the one admitting
@@ -1107,7 +1120,7 @@ class MCPHelper
 	 */
 	public static function GetServedPortals(): array
 	{
-		$aPortals = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTALS, []);
+		$aPortals = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTALS, ['*']);
 		if (!is_array($aPortals)) {
 			$sType = gettype($aPortals);
 			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTALS."' should be an array instead of $sType. Portal mode is off until it is corrected.");
@@ -1116,5 +1129,27 @@ class MCPHelper
 		}
 
 		return array_values(array_filter($aPortals, 'is_string'));
+	}
+
+	/**
+	 * The bound on a portal-mode token's remaining validity, in days; 0 for
+	 * none.
+	 *
+	 * A value that is not a non-negative integer falls back to the default
+	 * rather than to 0: lifting the bound is a decision, and a typo is not
+	 * one.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function GetPortalTokenMaxDays(): int
+	{
+		$iDays = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS, self::DEFAULT_PORTAL_TOKEN_MAX_DAYS);
+		if (!is_int($iDays) || $iDays < 0) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS."' should be a non-negative integer. Using ".self::DEFAULT_PORTAL_TOKEN_MAX_DAYS.' until it is corrected.');
+
+			return self::DEFAULT_PORTAL_TOKEN_MAX_DAYS;
+		}
+
+		return $iDays;
 	}
 }

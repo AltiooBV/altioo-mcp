@@ -26,7 +26,9 @@ namespace Altioo\iTop\Extension\MCP\Service;
  * of two portals' scopes is wider than either, so they are never merged: the
  * first portal by rank that is both allowed to the user and listed in
  * mcp_portals is the one, which is also the portal iTop's own login sends
- * them to when it is the only one listed.
+ * them to when it is the only one listed. The default, "*", lists them all:
+ * who is let in is decided by the profiles they hold, as it is for a console
+ * user, and the portal they get is the one iTop's login would give them.
  *
  * The decisions are pure and tested without iTop; the controller gathers
  * their inputs.
@@ -40,6 +42,15 @@ final class PortalMode
 
 	/** The login was not a token: Basic authentication, or a proxy. */
 	public const REFUSED_NOT_A_TOKEN = 'not_a_token';
+
+	/** The token never expires, or expires later than mcp_portal_token_max_days allows. */
+	public const REFUSED_TOKEN_UNBOUNDED = 'token_unbounded';
+
+	/** In mcp_portals, every portal the user is allowed into. */
+	public const ANY_PORTAL = '*';
+
+	/** iTop's console, which a portal-mode user is by definition not allowed into. */
+	private const CONSOLE = 'backoffice';
 
 	/** The user is linked to no contact, which every portal requires. */
 	public const REFUSED_NO_CONTACT = 'no_contact';
@@ -64,8 +75,10 @@ final class PortalMode
 	 */
 	public static function Choose(array $aAllowed, array $aServed): ?string
 	{
+		$bAny = in_array(self::ANY_PORTAL, $aServed, true);
+
 		foreach ($aAllowed as $sPortal) {
-			if (in_array($sPortal, $aServed, true)) {
+			if ($sPortal !== self::CONSOLE && ($bAny || in_array($sPortal, $aServed, true))) {
 				return $sPortal;
 			}
 		}
@@ -80,22 +93,58 @@ final class PortalMode
 	 * A token, because it is the credential this module can grade: Basic
 	 * authentication carries no scope, and a portal session's password is the
 	 * one thing that should not be typed into an assistant's configuration. A
-	 * contact, because the portal refuses a user without one and its scopes
-	 * are written against :current_contact_id. And the MCP profile whatever
-	 * secure_mcp_services says, because switching the profile check off for
-	 * console users was never a decision about people with no console.
+	 * token that ends, because a portal user's token is one they may have made
+	 * themselves: once their profile is in personal_tokens_allowed_profiles,
+	 * which every personal token needs, authent-token lets their portal
+	 * session mint one with any expiry, none included, and a forgotten token
+	 * in an assistant's configuration is a key to their portal that never
+	 * stops working. A contact, because the portal refuses a user without one
+	 * and its scopes are written against :current_contact_id. And the MCP
+	 * profile whatever secure_mcp_services says, because switching the profile
+	 * check off for console users was never a decision about people with no
+	 * console.
 	 *
-	 * @param string|null $sPortal What Choose() returned.
+	 * @param string|null $sPortal       What Choose() returned.
+	 * @param bool        $bTokenBounded What TokenIsBounded() answered for the token presented.
 	 */
-	public static function RefusalOf(?string $sPortal, bool $bTokenLogin, bool $bLinkedToContact, bool $bHoldsMCPProfile): ?string
+	public static function RefusalOf(?string $sPortal, bool $bTokenLogin, bool $bTokenBounded, bool $bLinkedToContact, bool $bHoldsMCPProfile): ?string
 	{
 		return match (true) {
 			$sPortal === null  => self::REFUSED_NO_SERVED_PORTAL,
 			!$bTokenLogin      => self::REFUSED_NOT_A_TOKEN,
+			!$bTokenBounded    => self::REFUSED_TOKEN_UNBOUNDED,
 			!$bLinkedToContact => self::REFUSED_NO_CONTACT,
 			!$bHoldsMCPProfile => self::REFUSED_NO_MCP_PROFILE,
 			default            => null,
 		};
+	}
+
+	/**
+	 * Whether a token's expiry falls within the bound portal mode allows.
+	 *
+	 * No expiry is unbounded, and so is one beyond the bound from now -
+	 * whenever it was set: what is checked is how long the credential can
+	 * still be used, which is the exposure. A bound of 0 is no bound, for an
+	 * operator who decides otherwise and says so in mcp_portal_token_max_days.
+	 *
+	 * @param string|null $sExpiration The token's expiration_date as iTop stores it ('Y-m-d H:i:s'), or null.
+	 * @param int         $iNow        A Unix time.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function TokenIsBounded(?string $sExpiration, int $iNow, int $iMaxDays): bool
+	{
+		if ($iMaxDays === 0) {
+			return true;
+		}
+
+		if ($sExpiration === null || trim($sExpiration) === '') {
+			return false;
+		}
+
+		$iExpiration = strtotime($sExpiration);
+
+		return $iExpiration !== false && $iExpiration <= $iNow + $iMaxDays * 86400;
 	}
 
 	/** @since 1.2.0 */

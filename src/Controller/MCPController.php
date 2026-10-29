@@ -391,9 +391,10 @@ final class MCPController
 	 * in with DoLoginEx(null) and sorting users afterwards, is what keeps
 	 * every console login on the path it has always taken.
 	 *
-	 * With mcp_portals empty nothing is read and the refusal stands. A user in
-	 * none of the listed portals gets that same refusal, with a log line
-	 * saying why. The other failures are portal mode's own and are told to
+	 * With mcp_portals empty nothing is read and the refusal stands; its
+	 * default, "*", serves every portal, so a portal-only user holding the
+	 * MCP profile is let in by that profile. A user in none of the listed
+	 * portals gets the refusal unchanged, with a log line saying why. The other failures are portal mode's own and are told to
 	 * the caller as what to change, on the usual split: the caller learns what
 	 * to fix, the log names who.
 	 *
@@ -407,9 +408,11 @@ final class MCPController
 		}
 
 		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed);
+		$iMaxDays = MCPHelper::GetPortalTokenMaxDays();
 		$sRefusal = PortalMode::RefusalOf(
 			$sPortal,
 			TokenScopes::LoginWasAToken(Session::Get('login_mode')),
+			PortalMode::TokenIsBounded(self::presentedTokenExpiration(), time(), $iMaxDays),
 			(int)UserRights::GetContactId() > 0,
 			self::userHasMCPProfile()
 		);
@@ -444,6 +447,22 @@ final class MCPController
 			);
 		}
 
+		if ($sRefusal === PortalMode::REFUSED_TOKEN_UNBOUNDED) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' presented a token that never expires, or expires more than %d days from now ('%s').",
+				UserRights::GetUser(),
+				$iMaxDays,
+				MCPHelper::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS
+			));
+
+			throw new MCPAuthException(sprintf(
+				'In portal mode a token must expire within %d days. Ask for a personal token with an '
+				.'expiry date no later than %s, or set one on this token.',
+				$iMaxDays,
+				date('Y-m-d', time() + $iMaxDays * 86400)
+			), MCPResult::UNAUTHORIZED);
+		}
+
 		if ($sRefusal === PortalMode::REFUSED_NO_CONTACT) {
 			MCPHelper::LogError(sprintf(
 				"Refused an MCP request in portal mode: '%s' is linked to no contact.",
@@ -459,6 +478,23 @@ final class MCPController
 
 		// REFUSED_NO_MCP_PROFILE, answered and logged as it is for a console user.
 		return LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
+	}
+
+	/**
+	 * The expiry of the token this request presented, as iTop stores it, or
+	 * null when it has none - including a token class that carries no expiry
+	 * at all, which portal mode therefore cannot bound and refuses.
+	 */
+	private static function presentedTokenExpiration(): ?string
+	{
+		$oToken = TokenScopes::OfCurrentRequestObject();
+		if ($oToken === null || !MetaModel::IsValidAttCode(get_class($oToken), 'expiration_date')) {
+			return null;
+		}
+
+		$mExpiration = $oToken->Get('expiration_date');
+
+		return is_string($mExpiration) && $mExpiration !== '' ? $mExpiration : null;
 	}
 
 	private static function userHasMCPProfile(): bool

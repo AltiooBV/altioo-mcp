@@ -529,21 +529,30 @@ The MCP services serve what the console serves, so a portal-only user is refused
 `MCP Services User` and a correctly scoped token — the endpoint answers that the user has no
 console access, and `log/error.log` names the account. Neither `mcp_allowed_profiles` nor
 `secure_mcp_services` lifts this: it is iTop's login deciding the user has no interface to be
-sent to, before any of this extension's gates are reached. Only `mcp_portals` does, below.
+sent to, before any of this extension's gates are reached. Portal mode, below, is what lets
+them in instead.
 
-**Portal-only users: portal mode.** `mcp_portals`, empty by default, lists the portals (by id,
-such as `itop-portal`) whose users this endpoint may serve without a console. A portal-only
-user is then let in only when all of these hold, and refused otherwise, with `log/error.log`
-naming the account and the condition:
+**Portal-only users: portal mode.** A user with no console is let in by the profiles they hold,
+as a console user is, and served what their portal offers. `mcp_portals` lists the portals (by
+id, such as `itop-portal`) this endpoint serves to them; its default, `array('*')`, is every
+portal, and `array()` turns portal mode off. A portal-only user is let in only when all of these
+hold, and refused otherwise, with `log/error.log` naming the account and the condition:
 
 - they logged in with a token, not a password;
+- the token expires within `mcp_portal_token_max_days` (90 by default) — one that never expires
+  is refused (below, for why);
 - their account is linked to a contact;
 - they hold a profile in `mcp_allowed_profiles` — required in portal mode even with
   `secure_mcp_services` off, since turning the check off for console users was never a decision
   about people with no console;
-- one of the portals they are allowed into is listed. The first by rank is used, as iTop's own
+- one of the portals they are allowed into is served. The first by rank is used, as iTop's own
   login does; two portals are never combined. A user allowed into several cannot pick another
-  one yet: to serve them a different portal, leave the higher-ranked one out of `mcp_portals`.
+  one yet: to serve them a different portal, list the portals in `mcp_portals` and leave the
+  higher-ranked one out.
+
+So by default the profile is the switch: a portal-only user holding `MCP Services User` (or
+another profile in `mcp_allowed_profiles`), with a token, is served. Giving the profile is the
+decision, per person, as it is for console users.
 
 **Giving a portal user a token.** Two things iTop decides, not this extension:
 
@@ -551,17 +560,23 @@ naming the account and the condition:
   `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
   profile your portal users hold for this — `MCP Services User`, which they need anyway — or
   every token minted for them fails as an invalid login.
-- They cannot mint one themselves: My Account is console-only. An administrator creates it under
-  **User management → Personal tokens**, setting the user to the portal account and ticking an
-  **MCP** scope; the value is shown once, in the message after the creation.
+- They have no page to mint one: My Account is console-only. An administrator creates it under
+  **User management → Personal tokens**, setting the user to the portal account, ticking an
+  **MCP** scope and **setting an expiry date** within `mcp_portal_token_max_days`; the value is
+  shown once, in the message after the creation.
 
-Adding that profile has a side effect worth knowing before you do it. A portal session of
-anyone holding it can mint personal tokens for itself through authent-token's own endpoint,
-with whatever scope and expiry it posts, and a console user holding it gets the Personal tokens
-tab of My Account. What such a token can do here is still only what portal mode serves —
-whatever its grade, `MCP-delete` included — and iTop's REST, export, import and synchro
-endpoints refuse a portal-only user whatever the token says. See
-[SECURITY.md](SECURITY.md), "Hardening".
+**What listing that profile gives them, and what bounds it.** It gives no data right anywhere:
+the only other token scopes are REST/JSON, Export, Import and Synchro, and iTop's endpoints for
+all four ask for the console and refuse a portal-only user whatever the token says; here, they
+are in portal mode whatever the grade, `MCP-delete` included. What it does give is
+self-service credentials: a portal session of anyone holding the profile can mint personal
+tokens for itself through authent-token's own endpoint, with whatever scope and expiry it
+posts — none included, and authent-token treats no expiry as never expiring. A token typed into
+an assistant and forgotten would be a key to that person's portal for good, outside their
+password and any second factor. That is why portal mode refuses a token that never expires, or
+that expires further out than `mcp_portal_token_max_days`: self-minted or not, every token it
+accepts stops working within that many days. A console user holding the profile also gets the
+Personal tokens tab of My Account. See [SECURITY.md](SECURITY.md), "Hardening".
 
 **What portal mode serves: a description of the portal, and no object yet.** iTop's `Portal
 user` profile reads every class; what keeps a portal user to their own requests is the portal's
@@ -772,7 +787,8 @@ $MyModuleSettings = array(
         'mcp_allowed_hosts' => array(),
         'mcp_allowed_origins' => array(),
         'mcp_disabled_tools' => array(),
-        'mcp_portals' => array(),
+        'mcp_portals' => array('*'),
+        'mcp_portal_token_max_days' => 90,
         'mcp_enabled_toolsets' => array(),
         'mcp_capabilities' => array(),
         'mcp_read_only' => false,
@@ -805,7 +821,8 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and against `Host` again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential. The MCP SDK also refuses, with `403`, a request whose `Origin` is neither listed here nor the endpoint's own — so a desktop client that sends one has to be listed too, and so does the endpoint's own `https://` origin behind a proxy that terminates TLS without setting `HTTPS` for PHP |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
-| `mcp_portals` | *(empty)* | Portal ids whose portal-only users are served in portal mode; empty means portal mode is off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **a description of their portal, and no object yet**. Needs iTop 3.2.2 or later |
+| `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **a description of their portal, and no object yet**. Needs iTop 3.2.2 or later |
+| `mcp_portal_token_max_days` | `90` | Portal mode accepts a token only if it expires within this many days from now; one that never expires is refused, since a portal user may have minted it themselves. `0` lifts the bound. Any other value than a non-negative integer is reported and read as 90 |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
@@ -1011,7 +1028,8 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 
 | Symptom | Cause |
 |---|---|
-| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does, or serve its portal in portal mode by listing it in `mcp_portals`, which serves only what that portal offers. `log/error.log` names the account either way. See [Granting access](#granting-access) |
+| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does, or let portal mode serve it: check `mcp_portals` serves its portal (the default `'*'` serves every one), which serves only what that portal offers. `log/error.log` names the account either way. See [Granting access](#granting-access) |
+| `401`, "In portal mode a token must expire within … days" | A portal-only user presented a token that never expires, or expires later than `mcp_portal_token_max_days` from now. Set an expiry date on the token under User management → Personal tokens, or mint one that has it. `log/error.log` names the account |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
