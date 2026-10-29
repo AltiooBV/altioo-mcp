@@ -85,32 +85,62 @@ class PortalModeTest extends TestCase
 		$this->assertNull(PortalMode::Choose(['itop-portal'], ['ITOP-PORTAL', 'itop-portal ']));
 	}
 
+	/**
+	 * "*", the default, serves every portal: who gets in is decided by the
+	 * profiles they hold. Still the first by rank, and never the console.
+	 */
+	public function testEveryPortalIsServedByDefaultInRankOrder(): void
+	{
+		$this->assertSame('partner-portal', PortalMode::Choose(['partner-portal', 'itop-portal'], [PortalMode::ANY_PORTAL]));
+		$this->assertSame('itop-portal', PortalMode::Choose(['backoffice', 'itop-portal'], [PortalMode::ANY_PORTAL]));
+		$this->assertNull(PortalMode::Choose([], [PortalMode::ANY_PORTAL]));
+	}
+
 	public function testEveryConditionHeldServesTheRequest(): void
 	{
-		$this->assertNull(PortalMode::RefusalOf('itop-portal', true, true, true));
+		$this->assertNull(PortalMode::RefusalOf('itop-portal', true, true, true, true));
+	}
+
+	/**
+	 * A portal user can mint their own tokens, with any expiry, once their
+	 * profile is in personal_tokens_allowed_profiles. What portal mode accepts
+	 * is a token that ends - within the bound, counted from now.
+	 */
+	public function testOnlyATokenThatEndsWithinTheBoundIsAccepted(): void
+	{
+		$iNow = (int)strtotime('2026-10-29 12:00:00');
+
+		$this->assertTrue(PortalMode::TokenIsBounded('2026-11-28 12:00:00', $iNow, 90));
+		$this->assertTrue(PortalMode::TokenIsBounded('2027-01-27 12:00:00', $iNow, 90), 'exactly 90 days');
+		$this->assertFalse(PortalMode::TokenIsBounded('2027-01-27 12:00:01', $iNow, 90), 'one second over');
+		$this->assertFalse(PortalMode::TokenIsBounded(null, $iNow, 90), 'never expires');
+		$this->assertFalse(PortalMode::TokenIsBounded('', $iNow, 90));
+		$this->assertFalse(PortalMode::TokenIsBounded('not a date', $iNow, 90));
+		$this->assertTrue(PortalMode::TokenIsBounded(null, $iNow, 0), 'a bound of 0 is lifted, deliberately');
 	}
 
 	/**
 	 * @dataProvider refusalProvider
 	 */
-	public function testEachConditionIsRequired(?string $sPortal, bool $bToken, bool $bContact, bool $bProfile, string $sRefusal): void
+	public function testEachConditionIsRequired(?string $sPortal, bool $bToken, bool $bBounded, bool $bContact, bool $bProfile, string $sRefusal): void
 	{
-		$this->assertSame($sRefusal, PortalMode::RefusalOf($sPortal, $bToken, $bContact, $bProfile));
+		$this->assertSame($sRefusal, PortalMode::RefusalOf($sPortal, $bToken, $bBounded, $bContact, $bProfile));
 	}
 
 	/**
-	 * @return array<string, array{0: string|null, 1: bool, 2: bool, 3: bool, 4: string}>
+	 * @return array<string, array{0: string|null, 1: bool, 2: bool, 3: bool, 4: bool, 5: string}>
 	 */
 	public function refusalProvider(): array
 	{
 		return [
-			'no portal'        => [null, true, true, true, PortalMode::REFUSED_NO_SERVED_PORTAL],
-			'not a token'      => ['itop-portal', false, true, true, PortalMode::REFUSED_NOT_A_TOKEN],
-			'no contact'       => ['itop-portal', true, false, true, PortalMode::REFUSED_NO_CONTACT],
-			'no MCP profile'   => ['itop-portal', true, true, false, PortalMode::REFUSED_NO_MCP_PROFILE],
+			'no portal'        => [null, true, true, true, true, PortalMode::REFUSED_NO_SERVED_PORTAL],
+			'not a token'      => ['itop-portal', false, true, true, true, PortalMode::REFUSED_NOT_A_TOKEN],
+			'unbounded token'  => ['itop-portal', true, false, true, true, PortalMode::REFUSED_TOKEN_UNBOUNDED],
+			'no contact'       => ['itop-portal', true, true, false, true, PortalMode::REFUSED_NO_CONTACT],
+			'no MCP profile'   => ['itop-portal', true, true, true, false, PortalMode::REFUSED_NO_MCP_PROFILE],
 			// The portal comes first: a user in no served portal is answered
 			// as before portal mode existed, not told what else it lacks.
-			'nothing held'     => [null, false, false, false, PortalMode::REFUSED_NO_SERVED_PORTAL],
+			'nothing held'     => [null, false, false, false, false, PortalMode::REFUSED_NO_SERVED_PORTAL],
 		];
 	}
 
