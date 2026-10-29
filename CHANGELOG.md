@@ -117,7 +117,9 @@ entry itself, not left to be inferred from it.
   verbatim. iTop escapes that row in the console, so nothing rendered it as markup; a value
   that is not letters, digits and underscores is now answered "That is not a class name"
   instead, and a typo like `UserReqest` is still quoted. The check reads the value only, never
-  the datamodel, so unknown and unreadable classes still answer alike.
+  the datamodel, so unknown and unreadable classes still answer alike. The
+  `itop://core/class/{class}` resource answered with a plain "Unknown class 'X'." of its own;
+  it now gives the same refusal as `core_class_schema`.
 
 ### Packaging
 
