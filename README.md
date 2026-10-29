@@ -595,7 +595,10 @@ code and tells the client what this user's portal offers:
   class extending one is read as that type; a brick class extending none of them offers nothing
   here ([doc/adr/0002](doc/adr/0002-portal-mode-reads-brick-subclasses-as-their-parent.md));
 - for each, whether the scopes let the user read and change objects of it, the create actions
-  that make one, and the stimuli the portal's lifecycle allows;
+  that make one, and the stimuli the portal's lifecycle allows. A create action whose class the
+  portal picks with a method — on an instance with both requests and incidents, iTop's own
+  services brick picks `UserRequest` or `Incident` from the subcategory — is listed with
+  `class_chosen_by_portal` and no class, never a guessed one;
 - the fields the portal's forms show for viewing, editing and creating one, read-only and
   mandatory flags included. A class with no portal form is described with its "details" list,
   as the portal shows it, and says so.

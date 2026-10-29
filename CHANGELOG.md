@@ -90,7 +90,9 @@ entry itself, not left to be inferred from it.
   marked `read_only` in `<fields>` is reported read-only, although iTop's portal shows it
   writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
   cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
-  operator or a token narrowed to other toolsets does not get it.
+  operator or a token narrowed to other toolsets does not get it. A create action whose class
+  the portal picks with a method, as the stock services brick does wherever requests and
+  incidents are both installed, is listed with no class and `class_chosen_by_portal`.
 - **The server instructions are served in portal mode** (`core_instructions`,
   `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
   has no `initialize`, and was not told that searching, reading and writing are not served yet.
