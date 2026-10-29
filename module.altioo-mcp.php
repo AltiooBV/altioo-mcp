@@ -32,6 +32,14 @@ SetupWebPage::AddModule(
 			// error somewhere inside a tool.
 			'itop-structure/3.2.0',
 			'authent-token/2.2.1',
+			// altioo-oauth-server, optional. iTop has no optional
+			// dependency; this is the nearest it comes. The expression is
+			// always true - itop-structure is in every installation - so it
+			// never stops an install, but a module named in it that is being
+			// installed is set up first (doc/itop-branch-notes.md, section 4).
+			// The runtime half is MCPHelper::GetProtectedResourceMetadataUrl().
+			// See doc/adr/0003.
+			'itop-structure/3.2.0 || altioo-oauth-server/0.1.0',
 		),
 		'mandatory' => false,
 		'visible' => true,

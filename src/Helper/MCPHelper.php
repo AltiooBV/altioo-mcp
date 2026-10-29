@@ -8,6 +8,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
 use Dict;
+use MetaModel;
 use Throwable;
 use utils;
 
@@ -143,6 +144,13 @@ class MCPHelper
 	 * WWW-Authenticate challenge of a 401; empty means no such parameter.
 	 */
 	const MODULE_SETTING_RESOURCE_METADATA = 'mcp_protected_resource_metadata';
+
+	/**
+	 * A class altioo-oauth-server's datamodel defines, read as "it is
+	 * installed": a compiled class is what an installed module leaves, and
+	 * asking costs no query.
+	 */
+	private const OAUTH_SERVER_CLASS = 'AltiooOAuthClient';
 
 	/**
 	 * Toolsets served by this instance. Empty means every toolset, which is
@@ -965,13 +973,41 @@ class MCPHelper
 	/**
 	 * The protected-resource metadata URL to advertise, or null.
 	 *
+	 * The setting when it is set. Otherwise, when altioo-oauth-server is
+	 * installed beside this module, the document it serves for this endpoint
+	 * - which is what its README tells an operator to copy into the setting,
+	 * so an install of both connects from a "Connect" button with nothing
+	 * typed. That module stays optional in both directions (doc/adr/0003):
+	 * without it, nothing changes.
+	 *
 	 * @since 1.0.0
 	 */
 	public static function GetProtectedResourceMetadataUrl(): ?string
 	{
-		$sUrl = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, '');
+		return self::protectedResourceMetadataUrl(
+			utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, ''),
+			class_exists('MetaModel') && MetaModel::IsValidClass(self::OAUTH_SERVER_CLASS),
+			utils::GetAbsoluteUrlModulesRoot()
+		);
+	}
 
-		return is_string($sUrl) && $sUrl !== '' ? $sUrl : null;
+	/**
+	 * The decision, without iTop.
+	 *
+	 * @param mixed  $mConfigured  The setting, as the configuration holds it.
+	 * @param string $sModulesRoot utils::GetAbsoluteUrlModulesRoot(), the compiled environment's URL.
+	 */
+	private static function protectedResourceMetadataUrl(mixed $mConfigured, bool $bOAuthServerInstalled, string $sModulesRoot): ?string
+	{
+		if (is_string($mConfigured) && $mConfigured !== '') {
+			return $mConfigured;
+		}
+
+		if (!$bOAuthServerInstalled || $sModulesRoot === '') {
+			return null;
+		}
+
+		return rtrim($sModulesRoot, '/').'/altioo-oauth-server/index.php?route=protected-resource&for=mcp';
 	}
 
 	/**
