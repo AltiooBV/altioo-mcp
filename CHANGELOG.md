@@ -63,16 +63,19 @@ entry itself, not left to be inferred from it.
   datamodel does not have is logged at every request. Empty by default, so nothing changes until
   it is set.
 
-- **Portal mode, first step: portal-only users are sorted, and served nothing.** A user with no
-  console is still refused unless the new `mcp_portals` setting, empty by default, lists one of
-  their portals. When it does, they are let in only with a token, linked to a contact, and holding
-  a profile in `mcp_allowed_profiles` — that one even with `secure_mcp_services` off — in the
-  first listed portal by rank they may enter. What they are served is nothing: no tool, resource
-  or prompt, a pack's included, and instructions telling the client to use the portal. iTop's
+- **Portal mode: a portal-only user is let in by their profiles, and served what their portal
+  offers.** A user with no console used to be refused outright. Now they are let in when they
+  hold a profile in `mcp_allowed_profiles` — that one even with `secure_mcp_services` off — with a
+  token, linked to a contact, in the first portal by rank they may enter that the new
+  `mcp_portals` setting serves. Its default, `array('*')`, serves every portal, so holding the MCP
+  profile is the switch; `array()` refuses them as before. The token must expire within the new
+  `mcp_portal_token_max_days` (90 by default): every personal token needs its owner's profile in
+  authent-token's `personal_tokens_allowed_profiles`, which lets a portal session mint its own
+  tokens with no expiry at all, and portal mode does not accept one that never ends. iTop's
   `Portal user` profile reads every class, and what narrows it is the portal's own configuration,
-  which nothing here enforces yet; reading tools that do are the next step. Console logins take
-  exactly the path they took before, because portal mode starts only from the refusal iTop
-  already returned for them.
+  which nothing written for the console enforces, so nothing of it is served there, a pack's
+  included. Console logins take exactly the path they took before, because portal mode starts
+  only from the refusal iTop already returned for them.
 - **Portal mode, second step: `core_portal_describe` says what a portal user's portal offers.**
   The first element served in portal mode, and the only one: the classes a brick granted to the
   user reaches, whether the portal's scopes let them read and change objects of each, its create

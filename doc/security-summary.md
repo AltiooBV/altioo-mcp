@@ -23,8 +23,8 @@ Protocol](https://modelcontextprotocol.io) server at a single authenticated HTTP
 that an AI assistant can search, read and update CMDB and ticketing objects. It runs entirely
 inside iTop, against `MetaModel` and `UserRights` directly: there is no external service, no
 copy of your datamodel anywhere, and no path by which a caller sees or changes more than the
-user they authenticated as could through the console — or, for a portal-only user an
-administrator chose to serve (`mcp_portals`, off by default), through their portal. iTop itself
+user they authenticated as could through the console — or, for a portal-only user holding the
+MCP profile, through their portal (portal mode; `mcp_portals` turns it off). iTop itself
 opens no outbound connection
 — the MCP client is what talks to a model, and it is the client, not this extension, that
 decides which one.
@@ -126,8 +126,8 @@ scope can only ever make a credential *narrower* than its owner, never wider; th
 capability grading (`mcp_capabilities` / `mcp_read_only`) and the toolset filter; and iTop's own
 `UserRights`, checked per class, per object, per attribute and per stimulus inside every tool.
 
-**Portal-only users are a different case**, refused unless `mcp_portals` lists one of their
-portals. For them `UserRights` is not the boundary — iTop's `Portal user` profile reads every
+**Portal-only users are a different case**, let in by the MCP profile, with a token that expires
+within `mcp_portal_token_max_days`, unless `mcp_portals` is emptied. For them `UserRights` is not the boundary — iTop's `Portal user` profile reads every
 class — so portal mode serves only the elements of this module written to enforce that portal's
 own configuration (its granted bricks, scopes and forms), and nothing written for the console or
 by a tool pack. Today that is one read-only tool describing the portal, which reads no object,
