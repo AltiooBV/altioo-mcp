@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
+use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
@@ -150,6 +152,27 @@ class PortalModeTest extends TestCase
 		PortalMode::Remember('itop-portal');
 
 		$this->assertFalse($this->isHidden($oDescribe, 'core_portal_describe'), 'to a portal user');
+	}
+
+	/**
+	 * A `2026-07-28` client has no initialize, so the instructions tool is
+	 * the only way it learns what portal mode does not serve. Both copies are
+	 * served there, and describe the portal rather than the console's OQL.
+	 */
+	public function testTheInstructionsAreServedInPortalModeAndSaySo(): void
+	{
+		$oTool = new InstructionsTool();
+		$oResource = new InstructionsResource();
+		$sConsoleDescription = (string)$oTool->getDescription();
+
+		PortalMode::Remember('itop-portal');
+
+		$this->assertFalse($this->isHidden($oTool, 'core_instructions'));
+		$this->assertFalse($this->isHidden($oResource, 'itop://core/instructions'));
+		$this->assertStringContainsString('OQL', $sConsoleDescription);
+		$this->assertStringNotContainsString('OQL', (string)$oTool->getDescription());
+		$this->assertStringNotContainsString('OQL', (string)$oResource->getDescription());
+		$this->assertStringContainsString('portal', (string)$oTool->getDescription());
 	}
 
 	/**
