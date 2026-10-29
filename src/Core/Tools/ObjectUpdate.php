@@ -21,6 +21,7 @@ use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -58,7 +59,7 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
-			.'The dry run reports exactly which attributes would change. '
+			.'The dry run reports exactly which attributes would change. Only what the console form offers in the current state can be set: the state itself, and fields the state locks, change with core_object_apply_stimulus. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 
@@ -244,6 +245,13 @@ class ObjectUpdate extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
 				continue;
 			}
+			// Writable is the ORM's word; this is the console's. The state, what
+			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
+			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value);
+			if ($sNotEditable !== null) {
+				$aIssues[$sAttCode] = $sNotEditable;
+				continue;
+			}
 			// Asked before the ORM sees it: an id pointing at nothing is a
 			// mistake the caller can correct, and iTop answers it with an
 			// exception this module can only report opaquely.
@@ -286,6 +294,14 @@ class ObjectUpdate extends AbstractMCPTool
 					$aIssues[$sAttCode] = $sDropped;
 					continue;
 				}
+				// What the set would add, change and remove, judged before
+				// Set() hands it to ormLinkSet. See EditPolicy.
+				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValidatedValues[$sAttCode]);
+				if ($sBadLinks !== null) {
+					unset($aValidatedValues[$sAttCode]);
+					$aIssues[$sAttCode] = $sBadLinks;
+					continue;
+				}
 			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($class, $sAttCode, $value);
@@ -305,6 +321,13 @@ class ObjectUpdate extends AbstractMCPTool
 		}
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to setting fields : ".implode(', ', $aIssues));
+		}
+
+		// Once everything is Set(), because a datamodel filter reads the
+		// object and this call may have moved what it reads. See EditPolicy.
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		if (!empty($aIssues)) {
+			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()
