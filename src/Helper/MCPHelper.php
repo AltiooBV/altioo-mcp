@@ -168,15 +168,6 @@ class MCPHelper
 	const MODULE_SETTING_READ_ONLY = 'mcp_read_only';
 
 	/**
-	 * Whether the classes that decide what a caller may do can be written
-	 * through this endpoint at all - tokens, users, and iTop's rights model.
-	 *
-	 * Off, and off is the answer for almost every instance. On, the caller may
-	 * administer other people's access and still never its own: see
-	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
-	 * self-guard is unconditional and this setting cannot reach it.
-	 */
-	/**
 	 * What a tool says when it will not act on the class it was given.
 	 *
 	 * One sentence for two cases, and deliberately: a class that does not
@@ -271,6 +262,15 @@ class MCPHelper
 	 */
 	const MAP_TYPE = ['object', 'array'];
 
+	/**
+	 * Whether the classes that decide what a caller may do can be written
+	 * through this endpoint at all - tokens, users, and iTop's rights model.
+	 *
+	 * Off, and off is the answer for almost every instance. On, the caller may
+	 * administer other people's access and still never its own: see
+	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
+	 * self-guard is unconditional and this setting cannot reach it.
+	 */
 	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
 
 	/**
