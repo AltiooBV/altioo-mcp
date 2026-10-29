@@ -109,6 +109,16 @@ entry itself, not left to be inferred from it.
   advice says the same, and `doc/security-summary.md` now names portal mode and the compiled
   portal rules it has iTop write under `data/cache-<env>/`.
 
+### Changed
+
+- **A refused class is quoted back only when it is shaped like a class name.** Every tool that
+  refuses a class, and `core_portal_describe`, repeated the value it was given, so
+  `UserRequest' OR 1=1 --` came back in the error and went into the audit row's message
+  verbatim. iTop escapes that row in the console, so nothing rendered it as markup; a value
+  that is not letters, digits and underscores is now answered "That is not a class name"
+  instead, and a typo like `UserReqest` is still quoted. The check reads the value only, never
+  the datamodel, so unknown and unreadable classes still answer alike.
+
 ### Packaging
 
 - **The archive is signed by a job that runs none of this repository's code.** The release used
