@@ -88,6 +88,15 @@ entry itself, not left to be inferred from it.
   writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
   cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
   operator or a token narrowed to other toolsets does not get it.
+- **The server instructions are served in portal mode** (`core_instructions`,
+  `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
+  has no `initialize`, and was not told that searching, reading and writing are not served yet.
+- **How a portal-only user gets a token**, in the README: the profile it needs in authent-token's
+  `personal_tokens_allowed_profiles`, that an administrator mints it, and what listing that
+  profile opens — a portal session can then mint its own tokens of any scope through
+  authent-token's endpoint, bounded here by what portal mode serves. SECURITY.md's hardening
+  advice says the same, and `doc/security-summary.md` now names portal mode and the compiled
+  portal rules it has iTop write under `data/cache-<env>/`.
 
 ### Packaging
 

@@ -545,12 +545,31 @@ naming the account and the condition:
   login does; two portals are never combined. A user allowed into several cannot pick another
   one yet: to serve them a different portal, leave the higher-ranked one out of `mcp_portals`.
 
+**Giving a portal user a token.** Two things iTop decides, not this extension:
+
+- A personal token logs in only if its owner holds a profile listed in authent-token's
+  `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
+  profile your portal users hold for this — `MCP Services User`, which they need anyway — or
+  every token minted for them fails as an invalid login.
+- They cannot mint one themselves: My Account is console-only. An administrator creates it under
+  **User management → Personal tokens**, setting the user to the portal account and ticking an
+  **MCP** scope; the value is shown once, in the message after the creation.
+
+Adding that profile has a side effect worth knowing before you do it. A portal session of
+anyone holding it can mint personal tokens for itself through authent-token's own endpoint,
+with whatever scope and expiry it posts, and a console user holding it gets the Personal tokens
+tab of My Account. What such a token can do here is still only what portal mode serves —
+whatever its grade, `MCP-delete` included — and iTop's REST, export, import and synchro
+endpoints refuse a portal-only user whatever the token says. See
+[SECURITY.md](SECURITY.md), "Hardening".
+
 **What portal mode serves: a description of the portal, and no object yet.** iTop's `Portal
 user` profile reads every class; what keeps a portal user to their own requests is the portal's
 configuration — its bricks, scopes and forms — which iTop's rights checks never consult. So
-nothing written for the console is served in portal mode, a pack's included. The one element
-served is `core_portal_describe`, which reads that configuration with the portal's own code and
-tells the client what this user's portal offers:
+nothing written for the console is served in portal mode, a pack's included. What is served is
+the server instructions (`core_instructions` and `itop://core/instructions`), rewritten for
+portal mode, and `core_portal_describe`, which reads that configuration with the portal's own
+code and tells the client what this user's portal offers:
 
 - the classes a brick granted to the user reaches — a class with a read scope that no brick
   offers is left out, as is one a brick offers that the scopes refuse
@@ -983,7 +1002,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 
 | Symptom | Cause |
 |---|---|
-| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
+| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does, or serve its portal in portal mode by listing it in `mcp_portals`, which serves only what that portal offers. `log/error.log` names the account either way. See [Granting access](#granting-access) |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
@@ -1156,7 +1175,7 @@ Known and deliberate, so that none of them is a discovery made after installing:
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.
 - **Portal-only users are served no object yet.** Portal mode sorts them in and serves only
-  `core_portal_describe`, which says what their portal offers — see
+  `core_portal_describe`, which says what their portal offers, and the server instructions — see
   [Granting access](#granting-access). It needs iTop 3.2.2 or later, and a user allowed into
   several portals gets the first served one by rank.
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see

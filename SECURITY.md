@@ -577,7 +577,7 @@ reference.
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |
-| A portal-only user reading what their portal hides — iTop's `Portal user` profile reads every class, and the portal's scopes and forms, which narrow it, are not consulted by iTop's rights checks | Refused, as a user with no console always was, unless `mcp_portals` lists one of their portals. Then portal mode requires a token, a linked contact and a profile in `mcp_allowed_profiles` whatever `secure_mcp_services` says, and serves only this extension's elements that enforce the portal's configuration themselves (`PortalPolicy`: the portal's granted bricks, scopes, forms and lifecycle) — today `core_portal_describe`, which reads no object. A pack's element is never served there, even one claiming to be portal-aware. The check comes before every other filter on the surface, so no setting can let one through, and the filters after it still narrow what it admits. A portal that cannot be read — no portal module, an iTop before 3.2.2, a configuration that fails to load — is served nothing, never the scopes or the datamodel without it |
+| A portal-only user reading what their portal hides — iTop's `Portal user` profile reads every class, and the portal's scopes and forms, which narrow it, are not consulted by iTop's rights checks | Refused, as a user with no console always was, unless `mcp_portals` lists one of their portals. Then portal mode requires a token, a linked contact and a profile in `mcp_allowed_profiles` whatever `secure_mcp_services` says, and serves only this extension's elements that enforce the portal's configuration themselves (`PortalPolicy`: the portal's granted bricks, scopes, forms and lifecycle) — today `core_portal_describe`, which reads no object, and the server instructions, which read nothing. A pack's element is never served there, even one claiming to be portal-aware. The check comes before every other filter on the surface, so no setting can let one through, and the filters after it still narrow what it admits. A portal that cannot be read — no portal module, an iTop before 3.2.2, a configuration that fails to load — is served nothing, never the scopes or the datamodel without it |
 | Enumeration of the datamodel by an unauthorised caller | The profile gate runs before anything is advertised; `tools/list` is filtered per caller, and the `initialize` guidance is assembled from the same policy, so it names no tool the caller is not served |
 
 **What is out of scope.** This extension cannot control what the MCP *client* does with data it
@@ -620,6 +620,17 @@ records two). In particular, and specifically relevant here:
   so adding a profile to it widens who can hold a working credential for every API on this
   instance, this endpoint included — and it is the reason a token minted against the wrong
   account is worth something rather than nothing.
+- **Before listing a portal user's profile there for portal mode**, know what it opens. A portal
+  session of anyone holding it can then mint personal tokens for itself through
+  `authent-token/ajax.php`, which logs in without asking for the console and takes the scope and
+  expiry from the posted form (authent-token's `AuthentTokenAjaxController`, iTop 3.2.2): a
+  portal user can hold a token graded `MCP-delete`, with no expiry, that no administrator
+  issued. What bounds it is on the server, not on the token: in portal mode only what
+  `PortalMode::Serves()` admits is served, whatever the grade, and iTop's REST, export, import
+  and synchro endpoints ask for the console and refuse a portal-only user. Every such token is
+  a `PersonalToken` row naming its user, scope and application, listed under User management →
+  Personal tokens, and every call it makes carries its id on the audit row. A console user
+  holding the same profile gets the Personal tokens tab of My Account, for every scope.
 - Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
   standing**: `debug` stores raw request parameters, which may contain data your users would
   not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
