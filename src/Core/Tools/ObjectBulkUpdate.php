@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use DBObject;
 use DBObjectSet;
@@ -49,7 +50,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	public function getDescription(): ?string
 	{
 		return 'Set the same attributes on several iTop objects of one class at once. '
-			.'The dry run reports what would change and which objects this user may not touch. '
+			.'The dry run reports what would change and which objects this user may not touch. Only what the console form offers in the current state can be set: the state itself, and fields the state locks, change with core_object_apply_stimulus. '
 			.'Each object is checked on its own, so a call can partly succeed; the response reports every object separately.';
 	}
 
@@ -160,6 +161,13 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			try {
 				foreach ($aValues as $sAttCode => $value) {
 					$mObject->Set($sAttCode, $value);
+				}
+
+				// Once everything is Set(), because a datamodel filter reads the
+				// object and this row may have moved what it reads. See EditPolicy.
+				$aBadKeys = EditPolicy::RefusalsForExternalKeys($mObject, array_keys($aValues));
+				if (!empty($aBadKeys)) {
+					throw new ToolCallException(implode(' ', $aBadKeys));
 				}
 
 				// Before the check, because the check is what moves them:
