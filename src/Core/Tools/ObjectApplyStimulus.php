@@ -21,6 +21,7 @@ use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -280,6 +281,13 @@ class ObjectApplyStimulus extends AbstractMCPTool
 				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
 				continue;
 			}
+			// Writable is the ORM's word; this is the console's. The state, what
+			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
+			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value, $stimulus);
+			if ($sNotEditable !== null) {
+				$aIssues[$sAttCode] = $sNotEditable;
+				continue;
+			}
 			// Asked before the ORM sees it: an id pointing at nothing is a
 			// mistake the caller can correct, and iTop answers it with an
 			// exception this module can only report opaquely.
@@ -322,6 +330,14 @@ class ObjectApplyStimulus extends AbstractMCPTool
 					$aIssues[$sAttCode] = $sDropped;
 					continue;
 				}
+				// What the set would add, change and remove, judged before
+				// Set() hands it to ormLinkSet. See EditPolicy.
+				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValidatedValues[$sAttCode]);
+				if ($sBadLinks !== null) {
+					unset($aValidatedValues[$sAttCode]);
+					$aIssues[$sAttCode] = $sBadLinks;
+					continue;
+				}
 			} catch (\Throwable $e) {
 				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($class, $sAttCode, $value);
@@ -340,6 +356,13 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to setting fields : ".implode(', ', $aIssues));
+		}
+
+		// Once everything is Set(), because a datamodel filter reads the
+		// object and this call may have moved what it reads. See EditPolicy.
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		if (!empty($aIssues)) {
+			throw new ToolCallException("Failed to apply stimulus due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Check for missing mandatory attributes before applying the stimulus, to provide a more helpful error message in this common case
