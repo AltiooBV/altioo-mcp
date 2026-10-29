@@ -605,9 +605,11 @@ here, subject to your `allowed_login_types`:
   objects, so none applies here — the profile gate and iTop's permissions are what protect the
   endpoint.
 - **`external` mode**, where a reverse proxy authenticates the caller and passes `REMOTE_USER`.
-  This is where OAuth/OIDC belongs: terminate it in the web server (`mod_auth_openidc`,
-  `oauth2-proxy`) and let iTop consume the result. The extension carries no OAuth code of its
-  own, and needs none.
+  This is one place OAuth/OIDC can live: terminate it in the web server (`mod_auth_openidc`,
+  `oauth2-proxy`) and let iTop consume the result. The other is the optional
+  altioo-oauth-server, which makes iTop the authorization server and issues personal tokens, so
+  its callers arrive by the first route above. The extension carries no OAuth code of its own,
+  and needs none.
 
 Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint — a headless MCP
 client has no way to follow a redirect to an identity provider — and neither can a session
@@ -737,6 +739,13 @@ add it to a `401` it never sees. When the call presented a token and it was refu
 challenge also carries `error="invalid_token"` (RFC 6750), which tells an OAuth client to
 refresh or connect again; a call that presented nothing gets no error code.
 
+**Or install [altioo-oauth-server](https://github.com/AltiooBV/altioo-oauth-server)**, which makes
+iTop its own OAuth 2.1 server and issues ordinary personal tokens. It is an optional dependency
+([doc/adr/0003](doc/adr/0003-optional-dependency-on-altioo-oauth-server.md)): installed beside this
+extension, it is set up first, and with `mcp_protected_resource_metadata` left empty the `401`
+points at the document it serves for this endpoint, so nothing has to be typed. Without it,
+nothing changes; a value in the setting always wins.
+
 > **If you put an OIDC proxy in front of iTop, it must not forward the upstream token as the
 > iTop credential.** The proxy authenticates the caller and then presents iTop with an
 > identity it controls — `REMOTE_USER` in `external` mode, or an iTop token the proxy holds
@@ -807,7 +816,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_max_mentions` | `5` | Distinct objects one call may @mention in the case-log entries it writes. A mention is markup iTop turns into a notification, and here the caller types that markup directly, where the console offers it one autocomplete pick at a time. Mentions are also held to the classes in iTop's `mentions.allowed_classes` and to objects the caller can see; a value breaking any of the three is refused, and says which. `0` turns mentions off for this endpoint |
 | `mcp_refuse_formula_values` | `true` | Refuse a text value that starts — after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — what a spreadsheet runs as a formula (CSV injection) once the data is exported by iTop, returned by REST, or turned into a CSV by an assistant. A value that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone numbers, negative numbers and dates are unaffected. Case logs and secret attributes are not checked. Values that reach iTop some other way are not checked either — see [SECURITY.md](SECURITY.md#hardening-the-deployment) for finding them. Anything but an explicit `false` keeps it on |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. This module sets it on every request, so the SDK's own default of 50 never applies. What is past the limit is paged behind a cursor, which a client that ignores `nextCursor` never asks for — those elements then exist, are callable, and are advertised to nobody |
-| `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
+| `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows. Left empty with altioo-oauth-server installed, that module's document for this endpoint is advertised instead |
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
@@ -1168,9 +1177,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
   `initialize`, the only message the block is carried in. It is fetchable — `core_instructions`,
   or `itop://core/instructions` at `priority: 1` — but whether a client reads it is the client's
   decision, not this server's.
-- **No OAuth.** By design — terminate it in a proxy in front of iTop. A client that offers only
-  a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
-  proxy's discovery document.
+- **No OAuth of its own.** By design — terminate it in a proxy in front of iTop, or install the
+  optional altioo-oauth-server. A client that offers only a "Connect" button needs the `401` to
+  point at a discovery document: `mcp_protected_resource_metadata` for a proxy, automatic with
+  altioo-oauth-server.
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.

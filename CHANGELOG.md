@@ -91,6 +91,12 @@ entry itself, not left to be inferred from it.
 - **The server instructions are served in portal mode** (`core_instructions`,
   `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
   has no `initialize`, and was not told that searching, reading and writing are not served yet.
+- **altioo-oauth-server is an optional dependency** (doc/adr/0003). Declared in
+  `module.altioo-mcp.php` in a form that is always satisfied, so it never stops an install and
+  only sets that module up first when it is being installed. With it installed and
+  `mcp_protected_resource_metadata` empty, the `401` now advertises the document it serves for
+  this endpoint; before, the operator copied that URL into the setting by hand. Without it,
+  nothing changes, and a value in the setting always wins.
 - **How a portal-only user gets a token**, in the README: the profile it needs in authent-token's
   `personal_tokens_allowed_profiles`, that an administrator mints it, and what listing that
   profile opens — a portal session can then mint its own tokens of any scope through

@@ -585,7 +585,9 @@
         advertised in the WWW-Authenticate header of a 401, which is how a
         client that only offers a "Connect" button finds the authorization
         server. This module implements no OAuth itself. Empty means the
-        challenge carries no such pointer.
+        challenge carries no such pointer - unless altioo-oauth-server is
+        installed, in which case the document it serves for this endpoint is
+        advertised. A value here always wins.
       -->
       <mcp_protected_resource_metadata type="string"></mcp_protected_resource_metadata>
       <!--
