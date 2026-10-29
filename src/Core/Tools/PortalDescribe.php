@@ -77,6 +77,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 		return 'Describe what this user\'s iTop portal offers them: the classes they can work with, and for each whether they may read and change objects of it, how objects are created, the fields shown when viewing, editing and creating one, and the stimuli (state changes) they may apply. '
 			.'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds. '
 			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
+			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from, a service subcategory in the stock portal. '
 			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. '
 			.'The fields of an existing object follow its state, so those listed are a new object\'s.';
 	}
@@ -282,16 +283,40 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	 * names are what will preset the new object; they are reported, and run
 	 * on the server, never by the client.
 	 *
+	 * An action whose class the portal chooses with a method, from the
+	 * object the user picks, has no class to check yet: it is offered when
+	 * the user may read what it starts from, with class null and
+	 * class_chosen_by_portal. The method is the portal's business and is not
+	 * reported.
+	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function servedCreateActions(PortalPolicy $oPolicy): array
 	{
-		return array_values(array_filter(
-			$oPolicy->CreateActions(),
-			static fn (array $aAction): bool => MetaModel::IsValidClass((string)$aAction['class'])
-				&& UserRights::IsActionAllowed((string)$aAction['class'], UR_ACTION_CREATE) !== UR_ALLOWED_NO
-				&& $oPolicy->WriteSet((string)$aAction['class']) !== null
-		));
+		$aServed = [];
+		foreach ($oPolicy->CreateActions() as $aAction) {
+			$sClass = $aAction['class'];
+			if ($sClass === null) {
+				if ($aAction['from'] === null || $oPolicy->ReadSet((string)$aAction['from']) === null) {
+					continue;
+				}
+			} elseif (!MetaModel::IsValidClass($sClass)
+				|| UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE) === UR_ALLOWED_NO
+				|| $oPolicy->WriteSet($sClass) === null) {
+				continue;
+			}
+
+			$aServed[] = [
+				'action'                 => $aAction['action'],
+				'class'                  => $sClass,
+				'class_chosen_by_portal' => $sClass === null,
+				'title'                  => $aAction['title'],
+				'from'                   => $aAction['from'],
+				'rules'                  => $aAction['rules'],
+			];
+		}
+
+		return $aServed;
 	}
 
 	/**
