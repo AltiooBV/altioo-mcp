@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -126,8 +127,12 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			}
 
 			// Unknown and not offered answer alike, so this cannot map out
-			// the classes the portal withholds.
+			// the classes the portal withholds. A value that is no class name
+			// is not quoted back (MCPHelper::LooksLikeClassName()).
 			if (!in_array($sClass, self::offeredClasses($oPolicy), true)) {
+				if (!MCPHelper::LooksLikeClassName($sClass)) {
+					throw new ToolCallException('That is not a class name. Call this tool without a class for the ones it offers.');
+				}
 				throw new ToolCallException(sprintf(
 					"The portal offers no class '%s'. Call this tool without a class for the ones it offers.",
 					$sClass
