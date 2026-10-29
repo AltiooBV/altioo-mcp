@@ -282,10 +282,25 @@ final class AccessGrants
 	 * Gated with the automation family - they are the credentials it acts
 	 * with - but also asked about by {@see ObjectSerializer::IsSensitive()},
 	 * which is a question about reading and not about writing.
+	 *
+	 * RemoteApplicationConnection is here for its read side alone - it is
+	 * already in AUTOMATION_ROOTS, so the write barrier covered it before this
+	 * line did. What the write barrier does not do is mask a read, and
+	 * RemoteiTopConnectionToken (combodo-webhook-integration) keeps the token
+	 * this instance authenticates to a remote iTop with in an **AttributeString**
+	 * - the same shape of gap OAuthClient had, in a sibling hierarchy the
+	 * OAuth-only list did not reach, so the value came back in clear through
+	 * every read tool, the change history and the schema's isSensible flag. Its
+	 * siblings carry no clear secret of their own - RemoteiTopConnection's is an
+	 * AttributePassword, masked by type; RemoteOauthConnection's lives in the
+	 * Oauth2Client it points at - so naming the floor costs nothing and covers
+	 * whatever a future connection subclass adds. Found by a red-team read, not
+	 * by this list having been derived.
 	 */
 	private const OUTBOUND_CREDENTIAL_ROOTS = [
 		'Oauth2Client',
 		'OAuthClient',
+		'RemoteApplicationConnection',
 	];
 
 	/**
@@ -304,7 +319,9 @@ final class AccessGrants
 	 * Matched exactly rather than by substring, so that
 	 * refresh_token_expiration stays readable: "this token expires on Friday"
 	 * is the kind of thing an assistant is useful for, and masking a date
-	 * would be masking the answer rather than the secret.
+	 * would be masking the answer rather than the secret. The exact match is
+	 * also why `token` covers RemoteiTopConnectionToken's secret without
+	 * catching combodo-oauth2-client's `token_type`, which is "Bearer".
 	 */
 	private const OUTBOUND_SECRET_ATTRIBUTES = [
 		'client_secret',

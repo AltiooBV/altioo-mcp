@@ -47,6 +47,21 @@ entry itself, not left to be inferred from it.
   `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
   serve `index.php` only.
 
+### Security
+
+- **An outbound credential in `combodo-webhook-integration` is masked on read.**
+  `RemoteiTopConnectionToken.token` — the token this instance authenticates to a remote iTop
+  with — is kept in an `AttributeString`, the same shape of gap `OAuthClient`'s `refresh_token`
+  had, in a sibling hierarchy the OAuth-only mask list did not reach. A caller that could read
+  the class got the live token in clear through every read tool, the change history and the
+  schema's `isSensible` flag. The `RemoteApplicationConnection` hierarchy is now in
+  `AccessGrants::OUTBOUND_CREDENTIAL_ROOTS`, so the value is masked everywhere the OAuth secrets
+  are; its sibling connection classes carry no clear secret of their own. A new integration test
+  walks every class the installed datamodel declares and fails on any plain-text attribute whose
+  code names a stored secret, so the next such class is a failing test rather than a later
+  finding. Found by a red-team read, not by the mask list having been derived. No credential of
+  the caller's own was ever at stake — this is an outbound secret of the instance's.
+
 ## [1.1.1] - 2026-10-05
 
 A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it
