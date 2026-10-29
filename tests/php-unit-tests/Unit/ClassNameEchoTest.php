@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\ResourceTemplates\ClassDetail;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
@@ -91,6 +92,18 @@ class ClassNameEchoTest extends TestCase
 		$this->assertNotFalse($iCheck, 'describe quotes the class without checking its shape');
 		$this->assertNotFalse($iQuote);
 		$this->assertLessThan($iQuote, $iCheck, 'the shape is checked after the class is already quoted');
+	}
+
+	/**
+	 * The class resource wrote its own "Unknown class '%s'." and so quoted
+	 * anything; it refuses through the helper like every tool.
+	 */
+	public function testTheClassResourceRefusesThroughTheHelper(): void
+	{
+		$sBody = $this->methodBody(ClassDetail::class, 'read');
+
+		$this->assertStringContainsString('MCPHelper::UnreadableClassRefusal($sClass)', $sBody);
+		$this->assertStringNotContainsString('Unknown class', $sBody, 'a refusal of its own wording is back');
 	}
 
 	/**
