@@ -238,6 +238,53 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->assertSame(0, ToolOutput::Decode(PortalList::execute($sList, '', 999999999))['total']);
 	}
 
+	/**
+	 * What a client that has never seen this portal can do from the
+	 * description alone: take a create action, follow its from_list up the
+	 * parents to the top, walk back down by parent_id, and create - no list
+	 * or action id known in advance.
+	 */
+	public function testACreateActionCanBeReachedFromTheDescriptionAlone(): void
+	{
+		$aOverview = ToolOutput::Decode(PortalDescribe::execute());
+		$aLists = array_column($aOverview['lists'], null, 'list');
+		$aAction = current(array_filter($aOverview['create_actions'], static fn (array $a): bool => $a['from_list'] !== null));
+		$this->assertIsArray($aAction, 'a create action starts from a list');
+
+		// Up: from the action's list to the top of its hierarchy.
+		$aPath = [$aAction['from_list']];
+		while (($sParent = $aLists[end($aPath)]['parent'] ?? null) !== null) {
+			$this->assertArrayHasKey($sParent, $aLists, 'a parent is itself a described list');
+			$aPath[] = $sParent;
+		}
+
+		// Down: the first row at the top that has a row under it at every level.
+		$iFrom = $this->firstLeaf(array_reverse($aPath), 0);
+		$this->assertNotNull($iFrom, 'the hierarchy leads down to a row the action starts from');
+
+		$aDry = ToolOutput::Decode(PortalCreate::execute((string)$aAction['action'], ['title' => 'Found my way', 'description' => 'From the description alone.'], $iFrom));
+		$this->assertTrue($aDry['valid']);
+	}
+
+	/**
+	 * A row of the last list reached by walking the lists in order, each
+	 * narrowed to a row of the one before; null when none leads down.
+	 *
+	 * @param array<int, string> $aPath Lists from the top down.
+	 */
+	private function firstLeaf(array $aPath, int $iParent): ?int
+	{
+		$sList = array_shift($aPath);
+		foreach (ToolOutput::Decode(PortalList::execute($sList, '', $iParent, '', 100))['objects'] as $aRow) {
+			$iFound = $aPath === [] ? (int)$aRow['id'] : $this->firstLeaf($aPath, (int)$aRow['id']);
+			if ($iFound !== null) {
+				return $iFound;
+			}
+		}
+
+		return null;
+	}
+
 	/** The create action that starts from a subcategory, as the stock services brick declares it. */
 	private function subcategoryAction(): string
 	{
