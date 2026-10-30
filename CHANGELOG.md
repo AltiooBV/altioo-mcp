@@ -53,7 +53,7 @@ entry itself, not left to be inferred from it.
 
 - **`core_current_user` reports only the capabilities a served tool uses.** Its `capabilities`
   were the token's grade, so a token graded `MCP-delete` was reported able to delete in portal
-  mode, where nothing deletes, and on an instance whose delete tools are all disabled. They are
+  mode, where no tool deletes, and on an instance whose delete tools are all disabled. They are
   now the grades of the tools actually served, within what the token grants, as the toolsets
   beside them already were.
   The block also names the served `tools`, since the portal's tools share the console's
@@ -120,6 +120,10 @@ entry itself, not left to be inferred from it.
     on the object in its state; a creation starts from a row of its action's list, takes the
     class the action names or its factory method chooses, and is preset by the action's rules,
     run by the portal's own helper (doc/adr/0005).
+
+  The change log is a class like any other there: a portal that scopes `CMDBChangeOp` and offers
+  a brick on it shows history, and is listed and read as configured. It is never written, whatever
+  the portal grants — no edit, stimulus or create action is offered on it.
 
   `core_current_user` and `itop://core/current-user` are served in portal mode, and now report
   `current_organization` and `current_portal` in both modes. The `core_my_open_tickets` prompt is

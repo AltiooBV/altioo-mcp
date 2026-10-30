@@ -28,6 +28,10 @@ with the portal's own code where it runs outside the portal's kernel. The decisi
   sent. The action's rules preset the new object through the portal's own
   `ContextManipulatorHelper::PrepareObject()`, with the path's objects as sources, as the portal
   passes them. The client's fields are then held to the create form.
+- **The change log is read as the portal offers it, and never written.** A portal that scopes
+  `CMDBChangeOp` and offers a brick on it shows history, and is served so. No write set holds
+  it, whatever the portal grants (`PortalPolicy::WriteSet()`): a write there forges an audit
+  record, and that is not what an operator means by showing history.
 - **The object must be in the write scope**, and a creation's class must have one and
   UserRights' create grant, as the portal's create page checks. A new object is not checked
   against the write scope, which the portal does not do either.
