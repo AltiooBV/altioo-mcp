@@ -22,10 +22,12 @@ use Combodo\iTop\Portal\DependencyInjection\SilexCompatBootstrap\PortalXmlConfig
 use Combodo\iTop\Portal\DependencyInjection\SilexCompatBootstrap\PortalXmlConfiguration\Lists;
 use Combodo\iTop\Portal\Form\ObjectFormManager;
 use Combodo\iTop\Portal\Helper\ApplicationHelper;
+use Combodo\iTop\Portal\Helper\ContextManipulatorHelper;
 use Combodo\iTop\Portal\Helper\LifecycleValidatorHelper;
 use Combodo\iTop\Portal\Helper\ScopeValidatorHelper;
 use Combodo\iTop\Portal\Service\TemplatesProvider\TemplatesProviderService;
 use DBObject;
+use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use Symfony\Component\DependencyInjection\Container;
@@ -80,23 +82,27 @@ final class PortalPolicy
 	private static ?self $oCurrent = null;
 
 	/**
+	 * @param object                                  $oDesign    ModuleDesign: the portal's configuration, for the action rules.
 	 * @param object                                  $oScopes    ScopeValidatorHelper.
 	 * @param object                                  $oLifecycle LifecycleValidatorHelper.
 	 * @param array<string, array<string, mixed>>     $aForms     The portal's forms, by class then mode.
 	 * @param array<string, array<int, string>>       $aReach     Class => ids of the granted bricks reaching it.
 	 * @param array<string, array<string, array<int, DBSearch|null>>> $aBrickSets Class => brick id => the brick's own queries on it, null where it names the class outright.
 	 * @param array<int, array<string, mixed>>        $aLists     The granted bricks' named lists.
+	 * @param array<string, array<string, mixed>>     $aListDefs  The same lists by id, with what running one needs: its query, tabs and columns.
 	 * @param array<int, array<string, mixed>>        $aCreates   The granted bricks' create actions.
 	 * @param array<int, string>                      $aProfiles  The user's profiles, as the scopes are keyed.
 	 */
 	private function __construct(
 		private readonly string $sPortal,
+		private readonly object $oDesign,
 		private readonly object $oScopes,
 		private readonly object $oLifecycle,
 		private readonly array $aForms,
 		private readonly array $aReach,
 		private readonly array $aBrickSets,
 		private readonly array $aLists,
+		private readonly array $aListDefs,
 		private readonly array $aCreates,
 		private readonly array $aProfiles,
 	)
@@ -191,6 +197,17 @@ final class PortalPolicy
 	}
 
 	/**
+	 * Whether the user may create objects of a class, as the portal's own
+	 * create page decides it: UserRights' create grant, and a write scope.
+	 */
+	public function MayCreate(string $sClass): bool
+	{
+		return MetaModel::IsValidClass($sClass)
+			&& UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE) !== UR_ALLOWED_NO
+			&& $this->WriteSet($sClass) !== null;
+	}
+
+	/**
 	 * The ids of the granted bricks that reach a class, through itself or a
 	 * parent. Empty means no brick offers it, and it is not offered here.
 	 *
@@ -245,6 +262,199 @@ final class PortalPolicy
 	public function Lists(): array
 	{
 		return $this->aLists;
+	}
+
+	/**
+	 * What running one of {@see Lists()} takes, or null when no granted brick
+	 * defines a list of that id.
+	 *
+	 * Its class and query; for a ManageBrick, its columns and tabs, each tab
+	 * with the condition the brick gives it; for a BrowseBrick level, the
+	 * attributes the level shows and, below the first level, the list above
+	 * it and the attribute pointing there. Never handed to a client: the
+	 * client names a list, and the query is run here
+	 * (doc/adr/0001-portal-mode-bricks-bound-discovery.md).
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public function ListDefinition(string $sList): ?array
+	{
+		return $this->aListDefs[$sList] ?? null;
+	}
+
+	/**
+	 * A query narrowed to what the user may read of a class, or null when
+	 * they may read none of it.
+	 *
+	 * The portal's AddScopeToQuery(), less its blind spot: there, a class
+	 * with no scope leaves the query as it was. The intersection drops the
+	 * AllowAllData flag a scope's ignore_silos sets, and it is put back as
+	 * the portal puts it back.
+	 */
+	public function Bounded(DBSearch $oQuery, string $sClass): ?DBSearch
+	{
+		$oScope = $this->ReadSet($sClass);
+		if ($oScope === null) {
+			return null;
+		}
+
+		$oBounded = $oQuery->Intersect($oScope);
+		if ($oScope->IsAllDataAllowed()) {
+			$oBounded->AllowAllData();
+		}
+
+		return $oBounded;
+	}
+
+	/**
+	 * One object, when the scopes let the user read it; null otherwise,
+	 * whether it does not exist or is out of their reach - the two answer
+	 * alike, as the portal's object page answers them.
+	 *
+	 * By the scopes and not by the bricks, as the portal's object pages are
+	 * (doc/adr/0001): a ticket's caller or service must still resolve. Asked
+	 * of the class named and then of the class the object actually is, since
+	 * a child class may carry a narrower scope than its parent.
+	 */
+	public function Readable(string $sClass, int $iId): ?DBObject
+	{
+		return $this->within($sClass, $iId, fn (string $sOf): ?DBSearch => $this->ReadSet($sOf));
+	}
+
+	/** {@see Readable()}, for the objects the user may change. */
+	public function Writable(string $sClass, int $iId): ?DBObject
+	{
+		return $this->Readable($sClass, $iId) === null
+			? null
+			: $this->within($sClass, $iId, fn (string $sOf): ?DBSearch => $this->WriteSet($sOf));
+	}
+
+	/**
+	 * The stimuli the user may apply to this object, now: those of
+	 * {@see Stimuli()} that leave its current state, and that UserRights
+	 * grants on the object rather than on its class.
+	 *
+	 * Empty for an object the user may not change.
+	 *
+	 * @return array<string, string> Code => label.
+	 */
+	public function StimuliOn(DBObject $oObject): array
+	{
+		$sClass = get_class($oObject);
+		if ($this->Writable($sClass, (int)$oObject->GetKey()) === null) {
+			return [];
+		}
+
+		$aTransitions = MetaModel::EnumTransitions($sClass, (string)$oObject->GetState());
+		$oInstanceSet = DBObjectSet::FromObject($oObject);
+
+		$aStimuli = [];
+		foreach ($this->Stimuli($sClass) as $sCode => $sLabel) {
+			if (!isset($aTransitions[$sCode])) {
+				continue;
+			}
+
+			// With the object in hand an addon has what it needs to answer,
+			// so only a yes is a yes: DEPENDS here is not one.
+			$mAllowed = UserRights::IsStimulusAllowed($sClass, $sCode, $oInstanceSet);
+			if ($mAllowed === true || $mAllowed === UR_ALLOWED_YES) {
+				$aStimuli[$sCode] = $sLabel;
+			}
+		}
+
+		return $aStimuli;
+	}
+
+	/**
+	 * The states each stimulus leaves, so that a client can tell "close" on
+	 * a resolved request from "close" on a new one before reading either.
+	 *
+	 * @param array<int, string> $aCodes
+	 *
+	 * @return array<string, array<int, string>> Code => the states it applies in.
+	 */
+	public static function StatesOf(string $sClass, array $aCodes): array
+	{
+		$aFrom = array_fill_keys($aCodes, []);
+		foreach (array_keys(MetaModel::EnumStates($sClass)) as $sState) {
+			foreach (array_keys(MetaModel::EnumTransitions($sClass, (string)$sState)) as $sCode) {
+				if (isset($aFrom[$sCode])) {
+					$aFrom[$sCode][] = (string)$sState;
+				}
+			}
+		}
+
+		return $aFrom;
+	}
+
+	/**
+	 * Runs a create action's rules on a new object, with the portal's own
+	 * ContextManipulatorHelper: presets copy the caller's contact and
+	 * organisation, or the service picked, into the object.
+	 *
+	 * The helper is built without its constructor. That constructor takes the
+	 * portal's router for the callback URLs, which a rule applied here never
+	 * follows; it then reads the rules with Init(), which is public, and keeps
+	 * the scope validator, which PrepareObject() asks before it reads a rule's
+	 * source. Both are done here. Pinned in doc/itop-branch-notes.md.
+	 *
+	 * @param array<int, string>     $aRules   The action's rule ids, as the brick lists them.
+	 * @param array<string, int>     $aSources Class => id of the objects the action starts from.
+	 *
+	 * @throws MCPPortalException When the rules cannot be read or one of them fails.
+	 */
+	public function ApplyRules(array $aRules, array $aSources, DBObject $oObject): void
+	{
+		if ($aRules === []) {
+			return;
+		}
+
+		try {
+			$oHelper = (new \ReflectionClass(ContextManipulatorHelper::class))->newInstanceWithoutConstructor();
+			$oHelper->Init($this->oDesign->GetNodes('/module_design/action_rules/action_rule'));
+			(new \ReflectionProperty(ContextManipulatorHelper::class, 'oScopeValidator'))->setValue($oHelper, $this->oScopes);
+
+			$oHelper->PrepareObject(['rules' => array_values($aRules), 'sources' => $aSources], $oObject);
+		} catch (\Throwable $oException) {
+			throw new MCPPortalException(MCPHelper::OpaqueFailure(
+				sprintf("Could not apply the rules of a create action in portal '%s'", $this->sPortal),
+				$oException
+			), 0, $oException);
+		}
+	}
+
+	/**
+	 * The class a create action whose class the portal chooses would create,
+	 * from the object it starts from: the portal's factory method, run here as
+	 * the portal runs it, and only the class of what it returns kept, as the
+	 * portal keeps only that.
+	 *
+	 * The method is the one the brick's configuration names, never one a
+	 * client sent - the portal itself takes it from its URL.
+	 *
+	 * @throws MCPPortalException When the method cannot be called or does not return an object.
+	 */
+	public function ChosenClass(string $sFactoryMethod, DBObject $oFrom): string
+	{
+		$sMethod = ltrim($sFactoryMethod, '\\');
+
+		try {
+			if (!is_callable($sMethod)) {
+				throw new \RuntimeException("not callable: {$sMethod}");
+			}
+			$oCreated = call_user_func($sMethod, $oFrom);
+		} catch (\Throwable $oException) {
+			throw new MCPPortalException(MCPHelper::OpaqueFailure(
+				sprintf("Could not choose the class to create in portal '%s'", $this->sPortal),
+				$oException
+			), 0, $oException);
+		}
+
+		if (!$oCreated instanceof DBObject) {
+			throw self::refusal(sprintf("The factory method %s of portal '%s' returned no object.", $sMethod, $this->sPortal));
+		}
+
+		return get_class($oCreated);
 	}
 
 	/**
@@ -330,6 +540,20 @@ final class PortalPolicy
 		}
 
 		return $aFields;
+	}
+
+	/**
+	 * Whether the portal's forms show an object's attachments.
+	 *
+	 * Through a plugin field rather than an attribute, so {@see Fields()}
+	 * leaves it out; and whether the layout names it or not, since the
+	 * portal adds it to any form whose object the attachment module allows
+	 * attachments on (ObjectFormManager's fallback), except a transition's.
+	 */
+	public static function ShowsAttachments(DBObject $oObject): bool
+	{
+		return class_exists('Attachment') && class_exists('AttachmentPlugIn')
+			&& \AttachmentPlugIn::IsAttachmentAllowedForObject($oObject);
 	}
 
 	/**
@@ -548,19 +772,21 @@ final class PortalPolicy
 			(new Lists($oDesign))->Process($oContainer);
 			$aConf = $oContainer->getParameter('combodo.portal.instance.conf');
 
-			[$aReach, $aBrickSets, $aLists, $aCreates] = self::granted($oBricks->GetBricks() ?? []);
+			[$aReach, $aBrickSets, $aLists, $aListDefs, $aCreates] = self::granted($oBricks->GetBricks() ?? []);
 		} catch (\Throwable $oException) {
 			throw new MCPPortalException(MCPHelper::OpaqueFailure(sprintf("Could not read portal '%s'", $sPortal), $oException), 0, $oException);
 		}
 
 		return new self(
 			$sPortal,
+			$oDesign,
 			$oScopes,
 			$oLifecycle,
 			is_array($aConf['forms'] ?? null) ? $aConf['forms'] : [],
 			$aReach,
 			$aBrickSets,
 			$aLists,
+			$aListDefs,
 			$aCreates,
 			array_values(array_map('strval', UserRights::ListProfiles()))
 		);
@@ -583,13 +809,14 @@ final class PortalPolicy
 	 *
 	 * @param iterable<int, object> $aBricks
 	 *
-	 * @return array{0: array<string, array<int, string>>, 1: array<string, array<string, array<int, DBSearch|null>>>, 2: array<int, array<string, mixed>>, 3: array<int, array<string, mixed>>}
+	 * @return array{0: array<string, array<int, string>>, 1: array<string, array<string, array<int, DBSearch|null>>>, 2: array<int, array<string, mixed>>, 3: array<string, array<string, mixed>>, 4: array<int, array<string, mixed>>}
 	 */
 	private static function granted(iterable $aBricks): array
 	{
 		$aReach = [];
 		$aBrickSets = [];
 		$aLists = [];
+		$aListDefs = [];
 		$aCreates = [];
 
 		foreach ($aBricks as $oBrick) {
@@ -604,9 +831,22 @@ final class PortalPolicy
 
 				$aGrouping = $oBrick->GetGrouping();
 				$aTabs = [];
+				$aConditions = [];
 				foreach ($aGrouping['tabs']['groups'] ?? [] as $aGroup) {
 					$aTabs[] = ['id' => (string)$aGroup['id'], 'title' => \Dict::S((string)$aGroup['title'])];
+					$aConditions[(string)$aGroup['id']] = (string)$aGroup['condition'];
 				}
+
+				$aListDefs[$sBrick] = [
+					'kind'       => self::BRICK_MANAGE,
+					'class'      => $sClass,
+					'oql'        => (string)$oBrick->GetOql(),
+					'columns'    => array_values(array_map('strval', $oBrick->GetFields())),
+					'tabs'       => $aConditions,
+					'tabs_by'    => $aGrouping['tabs']['attribute'] ?? null,
+					'parent'     => null,
+					'parent_att' => null,
+				];
 
 				$aLists[] = [
 					'list'       => $sBrick,
@@ -618,7 +858,7 @@ final class PortalPolicy
 					'grouped_by' => $aGrouping['areas']['attribute'] ?? null,
 				];
 			} elseif ($sKind === self::BRICK_BROWSE) {
-				self::levels($sBrick, \Dict::S((string)$oBrick->GetTitle()), $oBrick->GetLevels(), [], $aReach, $aBrickSets, $aLists, $aCreates);
+				self::levels($sBrick, \Dict::S((string)$oBrick->GetTitle()), $oBrick->GetLevels(), [], $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates);
 			} elseif ($sKind === self::BRICK_CREATE) {
 				$sClass = (string)$oBrick->GetClass();
 				$aReach[$sClass][] = $sBrick;
@@ -629,12 +869,13 @@ final class PortalPolicy
 					'factory_method' => null,
 					'title'          => \Dict::S((string)$oBrick->GetTitle()),
 					'from'           => null,
+					'from_list'      => null,
 					'rules'          => array_values($oBrick->GetRules()),
 				];
 			}
 		}
 
-		return [$aReach, $aBrickSets, $aLists, $aCreates];
+		return [$aReach, $aBrickSets, $aLists, $aListDefs, $aCreates];
 	}
 
 	/**
@@ -645,9 +886,10 @@ final class PortalPolicy
 	 * @param array<string, array<int, string>>       $aReach
 	 * @param array<string, array<string, array<int, DBSearch|null>>> $aBrickSets
 	 * @param array<int, array<string, mixed>>        $aLists
+	 * @param array<string, array<string, mixed>>     $aListDefs
 	 * @param array<int, array<string, mixed>>        $aCreates
 	 */
-	private static function levels(string $sBrick, string $sTitle, array $aLevels, array $aPath, array &$aReach, array &$aBrickSets, array &$aLists, array &$aCreates): void
+	private static function levels(string $sBrick, string $sTitle, array $aLevels, array $aPath, array &$aReach, array &$aBrickSets, array &$aLists, array &$aListDefs, array &$aCreates): void
 	{
 		foreach ($aLevels as $aLevel) {
 			$oSet = DBSearch::FromOQL((string)$aLevel['oql']);
@@ -666,11 +908,35 @@ final class PortalPolicy
 				'parent_att' => $aLevel['parent_att'] ?? null,
 			];
 
+			// What the level shows of each object: its name, its description
+			// and tooltip, and the fields it lists beside them.
+			$aColumns = [];
+			foreach (['name_att', 'description_att', 'tooltip_att'] as $sKey) {
+				if (is_string($aLevel[$sKey] ?? null) && $aLevel[$sKey] !== '') {
+					$aColumns[] = $aLevel[$sKey];
+				}
+			}
+			$aListDefs[$sList] = [
+				'kind'       => self::BRICK_BROWSE,
+				'class'      => $sClass,
+				'oql'        => (string)$aLevel['oql'],
+				'columns'    => array_values(array_unique(array_merge($aColumns, array_map('strval', array_keys($aLevel['fields'] ?? []))))),
+				'tabs'       => [],
+				'tabs_by'    => null,
+				'parent'     => $aPath === [] ? null : $sBrick.'/'.implode('/', $aPath),
+				'parent_att' => $aLevel['parent_att'] ?? null,
+			];
+
 			foreach ($aLevel['actions'] ?? [] as $sAction => $aAction) {
 				$aCreate = is_array($aAction) ? self::CreateActionOf($sList.'/'.(string)$sAction, $aAction, $sClass, $sTitle) : null;
 				if ($aCreate === null) {
 					continue;
 				}
+
+				// The level it is offered on, whose path holds the objects
+				// the action's rules read: the subcategory picked, and the
+				// service and family above it.
+				$aCreate['from_list'] = $sList;
 
 				$aCreates[] = $aCreate;
 				if ($aCreate['class'] !== null) {
@@ -680,8 +946,57 @@ final class PortalPolicy
 				}
 			}
 
-			self::levels($sBrick, $sTitle, $aLevel['levels'] ?? [], $aLevelPath, $aReach, $aBrickSets, $aLists, $aCreates);
+			self::levels($sBrick, $sTitle, $aLevel['levels'] ?? [], $aLevelPath, $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates);
 		}
+	}
+
+	/**
+	 * The object of a class with this id, if the set each class gives is one
+	 * it is in: the class named, then the class the object turns out to be.
+	 *
+	 * @param callable(string): ?DBSearch $fSetOf
+	 */
+	private function within(string $sClass, int $iId, callable $fSetOf): ?DBObject
+	{
+		if ($iId < 1 || !MetaModel::IsValidClass($sClass)) {
+			return null;
+		}
+
+		$oObject = self::fetchFrom($fSetOf($sClass), $iId);
+		if ($oObject === null) {
+			return null;
+		}
+
+		$sFinal = get_class($oObject);
+
+		return $sFinal === $sClass ? $oObject : self::fetchFrom($fSetOf($sFinal), $iId);
+	}
+
+	/**
+	 * The object with this id in a set, or null.
+	 *
+	 * The id is bound, not written into the query. Obsolete objects are
+	 * kept, as every read by id here keeps them ({@see \Altioo\iTop\Extension\MCP\Helper\ObjectQuery}).
+	 */
+	private static function fetchFrom(?DBSearch $oSet, int $iId): ?DBObject
+	{
+		if ($oSet === null) {
+			return null;
+		}
+
+		// AddCondition() rather than an expression on the alias: a scope that
+		// unites several profiles' queries is a DBUnionSearch, whose members
+		// each have their own.
+		$oSearch = $oSet->DeepClone();
+		$oSearch->AddCondition('id', $iId, '=');
+		$oSearch->SetShowObsoleteData(true);
+		if ($oSet->IsAllDataAllowed()) {
+			$oSearch->AllowAllData();
+		}
+
+		$oObject = (new DBObjectSet($oSearch))->Fetch();
+
+		return $oObject instanceof DBObject ? $oObject : null;
 	}
 
 	/**
