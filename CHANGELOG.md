@@ -38,6 +38,10 @@ entry itself, not left to be inferred from it.
   tools' results now carry `class` on the object itself, as `core_object_find_by_name` and
   `core_object_get_related` already did. `class` may also be named in `output_fields`, which
   used to refuse it as an unknown attribute.
+- **`audit` and `actions` on the search tools are bounded by the page served, not the limit
+  asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
+  refused for every query, four matches included. A page that would hold more than 25 is still
+  refused, and the refusal now says to pass `limit=25` and page.
 
 ### Added
 
