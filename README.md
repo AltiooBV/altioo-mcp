@@ -151,7 +151,12 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_bulk_create` | Create up to 100 objects of one class. Dry run by default |
 | `core_object_bulk_update` | Set the same attributes on up to 100 objects. Dry run by default |
 | `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
-| `core_portal_describe` | Portal mode only: what the user's portal offers them — classes, fields per mode, create actions, stimuli, lists — read from the portal's own configuration. See [Granting access](#granting-access) |
+| `core_portal_describe` | Portal mode only: what the user's portal offers them — classes, fields per mode, create actions, stimuli and the states they apply in, lists — read from the portal's own configuration. See [Granting access](#granting-access) |
+| `core_portal_list` | Portal mode only: run one of the portal's lists (a ManageBrick, one of its tabs, a browse level under a parent row), with the portal's own search |
+| `core_portal_get` | Portal mode only: one object as the portal's view form shows it, its attachments, and the fields and stimuli the user may apply to it now |
+| `core_portal_create` | Portal mode only: create through one of the portal's create actions, its rules presetting what the portal presets. Dry run by default |
+| `core_portal_update` | Portal mode only: change what the portal's edit form leaves settable, such as a new log entry. Dry run by default |
+| `core_portal_apply_stimulus` | Portal mode only: apply a state change the portal offers on the object now. Dry run by default |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
 are — `core` belongs to this module, an extension uses its own. Two packs from two
@@ -578,37 +583,50 @@ that expires further out than `mcp_portal_token_max_days`: self-minted or not, e
 accepts stops working within that many days. A console user holding the profile also gets the
 Personal tokens tab of My Account. See [SECURITY.md](SECURITY.md), "Hardening".
 
-**What portal mode serves: a description of the portal, and no object yet.** iTop's `Portal
-user` profile reads every class; what keeps a portal user to their own requests is the portal's
-configuration — its bricks, scopes and forms — which iTop's rights checks never consult. So
-nothing written for the console is served in portal mode, a pack's included. What is served is
-the server instructions (`core_instructions` and `itop://core/instructions`), rewritten for
-portal mode, and `core_portal_describe`, which reads that configuration with the portal's own
-code and tells the client what this user's portal offers:
+**What portal mode serves: what the portal offers, read and written as the portal does.**
+iTop's `Portal user` profile reads every class; what keeps a portal user to their own requests
+is the portal's configuration — its bricks, scopes, forms, lifecycle and action rules — which
+iTop's rights checks never consult. So nothing written for the console is served in portal
+mode, a pack's included. What is served answers from that configuration, read with the portal's
+own code, so a customised portal is served as customised:
 
-- the classes a brick granted to the user reaches — a class with a read scope that no brick
-  offers is left out, as is one a brick offers that the scopes refuse
+- `core_portal_describe` says what the user's portal offers: the classes a brick granted to the
+  user reaches — a class with a read scope that no brick offers is left out, as is one a brick
+  offers that the scopes refuse
   ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md)). So is a subclass the
   portal pins out by `finalclass`: the stock Ticket scope allows only `UserRequest` and
-  `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered, as the portal
-  never shows them. ManageBrick, BrowseBrick and CreateBrick are read, and a custom brick
-  class extending one is read as that type; a brick class extending none of them offers nothing
-  here ([doc/adr/0002](doc/adr/0002-portal-mode-reads-brick-subclasses-as-their-parent.md));
-- for each, whether the scopes let the user read and change objects of it, the create actions
-  that make one, and the stimuli the portal's lifecycle allows. A create action whose class the
-  portal picks with a method — on an instance with both requests and incidents, iTop's own
-  services brick picks `UserRequest` or `Incident` from the subcategory — is listed with
-  `class_chosen_by_portal` and no class, never a guessed one;
-- the fields the portal's forms show for viewing, editing and creating one, read-only and
-  mandatory flags included. A class with no portal form is described with its "details" list,
-  as the portal shows it, and says so.
+  `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered. ManageBrick,
+  BrowseBrick and CreateBrick are read, and a custom brick class extending one is read as that
+  type ([doc/adr/0002](doc/adr/0002-portal-mode-reads-brick-subclasses-as-their-parent.md)).
+  For each class, whether the user may read and change it, its create actions, its stimuli
+  and the states each applies in, and the fields of its view, edit and create forms. Each list
+  names its tabs and, for a browse level, the list above it; each create action the list its
+  starting object is picked from. That is enough for a client that has never seen the portal.
+- `core_portal_list` runs a list by id, on the server: the brick's own query intersected with
+  the scope of its class, a tab's condition, a parent row checked against its own level, and the
+  portal's own search on the columns shown. The client never sends a query.
+- `core_portal_get` reads one object by the scopes, as the portal's object page does: the fields
+  of its view form for the object as it is, its attachments, and what the user may do to it now.
+- `core_portal_create`, `core_portal_update` and `core_portal_apply_stimulus` write as the
+  portal would, and are dry runs by default. A field must be one the portal's form leaves
+  settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
+  so a case log only gains entries; an external key or a link may point only at what the user
+  can read; a stimulus must be one the portal's lifecycle allows, that UserRights grants on the
+  object, from its current state; and a creation starts from a row of the action's list, takes
+  the class the action names or its factory method chooses, and is preset by the action's
+  rules, run by the portal's own helper — in the stock portal, the caller and organisation
+  from the user's contact and the service from the subcategory
+  ([doc/adr/0005](doc/adr/0005-portal-mode-writes-follow-the-portal-form.md)).
+- `core_current_user` and `itop://core/current-user`, with the user's organisation and portal;
+  the `core_my_open_tickets` prompt, answered from the portal's ticket lists; and the server
+  instructions (`core_instructions`, `itop://core/instructions`), rewritten for portal mode.
 
-It reads no object. Searching, reading, creating and updating are the next steps; until then
-the client is told to send the user to the portal for them. `mcp_disabled_tools`,
-`mcp_enabled_toolsets` (it is in `datamodel`) and the token's grade narrow it as they narrow
-anything else. **Portal mode needs iTop 3.2.2 or later**, the first release where the portal's
-form merge can be called on its own; on an earlier one, and on a portal whose configuration
-cannot be read, nothing is served and `log/error.log` says why.
+What the portal does not offer this user here — downloading or adding an attachment among
+them — stays in the portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (describe is in
+`datamodel`, the others in `objects`) and the token's grade narrow it as they narrow anything
+else: an `MCP-read` token is served the reads only. **Portal mode needs iTop 3.2.2 or later**,
+the first release where the portal's form merge can be called on its own; on an earlier one, and
+on a portal whose configuration cannot be read, nothing is served and `log/error.log` says why.
 
 **2. A credential iTop accepts.** Authentication is delegated to iTop's login stack
 (`LoginWebPage::DoLogin()`), so any login mode iTop can perform **non-interactively** works
@@ -824,7 +842,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and against `Host` again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential. The MCP SDK also refuses, with `403`, a request whose `Origin` is neither listed here nor the endpoint's own — so a desktop client that sends one has to be listed too, and so does the endpoint's own `https://` origin behind a proxy that terminates TLS without setting `HTTPS` for PHP |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
-| `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **a description of their portal, and no object yet**. Needs iTop 3.2.2 or later |
+| `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **what their portal offers, read and written as the portal does**. Needs iTop 3.2.2 or later |
 | `mcp_portal_token_max_days` | `90` | Portal mode accepts a token only if it expires within this many days from now; one that never expires is refused, since a portal user may have minted it themselves. `0` lifts the bound. Any other value than a non-negative integer is reported and read as 90 |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
@@ -1205,10 +1223,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.
-- **Portal-only users are served no object yet.** Portal mode sorts them in and serves only
-  `core_portal_describe`, which says what their portal offers, and the server instructions — see
-  [Granting access](#granting-access). It needs iTop 3.2.2 or later, and a user allowed into
-  several portals gets the first served one by rank.
+- **Portal-only users get what their portal offers, and no attachments.** Portal mode serves
+  the portal's lists, objects and writes — see [Granting access](#granting-access) — but lists
+  an object's attachments without serving their content or taking new ones. It needs iTop 3.2.2
+  or later, and a user allowed into several portals gets the first served one by rank.
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`

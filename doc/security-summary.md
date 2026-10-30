@@ -130,8 +130,9 @@ capability grading (`mcp_capabilities` / `mcp_read_only`) and the toolset filter
 within `mcp_portal_token_max_days`, unless `mcp_portals` is emptied. For them `UserRights` is not the boundary — iTop's `Portal user` profile reads every
 class — so portal mode serves only the elements of this module written to enforce that portal's
 own configuration (its granted bricks, scopes and forms), and nothing written for the console or
-by a tool pack. Today that is one read-only tool describing the portal, which reads no object,
-and the server instructions. See
+by a tool pack: the portal's description, its lists and object reads, writes held to the
+portal's forms and the console's together, the caller's own identity, and the server
+instructions. See
 the README, "Portal-only users: portal mode", and SECURITY.md for how their tokens are issued.
 
 **Writes are dry runs by default.** Create, update, delete, attach, apply-stimulus and the bulk
