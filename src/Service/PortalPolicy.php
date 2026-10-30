@@ -331,6 +331,21 @@ final class PortalPolicy
 		return $this->within($sClass, $iId, fn (string $sOf): ?DBSearch => $this->ReadSet($sOf));
 	}
 
+	/**
+	 * Whether the portal shows history: a granted brick reaches the change
+	 * log and a read scope covers it, which is how a portal is configured to
+	 * show an object's history. What of it the user then reads is the
+	 * change log's scope, through {@see Bounded()}.
+	 *
+	 * A brick on one subclass of CMDBChangeOp is not enough: an object's
+	 * history is every operation on it, and such a brick shows some of them.
+	 */
+	public function ShowsHistory(): bool
+	{
+		return $this->ReachedBy(ObjectHistory::HISTORY_CLASS) !== []
+			&& $this->ReadSet(ObjectHistory::HISTORY_CLASS) !== null;
+	}
+
 	/** {@see Readable()}, for the objects the user may change. */
 	public function Writable(string $sClass, int $iId): ?DBObject
 	{

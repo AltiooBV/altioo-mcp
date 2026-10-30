@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -81,6 +82,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
 			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_portal_create runs one. '
 			.'Each stimulus says the states it applies in (from_states). '
+			.'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. '
 			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
 			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_portal_get gives one object\'s fields, and what may be done to it now.';
 	}
@@ -163,6 +165,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			'classes'        => $aClasses,
 			'lists'          => self::readableLists($oPolicy),
 			'create_actions' => self::servedCreateActions($oPolicy),
+			'history'        => $oPolicy->ShowsHistory(),
 		];
 	}
 
@@ -263,6 +266,9 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	 * Problem, which the Ticket scope pins out by finalclass. Those are the
 	 * agents' classes, and an end user never sees one in the portal.
 	 *
+	 * The change log is not a class offered here: a portal reaching it shows
+	 * history, which the overview says and core_object_history serves.
+	 *
 	 * @return array<int, string>
 	 */
 	private static function offeredClasses(PortalPolicy $oPolicy): array
@@ -274,7 +280,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			}
 
 			foreach (MetaModel::EnumChildClasses($sRoot, ENUM_CHILD_CLASSES_ALL) as $sClass) {
-				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass)
+				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass) && !ObjectHistory::IsReserved($sClass)
 					&& $oPolicy->ReachedBy($sClass) !== [] && $oPolicy->ReadSet($sClass) !== null) {
 					$aClasses[$sClass] = true;
 				}
@@ -289,7 +295,8 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 
 	/**
 	 * The lists whose class the user may read any of. One the scopes refuse
-	 * would list nothing, so it is not offered.
+	 * would list nothing, so it is not offered; nor is one of the change log,
+	 * which core_object_history serves.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
@@ -297,7 +304,8 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	{
 		return array_values(array_filter(
 			$oPolicy->Lists(),
-			static fn (array $aList): bool => $oPolicy->ReadSet((string)$aList['class']) !== null
+			static fn (array $aList): bool => !ObjectHistory::IsReserved((string)$aList['class'])
+				&& $oPolicy->ReadSet((string)$aList['class']) !== null
 		));
 	}
 

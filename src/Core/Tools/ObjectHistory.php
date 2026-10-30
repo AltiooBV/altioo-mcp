@@ -9,13 +9,20 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use DBObject;
+use DBObjectSearch;
 use DBObjectSet;
+use DBSearch;
 use MetaModel;
 use UserRights;
 
@@ -35,9 +42,15 @@ use UserRights;
  * the history without withholding object reads. {@see HistoryReader} applies
  * the gates that make it safe to serve at all.
  *
+ * Served in portal mode too, one tool for both: there the portal is one more
+ * set of limits on top of the same gates. It shows history when a brick it
+ * grants reaches the change log; the object must be one it shows the user,
+ * the rows those its change-log scope holds, and the attributes those the
+ * object's view form shows. Nothing a console read refuses is served.
+ *
  * @since 1.0.0
  */
-class ObjectHistory extends AbstractMCPTool
+class ObjectHistory extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -58,8 +71,15 @@ class ObjectHistory extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
 	}
+
+	/** What this tool is to a portal-mode connection, which has no class schema. */
+	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_portal_describe says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_portal_describe or core_portal_get report.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -115,7 +135,7 @@ class ObjectHistory extends AbstractMCPTool
 	 * @param string $att_code Optional attribute code to restrict the history to, e.g. 'status'
 	 * @param int $limit Maximum number of entries to return (default 50, max 500)
 	 * @param int $offset Number of entries to skip for paging
-	 * @return array An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
+	 * @return mixed An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
 	 * @throws ToolCallException if the class is unknown, if the object is not found, or if the attribute is not one the class declares.
 	 */
 	public static function execute(
@@ -138,6 +158,19 @@ class ObjectHistory extends AbstractMCPTool
 
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+		}
+
+		// The portal first, so that its refusals are phrased as the portal's
+		// and an object it does not show answers as one that does not exist.
+		$oPolicy = null;
+		if (PortalMode::Current() !== null) {
+			$oPolicy = self::portalPolicy();
+			if (!$oPolicy->ShowsHistory()) {
+				throw new ToolCallException('The portal shows no history. Call core_portal_describe for what it offers.');
+			}
+			if (HistoryReader::IsReserved($class) || $oPolicy->Readable($class, $id) === null) {
+				throw new ToolCallException("Object {$class}::{$id} not found.");
+			}
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
@@ -174,6 +207,57 @@ class ObjectHistory extends AbstractMCPTool
 			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sFinalClass}'. Call core_class_schema for the attribute codes.");
 		}
 
-		return ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset));
+		if ($oPolicy === null) {
+			return ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset));
+		}
+
+		$fShows = self::shownBy($oPolicy, $oObject);
+		if ($sAttCode !== '' && !$fShows($sAttCode)) {
+			// Answered as the console answers a code the class lacks, so this
+			// cannot map out the fields the portal hides.
+			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sFinalClass}'. Call core_portal_describe for the field codes.");
+		}
+
+		// DBObjectSearch extends DBSearch; Psalm runs with no iTop checkout to
+		// say so (psalm.xml).
+		/** @psalm-suppress InvalidArgument */
+		$fBound = static fn (DBObjectSearch $oSearch): ?DBSearch => $oPolicy->Bounded($oSearch, $oSearch->GetClass());
+
+		return ToolOutput::Json(HistoryReader::Within(
+			$oObject,
+			$fBound,
+			$fShows,
+			$sAttCode,
+			$limit,
+			$offset
+		));
+	}
+
+	/** The policy of this request's portal, or the refusal a client is given when it cannot be read. */
+	private static function portalPolicy(): PortalPolicy
+	{
+		try {
+			return PortalPolicy::ForCurrentRequest();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+	}
+
+	/**
+	 * Whether the portal's view form shows an attribute of the object, as it
+	 * is now: a row about a field the user is not shown is not theirs to read.
+	 *
+	 * @return \Closure(string): bool
+	 */
+	private static function shownBy(PortalPolicy $oPolicy, DBObject $oObject): \Closure
+	{
+		try {
+			$aFlags = $oPolicy->Fields(get_class($oObject), PortalPolicy::MODE_VIEW, $oObject);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
+		return static fn (string $sAttCode): bool => isset($aFlags[$sAttCode])
+			&& ($aFlags[$sAttCode] & OPT_ATT_HIDDEN) !== OPT_ATT_HIDDEN;
 	}
 }

@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
@@ -109,13 +110,33 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	/**
 	 * The object, if the portal lets the user read it.
 	 *
-	 * The change log included: a portal that scopes it and offers a brick
-	 * on it shows history, and is served as configured. It is never written
-	 * ({@see PortalPolicy::WriteSet()}).
+	 * The change log is not found either. A portal that offers it shows
+	 * history, which core_object_history serves - with the gates on the
+	 * object a row is about, which a row read here as an object would skip.
 	 */
 	protected static function readable(PortalPolicy $oPolicy, string $sClass, int $iId): DBObject
 	{
-		return $oPolicy->Readable($sClass, $iId) ?? throw self::notFound($sClass, $iId);
+		if (ObjectHistory::IsReserved($sClass)) {
+			throw self::notFound($sClass, $iId);
+		}
+
+		$oObject = $oPolicy->Readable($sClass, $iId) ?? throw self::notFound($sClass, $iId);
+		if (ObjectHistory::IsReserved(get_class($oObject))) {
+			throw self::notFound($sClass, $iId);
+		}
+
+		return $oObject;
+	}
+
+	/**
+	 * Refuses a list of the change log, which core_object_history serves
+	 * one object at a time.
+	 */
+	protected static function refuseReserved(string $sClass): void
+	{
+		if (ObjectHistory::IsReserved($sClass)) {
+			throw new ToolCallException('This list is the change log: core_object_history gives the history of one object the portal shows you.');
+		}
 	}
 
 	/**
