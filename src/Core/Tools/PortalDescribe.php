@@ -81,6 +81,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
 			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_portal_create runs one. '
 			.'Each stimulus says the states it applies in (from_states). '
+			.'A portal reads, edits, creates and applies stimuli; it deletes nothing, so there is no delete to look for here. '
 			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
 			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_portal_get gives one object\'s fields, and what may be done to it now.';
 	}
