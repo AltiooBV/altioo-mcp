@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
@@ -470,22 +471,53 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * The change log is served as the portal configures it: a portal that
-	 * scopes it and offers a brick on it shows history, so the tools do not
-	 * refuse it on reads. They never write it, whatever the portal grants,
-	 * and the refusal sits in the write set that every write path asks.
+	 * One history tool for both modes. In portal mode it says so in the
+	 * portal's words, and names no console tool.
 	 */
-	public function testTheChangeLogIsReadAsThePortalOffersItAndNeverWritten(): void
+	public function testTheHistoryIsServedInBothModes(): void
 	{
-		$sWriteSet = self::bodyOf(PortalPolicy::class, 'WriteSet');
+		$oTool = new ObjectHistoryTool();
+		$sConsoleDescription = (string)$oTool->getDescription();
+
+		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
+
+		PortalMode::Remember('itop-portal');
+
+		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
+		$this->assertTrue($this->isHidden($oTool, 'core_object_history', ['core_object_history']), 'the instance can still turn it off');
+		$this->assertStringContainsString('core_class_schema', $sConsoleDescription);
+		$this->assertStringNotContainsString('core_class_schema', (string)$oTool->getDescription(), 'no console tool is named to a portal user');
+		$this->assertStringContainsString('core_portal_describe', (string)$oTool->getDescription());
+		$this->assertStringContainsString('core_object_history', ServerInstructions::PortalText('itop-portal'));
+	}
+
+	/**
+	 * In portal mode the change log is served by the history tool only, and
+	 * there under the portal's limits as well as its own: the portal must show
+	 * history and the object, its change-log scope bounds the rows, and its
+	 * view form the attributes. The portal's list and get refuse it, since a
+	 * row read as an object skips the gates on what it is about; and no write
+	 * set ever holds it.
+	 */
+	public function testTheChangeLogIsServedByTheHistoryToolOnlyAndNeverWritten(): void
+	{
 		$this->assertMatchesRegularExpression(
 			'/^[^{]*\{\s*if \(ObjectHistory::IsReserved\(\$sClass\)\) \{\s*return null;\s*\}/',
-			$sWriteSet,
+			self::bodyOf(PortalPolicy::class, 'WriteSet'),
 			'WriteSet() must refuse the change log before anything else'
 		);
+		$this->assertStringContainsString('IsReserved', self::bodyOf(\Altioo\iTop\Extension\MCP\Core\Tools\AbstractPortalTool::class, 'readable'));
+		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'execute'));
 
-		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Core\Tools\AbstractPortalTool::class, 'readable');
-		$this->assertStringNotContainsString('IsReserved', $sReadable, 'a read the portal offers is refused anyway');
+		$sHistory = self::bodyOf(ObjectHistoryTool::class, 'execute');
+		foreach (['ShowsHistory()', '->Readable($class, $id)', '->Bounded(', 'HistoryReader::Within('] as $sNeedle) {
+			$this->assertStringContainsString($sNeedle, $sHistory, "the portal-mode history skips {$sNeedle}");
+		}
+		$this->assertLessThan(
+			strpos($sHistory, 'UserRights::IsActionAllowed('),
+			strpos($sHistory, 'ShowsHistory()'),
+			'the portal answers before UserRights, so its refusals are its own'
+		);
 	}
 
 	private static function bodyOf(string $sClass, string $sMethod): string

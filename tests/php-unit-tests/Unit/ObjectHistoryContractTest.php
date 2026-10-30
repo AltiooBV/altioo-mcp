@@ -16,7 +16,6 @@ use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -173,14 +172,21 @@ class ObjectHistoryContractTest extends TestCase
 	 * Today's rights, not the ones in force when the row was written. A
 	 * revoked permission that stayed readable through the log would be a
 	 * revocation in name only.
+	 *
+	 * Asked in the one place both ways in read the log, so that the portal's
+	 * narrower read cannot be the one that forgets it.
 	 */
 	public function testEveryRowIsFilteredByTodaysAttributeRights(): void
 	{
 		$this->assertStringContainsString(
 			'MayReadAttribute',
-			$this->bodyOf(ObjectHistory::class, 'For'),
+			$this->bodyOf(ObjectHistory::class, 'read'),
 			'rows naming an attribute are served without asking whether this caller may read it'
 		);
+		foreach (['For', 'Within'] as $sWay) {
+			$this->assertStringContainsString('self::read(', $this->bodyOf(ObjectHistory::class, $sWay),
+				"{$sWay}() reads the log without the gates read() applies");
+		}
 	}
 
 	/**
@@ -193,7 +199,7 @@ class ObjectHistoryContractTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'get_class($oObject)',
-			$this->bodyOf(ObjectHistory::class, 'For')
+			$this->bodyOf(ObjectHistory::class, 'read')
 		);
 	}
 
@@ -266,11 +272,6 @@ class ObjectHistoryContractTest extends TestCase
 	 * document template served CMDBChangeOpSetAttributeBlob.prevdata - every
 	 * replaced file on the instance, by id - beside a tool refusing it.
 	 *
-	 * The portal's tools are not among them: what gates a portal user is the
-	 * portal's scopes, and a portal that scopes the change log and offers a
-	 * brick on it shows history. They read it as configured and never write
-	 * it - {@see testNoPortalToolWritesTheChangeLog()}.
-	 *
 	 * @dataProvider objectFacingToolProvider
 	 */
 	public function testNoObjectToolWillTouchTheChangeLog(string $sName, string $sClass): void
@@ -283,36 +284,7 @@ class ObjectHistoryContractTest extends TestCase
 	}
 
 	/**
-	 * A portal tool writes only what the portal's write set holds, and the
-	 * write set never holds the change log
-	 * (PortalModeTest::testTheChangeLogIsReadAsThePortalOffersItAndNeverWritten).
-	 * Each write tool has to reach it, through writable() or MayCreate().
-	 */
-	public function testNoPortalToolWritesTheChangeLog(): void
-	{
-		$aGates = [
-			'core_portal_update'         => 'self::writable(',
-			'core_portal_apply_stimulus' => 'self::writable(',
-			'core_portal_create'         => '->MayCreate(',
-		];
-
-		MCPRegistry::Clear();
-		CoreExtensions::RegisterServiceProvider();
-		try {
-			$aTools = MCPRegistry::GetTools();
-		} finally {
-			MCPRegistry::Clear();
-		}
-
-		foreach ($aGates as $sName => $sGate) {
-			$this->assertArrayHasKey($sName, $aTools);
-			$this->assertStringContainsString($sGate, $this->bodyOf(get_class($aTools[$sName]), 'execute'),
-				"{$sName} writes without asking the portal's write set");
-		}
-	}
-
-	/**
-	 * Every registered console tool and resource template whose toolset is about
+	 * Every registered tool and resource template whose toolset is about
 	 * objects, their documents or their relations. The datamodel and server
 	 * toolsets describe rather than fetch, and the history toolset is the
 	 * surface itself. Fixed resources take no class, so there is nothing for
@@ -328,9 +300,6 @@ class ObjectHistoryContractTest extends TestCase
 		$aToolsets = ['objects', 'documents', 'relations'];
 		$aTools = [];
 		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
-			if ($oTool instanceof PortalAware) {
-				continue;
-			}
 			if (in_array($oTool->getToolset(), $aToolsets, true)) {
 				$aTools[$sName] = [$sName, get_class($oTool)];
 			}

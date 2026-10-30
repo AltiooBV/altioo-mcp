@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
@@ -183,6 +184,27 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		$this->assertContains('public_log', $aActions['settable_fields']);
 		$this->assertNotContains('caller_id', $aActions['settable_fields'], 'the caller is read-only in the portal');
 		$this->assertNotContains('ev_close', array_column($aActions['stimuli'], 'code'), 'a new request is not closed from the portal');
+	}
+
+	/**
+	 * The stock portal grants no brick on the change log, so it shows no
+	 * history: describe says so, and the history tool refuses even the
+	 * user's own request, which UserRights alone would let them read.
+	 */
+	public function testTheStockPortalShowsNoHistory(): void
+	{
+		$this->assertFalse(ToolOutput::Decode(PortalDescribe::execute())['history']);
+
+		$this->expectException(ToolCallException::class);
+		$this->expectExceptionMessage('The portal shows no history.');
+		ObjectHistory::execute('UserRequest', $this->iOwn);
+	}
+
+	/** The change log is not a list or an object the portal tools serve. */
+	public function testTheChangeLogIsNotReadAsAnObject(): void
+	{
+		$this->expectException(ToolCallException::class);
+		PortalGet::execute('CMDBChangeOp', 1);
 	}
 
 	/** Not found, whether it exists or not: the portal answers both alike. */
