@@ -95,12 +95,24 @@ final class MCPHttp
 	 * URL of a document someone else serves is the whole of what is needed
 	 * here, so it is a setting rather than an implementation.
 	 *
+	 * The error is RFC 6750's, and only for a request that presented a token:
+	 * invalid_token is what tells a client to refresh or connect again rather
+	 * than retry, and a request that presented nothing gets no error code at
+	 * all (RFC 6750 section 3.1), only the challenge.
+	 *
 	 * @param string|null $sResourceMetadataUrl As configured, or null when nothing is.
+	 * @param string|null $sError An RFC 6750 error code, or null for none.
 	 * @since 1.0.0
 	 */
-	public static function BearerChallenge(?string $sResourceMetadataUrl): string
+	public static function BearerChallenge(?string $sResourceMetadataUrl, ?string $sError = null): string
 	{
 		$sChallenge = 'Bearer realm="'.self::REALM.'"';
+
+		// A code is a fixed word this module chose; anything else is a bug,
+		// and is left out rather than put in a header.
+		if ($sError !== null && preg_match('/^[a-z_]+$/D', $sError) === 1) {
+			$sChallenge .= ', error="'.$sError.'"';
+		}
 
 		$sUrl = self::SafeMetadataUrl($sResourceMetadataUrl);
 		if ($sUrl !== null) {

@@ -664,7 +664,9 @@ server to advertise OAuth discovery (RFC 9728). This extension implements no OAu
 unauthenticated call is answered `401` with a `WWW-Authenticate: Bearer` challenge, carrying
 `resource_metadata="…"` when you set `mcp_protected_resource_metadata` to the URL of the
 document your proxy serves. That is the pointer such a client follows, and the proxy cannot
-add it to a `401` it never sees.
+add it to a `401` it never sees. When the call presented a token and it was refused, the
+challenge also carries `error="invalid_token"` (RFC 6750), which tells an OAuth client to
+refresh or connect again; a call that presented nothing gets no error code.
 
 > **If you put an OIDC proxy in front of iTop, it must not forward the upstream token as the
 > iTop credential.** The proxy authenticates the caller and then presents iTop with an
@@ -904,8 +906,8 @@ created for the REST API has none of them. iTop honours a token scope only when 
 pushed a context tag of the same name, so a token scoped for something else does not partially
 work here; it does not authenticate at all.
 
-The response cannot tell you this. It says `Invalid login`, which is also what a token that does
-not exist gets, and what a wrong password gets. `TokenAuthLog` separates them:
+The response cannot tell you this. It says the token was not accepted, which is also what a
+token that does not exist, has expired or was revoked gets. `TokenAuthLog` separates them:
 
 ```
 authent-token: Scope not authorized code: 400

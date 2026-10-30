@@ -73,6 +73,14 @@ class MCPResult implements \JsonSerializable
 	 */
 	public ?int $httpStatus = null;
 
+	/**
+	 * @var string|null The RFC 6750 error code the 401's challenge names.
+	 *
+	 * How the response is sent, like httpStatus, so kept out of
+	 * jsonSerialize(): it travels in the WWW-Authenticate header.
+	 */
+	public ?string $challengeError = null;
+
 	public function __construct(int $code = self::OK, string $message = '')
 	{
 		$this->code    = $code;

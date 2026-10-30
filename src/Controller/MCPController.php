@@ -316,7 +316,8 @@ final class MCPController
 		}
 
 		throw new MCPAuthException(
-			'The MCP endpoint requires a credential on every request; a browser session is not one.',
+			'No credential was sent. The MCP endpoint needs one on every request: a bearer token in the '
+			.'Authorization header, an Auth-Token header, or a login. A browser session does not count.',
 			MCPResult::UNAUTHORIZED
 		);
 	}
@@ -423,7 +424,7 @@ final class MCPController
 	{
 		switch ($iRet) {
 			case LoginWebPage::EXIT_CODE_WRONGCREDENTIALS:
-				return new MCPAuthException('Invalid login', MCPResult::UNAUTHORIZED);
+				return self::createWrongCredentialsException();
 			case LoginWebPage::EXIT_CODE_NOTAUTHORIZED:
 				return self::createProfileException();
 			case LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED:
@@ -501,6 +502,31 @@ final class MCPController
 	}
 
 	/**
+	 * Refuses a credential that did not authenticate, saying which kind.
+	 *
+	 * A token is the case a client can recover from on its own, so it is the
+	 * one the challenge names as invalid_token: an OAuth client refreshes or
+	 * sends the person through authorize again, where "Invalid login" alone
+	 * read like a wrong password. iTop answers this same exit code for a token
+	 * that is unknown, expired or revoked, and for one whose scopes include no
+	 * MCP scope (see TokenScopes), and it does not say which, so the message
+	 * names all of them.
+	 */
+	private static function createWrongCredentialsException(): MCPAuthException
+	{
+		if (MCPHttp::CurrentAuthToken() === null) {
+			return new MCPAuthException('The login or password was not accepted.', MCPResult::UNAUTHORIZED);
+		}
+
+		return new MCPAuthException(
+			'The token was not accepted: it is unknown, has expired or been revoked, or carries no MCP scope. '
+			.'Refresh it, or connect again.',
+			MCPResult::UNAUTHORIZED,
+			'invalid_token'
+		);
+	}
+
+	/**
 	 * Turns a throwable into a response body that says nothing the caller has no
 	 * business knowing.
 	 *
@@ -511,7 +537,10 @@ final class MCPController
 	private static function buildErrorResult(Throwable $e): MCPResult
 	{
 		if ($e instanceof MCPAuthException) {
-			return new MCPResult($e->getCode(), $e->getMessage());
+			$oResult = new MCPResult($e->getCode(), $e->getMessage());
+			$oResult->challengeError = $e->challengeError;
+
+			return $oResult;
 		}
 
 		if ($e instanceof MCPRequestRejectedException) {
@@ -664,7 +693,7 @@ final class MCPController
 			// worked. RFC 9110 requires one on this status; RFC 9728 is what a
 			// client with a Connect button follows to find the authorization
 			// server, when the operator has put one in front of iTop.
-			$oP->add_header('WWW-Authenticate: '.MCPHttp::BearerChallenge(MCPHelper::GetProtectedResourceMetadataUrl()));
+			$oP->add_header('WWW-Authenticate: '.MCPHttp::BearerChallenge(MCPHelper::GetProtectedResourceMetadataUrl(), $oResult->challengeError));
 		}
 		$oP->SetData(json_decode($sResponse, true));
 		$oP->SetOutputDataOnly(true);
