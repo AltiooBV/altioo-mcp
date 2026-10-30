@@ -113,8 +113,6 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
 
-		self::refuseUnattributablePage($audit, $limit, $actions);
-
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
@@ -190,6 +188,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 		// Execute the search and fetch results
 		try {
+			// Measured on the page this call returns, not on the limit it
+			// allows: the cost is a question per object served, and four
+			// matches under the default limit of 50 are four questions.
+			self::refuseUnattributablePage($audit, self::pageSize($oSet->Count(), $limit, $offset), $actions);
+
 			while ($oObject = $oSet->Fetch()) {
 				$sObjectFinalClass = self::finalClassIfReadable($oObject, $sSetClass);
 				if ($sObjectFinalClass === null) {
@@ -210,6 +213,9 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				'offset'  => $offset,
 				'objects' => $aResults,
 			] + self::pagingFooter($iTotal, $limit, $offset));
+		} catch (ToolCallException $e) {
+			// The refusal above, which the catch-all below would make opaque.
+			throw $e;
 		} catch (\OQLException $e) {
 			// Building a DBObjectSet runs no query - it assigns and returns -
 			// so a bad filter value can only surface here, where the set is

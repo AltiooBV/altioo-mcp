@@ -380,21 +380,34 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	/**
 	 * Refuses a page too large to attribute, rather than serving it slowly.
 	 *
+	 * Asked of the page the call would return, so that a query matching a
+	 * handful of objects is served under the default limit.
+	 *
 	 * @throws ToolCallException
 	 */
-	protected static function refuseUnattributablePage(bool $bAudit, int $iLimit, bool $bActions = false): void
+	protected static function refuseUnattributablePage(bool $bAudit, int $iPage, bool $bActions = false): void
 	{
 		foreach (['audit' => $bAudit, 'actions' => $bActions] as $sArgument => $bAsked) {
-			if ($bAsked && $iLimit > ObjectHistory::MAX_AUDIT_PAGE) {
+			if ($bAsked && $iPage > ObjectHistory::MAX_AUDIT_PAGE) {
 				throw new ToolCallException(sprintf(
-					'%s is available for up to %d objects at a time; this call asks for %d. Lower limit, or drop %s and ask about the objects that matter one at a time.',
+					'%s is available for up to %d objects at a time; this page would hold %d. Pass limit=%d and page with next_offset, or drop %s and ask about the objects that matter one at a time.',
 					$sArgument,
 					ObjectHistory::MAX_AUDIT_PAGE,
-					$iLimit,
+					$iPage,
+					ObjectHistory::MAX_AUDIT_PAGE,
 					$sArgument
 				));
 			}
 		}
+	}
+
+	/**
+	 * How many objects a page holds: the limit, or what is left after the
+	 * offset when that is fewer.
+	 */
+	protected static function pageSize(int $iTotal, int $iLimit, int $iOffset): int
+	{
+		return max(0, min($iLimit, $iTotal - $iOffset));
 	}
 
 	/**
