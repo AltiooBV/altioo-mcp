@@ -150,7 +150,7 @@ class MentionPolicyTest extends TestCase
 			}
 		}
 
-		$this->assertGreaterThanOrEqual(4, count($aFound), 'expected the create, update, stimulus and bulk write paths');
+		$this->assertGreaterThanOrEqual(3, count($aFound), 'expected the create, the shared update and stimulus (WritePlan), and the bulk write paths');
 	}
 
 	/**

@@ -134,7 +134,7 @@ class FormulaPolicyTest extends TestCase
 			}
 		}
 
-		$this->assertGreaterThanOrEqual(4, $iFound, 'expected the create, update, stimulus and bulk write paths');
+		$this->assertGreaterThanOrEqual(3, $iFound, 'expected the create, the shared update and stimulus (WritePlan), and the bulk write paths');
 	}
 
 	/**

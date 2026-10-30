@@ -13,20 +13,14 @@ use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
-use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
-use RestUtils;
 use DBObjectSet;
 
 /**
@@ -215,98 +209,9 @@ class ObjectUpdate extends AbstractMCPTool
 		// free to iterate whatever it is handed.
 		$oInstanceSet = DBObjectSet::FromObject($oObject);
 
-		// Validate fields before applying any changes
-		$aIssues = [];
-		$aValidatedValues = [];
-		foreach ($fields as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode)) {
-				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
-				continue;
-			}
-			// Two things, and it is worth being clear which is which.
-			//
-			// The comparison is the part that bites today: this returns
-			// UR_ALLOWED_NO, _YES or _DEPENDS, and a truthy test reads DEPENDS
-			// as a yes. Only YES is a yes.
-			//
-			// The set is the part that may bite later. iTop's shipped addon
-			// documents that it ignores the instance set for attributes, so
-			// under a stock install this reads the same with or without it -
-			// object-level protection here comes from the set the object was
-			// fetched through and from CheckToWrite() below. An addon that does
-			// grade per object signals it with DEPENDS, and iTop passes a mono
-			// set at every equivalent call site.
-			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
-				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
-				continue;
-			}
-			$oAttDef = MetaModel::GetAttributeDef($class, $sAttCode);
-			if (!$oAttDef->IsWritable()) {
-				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
-				continue;
-			}
-			// Writable is the ORM's word; this is the console's. The state, what
-			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
-			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value);
-			if ($sNotEditable !== null) {
-				$aIssues[$sAttCode] = $sNotEditable;
-				continue;
-			}
-			// Asked before the ORM sees it: an id pointing at nothing is a
-			// mistake the caller can correct, and iTop answers it with an
-			// exception this module can only report opaquely.
-			$sBadTarget = WritePlan::RefusalForExternalKey($class, $sAttCode, $value);
-			if ($sBadTarget !== null) {
-				$aIssues[$sAttCode] = $sBadTarget;
-				continue;
-			}
-			// A mention is a notification: held to what the console would
-			// have let this user write, and to a per-call cap. See MentionPolicy.
-			$sBadMention = MentionPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadMention !== null) {
-				$aIssues[$sAttCode] = $sBadMention;
-				continue;
-			}
-			// Text a spreadsheet would run as a formula. See FormulaPolicy.
-			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadFormula !== null) {
-				$aIssues[$sAttCode] = $sBadFormula;
-				continue;
-			}
-			// A secret the instance logs in to something else with. See SecretPolicy.
-			$sBadSecret = SecretPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadSecret !== null) {
-				$aIssues[$sAttCode] = $sBadSecret;
-				continue;
-			}
-
-			try {
-				// The SDK hands us arrays for nested JSON objects; RestUtils
-				// branches on stdClass. See RestValue.
-				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-				// iTop's set attributes throw away an element they do not
-				// recognise without saying so - see WritePlan. A value the
-				// caller sent and the object will not hold is a refusal here,
-				// the way a scalar enum already refuses one.
-				$sDropped = WritePlan::RefusalForDroppedSetValues($class, $sAttCode, $value, $aValidatedValues[$sAttCode]);
-				if ($sDropped !== null) {
-					unset($aValidatedValues[$sAttCode]);
-					$aIssues[$sAttCode] = $sDropped;
-					continue;
-				}
-				// What the set would add, change and remove, judged before
-				// Set() hands it to ormLinkSet. See EditPolicy.
-				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValidatedValues[$sAttCode]);
-				if ($sBadLinks !== null) {
-					unset($aValidatedValues[$sAttCode]);
-					$aIssues[$sAttCode] = $sBadLinks;
-					continue;
-				}
-			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.DatamodelReader::ValueHint($class, $sAttCode, $value);
-			}
-		}
+		// Validate fields before applying any changes. Every rule a value has
+		// to pass is in one place, shared with the stimulus and the portal.
+		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
