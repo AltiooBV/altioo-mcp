@@ -30,6 +30,15 @@ entry itself, not left to be inferred from it.
 - **A request with no credential is told so.** Its message spoke of a browser session even when
   no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
 
+- **Every object a tool returns says which class it is, in `class`.** A search on `Ticket`
+  answers across `UserRequest` and `Incident`, and the descriptions of both search tools say
+  each row reports its class — but no release has done it: the field was keyed on what iTop
+  answers for a class with no subclass, which is an empty name, and that key had been dropped.
+  `core_object_search_by_class`, `core_object_search_by_oql`, `core_object_get` and the write
+  tools' results now carry `class` on the object itself, as `core_object_find_by_name` and
+  `core_object_get_related` already did. `class` may also be named in `output_fields`, which
+  used to refuse it as an unknown attribute.
+
 ### Added
 
 - **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
