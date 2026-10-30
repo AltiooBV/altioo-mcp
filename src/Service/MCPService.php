@@ -656,6 +656,7 @@ final class MCPService
 
 		$aToolsets = [];
 		$aServedGrades = [];
+		$aTools = [];
 		$aRegistries = [
 			MCPRegistry::GetTools(),
 			MCPRegistry::GetResources(),
@@ -669,6 +670,7 @@ final class MCPService
 					if ($oElement instanceof AbstractMCPTool) {
 						[$bReadOnly, $bDestructive] = self::annotatedHints($oElement);
 						$aServedGrades[AccessPolicy::CapabilityOf($bReadOnly, $bDestructive)] = true;
+						$aTools[] = (string)$sIdentifier;
 					}
 				}
 			}
@@ -684,8 +686,15 @@ final class MCPService
 		// with, and reporting it sent a client looking for a delete tool.
 		$aGranted = $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES;
 
+		sort($aTools);
+
 		return [
 			'toolsets'     => $aNames,
+			// The tools themselves, for a caller that cannot tell from a
+			// toolset's name what is in it: the portal's tools share the
+			// console's toolsets, so that one setting narrows both, and
+			// "objects" alone does not say which kind this connection has.
+			'tools'        => $aTools,
 			'capabilities' => array_values(array_filter(
 				AccessPolicy::CAPABILITIES,
 				static fn (string $sGrade): bool => in_array($sGrade, $aGranted, true) && isset($aServedGrades[$sGrade])

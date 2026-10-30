@@ -235,6 +235,8 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		}
 
 		$this->assertSame(['read', 'write'], $aPayload['access']['capabilities']);
+		$this->assertContains('core_portal_list', $aPayload['access']['tools']);
+		$this->assertNotContains('core_object_search_by_oql', $aPayload['access']['tools'], 'a console tool is named to a portal user');
 		$this->assertContains('core_my_open_tickets', $aPayload['access']['prompts']);
 		$this->assertSame(self::PORTAL, $aPayload['current_portal']);
 		$this->assertSame($this->iOrg, $aPayload['current_organization']['id']);

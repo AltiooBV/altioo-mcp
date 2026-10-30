@@ -61,7 +61,7 @@ class CurrentUser extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, which has no OQL and no console search. */
-	private const PORTAL_DESCRIPTION = 'Report who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through. Read this before answering anything phrased as "me" or "my requests", rather than asking the user who they are, and answer in their language. The portal\'s lists are already this user\'s own: core_portal_list needs no contact id. It also reports the toolsets this session is served.';
+	private const PORTAL_DESCRIPTION = 'Report who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through. Read this before answering anything phrased as "me" or "my requests", rather than asking the user who they are, and answer in their language. The portal\'s lists are already this user\'s own: core_portal_list needs no contact id. It also reports the toolsets and the tools this session is served.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
