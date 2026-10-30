@@ -46,9 +46,9 @@ class PortalCreate extends AbstractPortalTool
 
 	public function getDescription(): ?string
 	{
-		return 'Create an object through one of the create actions this user\'s portal offers, as the portal would: open a request on a service subcategory, for example. '
-			.'action is a create action id from core_portal_describe. When the action starts from an object (from names its class), from_id is that object\'s id, a row of the browse list the action is on: browse the services with core_portal_list to find it. '
-			.'The portal fills in what its rules say - the caller, their organisation, the service - so fields is only what its create form asks for, such as title and description; core_portal_describe with the class shows that form. '
+		return 'Create an object through one of the create actions this user\'s portal offers, as the portal would. '
+			.'action is a create action id from core_portal_describe. When the action starts from an object (from names its class), from_id is that object\'s id, a row of its from_list: find it with core_portal_list, walking down the list\'s parents if it has any. '
+			.'The portal fills in what the action\'s rules preset (in iTop\'s stock portal: the caller, their organisation and the service), so fields is only what its create form asks for; core_portal_describe with the class shows that form, and the dry run shows what the rules set. '
 			.'Ask the user to confirm what the dry run shows before creating.';
 	}
 
@@ -84,16 +84,16 @@ class PortalCreate extends AbstractPortalTool
 			'properties' => [
 				'action'   => [
 					'type'        => 'string',
-					'description' => 'A create action id from core_portal_describe, e.g. services/1/1/1/create_from_this.',
+					'description' => 'A create action id from core_portal_describe.',
 				],
 				'from_id'  => [
 					'type'        => 'integer',
-					'description' => 'For an action that starts from an object: its id, a row of the browse list the action is on. 0 (the default) for one that starts from nothing.',
+					'description' => 'For an action that starts from an object: its id, a row of the action\'s from_list. 0 (the default) for one that starts from nothing.',
 					'default'     => 0,
 				],
 				'fields'   => [
 					'type'                 => MCPHelper::MAP_TYPE,
-					'description'          => 'Attribute code => value for the fields of the portal\'s create form, e.g. title and description.',
+					'description'          => 'Attribute code => value for the settable fields of the portal\'s create form for the class.',
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('create the object'),

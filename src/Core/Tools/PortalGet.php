@@ -61,7 +61,7 @@ class PortalGet extends AbstractPortalTool
 			'properties' => [
 				'class' => [
 					'type'        => 'string',
-					'description' => 'The class of the object, as a row of core_portal_list gives it, e.g. UserRequest.',
+					'description' => 'The class of the object, as a row of core_portal_list gives it.',
 				],
 				'id'    => [
 					'type'        => 'integer',

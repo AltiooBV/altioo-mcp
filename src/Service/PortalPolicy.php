@@ -905,6 +905,9 @@ final class PortalPolicy
 				'kind'       => self::BRICK_BROWSE,
 				'title'      => isset($aLevel['title']) ? \Dict::S((string)$aLevel['title']) : $sTitle,
 				'class'      => $sClass,
+				// The level above, whose rows parent_id is one of: how a
+				// client walks down a browse brick it has never seen.
+				'parent'     => $aPath === [] ? null : $sBrick.'/'.implode('/', $aPath),
 				'parent_att' => $aLevel['parent_att'] ?? null,
 			];
 

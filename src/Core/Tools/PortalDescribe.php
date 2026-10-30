@@ -76,9 +76,10 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		return 'Describe what this user\'s iTop portal offers them: the classes they can work with, and for each whether they may read and change objects of it, how objects are created, the fields shown when viewing, editing and creating one, and the stimuli (state changes) they may apply. '
-			.'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds. '
+			.'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds; and every portal is configured differently, so read the ids here rather than assuming any. '
+			.'Choose a list or a create action by its title and class: those say what it is. A list with a parent is a browse level under that list, narrowed with core_portal_list parent_id; a create action with a from_list starts from a row of that list. '
 			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
-			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from, a service subcategory in the stock portal. A class the user may create lists such actions in create_chosen_by_portal, and core_portal_create runs one. '
+			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_portal_create runs one. '
 			.'Each stimulus says the states it applies in (from_states). '
 			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
 			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_portal_get gives one object\'s fields, and what may be done to it now.';
@@ -335,6 +336,8 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 				'class_chosen_by_portal' => $sClass === null,
 				'title'                  => $aAction['title'],
 				'from'                   => $aAction['from'],
+				// The list from_id is picked from, for core_portal_create.
+				'from_list'              => $aAction['from_list'] ?? null,
 				'rules'                  => $aAction['rules'],
 			];
 		}

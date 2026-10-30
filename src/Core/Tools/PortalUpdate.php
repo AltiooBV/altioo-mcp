@@ -47,9 +47,9 @@ class PortalUpdate extends AbstractPortalTool
 
 	public function getDescription(): ?string
 	{
-		return 'Change an object as this user\'s portal edit form would let them: add a reply to a request\'s public log, or change another field the form leaves writable. '
+		return 'Change an object as this user\'s portal edit form would let them, such as adding a reply to a ticket\'s log. '
 			.'core_portal_get lists, for an object, the fields that may be set now (settable_fields); anything else is refused, and so is a state change, which is core_portal_apply_stimulus. '
-			.'A case log such as public_log takes the text of one new entry, and adds it; earlier entries are never replaced. '
+			.'A case log field (public_log on iTop\'s stock tickets) takes the text of one new entry, and adds it; earlier entries are never replaced. '
 			.'Read `overridden` on the answer as carefully as `changes`.';
 	}
 
@@ -89,7 +89,7 @@ class PortalUpdate extends AbstractPortalTool
 				],
 				'fields'   => [
 					'type'                 => MCPHelper::MAP_TYPE,
-					'description'          => 'Attribute code => value, among the object\'s settable_fields from core_portal_get. For public_log, the text of the reply.',
+					'description'          => 'Attribute code => value, among the object\'s settable_fields from core_portal_get. For a case log, the text of the new entry.',
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),

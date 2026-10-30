@@ -50,8 +50,8 @@ class PortalList extends AbstractPortalTool
 	public function getDescription(): ?string
 	{
 		return 'Run one of the lists this user\'s portal shows them, as the portal runs it: the brick\'s own query, limited to what the portal\'s scopes let them read. '
-			.'Call core_portal_describe for the lists and their tabs. A ManageBrick list (such as the ongoing requests) can be narrowed to one of its tabs; without one it covers every tab. A browse level below the first (such as the services under a family) can be narrowed to the row above it with parent_id. '
-			.'search matches words in the columns the list shows, all of them required; quote a phrase to match it whole. Use it on the FAQ level to answer from the FAQ before opening a request. '
+			.'Call core_portal_describe for the lists this portal has - their ids, titles, classes and tabs differ from one portal to another. A list with tabs can be narrowed to one; without one it covers every tab. A list with a parent is a browse level: parent_id narrows it to the children of one row of its parent list, which is how a hierarchy (a service catalogue, FAQ categories) is walked down. '
+			.'search matches words in the columns the list shows, all of them required; quote a phrase to match it whole. '
 			.'Each row carries its class and id, for core_portal_get.';
 	}
 
@@ -73,7 +73,7 @@ class PortalList extends AbstractPortalTool
 			'properties' => [
 				'list'      => [
 					'type'        => 'string',
-					'description' => 'A list id from core_portal_describe, e.g. ongoing-tickets-for-portal-user or services/1/1.',
+					'description' => 'A list id from core_portal_describe (in iTop\'s stock portal, e.g. ongoing-tickets-for-portal-user).',
 				],
 				'tab'       => [
 					'type'        => 'string',
