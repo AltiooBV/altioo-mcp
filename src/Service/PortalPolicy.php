@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 // Same namespace, imported anyway: it extends a portal class, so it can be
 // loaded only where the portal is, and nothing should load it to find out.
 use Altioo\iTop\Extension\MCP\Service\PortalBrickTemplates;
@@ -45,7 +46,8 @@ use UserRights;
  * - which classes are offered: those a brick granted to the user reaches
  *   (doc/adr/0001-portal-mode-bricks-bound-discovery.md);
  * - what may be read, and what written: the portal's scopes, where a class
- *   with no scope is refused, never left unfiltered;
+ *   with no scope is refused, never left unfiltered; the change log is read
+ *   when the portal offers it, and never written, whatever it offers;
  * - which fields, in each mode: the portal's forms, merged by the portal's
  *   own ObjectFormManager::PrepareFields();
  * - which stimuli: the portal's lifecycle, UserRights, and the write scope.
@@ -175,9 +177,17 @@ final class PortalPolicy
 	 * intersection drops the AllowAllData flag a scope's ignore_silos sets, so
 	 * it is put back here: without it a siloed user loses the services they
 	 * need to open a request.
+	 *
+	 * Never for the change log: a write there forges an audit record, and a
+	 * portal granting one would not be what an operator meant by showing
+	 * history. So no edit, stimulus or create action is ever offered on it.
 	 */
 	public function WriteSet(string $sClass): ?DBSearch
 	{
+		if (ObjectHistory::IsReserved($sClass)) {
+			return null;
+		}
+
 		$oRead = $this->ReadSet($sClass);
 		if ($oRead === null || UserRights::IsActionAllowed($sClass, UR_ACTION_MODIFY) === UR_ALLOWED_NO) {
 			return null;

@@ -129,7 +129,6 @@ class PortalCreate extends AbstractPortalTool
 		$sClass = $aAction['class'] ?? self::portalStep(
 			static fn (): string => $oPolicy->ChosenClass((string)$aAction['factory_method'], $oFrom)
 		);
-		self::refuseReserved($sClass);
 		if (!MetaModel::IsValidClass($sClass) || MetaModel::IsAbstract($sClass) || !$oPolicy->MayCreate($sClass)) {
 			throw new ToolCallException('The portal does not let you create what this action creates.');
 		}

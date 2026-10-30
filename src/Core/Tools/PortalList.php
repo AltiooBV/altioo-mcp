@@ -138,7 +138,6 @@ class PortalList extends AbstractPortalTool
 		}
 
 		$sClass = (string)$aList['class'];
-		self::refuseReserved($sClass);
 
 		try {
 			$oQuery = self::listQuery($oPolicy, $aList, trim($tab), $parent_id);

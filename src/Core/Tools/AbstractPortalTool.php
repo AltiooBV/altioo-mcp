@@ -12,7 +12,6 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
@@ -110,33 +109,13 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	/**
 	 * The object, if the portal lets the user read it.
 	 *
-	 * The change log is not found either: a portal could scope it, and it is
-	 * never an object these tools serve - history is a tab on an object, not
-	 * a class.
+	 * The change log included: a portal that scopes it and offers a brick
+	 * on it shows history, and is served as configured. It is never written
+	 * ({@see PortalPolicy::WriteSet()}).
 	 */
 	protected static function readable(PortalPolicy $oPolicy, string $sClass, int $iId): DBObject
 	{
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw self::notFound($sClass, $iId);
-		}
-
-		$oObject = $oPolicy->Readable($sClass, $iId) ?? throw self::notFound($sClass, $iId);
-		if (ObjectHistory::IsReserved(get_class($oObject))) {
-			throw self::notFound($sClass, $iId);
-		}
-
-		return $oObject;
-	}
-
-	/**
-	 * Refuses a class these tools never serve, whatever the portal's
-	 * configuration says of it: the change log.
-	 */
-	protected static function refuseReserved(string $sClass): void
-	{
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw new ToolCallException('The portal offers no such list or action. Call core_portal_describe for the ones it offers.');
-		}
+		return $oPolicy->Readable($sClass, $iId) ?? throw self::notFound($sClass, $iId);
 	}
 
 	/**
