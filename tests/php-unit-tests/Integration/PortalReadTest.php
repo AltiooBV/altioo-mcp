@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
@@ -212,6 +213,18 @@ class PortalReadTest extends ItopDataTestCaseAlias
 			$this->assertNotSame([], $aStimulus['from_states'], "{$aStimulus['code']} applies in some state");
 			$this->assertNotContains('new', $aStimulus['code'] === 'ev_close' ? $aStimulus['from_states'] : []);
 		}
+	}
+
+	/** The commonest question, answered from the portal's own list rather than OQL. */
+	public function testTheMyTicketsPromptNamesThePortalsList(): void
+	{
+		$oPrompt = new MyOpenTickets();
+		$this->assertTrue($oPrompt->isAvailable());
+
+		$sText = $oPrompt->get()[0]['content']['text'];
+		$this->assertStringContainsString('core_portal_list', $sText);
+		$this->assertStringContainsString(self::ONGOING, $sText);
+		$this->assertStringNotContainsString('OQL', $sText);
 	}
 
 	/**
