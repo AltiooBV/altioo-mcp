@@ -77,11 +77,11 @@ entry itself, not left to be inferred from it.
   included. Console logins take exactly the path they took before, because portal mode starts
   only from the refusal iTop already returned for them.
 - **Portal mode, second step: `core_portal_describe` says what a portal user's portal offers.**
-  The first element served in portal mode, and the only one: the classes a brick granted to the
+  The first element served in portal mode: the classes a brick granted to the
   user reaches, whether the portal's scopes let them read and change objects of each, its create
   actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
   is read with the portal's own code — its brick collection, scope and lifecycle helpers and form
-  merge — so a customised portal is described as customised, and it reads no object. A class
+  merge — so a customised portal is described as customised. A class
   with a read scope that no granted brick reaches is not offered (doc/adr/0001), nor is a subclass
   whose inherited scope pins `finalclass` to other classes — in the stock portal, `Change` and
   `Problem`, which an end user never sees there. ManageBrick, BrowseBrick and CreateBrick are read,
@@ -92,10 +92,35 @@ entry itself, not left to be inferred from it.
   cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
   operator or a token narrowed to other toolsets does not get it. A create action whose class
   the portal picks with a method, as the stock services brick does wherever requests and
-  incidents are both installed, is listed with no class and `class_chosen_by_portal`.
+  incidents are both installed, is listed with no class and `class_chosen_by_portal`, and each
+  class the user may create lists such actions in `create_chosen_by_portal`. Each stimulus names
+  the states it applies in (`from_states`), each browse list the list above it (`parent`), each
+  create action the list its starting object is picked from (`from_list`), and a class says
+  whether the portal shows its objects' attachments.
+- **Portal mode, third step: the portal's lists, objects and writes.** Five tools, served in
+  portal mode only, each answering from the portal's configuration:
+  - `core_portal_list` runs a list by id — a ManageBrick, one of its tabs, a browse level under
+    a parent row — as the portal runs it: the brick's query intersected with the scope, the
+    tab's condition, the parent checked against its own level, and the portal's search on the
+    columns shown. "What is the status of my requests" and a FAQ search are both a list. The
+    client never sends a query (doc/adr/0001).
+  - `core_portal_get` reads one object by the scopes: its view form's fields for the object as
+    it is, its attachments (listed, not served), and the fields and stimuli it accepts now.
+  - `core_portal_update`, `core_portal_apply_stimulus` and `core_portal_create` write as the
+    portal would, dry runs by default: a field must be settable in the portal's form and pass
+    the console's rules too; what a value points at must be readable; a stimulus must be offered
+    on the object in its state; a creation starts from a row of its action's list, takes the
+    class the action names or its factory method chooses, and is preset by the action's rules,
+    run by the portal's own helper (doc/adr/0005).
+
+  `core_current_user` and `itop://core/current-user` are served in portal mode, and now report
+  `current_organization` and `current_portal` in both modes. The `core_my_open_tickets` prompt is
+  offered there too, answered from the portal's ticket lists. A token graded `MCP-read` is served
+  the reads only, as everywhere.
 - **The server instructions are served in portal mode** (`core_instructions`,
   `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
-  has no `initialize`, and was not told that searching, reading and writing are not served yet.
+  has no `initialize`, and is told there how to read the portal's lists and write through them,
+  narrowed to what its token is served.
 - **altioo-oauth-server is an optional dependency** (doc/adr/0003). Declared in
   `module.altioo-mcp.php` in a form that is always satisfied, so it never stops an install and
   only sets that module up first when it is being installed. With it installed and
