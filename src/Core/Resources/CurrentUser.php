@@ -11,13 +11,17 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
 /**
+ * Served in portal mode too: an identity is the caller's own, read from
+ * their own user record, and asks the portal for nothing.
+ *
  * @since 1.0.0
  */
-class CurrentUser extends AbstractMCPResource
+class CurrentUser extends AbstractMCPResource implements PortalAware
 {
 
 	protected function defaultTitle(): string
