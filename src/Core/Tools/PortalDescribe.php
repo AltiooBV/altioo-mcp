@@ -78,9 +78,10 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 		return 'Describe what this user\'s iTop portal offers them: the classes they can work with, and for each whether they may read and change objects of it, how objects are created, the fields shown when viewing, editing and creating one, and the stimuli (state changes) they may apply. '
 			.'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds. '
 			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
-			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from, a service subcategory in the stock portal. '
-			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. '
-			.'The fields of an existing object follow its state, so those listed are a new object\'s.';
+			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from, a service subcategory in the stock portal. A class the user may create lists such actions in create_chosen_by_portal, and core_portal_create runs one. '
+			.'Each stimulus says the states it applies in (from_states). '
+			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
+			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_portal_get gives one object\'s fields, and what may be done to it now.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -175,7 +176,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 		if ($aClass['edit']) {
 			$aModes[PortalPolicy::MODE_EDIT] = true;
 		}
-		if ($aClass['create'] !== []) {
+		if ($aClass['create'] !== [] || $aClass['create_chosen_by_portal'] !== []) {
 			$aModes[PortalPolicy::MODE_CREATE] = true;
 		}
 
@@ -197,7 +198,12 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			];
 		}
 
-		return ['portal' => $oPolicy->Portal()] + $aClass + ['forms' => $aForms];
+		return ['portal' => $oPolicy->Portal()] + $aClass + [
+			// Shown beside every form but a transition's, as a plugin field
+			// rather than an attribute; listed by core_portal_get.
+			'attachments' => PortalPolicy::ShowsAttachments(MetaModel::NewObject($sClass)),
+			'forms'       => $aForms,
+		];
 	}
 
 	/**
@@ -208,15 +214,27 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 	private static function summary(PortalPolicy $oPolicy, string $sClass): array
 	{
 		$aCreate = [];
+		$aChosen = [];
 		foreach (self::servedCreateActions($oPolicy) as $aAction) {
 			if ($aAction['class'] === $sClass) {
 				$aCreate[] = $aAction['action'];
+			} elseif ($aAction['class'] === null) {
+				$aChosen[] = $aAction['action'];
 			}
 		}
 
+		// Which class such an action creates is known only once the object it
+		// starts from is picked, so it is listed against every class the user
+		// may create at all - never as the class it creates.
+		if ($aChosen !== [] && !$oPolicy->MayCreate($sClass)) {
+			$aChosen = [];
+		}
+
+		$aLabels = $oPolicy->Stimuli($sClass);
+		$aFrom = PortalPolicy::StatesOf($sClass, array_keys($aLabels));
 		$aStimuli = [];
-		foreach ($oPolicy->Stimuli($sClass) as $sCode => $sLabel) {
-			$aStimuli[] = ['code' => $sCode, 'label' => $sLabel];
+		foreach ($aLabels as $sCode => $sLabel) {
+			$aStimuli[] = ['code' => $sCode, 'label' => $sLabel, 'from_states' => $aFrom[$sCode] ?? []];
 		}
 
 		return [
@@ -227,9 +245,11 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			'read'        => true,
 			'edit'        => $oPolicy->WriteSet($sClass) !== null,
 			'create'      => $aCreate,
+			'create_chosen_by_portal' => $aChosen,
 			'stimuli'     => $aStimuli,
 		];
 	}
+
 
 	/**
 	 * The classes offered: every concrete class a granted brick reaches,
@@ -305,9 +325,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 				if ($aAction['from'] === null || $oPolicy->ReadSet((string)$aAction['from']) === null) {
 					continue;
 				}
-			} elseif (!MetaModel::IsValidClass($sClass)
-				|| UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE) === UR_ALLOWED_NO
-				|| $oPolicy->WriteSet($sClass) === null) {
+			} elseif (!$oPolicy->MayCreate($sClass)) {
 				continue;
 			}
 
