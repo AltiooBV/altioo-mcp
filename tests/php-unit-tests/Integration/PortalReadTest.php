@@ -219,9 +219,8 @@ class PortalReadTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * What the user can do here, as the identity block reports it: the
-	 * portal reads and writes and deletes nothing, so no grant reports a
-	 * delete there. Their organisation and portal are named too.
+	 * What the user can do here, as the identity block reports it: portal
+	 * mode serves no delete tool, so no grant reports a delete there. Their organisation and portal are named too.
 	 */
 	public function testTheIdentityReportsWhatThePortalServes(): void
 	{
