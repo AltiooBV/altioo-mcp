@@ -95,7 +95,8 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testTheContactIdComesFromTheCallersOwnUserRecord(): void
 	{
-		$sBody = str_replace(' ', '', $this->methodBody('ContactFriendlyname'));
+		// Contact() is the one lookup; the name and the organisation are read off it.
+		$sBody = str_replace(' ', '', $this->methodBody('Contact'));
 
 		$this->assertStringContainsString(
 			'UserRights::GetContactId()',
@@ -120,12 +121,12 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testTheLookupTakesNothingFromTheCaller(): void
 	{
-		$oMethod = new ReflectionMethod(CurrentUserReader::class, 'ContactFriendlyname');
+		$oMethod = new ReflectionMethod(CurrentUserReader::class, 'Contact');
 
 		$this->assertSame(
 			0,
 			$oMethod->getNumberOfParameters(),
-			'ContactFriendlyname() must resolve the caller\'s own contact and nothing'
+			'Contact() must resolve the caller\'s own contact and nothing'
 			.' else; a parameter is how a caller-supplied id would get in.'
 		);
 		$this->assertTrue(
@@ -139,7 +140,7 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testAnUnresolvableContactDegradesToNull(): void
 	{
-		$sBody = $this->methodBody('ContactFriendlyname');
+		$sBody = $this->methodBody('Contact');
 
 		$this->assertStringContainsString(
 			'return null;',
