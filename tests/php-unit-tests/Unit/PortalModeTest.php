@@ -9,9 +9,16 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
+use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
@@ -182,6 +189,54 @@ class PortalModeTest extends TestCase
 		PortalMode::Remember('itop-portal');
 
 		$this->assertFalse($this->isHidden($oDescribe, 'core_portal_describe'), 'to a portal user');
+	}
+
+	/**
+	 * The portal's lists, reads and writes are served there and only there,
+	 * like the description; a token that may only read is served the reads.
+	 */
+	public function testThePortalToolsAreServedInPortalModeOnlyAndGradedByTheToken(): void
+	{
+		$aReads = ['core_portal_list' => new PortalList(), 'core_portal_get' => new PortalGet()];
+		$aWrites = [
+			'core_portal_create'         => new PortalCreate(),
+			'core_portal_update'         => new PortalUpdate(),
+			'core_portal_apply_stimulus' => new PortalApplyStimulus(),
+		];
+
+		foreach ($aReads + $aWrites as $sName => $oTool) {
+			$this->assertTrue($this->isHidden($oTool, $sName), "{$sName} is not for a console user");
+			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} enforces the portal's rules and says so");
+		}
+
+		PortalMode::Remember('itop-portal');
+
+		$oReadOnly = AccessPolicy::FromScopes(['MCP-read']);
+		foreach ($aReads as $sName => $oTool) {
+			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
+			$this->assertFalse($this->isHidden($oTool, $sName, [], $oReadOnly), "{$sName} to a read-only token");
+		}
+		foreach ($aWrites as $sName => $oTool) {
+			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
+			$this->assertTrue($this->isHidden($oTool, $sName, [], $oReadOnly), "{$sName} writes, and a read-only token may not");
+		}
+	}
+
+	/** Who the user is, in both modes: it is their own identity and asks the portal for nothing. */
+	public function testWhoTheUserIsIsServedInBothModes(): void
+	{
+		$oTool = new CurrentUserTool();
+		$oResource = new CurrentUserResource();
+		$sConsoleDescription = (string)$oTool->getDescription();
+
+		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
+
+		PortalMode::Remember('itop-portal');
+
+		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
+		$this->assertFalse($this->isHidden($oResource, 'itop://core/current-user'));
+		$this->assertStringContainsString('core_object_search_by_oql', $sConsoleDescription);
+		$this->assertStringNotContainsString('core_object_search', (string)$oTool->getDescription(), 'no console tool is named to a portal user');
 	}
 
 	/**
