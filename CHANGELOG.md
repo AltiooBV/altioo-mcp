@@ -56,6 +56,8 @@ entry itself, not left to be inferred from it.
   mode, where nothing deletes, and on an instance whose delete tools are all disabled. They are
   now the grades of the tools actually served, within what the token grants, as the toolsets
   beside them already were.
+  The block also names the served `tools`, since the portal's tools share the console's
+  toolset names and `objects` alone does not say which kind a connection has.
 
 ### Added
 
