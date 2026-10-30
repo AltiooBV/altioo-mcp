@@ -468,4 +468,31 @@ class PortalModeTest extends TestCase
 		$this->assertLessThan($iAdmit, $iLogin);
 		$this->assertLessThan($iPolicy, $iAdmit);
 	}
+
+	/**
+	 * The change log is served as the portal configures it: a portal that
+	 * scopes it and offers a brick on it shows history, so the tools do not
+	 * refuse it on reads. They never write it, whatever the portal grants,
+	 * and the refusal sits in the write set that every write path asks.
+	 */
+	public function testTheChangeLogIsReadAsThePortalOffersItAndNeverWritten(): void
+	{
+		$sWriteSet = self::bodyOf(PortalPolicy::class, 'WriteSet');
+		$this->assertMatchesRegularExpression(
+			'/^[^{]*\{\s*if \(ObjectHistory::IsReserved\(\$sClass\)\) \{\s*return null;\s*\}/',
+			$sWriteSet,
+			'WriteSet() must refuse the change log before anything else'
+		);
+
+		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Core\Tools\AbstractPortalTool::class, 'readable');
+		$this->assertStringNotContainsString('IsReserved', $sReadable, 'a read the portal offers is refused anyway');
+	}
+
+	private static function bodyOf(string $sClass, string $sMethod): string
+	{
+		$oMethod = new ReflectionMethod($sClass, $sMethod);
+		$aLines = file($oMethod->getFileName());
+
+		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+	}
 }
