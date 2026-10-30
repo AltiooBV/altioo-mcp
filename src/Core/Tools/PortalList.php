@@ -346,10 +346,13 @@ class PortalList extends AbstractPortalTool
 			return [];
 		}
 
+		/** @var array<string, string> $aConditions */
+		$aConditions = $aList['tabs'];
+
 		$aTabs = [];
-		foreach (array_keys($aList['tabs']) as $sTab) {
-			$oTab = $oPolicy->Bounded(self::tabQuery(DBSearch::FromOQL((string)$aList['oql']), $aList, (string)$sTab), $sClass);
-			$aTabs[] = ['tab' => (string)$sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet($oTab))->Count()];
+		foreach (array_map('strval', array_keys($aConditions)) as $sTab) {
+			$oTab = $oPolicy->Bounded(self::tabQuery(DBSearch::FromOQL((string)$aList['oql']), $aList, $sTab), $sClass);
+			$aTabs[] = ['tab' => $sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet($oTab))->Count()];
 		}
 
 		return ['tabs' => $aTabs];

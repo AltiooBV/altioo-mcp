@@ -376,10 +376,15 @@ final class PortalPolicy
 	public static function StatesOf(string $sClass, array $aCodes): array
 	{
 		$aFrom = array_fill_keys($aCodes, []);
-		foreach (array_keys(MetaModel::EnumStates($sClass)) as $sState) {
-			foreach (array_keys(MetaModel::EnumTransitions($sClass, (string)$sState)) as $sCode) {
+
+		/** @var array<string, mixed> $aStates */
+		$aStates = MetaModel::EnumStates($sClass);
+		foreach (array_map('strval', array_keys($aStates)) as $sState) {
+			/** @var array<string, mixed> $aTransitions */
+			$aTransitions = MetaModel::EnumTransitions($sClass, $sState);
+			foreach (array_map('strval', array_keys($aTransitions)) as $sCode) {
 				if (isset($aFrom[$sCode])) {
-					$aFrom[$sCode][] = (string)$sState;
+					$aFrom[$sCode][] = $sState;
 				}
 			}
 		}
