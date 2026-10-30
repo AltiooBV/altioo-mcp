@@ -259,8 +259,8 @@ class SchemaToolsContractTest extends TestCase
 		$this->assertStringContainsString('AttributeDateTime', $sBody, 'only a date attribute gets this hint');
 		$this->assertStringContainsString('return \'\';', $sBody, 'anything else has to answer with nothing');
 
-		// The update and the stimulus convert through WritePlan.
-		foreach (['Core\\Tools\\ObjectCreate', 'Helper\\WritePlan'] as $sTool) {
+		// The create, the update and the stimulus convert through WritePlan.
+		foreach (['Helper\\WritePlan'] as $sTool) {
 			$sSource = (string) file_get_contents(
 				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool))->getFileName()
 			);

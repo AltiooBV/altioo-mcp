@@ -54,9 +54,9 @@ final class WritePlan
 	 * The caller's values for an existing object, each held to every rule a
 	 * value has to pass before it may be Set(), and converted.
 	 *
-	 * One copy for every tool that changes an existing object - the update,
-	 * the stimulus and the portal's writes - because a rule kept in three
-	 * places is three rules that drift apart. Each refused attribute is
+	 * One copy for every tool that writes one object - the create, the
+	 * update, the stimulus and the portal's writes - because a rule kept in
+	 * four places is four rules that drift apart. Each refused attribute is
 	 * named with why; nothing is Set() here, so the caller decides what a
 	 * refusal costs before the object is touched.
 	 *
@@ -65,13 +65,13 @@ final class WritePlan
 	 * site find them here too.
 	 *
 	 * @param array<string, mixed> $aFields      Attribute code => value, as the client sent them.
-	 * @param DBObjectSet          $oInstanceSet A set holding this object and nothing else, for the rights addon.
+	 * @param DBObjectSet|null     $oInstanceSet A set holding this object and nothing else, for the rights addon; null for an object not yet created.
 	 * @param string|null          $sStimulus    The transition the values are set for, which may prompt for what the state locks.
 	 *
 	 * @return array{0: array<string, mixed>, 1: array<string, string>} The converted values, and attribute code => refusal.
 	 * @since 1.2.0
 	 */
-	public static function ValidatedValues(DBObject $oObject, string $sClass, array $aFields, DBObjectSet $oInstanceSet, ?string $sStimulus = null): array
+	public static function ValidatedValues(DBObject $oObject, string $sClass, array $aFields, ?DBObjectSet $oInstanceSet, ?string $sStimulus = null): array
 	{
 		$aIssues = [];
 		$aValidatedValues = [];
@@ -94,7 +94,12 @@ final class WritePlan
 			// fetched through and from CheckToWrite() below. An addon that does
 			// grade per object signals it with DEPENDS, and iTop passes a mono
 			// set at every equivalent call site.
-			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
+			//
+			// No object exists yet on a creation, so "depends on the object"
+			// cannot be answered there; only an outright refusal counts, and
+			// DBInsert() checks again once there is something to check against.
+			$iRight = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet);
+			if ($oInstanceSet === null ? $iRight === UR_ALLOWED_NO : $iRight !== UR_ALLOWED_YES) {
 				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
 				continue;
 			}
