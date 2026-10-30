@@ -50,6 +50,11 @@ overrides what the iTop source actually does. Where a repository file and the gu
 the file wins — `composer.json`, `phpcs.xml.dist` and `.github/itop-support.json` are the
 project's real answers on dependencies, formatting and supported versions.
 
+**If you work here with an AI assistant**, a hook in `.claude/settings.json` refuses its first
+edit until it has read that guide — worth knowing before it happens to you rather than after.
+[AGENTS.md](https://github.com/AltiooBV/altioo-mcp/blob/main/AGENTS.md) §1 says what it is. It
+gates only the assistant's own tools, never your editing.
+
 ## Getting a change in
 
 1. **Open an issue first for anything non-obvious** — a new tool, a new module parameter, a
