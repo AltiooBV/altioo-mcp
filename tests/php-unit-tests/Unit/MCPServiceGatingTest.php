@@ -266,6 +266,20 @@ class MCPServiceGatingTest extends TestCase
 		$this->assertStringContainsString('?? AccessPolicy::CAPABILITIES', $this->bodyOf('ServedAccess'));
 	}
 
+	/**
+	 * The capabilities are the grades of the tools served, within what the
+	 * policy grants - not the grant alone. A token graded MCP-delete in
+	 * portal mode, where nothing deletes, was reported as able to delete.
+	 */
+	public function testServedCapabilitiesAreTheGradesOfTheServedTools(): void
+	{
+		$sBody = $this->bodyOf('ServedAccess');
+
+		$this->assertStringContainsString('CapabilityOf(', $sBody, 'the capabilities are not read off the served tools');
+		$this->assertStringContainsString('$aServedGrades', $sBody);
+		$this->assertMatchesRegularExpression('/in_array\(\$sGrade, \$aGranted, true\) && isset\(\$aServedGrades\[\$sGrade\]\)/', $sBody, 'a grade is reported without being both granted and served');
+	}
+
 	/** The body of one MCPService method, comments stripped. */
 	private function bodyOf(string $sMethod): string
 	{

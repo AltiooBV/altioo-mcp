@@ -8,11 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
+use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
@@ -213,6 +216,28 @@ class PortalReadTest extends ItopDataTestCaseAlias
 			$this->assertNotSame([], $aStimulus['from_states'], "{$aStimulus['code']} applies in some state");
 			$this->assertNotContains('new', $aStimulus['code'] === 'ev_close' ? $aStimulus['from_states'] : []);
 		}
+	}
+
+	/**
+	 * What the user can do here, as the identity block reports it: the
+	 * portal reads and writes and deletes nothing, so no grant reports a
+	 * delete there. Their organisation and portal are named too.
+	 */
+	public function testTheIdentityReportsWhatThePortalServes(): void
+	{
+		// Registered per request in production; a test has to do it itself.
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+		try {
+			$aPayload = CurrentUserReader::Payload();
+		} finally {
+			MCPRegistry::Clear();
+		}
+
+		$this->assertSame(['read', 'write'], $aPayload['access']['capabilities']);
+		$this->assertContains('core_my_open_tickets', $aPayload['access']['prompts']);
+		$this->assertSame(self::PORTAL, $aPayload['current_portal']);
+		$this->assertSame($this->iOrg, $aPayload['current_organization']['id']);
 	}
 
 	/** The commonest question, answered from the portal's own list rather than OQL. */
