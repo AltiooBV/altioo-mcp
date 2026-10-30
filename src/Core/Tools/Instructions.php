@@ -74,7 +74,7 @@ class Instructions extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, whose instructions are the portal's. */
-	private const PORTAL_DESCRIPTION = 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns what this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served, and which requests cannot be handled here yet. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
+	private const PORTAL_DESCRIPTION = 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns what this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served - its lists, its objects and its writes - and that every write is rehearsed before it is made. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{

@@ -190,7 +190,7 @@ final class MCPService
 	{
 		$sPortal = PortalMode::Current();
 		if ($sPortal !== null) {
-			return ServerInstructions::PortalText($sPortal);
+			return ServerInstructions::PortalText($sPortal, $oPolicy);
 		}
 
 		return ServerInstructions::Text(
