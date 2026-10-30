@@ -28,8 +28,9 @@ never replaces them.
   and `core_object_delete` are refused until a portal grants what they do.
 - The safe default is unchanged: a tool that does not declare `PortalAware` is not served in
   portal mode, and one that does asks the one mode-aware policy, never UserRights alone.
-- The mode stays decided per request: one portal, the first by rank that the user may enter and
-  `mcp_portals` serves, never two combined (README, "Portal-only users: portal mode").
+- The mode stays decided per request: one portal, never two combined — the one the connection
+  names ([0007](0007-the-connection-names-its-portal.md)), or else the first by rank that the
+  user may enter and `mcp_portals` serves (README, "Portal-only users: portal mode").
 - `core_object_history` was the first (commit `7e48288`). [0001](0001-portal-mode-bricks-bound-discovery.md)
   and [0005](0005-portal-mode-writes-follow-the-portal-form.md) stand; what they decide moves
   into the shared policy.
