@@ -419,7 +419,7 @@ class ObjectFindByName extends AbstractMCPTool
 					continue; // hide that the object exists
 				}
 
-				$aMatches[] = ['class' => $sClass] + ObjectSerializer::Serialize($oObject, $sClass, $aFields);
+				$aMatches[] = ObjectSerializer::Serialize($oObject, $sClass, $aFields);
 			}
 
 			return $aMatches;
