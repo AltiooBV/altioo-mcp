@@ -9,6 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Prompts;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use MetaModel;
 use UserRights;
 
@@ -30,9 +33,14 @@ use UserRights;
  * too little survives the checks the prompt is not offered at all, which is
  * more useful than a prompt that produces an OQL error.
  *
+ * In portal mode the question is the same and the answer is the portal's: its
+ * own ticket lists, which are already the user's, run by core_portal_list.
+ * Nothing here is OQL there, and the prompt is offered only when the portal
+ * grants the user such a list.
+ *
  * @since 1.0.0
  */
-class MyOpenTickets extends AbstractMCPPrompt
+class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 {
 	/** The class iTop's ticketing modules derive every ticket from. */
 	private const TICKET_CLASS = 'Ticket';
@@ -71,6 +79,10 @@ class MyOpenTickets extends AbstractMCPPrompt
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return 'List the current user\'s requests and where each one stands, from their portal.';
+		}
+
 		return 'List the open tickets assigned to the current user or submitted by them.';
 	}
 
@@ -89,6 +101,10 @@ class MyOpenTickets extends AbstractMCPPrompt
 		if (!class_exists(MetaModel::class)) {
 			// No iTop loaded, so nothing can be verified, so nothing is claimed.
 			return false;
+		}
+
+		if (PortalMode::Current() !== null) {
+			return self::portalTicketLists() !== [];
 		}
 
 		if (!MetaModel::IsValidClass(self::TICKET_CLASS)) {
@@ -152,8 +168,55 @@ class MyOpenTickets extends AbstractMCPPrompt
 			&& UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, self::OPERATIONAL_STATUS, UR_ACTION_READ) !== UR_ALLOWED_NO;
 	}
 
+	/**
+	 * The ticket lists the portal grants the user and lets them read: its
+	 * ManageBricks on Ticket or a class derived from it. Empty, and the
+	 * prompt not offered, when the portal cannot be read.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function portalTicketLists(): array
+	{
+		if (!MetaModel::IsValidClass(self::TICKET_CLASS)) {
+			return [];
+		}
+
+		try {
+			$oPolicy = PortalPolicy::ForCurrentRequest();
+		} catch (\Throwable $oException) {
+			return [];
+		}
+
+		return array_values(array_filter(
+			$oPolicy->Lists(),
+			static fn (array $aList): bool => $aList['kind'] === PortalPolicy::BRICK_MANAGE
+				&& MetaModel::IsValidClass((string)$aList['class'])
+				&& is_a((string)$aList['class'], self::TICKET_CLASS, true)
+				&& $oPolicy->ReadSet((string)$aList['class']) !== null
+		));
+	}
+
+	private function portalInstruction(): string
+	{
+		$aNamed = array_map(static function (array $aList): string {
+			$aTabs = array_column($aList['tabs'], 'id');
+
+			return '"'.$aList['list'].'" ('.$aList['title'].($aTabs === [] ? '' : '; tabs: '.implode(', ', $aTabs)).')';
+		}, self::portalTicketLists());
+
+		return 'Call core_portal_list on my portal\'s ticket list '.implode(', or ', $aNamed).' to retrieve my requests:'
+			.' the portal\'s lists are already mine, so pass no contact or filter. Without a tab it covers every tab, and its answer counts each one.'
+			.' For a request I ask about, call core_portal_get for its full state and latest public log entries, and what I can do with it now.'
+			.' Present the results as a clear list showing for each request: its reference, title, status, and when it was last updated.'
+			.' If none are found, say so clearly. Respond in the same language as the request titles.';
+	}
+
 	private function instruction(): string
 	{
+		if (PortalMode::Current() !== null) {
+			return $this->portalInstruction();
+		}
+
 		$aWhose = array_map(
 			static fn (string $sAttCode): string => "{$sAttCode} = :current_contact_id",
 			self::availableContactAttributes()
