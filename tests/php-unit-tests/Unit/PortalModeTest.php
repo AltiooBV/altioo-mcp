@@ -427,6 +427,24 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * Narrowed as the console's text is: a token that may only read is told
+	 * how to read and nothing about writing, which it is not served.
+	 */
+	public function testThePortalTextIsNarrowedToWhatTheTokenIsServed(): void
+	{
+		$sEverything = ServerInstructions::PortalText('itop-portal');
+		$sReadOnly = ServerInstructions::PortalText('itop-portal', AccessPolicy::FromScopes(['MCP-read']));
+
+		foreach (['core_portal_list', 'core_portal_get', 'core_portal_create', 'simulate=false'] as $sNeedle) {
+			$this->assertStringContainsString($sNeedle, $sEverything);
+		}
+		$this->assertStringContainsString('core_portal_list', $sReadOnly);
+		$this->assertStringNotContainsString('core_portal_create', $sReadOnly, 'a reader is told how to write');
+		$this->assertStringNotContainsString('simulate', $sReadOnly);
+		$this->assertStringNotContainsString('not served through this connection yet', $sEverything, 'the text still says nothing is served');
+	}
+
+	/**
 	 * Portal mode starts from the console refusal and nowhere else, so a
 	 * console login cannot reach it; and it is decided before the policy is,
 	 * and before anything is served.
