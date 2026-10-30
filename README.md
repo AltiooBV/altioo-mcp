@@ -141,7 +141,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
 | `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool, except that portal mode lists and reads them where the portal offers them |
+| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool. Served in portal mode too, under the portal's limits as well |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
 | `core_object_attach` | Attach a file to an object, or set one of its document attributes. Dry run by default |
 | `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
@@ -620,17 +620,19 @@ own code, so a customised portal is served as customised:
 - `core_current_user` and `itop://core/current-user`, with the user's organisation and portal;
   the `core_my_open_tickets` prompt, answered from the portal's ticket lists; and the server
   instructions (`core_instructions`, `itop://core/instructions`), rewritten for portal mode.
-
-The change log is served as the portal configures it: a portal that scopes `CMDBChangeOp` and
-offers a brick on it shows history, and that list and its rows are served. It is never written
-there, whatever the portal grants, since a write would forge an audit record.
+- `core_object_history`, the console's own tool, when the portal shows history: a brick granted
+  to the user reaches `CMDBChangeOp` and a read scope covers it, and describe says `history:
+  true`. Everything it checks on the console still applies, and the portal narrows it further:
+  the object must be one the portal shows the user, the rows those the change log's scope
+  holds, and the attributes those the object's view form shows. The portal's lists and reads
+  refuse the change log, which would skip those checks, and nothing in portal mode writes it.
 
 What the portal offers that is not served here — downloading, adding or deleting an
 attachment, and anything a portal extension adds through its own bricks or routes — stays in the
-portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (describe is in
-`datamodel`, the others in `objects`) and the token's grade narrow it as they narrow anything
-else: an `MCP-read` token is served the reads only. **Portal mode needs iTop 3.2.2 or later**,
-the first release where the portal's form merge can be called on its own; on an earlier one, and
+portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (describe is in `datamodel`, history in
+`history`, the others in `objects`) and the token's grade narrow it as they narrow anything else:
+an `MCP-read` token is served the reads only. **Portal mode needs iTop 3.2.2 or later**, the first
+release where the portal's form merge can be called on its own; on an earlier one, and
 on a portal whose configuration cannot be read, nothing is served and `log/error.log` says why.
 
 **2. A credential iTop accepts.** Authentication is delegated to iTop's login stack

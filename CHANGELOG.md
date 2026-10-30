@@ -121,9 +121,12 @@ entry itself, not left to be inferred from it.
     class the action names or its factory method chooses, and is preset by the action's rules,
     run by the portal's own helper (doc/adr/0005).
 
-  The change log is a class like any other there: a portal that scopes `CMDBChangeOp` and offers
-  a brick on it shows history, and is listed and read as configured. It is never written, whatever
-  the portal grants — no edit, stimulus or create action is offered on it.
+  `core_object_history` is served in portal mode too, when the portal shows history — a brick
+  granted to the user reaches `CMDBChangeOp` and a read scope covers it — and
+  `core_portal_describe` says so in `history`. It is the console's tool with the portal's limits
+  added: the object must be one the portal shows, the rows those the change log's scope holds, and
+  the attributes those the object's view form shows. The portal's lists and reads refuse the
+  change log, and no write in portal mode reaches it, whatever the portal grants.
 
   `core_current_user` and `itop://core/current-user` are served in portal mode, and now report
   `current_organization` and `current_portal` in both modes. The `core_my_open_tickets` prompt is
