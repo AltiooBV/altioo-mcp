@@ -655,6 +655,7 @@ final class MCPService
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
 
 		$aToolsets = [];
+		$aServedGrades = [];
 		$aRegistries = [
 			MCPRegistry::GetTools(),
 			MCPRegistry::GetResources(),
@@ -665,6 +666,10 @@ final class MCPService
 			foreach ($aElements as $sIdentifier => $oElement) {
 				if (!self::isHidden((string)$sIdentifier, $oElement, $aDisabled, $oPolicy)) {
 					$aToolsets[$oElement->getToolset()] = true;
+					if ($oElement instanceof AbstractMCPTool) {
+						[$bReadOnly, $bDestructive] = self::annotatedHints($oElement);
+						$aServedGrades[AccessPolicy::CapabilityOf($bReadOnly, $bDestructive)] = true;
+					}
 				}
 			}
 		}
@@ -672,9 +677,19 @@ final class MCPService
 		$aNames = array_keys($aToolsets);
 		sort($aNames);
 
+		// What the caller may do *and* has a tool to do it with, for the same
+		// reason the toolsets are the reachable set: a grade the token carries
+		// that no served tool needs is not one the caller can use. In portal
+		// mode a token graded MCP-delete holds a grade nothing there deletes
+		// with, and reporting it sent a client looking for a delete tool.
+		$aGranted = $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES;
+
 		return [
 			'toolsets'     => $aNames,
-			'capabilities' => $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES,
+			'capabilities' => array_values(array_filter(
+				AccessPolicy::CAPABILITIES,
+				static fn (string $sGrade): bool => in_array($sGrade, $aGranted, true) && isset($aServedGrades[$sGrade])
+			)),
 			// Named here as well as in the instructions, for the same reason
 			// the class schema is served as a tool as well as a resource: a
 			// client that never calls prompts/list leaves its model unable to

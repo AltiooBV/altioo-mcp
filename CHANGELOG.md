@@ -51,6 +51,12 @@ entry itself, not left to be inferred from it.
   from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
   the rows have been written.
 
+- **`core_current_user` reports only the capabilities a served tool uses.** Its `capabilities`
+  were the token's grade, so a token graded `MCP-delete` was reported able to delete in portal
+  mode, where nothing deletes, and on an instance whose delete tools are all disabled. They are
+  now the grades of the tools actually served, within what the token grants, as the toolsets
+  beside them already were.
+
 ### Added
 
 - **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
