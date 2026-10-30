@@ -50,3 +50,6 @@ user change their own Person is not reproduced.
 Enforced by: `PortalWriteTest` (integration suite), `PortalModeTest` (unit suite) for what is
 served to whom, and the source-shape tests that look for each value rule in
 `WritePlan::ValidatedValues()`.
+
+The tools named here merge into the console's write tools by
+[0006](0006-one-tool-surface-the-portal-is-a-policy.md); what this record decides stands.
