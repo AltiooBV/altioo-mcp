@@ -114,6 +114,11 @@
         <entry id="MCP:tool:core_object_get_related:title" _delta="force"><![CDATA[Obtenir les objets liés]]></entry>
         <entry id="MCP:tool:core_object_history:title" _delta="force"><![CDATA[Historique d'un objet]]></entry>
         <entry id="MCP:tool:core_portal_describe:title" _delta="force"><![CDATA[Décrire le portail]]></entry>
+        <entry id="MCP:tool:core_portal_list:title" _delta="force"><![CDATA[Lister depuis le portail]]></entry>
+        <entry id="MCP:tool:core_portal_get:title" _delta="force"><![CDATA[Lire depuis le portail]]></entry>
+        <entry id="MCP:tool:core_portal_create:title" _delta="force"><![CDATA[Créer via le portail]]></entry>
+        <entry id="MCP:tool:core_portal_update:title" _delta="force"><![CDATA[Modifier via le portail]]></entry>
+        <entry id="MCP:tool:core_portal_apply_stimulus:title" _delta="force"><![CDATA[Appliquer un stimulus via le portail]]></entry>
         <entry id="MCP:tool:core_object_search_by_class:title" _delta="force"><![CDATA[Rechercher des objets par classe]]></entry>
         <entry id="MCP:tool:core_object_search_by_oql:title" _delta="force"><![CDATA[Rechercher des objets en OQL]]></entry>
         <entry id="MCP:tool:core_object_update:title" _delta="force"><![CDATA[Modifier un objet]]></entry>
