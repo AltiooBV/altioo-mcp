@@ -19,8 +19,19 @@ use Exception;
  * embed SQL fragments, class and table names - and is answered with a generic
  * message instead.
  *
+ * It may also carry the RFC 6750 error code the WWW-Authenticate challenge
+ * names, for a refusal a client can act on without reading the message.
+ *
  * @since 1.0.0
  */
 class MCPAuthException extends Exception
 {
+	/** @var string|null RFC 6750 error code for the challenge, e.g. invalid_token. */
+	public readonly ?string $challengeError;
+
+	public function __construct(string $message, int $code, ?string $challengeError = null)
+	{
+		parent::__construct($message, $code);
+		$this->challengeError = $challengeError;
+	}
 }

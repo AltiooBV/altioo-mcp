@@ -87,12 +87,14 @@ class MCPResultTest extends TestCase
 		$oResult->errorReference = 'a1b2c3d4';
 		$oResult->durationMs = 1234;
 		$oResult->responseBytes = 99;
+		$oResult->challengeError = 'invalid_token';
 
 		$aDecoded = json_decode(json_encode($oResult), true);
 
 		$this->assertArrayNotHasKey('errorReference', $aDecoded);
 		$this->assertArrayNotHasKey('durationMs', $aDecoded);
 		$this->assertArrayNotHasKey('responseBytes', $aDecoded);
+		$this->assertArrayNotHasKey('challengeError', $aDecoded);
 	}
 
 	public function testAuditOnlyFieldsStartNull(): void

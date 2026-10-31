@@ -20,6 +20,16 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
+  or carries no MCP scope said only `Invalid login`, with the same challenge as a request that
+  sent nothing, so an OAuth client could not tell that it should refresh or connect again. The
+  challenge now carries `error="invalid_token"` (RFC 6750) in that case, and the message says
+  what may be wrong with the token. A wrong password says so, and keeps no error code.
+- **A request with no credential is told so.** Its message spoke of a browser session even when
+  no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
+
 ### Packaging
 
 - **The archive is signed by a job that runs none of this repository's code.** The release used

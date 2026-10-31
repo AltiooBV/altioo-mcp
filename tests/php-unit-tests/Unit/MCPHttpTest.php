@@ -258,6 +258,30 @@ class MCPHttpTest extends TestCase
 	}
 
 	/**
+	 * RFC 6750: a token that was presented and refused is invalid_token, which
+	 * is what tells an OAuth client to refresh or connect again rather than
+	 * read the refusal as a wrong password.
+	 */
+	public function testARefusedTokenIsNamedInTheChallenge(): void
+	{
+		$sChallenge = MCPHttp::BearerChallenge('https://itop.example.com/.well-known/oauth-protected-resource', 'invalid_token');
+
+		$this->assertStringContainsString(', error="invalid_token"', $sChallenge);
+		$this->assertStringContainsString('resource_metadata=', $sChallenge);
+	}
+
+	/** A request that presented nothing gets no error code (RFC 6750 section 3.1). */
+	public function testNoErrorIsNamedUnlessOneIsGiven(): void
+	{
+		$this->assertStringNotContainsString('error=', MCPHttp::BearerChallenge(null));
+	}
+
+	public function testAnErrorThatIsNotACodeIsLeftOut(): void
+	{
+		$this->assertSame(MCPHttp::BearerChallenge(null), MCPHttp::BearerChallenge(null, "invalid_token\", x=\"y"));
+	}
+
+	/**
 	 * The URL comes from config-itop.php, so this is not about an attacker -
 	 * it is about a typo producing no parameter rather than a split header.
 	 *
