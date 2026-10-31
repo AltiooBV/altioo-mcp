@@ -27,6 +27,7 @@ use Mcp\Server\Builder;
 use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
+use MetaModel;
 use UserRights;
 
 /**
@@ -124,8 +125,40 @@ final class MCPService
 
 		self::warnAboutSettingsThatMatchNothing($aDisabled);
 		self::warnAboutBulkSiblingsLeftOn($aDisabled);
+		self::warnAboutEscalationClassesThatMatchNothing();
 
 		return $builder->build();
+	}
+
+	/**
+	 * Logs each mcp_privilege_escalation_classes entry that names no class.
+	 *
+	 * A misspelt class refuses nothing, and nothing else would say so: the
+	 * class it was meant to protect stays writable while the configuration
+	 * reads as though it were not. Warned at every request, like the stale
+	 * entries above, until the name is corrected or removed - the usual cause
+	 * being an extension renamed or uninstalled.
+	 */
+	private static function warnAboutEscalationClassesThatMatchNothing(): void
+	{
+		$aListed = MCPHelper::GetEscalationClasses();
+		if ($aListed === null || $aListed === []) {
+			return;
+		}
+
+		// Case-insensitive, as the barrier matches: IsValidClass() is not, and
+		// would report an entry that works as one that does not.
+		$aKnown = array_flip(array_map('strtolower', MetaModel::GetClasses()));
+		$aStale = array_values(array_filter($aListed, static fn (string $sClass): bool => !isset($aKnown[strtolower($sClass)])));
+		if ($aStale !== []) {
+			MCPHelper::LogError(sprintf(
+				"'%s' names %s this instance's datamodel does not have: %s. Nothing is refused by those entries. "
+				.'Check the spelling against the class name core_class_schema reports, or remove an entry for an extension that is no longer installed.',
+				MCPHelper::MODULE_SETTING_ESCALATION_CLASSES,
+				count($aStale) === 1 ? 'a class' : 'classes',
+				implode(', ', $aStale)
+			));
+		}
 	}
 
 	/**

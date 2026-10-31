@@ -240,12 +240,11 @@ final class AccessGrants
 	 * makes Contact read-only by inference is worse than one that misses a
 	 * connection class a future branch adds.
 	 *
-	 * Not listed, and a deliberate gap: Oauth2Client, which
-	 * RemoteOauthConnection points at and which holds an outbound client
-	 * secret. Outbound secrets are stored in the recoverable attribute types
-	 * this module deliberately does not treat as credentials - see
-	 * CREDENTIAL_ATTRIBUTE - and widening that here would be a different
-	 * restriction wearing this one's name.
+	 * Oauth2Client and OAuthClient, which RemoteOauthConnection and the
+	 * mailbox side point at, are listed below by name. A secret on any other
+	 * class - one an extension adds - is not a reason to refuse the class:
+	 * SecretPolicy refuses the attribute holding it, and leaves the rest of
+	 * the object writable.
 	 */
 	private const AUTOMATION_ROOTS = [
 		'Trigger',
@@ -578,6 +577,8 @@ final class AccessGrants
 	/** What they say when a recipient query reaches something the caller may not read. */
 	public const RECIPIENT_REFUSAL = 'The \'%2$s\' of this \'%1$s\' is a query over \'%3$s\', and the mailer runs it with rights and silos switched off - so it would collect addresses from every matching row. Refused because %4$s. Narrow the query to a class you can read here, or set the recipients up in the iTop console.';
 
+	public const OPERATOR_ESCALATION_REFUSAL = 'Class \'%s\' is listed in mcp_privilege_escalation_classes: this instance\'s operator has said that writing it stages work something else carries out later, outside this endpoint, where what you may do is not checked. Writing it is refused unless mcp_allow_privilege_escalation is on, whatever your profile says. Do it in the iTop console. Reading is unaffected.';
+
 	public const DETECTION_TAMPER_REFUSAL = 'Class \'%s\' is a check that already exists, and a check is not something the account it watches gets to edit here: turning one off, making the change it would have flagged and turning it back on leaves nothing for anyone to notice. Creating a new one is allowed; changing or deleting this one is not, whatever mcp_allow_privilege_escalation says. Use the iTop console.';
 
 	public const DETECTION_REFUSAL = 'Class \'%s\' is part of iTop\'s data-quality audit, which decides what gets flagged to a person as wrong - not something this endpoint changes on its own initiative. It is refused unless mcp_allow_privilege_escalation is on, which is an operator allowing this endpoint to grant more than the credential it was called with rather than a switch for managing automation. Change it in the iTop console. Reading is unaffected.';
@@ -626,8 +627,9 @@ final class AccessGrants
 	 *
 	 * So the recoverable types are deliberately not matched. A datamodel
 	 * extension may legitimately keep a mailbox or device password on an
-	 * object, and refusing to write those would be an unrelated restriction
-	 * wearing this one's name. iTop's own addon/authentication category is
+	 * object, and refusing to write the whole object for it would be an
+	 * unrelated restriction wearing this one's name. The secret itself is
+	 * refused by SecretPolicy, one attribute at a time. iTop's own addon/authentication category is
 	 * left alone for the same reason: SynchroDataSource carries it, and a
 	 * synchro source is not a credential.
 	 *
@@ -762,6 +764,34 @@ final class AccessGrants
 		}
 
 		return self::$aDecided[$sKey] = self::PointsAtAnyOf($sClass, ['Trigger', 'Action']);
+	}
+
+	/**
+	 * Whether the operator added $sClass to the escalation barrier, through
+	 * mcp_privilege_escalation_classes.
+	 *
+	 * Matched like the built-in roots - the exact name, case-insensitive, or
+	 * a descendant - so listing an extension's base class covers what it
+	 * adds below it. Not cached with the answers above: those are facts about
+	 * the datamodel, this is a question about a setting, and it is handed in.
+	 *
+	 * @param array<int, string>|null $aListed What the setting holds; null when it is malformed, which reads as every class.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function IsOperatorListed(string $sClass, ?array $aListed): bool
+	{
+		if ($aListed === null) {
+			return true;
+		}
+
+		foreach ($aListed as $sRoot) {
+			if (strcasecmp($sClass, $sRoot) === 0 || is_a($sClass, $sRoot, true)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -953,7 +983,8 @@ final class AccessGrants
 			$sClass,
 			$iId,
 			$aFields,
-			MCPHelper::AllowsPrivilegeEscalation()
+			MCPHelper::AllowsPrivilegeEscalation(),
+			MCPHelper::GetEscalationClasses()
 		);
 	}
 
@@ -964,10 +995,12 @@ final class AccessGrants
 	 * testing without an iTop, a configuration or a request, and the half that
 	 * needs all three is one line long and lives above.
 	 *
-	 * @param bool                 $bAdministrationAllowed What mcp_allow_access_administration says.
-	 * @param array<string, mixed> $aFields
+	 * @param bool                    $bAdministrationAllowed What mcp_allow_access_administration says.
+	 * @param array<string, mixed>    $aFields
+	 * @param array<int, string>|null $aEscalationClasses     What mcp_privilege_escalation_classes says; null for every class.
 	 *
 	 * @since 1.0.0
+	 * @since 1.2.0 Takes the classes the operator added to the escalation barrier.
 	 */
 	public static function RefusalGiven(
 		bool    $bAdministrationAllowed,
@@ -975,6 +1008,7 @@ final class AccessGrants
 		?int    $iId = null,
 		array   $aFields = [],
 		bool    $bEscalationAllowed = false,
+		?array  $aEscalationClasses = [],
 	): ?string
 	{
 		// Somebody else's personal row, whatever else is true of the class.
@@ -1009,6 +1043,17 @@ final class AccessGrants
 		// somebody can still check whether it held.
 		if (self::IsRecording($sClass)) {
 			return sprintf(self::RECORDING_REFUSAL, $sClass);
+		}
+
+		// What the operator added, before the built-in families: an operator
+		// listing a class has said it stages work this endpoint cannot grade,
+		// and a built-in rule that would grade it - a synchronisation source
+		// is allowed over a class the caller may write - does not get to
+		// overrule that. With the setting on, the class is graded below as if
+		// it had never been listed, which for a class nothing else here knows
+		// is an ordinary write.
+		if (!$bEscalationAllowed && self::IsOperatorListed($sClass, $aEscalationClasses)) {
+			return sprintf(self::OPERATOR_ESCALATION_REFUSAL, $sClass);
 		}
 
 		// A standing instruction that makes the instance act by itself, or the

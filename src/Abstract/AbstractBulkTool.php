@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use DBObjectSet;
@@ -362,6 +363,12 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			$sBadFormula = FormulaPolicy::RefusalFor($sClass, $sAttCode, $value);
 			if ($sBadFormula !== null) {
 				$aIssues[] = $sBadFormula;
+				continue;
+			}
+			// A secret the instance logs in to something else with. See SecretPolicy.
+			$sBadSecret = SecretPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadSecret !== null) {
+				$aIssues[] = $sBadSecret;
 				continue;
 			}
 

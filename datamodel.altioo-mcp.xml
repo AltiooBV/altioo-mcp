@@ -522,6 +522,16 @@
       -->
       <mcp_allow_privilege_escalation type="bool">false</mcp_allow_privilege_escalation>
       <!--
+        Classes this instance adds to what mcp_allow_privilege_escalation
+        governs, matched with their subclasses. List a class an extension
+        installed that stores work something else carries out later - a
+        scheduled job, a mass update, a script runner - so that writing one
+        here is refused unless that setting is on. Adds to the built-in list,
+        never replaces it. A value that is not a list of class names is
+        logged and read as every class. Empty adds nothing.
+      -->
+      <mcp_privilege_escalation_classes type="array"/>
+      <!--
         Elements per tools/list, resources/list or prompts/list page. The MCP
         SDK defaults to 50 and pages the rest behind a cursor, which a client
         that ignores nextCursor never asks for: the 51st tool then exists and

@@ -266,6 +266,18 @@ class MCPHelper
 	const MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION = 'mcp_allow_privilege_escalation';
 
 	/**
+	 * Classes the operator adds to what the setting above governs.
+	 *
+	 * The built-in list names what iTop ships. An extension can add a class
+	 * that stores work something else carries out later - a scheduled mass
+	 * update, a script runner - and nothing here has heard of it, so writing
+	 * one would be graded as an ordinary write while the work it stages runs
+	 * outside this endpoint with nobody's rights checked. The operator is the
+	 * one who knows which extensions are installed; this is where they say so.
+	 */
+	const MODULE_SETTING_ESCALATION_CLASSES = 'mcp_privilege_escalation_classes';
+
+	/**
 	 * Operator kill switch: names of tools and prompts, and URIs of resources
 	 * and resource templates, that must never be advertised nor callable.
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
@@ -772,6 +784,65 @@ class MCPHelper
 	public static function AllowsPrivilegeEscalation(): bool
 	{
 		return self::ReadSwitch(self::MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION, false, false);
+	}
+
+	/**
+	 * Classes the operator added to the escalation barrier, or null for every
+	 * class.
+	 *
+	 * @return array<int, string>|null
+	 * @since 1.2.0
+	 */
+	public static function GetEscalationClasses(): ?array
+	{
+		return self::EscalationClassesFrom(utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_ESCALATION_CLASSES, []));
+	}
+
+	/**
+	 * The decision GetEscalationClasses() makes, given the value it read.
+	 *
+	 * Null - every class - when the value is not a list of class names. This
+	 * setting only ever adds refusals, so the answer that refuses more is all
+	 * of them, the way 1.1.1 reads a mistyped switch: an operator who wrote
+	 * 'MassUpdateJob' instead of array('MassUpdateJob') meant to refuse
+	 * something, and refusing nothing would be the one reading certain to be
+	 * wrong.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @return array<int, string>|null
+	 * @internal
+	 * @since 1.2.0
+	 */
+	public static function EscalationClassesFrom(mixed $mValue): ?array
+	{
+		$sProblem = null;
+		$aClasses = [];
+		if (!is_array($mValue)) {
+			$sProblem = 'an array of class names, not '.gettype($mValue);
+		} else {
+			foreach ($mValue as $mClass) {
+				if (!is_string($mClass) || trim($mClass) === '') {
+					$sProblem = 'an array of class names, and holds '.(is_scalar($mClass) ? var_export($mClass, true) : gettype($mClass));
+					break;
+				}
+				$aClasses[] = trim($mClass);
+			}
+		}
+
+		if ($sProblem !== null) {
+			self::LogError(sprintf(
+				"Itop configuration parameter '%s' should be %s. Every class is read as listed - nothing can be written through this endpoint "
+				."unless '%s' is on - until it is corrected.",
+				self::MODULE_SETTING_ESCALATION_CLASSES,
+				$sProblem,
+				self::MODULE_SETTING_ALLOW_PRIVILEGE_ESCALATION
+			));
+
+			return null;
+		}
+
+		return $aClasses;
 	}
 
 	/**

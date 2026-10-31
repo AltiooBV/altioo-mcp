@@ -83,6 +83,20 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * Read by MCPHelper::GetEscalationClasses() on every write. Must be
+	 * declared, so an operator finds it in config-itop.php, and must default
+	 * to empty: a shipped name would refuse a class on every instance, and a
+	 * non-array default would read as every class.
+	 */
+	public function testEscalationClassesIsDeclaredAndDefaultsToEmpty(): void
+	{
+		$aClasses = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ESCALATION_CLASSES, null);
+
+		$this->assertIsArray($aClasses, 'mcp_privilege_escalation_classes must be declared in module_parameters');
+		$this->assertSame([], $aClasses);
+	}
+
+	/**
 	 * The connection record goes through the same allow-list as everything
 	 * else, so an installed instance drops it unless the compiled datamodel
 	 * names it - whatever DEFAULT_LOG_METHODS says.
