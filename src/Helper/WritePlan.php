@@ -16,6 +16,7 @@ use DBObjectSet;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
+use RestUtils;
 use Throwable;
 use UserRights;
 use utils;
@@ -48,6 +49,130 @@ final class WritePlan
 {
 	/** Writes rehearse unless the caller asks otherwise; MCP-advisory removes the asking. */
 	public const SIMULATE_BY_DEFAULT = true;
+
+	/**
+	 * The caller's values for an existing object, each held to every rule a
+	 * value has to pass before it may be Set(), and converted.
+	 *
+	 * One copy for every tool that writes one object - the create, the
+	 * update, the stimulus and the portal's writes - because a rule kept in
+	 * four places is four rules that drift apart. Each refused attribute is
+	 * named with why; nothing is Set() here, so the caller decides what a
+	 * refusal costs before the object is touched.
+	 *
+	 * The rules are spelled WritePlan:: rather than self:: below, as at every
+	 * other conversion site, so that the checks that look for them at each
+	 * site find them here too.
+	 *
+	 * @param array<string, mixed> $aFields      Attribute code => value, as the client sent them.
+	 * @param DBObjectSet|null     $oInstanceSet A set holding this object and nothing else, for the rights addon; null for an object not yet created.
+	 * @param string|null          $sStimulus    The transition the values are set for, which may prompt for what the state locks.
+	 *
+	 * @return array{0: array<string, mixed>, 1: array<string, string>} The converted values, and attribute code => refusal.
+	 * @since 1.2.0
+	 */
+	public static function ValidatedValues(DBObject $oObject, string $sClass, array $aFields, ?DBObjectSet $oInstanceSet, ?string $sStimulus = null): array
+	{
+		$aIssues = [];
+		$aValidatedValues = [];
+		foreach ($aFields as $sAttCode => $value) {
+			$sAttCode = (string)$sAttCode;
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
+				continue;
+			}
+			// Two things, and it is worth being clear which is which.
+			//
+			// The comparison is the part that bites today: this returns
+			// UR_ALLOWED_NO, _YES or _DEPENDS, and a truthy test reads DEPENDS
+			// as a yes. Only YES is a yes.
+			//
+			// The set is the part that may bite later. iTop's shipped addon
+			// documents that it ignores the instance set for attributes, so
+			// under a stock install this reads the same with or without it -
+			// object-level protection here comes from the set the object was
+			// fetched through and from CheckToWrite() below. An addon that does
+			// grade per object signals it with DEPENDS, and iTop passes a mono
+			// set at every equivalent call site.
+			//
+			// No object exists yet on a creation, so "depends on the object"
+			// cannot be answered there; only an outright refusal counts, and
+			// DBInsert() checks again once there is something to check against.
+			$iRight = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet);
+			if ($oInstanceSet === null ? $iRight === UR_ALLOWED_NO : $iRight !== UR_ALLOWED_YES) {
+				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
+				continue;
+			}
+			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if (!$oAttDef->IsWritable()) {
+				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
+				continue;
+			}
+			// Writable is the ORM's word; this is the console's. The state, what
+			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
+			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value, $sStimulus);
+			if ($sNotEditable !== null) {
+				$aIssues[$sAttCode] = $sNotEditable;
+				continue;
+			}
+			// Asked before the ORM sees it: an id pointing at nothing is a
+			// mistake the caller can correct, and iTop answers it with an
+			// exception this module can only report opaquely.
+			$sBadTarget = WritePlan::RefusalForExternalKey($sClass, $sAttCode, $value);
+			if ($sBadTarget !== null) {
+				$aIssues[$sAttCode] = $sBadTarget;
+				continue;
+			}
+			// A mention is a notification: held to what the console would
+			// have let this user write, and to a per-call cap. See MentionPolicy.
+			$sBadMention = MentionPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadMention !== null) {
+				$aIssues[$sAttCode] = $sBadMention;
+				continue;
+			}
+			// Text a spreadsheet would run as a formula. See FormulaPolicy.
+			$sBadFormula = FormulaPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadFormula !== null) {
+				$aIssues[$sAttCode] = $sBadFormula;
+				continue;
+			}
+			// A secret the instance logs in to something else with. See SecretPolicy.
+			$sBadSecret = SecretPolicy::RefusalFor($sClass, $sAttCode, $value);
+			if ($sBadSecret !== null) {
+				$aIssues[$sAttCode] = $sBadSecret;
+				continue;
+			}
+
+			try {
+				// The SDK hands us arrays for nested JSON objects; RestUtils
+				// branches on stdClass. See RestValue.
+				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
+				// iTop's set attributes throw away an element they do not
+				// recognise without saying so. A value the caller sent and the
+				// object will not hold is a refusal here, the way a scalar enum
+				// already refuses one.
+				$sDropped = WritePlan::RefusalForDroppedSetValues($sClass, $sAttCode, $value, $aValidatedValues[$sAttCode]);
+				if ($sDropped !== null) {
+					unset($aValidatedValues[$sAttCode]);
+					$aIssues[$sAttCode] = $sDropped;
+					continue;
+				}
+				// What the set would add, change and remove, judged before
+				// Set() hands it to ormLinkSet. See EditPolicy.
+				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValidatedValues[$sAttCode]);
+				if ($sBadLinks !== null) {
+					unset($aValidatedValues[$sAttCode]);
+					$aIssues[$sAttCode] = $sBadLinks;
+					continue;
+				}
+			} catch (Throwable $e) {
+				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
+					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
+			}
+		}
+
+		return [$aValidatedValues, $aIssues];
+	}
 
 	/**
 	 * The interface iTop marks a class whose objects are a credential with.

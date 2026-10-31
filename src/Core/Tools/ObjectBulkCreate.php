@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -51,7 +52,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 	public function getDescription(): ?string
 	{
 		return 'Create several iTop objects of one class at once, each with its own attribute values. '
-			.'The dry run validates every row without creating anything. '
+			.'The dry run validates every row without creating anything. A new object starts in its initial state: the state, and fields that state locks, are set afterwards with core_object_apply_stimulus. '
 			.'Rows are independent, so a call can partly succeed; the response reports every row separately, with the id of each object that was created.';
 	}
 
@@ -207,6 +208,13 @@ class ObjectBulkCreate extends AbstractBulkTool
 			$oObject = MetaModel::NewObject($sClass);
 			foreach ($aValues as $sAttCode => $value) {
 				$oObject->Set($sAttCode, $value);
+			}
+
+			// Once everything is Set(), because a datamodel filter reads the
+			// object and this row may have moved what it reads. See EditPolicy.
+			$aBadKeys = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValues));
+			if (!empty($aBadKeys)) {
+				throw new ToolCallException(implode(' ', $aBadKeys));
 			}
 
 			// Before the check, because the check is what moves them:

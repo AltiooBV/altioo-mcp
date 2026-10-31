@@ -30,6 +30,19 @@ entry itself, not left to be inferred from it.
 - **A request with no credential is told so.** Its message spoke of a browser session even when
   no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
 
+- **Every object a tool returns says which class it is, in `class`.** A search on `Ticket`
+  answers across `UserRequest` and `Incident`, and the descriptions of both search tools say
+  each row reports its class — but no release has done it: the field was keyed on what iTop
+  answers for a class with no subclass, which is an empty name, and that key had been dropped.
+  `core_object_search_by_class`, `core_object_search_by_oql`, `core_object_get` and the write
+  tools' results now carry `class` on the object itself, as `core_object_find_by_name` and
+  `core_object_get_related` already did. `class` may also be named in `output_fields`, which
+  used to refuse it as an unknown attribute.
+- **`audit` and `actions` on the search tools are bounded by the page served, not the limit
+  asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
+  refused for every query, four matches included. A page that would hold more than 25 is still
+  refused, and the refusal now says to pass `limit=25` and page.
+
 ### Added
 
 - **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
@@ -103,6 +116,31 @@ entry itself, not left to be inferred from it.
   which both go through, refuses it again beneath them. Clients reading documents of ordinary
   objects are unaffected. Until an instance is upgraded, leaving `documents` out of
   `mcp_enabled_toolsets`, or the read out of the custom profile, closes it.
+
+- **A write changes only what the console's form would let the user edit** (doc/adr/0004). The
+  create, update and stimulus tools and their bulk forms used to accept any attribute the ORM
+  calls writable, as REST `core/update` does. So one call could close a ticket without a
+  transition, set a field its state locks, reset an SLA timer, rewrite a case log, or delete the
+  children of a link set. Each of these is now refused, and the refusal names the tool that can
+  make the change:
+  - the state attribute (`status`): use `core_object_apply_stimulus`. A create starts in the
+    initial state;
+  - an attribute hidden or read-only in the object's state, or in the initial state for a
+    create. A stimulus may still set what its transition form prompts for, such as `agent_id`
+    on `ev_assign`;
+  - stopwatches (`tto`, `ttr`). Writing any value to one reset it to zero;
+  - a case log value that is not text or `{"add_item": {"message": …}}`. A full log replaced
+    the earlier entries, and an entry could carry a `date` that backdated it;
+  - a link set the console does not edit from its host (`edit_when`, `edit_mode`). An
+    `add_only` set refuses removals. Adding, changing or removing items now needs the matching
+    right on the linked class: removing an item from a direct set whose key cannot be empty
+    deleted the child object with no delete check;
+  - an external key outside the attribute's allowed values, such as an `agent_id` who is not in
+    the ticket's team. Only the target's existence used to be checked.
+
+  **What a client must do:** a call that set `status` (or any other field above) through
+  `core_object_update` or `core_object_create` is now refused. Move the object with
+  `core_object_apply_stimulus`, passing the fields the transition asks for in its `fields`.
 
 ## [1.1.1] - 2026-10-05
 

@@ -152,6 +152,6 @@ class SecretPolicyTest extends TestCase
 			}
 		}
 
-		$this->assertGreaterThanOrEqual(4, $iFound, 'expected the create, update, stimulus and bulk write paths');
+		$this->assertGreaterThanOrEqual(2, $iFound, 'expected the single-object write paths (WritePlan) and the bulk ones');
 	}
 }

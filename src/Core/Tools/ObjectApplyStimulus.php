@@ -13,20 +13,15 @@ use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
-use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use DBObjectSet;
-use RestUtils;
 
 /**
  * Apply a lifecycle stimulus on an iTop object.
@@ -258,75 +253,11 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		// free to iterate whatever it is handed.
 		$oInstanceSet = DBObjectSet::FromObject($oObject);
 
-		// Set fields before applying the stimulus (e.g. agent_id for ev_assign)
-		// Validate fields before applying any changes
-		$aIssues = [];
-		$aValidatedValues = [];
-		foreach ($fields as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode)) {
-				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
-				continue;
-			}
-			// Only UR_ALLOWED_YES is a yes - this is tri-state, and a truthy
-			// test reads UR_ALLOWED_DEPENDS as permission. The mono set is
-			// passed for the addon that grades per object; the shipped one does
-			// not. See ObjectUpdate for the long version.
-			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
-				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
-				continue;
-			}
-			$oAttDef = MetaModel::GetAttributeDef($class, $sAttCode);
-			if (!$oAttDef->IsWritable()) {
-				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
-				continue;
-			}
-			// Asked before the ORM sees it: an id pointing at nothing is a
-			// mistake the caller can correct, and iTop answers it with an
-			// exception this module can only report opaquely.
-			$sBadTarget = WritePlan::RefusalForExternalKey($class, $sAttCode, $value);
-			if ($sBadTarget !== null) {
-				$aIssues[$sAttCode] = $sBadTarget;
-				continue;
-			}
-			// A mention is a notification: held to what the console would
-			// have let this user write, and to a per-call cap. See MentionPolicy.
-			$sBadMention = MentionPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadMention !== null) {
-				$aIssues[$sAttCode] = $sBadMention;
-				continue;
-			}
-			// Text a spreadsheet would run as a formula. See FormulaPolicy.
-			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadFormula !== null) {
-				$aIssues[$sAttCode] = $sBadFormula;
-				continue;
-			}
-			// A secret the instance logs in to something else with. See SecretPolicy.
-			$sBadSecret = SecretPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadSecret !== null) {
-				$aIssues[$sAttCode] = $sBadSecret;
-				continue;
-			}
-
-			try {
-				// The SDK hands us arrays for nested JSON objects; RestUtils
-				// branches on stdClass. See RestValue.
-				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-				// iTop's set attributes throw away an element they do not
-				// recognise without saying so - see WritePlan. A value the
-				// caller sent and the object will not hold is a refusal here,
-				// the way a scalar enum already refuses one.
-				$sDropped = WritePlan::RefusalForDroppedSetValues($class, $sAttCode, $value, $aValidatedValues[$sAttCode]);
-				if ($sDropped !== null) {
-					unset($aValidatedValues[$sAttCode]);
-					$aIssues[$sAttCode] = $sDropped;
-					continue;
-				}
-			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.DatamodelReader::ValueHint($class, $sAttCode, $value);
-			}
-		}
+		// Set fields before applying the stimulus (e.g. agent_id for ev_assign).
+		// Every rule a value has to pass is in one place, shared with the
+		// update and the portal; the stimulus is what lets a transition set
+		// what its target state prompts for.
+		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet, $stimulus);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to fields : ".json_encode($aIssues));
 		}
@@ -340,6 +271,13 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		}
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to setting fields : ".implode(', ', $aIssues));
+		}
+
+		// Once everything is Set(), because a datamodel filter reads the
+		// object and this call may have moved what it reads. See EditPolicy.
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		if (!empty($aIssues)) {
+			throw new ToolCallException("Failed to apply stimulus due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Check for missing mandatory attributes before applying the stimulus, to provide a more helpful error message in this common case

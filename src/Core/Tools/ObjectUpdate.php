@@ -13,19 +13,14 @@ use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
-use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
-use RestUtils;
 use DBObjectSet;
 
 /**
@@ -58,7 +53,7 @@ class ObjectUpdate extends AbstractMCPTool
 	public function getDescription(): ?string
 	{
 		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
-			.'The dry run reports exactly which attributes would change. '
+			.'The dry run reports exactly which attributes would change. Only what the console form offers in the current state can be set: the state itself, and fields the state locks, change with core_object_apply_stimulus. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
 
@@ -214,83 +209,9 @@ class ObjectUpdate extends AbstractMCPTool
 		// free to iterate whatever it is handed.
 		$oInstanceSet = DBObjectSet::FromObject($oObject);
 
-		// Validate fields before applying any changes
-		$aIssues = [];
-		$aValidatedValues = [];
-		foreach ($fields as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode)) {
-				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$class}'.";
-				continue;
-			}
-			// Two things, and it is worth being clear which is which.
-			//
-			// The comparison is the part that bites today: this returns
-			// UR_ALLOWED_NO, _YES or _DEPENDS, and a truthy test reads DEPENDS
-			// as a yes. Only YES is a yes.
-			//
-			// The set is the part that may bite later. iTop's shipped addon
-			// documents that it ignores the instance set for attributes, so
-			// under a stock install this reads the same with or without it -
-			// object-level protection here comes from the set the object was
-			// fetched through and from CheckToWrite() below. An addon that does
-			// grade per object signals it with DEPENDS, and iTop passes a mono
-			// set at every equivalent call site.
-			if (UserRights::IsActionAllowedOnAttribute($class, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
-				$aIssues[$sAttCode] = "Write access denied on attribute '{$sAttCode}'.";
-				continue;
-			}
-			$oAttDef = MetaModel::GetAttributeDef($class, $sAttCode);
-			if (!$oAttDef->IsWritable()) {
-				$aIssues[$sAttCode] = "Attribute '{$sAttCode}' is not writable.";
-				continue;
-			}
-			// Asked before the ORM sees it: an id pointing at nothing is a
-			// mistake the caller can correct, and iTop answers it with an
-			// exception this module can only report opaquely.
-			$sBadTarget = WritePlan::RefusalForExternalKey($class, $sAttCode, $value);
-			if ($sBadTarget !== null) {
-				$aIssues[$sAttCode] = $sBadTarget;
-				continue;
-			}
-			// A mention is a notification: held to what the console would
-			// have let this user write, and to a per-call cap. See MentionPolicy.
-			$sBadMention = MentionPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadMention !== null) {
-				$aIssues[$sAttCode] = $sBadMention;
-				continue;
-			}
-			// Text a spreadsheet would run as a formula. See FormulaPolicy.
-			$sBadFormula = FormulaPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadFormula !== null) {
-				$aIssues[$sAttCode] = $sBadFormula;
-				continue;
-			}
-			// A secret the instance logs in to something else with. See SecretPolicy.
-			$sBadSecret = SecretPolicy::RefusalFor($class, $sAttCode, $value);
-			if ($sBadSecret !== null) {
-				$aIssues[$sAttCode] = $sBadSecret;
-				continue;
-			}
-
-			try {
-				// The SDK hands us arrays for nested JSON objects; RestUtils
-				// branches on stdClass. See RestValue.
-				$aValidatedValues[$sAttCode] = RestUtils::MakeValue($class, $sAttCode, RestValue::FromDecodedJson($value));
-				// iTop's set attributes throw away an element they do not
-				// recognise without saying so - see WritePlan. A value the
-				// caller sent and the object will not hold is a refusal here,
-				// the way a scalar enum already refuses one.
-				$sDropped = WritePlan::RefusalForDroppedSetValues($class, $sAttCode, $value, $aValidatedValues[$sAttCode]);
-				if ($sDropped !== null) {
-					unset($aValidatedValues[$sAttCode]);
-					$aIssues[$sAttCode] = $sDropped;
-					continue;
-				}
-			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.DatamodelReader::ValueHint($class, $sAttCode, $value);
-			}
-		}
+		// Validate fields before applying any changes. Every rule a value has
+		// to pass is in one place, shared with the stimulus and the portal.
+		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
@@ -305,6 +226,13 @@ class ObjectUpdate extends AbstractMCPTool
 		}
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to setting fields : ".implode(', ', $aIssues));
+		}
+
+		// Once everything is Set(), because a datamodel filter reads the
+		// object and this call may have moved what it reads. See EditPolicy.
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		if (!empty($aIssues)) {
+			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()

@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
@@ -311,6 +312,11 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * hold on a stock install is DoCheckToWrite(), reached through
 	 * WritePlan::Check().
 	 *
+	 * What the console's form would offer is judged on the object in the set,
+	 * or without one on a new object, which is what a creation is held to: its
+	 * initial state. See EditPolicy. External keys are judged by the caller,
+	 * once every value is Set().
+	 *
 	 * @param array<string, mixed> $aFields
 	 * @param DBObjectSet|null     $oInstanceSet The object being written, as a set of one. Null falls back to the class-level answer.
 	 *
@@ -320,6 +326,14 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	{
 		$aValues = [];
 		$aIssues = [];
+
+		$oObject = null;
+		if ($oInstanceSet !== null) {
+			$oInstanceSet->Rewind();
+			$oObject = $oInstanceSet->Fetch();
+			$oInstanceSet->Rewind();
+		}
+		$oObject ??= MetaModel::NewObject($sClass);
 
 		foreach ($aFields as $sAttCode => $value) {
 			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
@@ -341,6 +355,13 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			}
 			if (!MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
 				$aIssues[] = "Attribute '{$sAttCode}' is not writable.";
+				continue;
+			}
+			// Writable is the ORM's word; this is the console's. The state, what
+			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
+			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value);
+			if ($sNotEditable !== null) {
+				$aIssues[] = $sNotEditable;
 				continue;
 			}
 
@@ -384,6 +405,14 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				if ($sDropped !== null) {
 					unset($aValues[$sAttCode]);
 					$aIssues[] = $sDropped;
+					continue;
+				}
+				// What the set would add, change and remove, judged before
+				// Set() hands it to ormLinkSet. See EditPolicy.
+				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValues[$sAttCode]);
+				if ($sBadLinks !== null) {
+					unset($aValues[$sAttCode]);
+					$aIssues[] = $sBadLinks;
 					continue;
 				}
 			} catch (\Throwable $e) {

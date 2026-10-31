@@ -72,9 +72,8 @@ class OrmFailureRedactionTest extends TestCase
 		$this->assertStringNotContainsString('OpaqueFailure', $sBody, 'the plain reason is wrapped in the opaque one');
 
 		foreach ([
-			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectCreate',
-			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectUpdate',
-			'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectApplyStimulus',
+			// The create, the update and the stimulus convert through it.
+			'Altioo\\iTop\\Extension\\MCP\\Helper\\WritePlan',
 			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
 		] as $sClass) {
 			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());

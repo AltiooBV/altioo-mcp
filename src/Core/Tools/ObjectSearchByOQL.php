@@ -96,8 +96,6 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
 
-		self::refuseUnattributablePage($audit, $limit, $actions);
-
 		self::checkQuery($oql);
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
@@ -137,6 +135,11 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 		// Execute the search and fetch results
 		try {
+			// Measured on the page this call returns, not on the limit it
+			// allows: the cost is a question per object served, and four
+			// matches under the default limit of 50 are four questions.
+			self::refuseUnattributablePage($audit, self::pageSize($oSet->Count(), $limit, $offset), $actions);
+
 			$aResults = [];
 			while ($oObject = $oSet->Fetch()) {
 				$sObjectFinalClass = self::finalClassIfReadable($oObject, $class);
@@ -157,6 +160,9 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 				'offset'    => $offset,
 				'objects'   => $aResults,
 			] + self::pagingFooter($iTotal, $limit, $offset));
+		} catch (ToolCallException $e) {
+			// The refusal above, which the catch-all below would make opaque.
+			throw $e;
 		} catch (\OQLException $e) {
 			// Building a DBObjectSet runs no query - it assigns and returns -
 			// so a malformed filter can only surface here, where the set is

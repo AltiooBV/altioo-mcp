@@ -99,12 +99,13 @@ final class ObjectSerializer
 		// the caller this module has already had refused by its own schema.
 		$aData = [MetaModel::DBGetKey($sClass) => WritePlan::AsId($oObject->GetKey())];
 
-		// A root class with no subclass declares no final class field, and
-		// keying the response on '' is not a way to say so.
-		$sClassField = MetaModel::DBGetClassField($sClass);
-		if ($sClassField !== '') {
-			$aData[$sClassField] = $sClass;
-		}
+		// Every object says what it is, under the key core_object_find_by_name
+		// and core_object_get_related already used. A search on Ticket returns
+		// UserRequests and Incidents side by side, and without it nothing in a
+		// row tells them apart. It was once keyed on DBGetClassField(), which
+		// iTop answers '' for a leaf class - and every fetched object is one -
+		// so dropping the '' key dropped the class with it.
+		$aData['class'] = $sClass;
 
 		$aUnreadable = [];
 
@@ -695,8 +696,8 @@ final class ObjectSerializer
 			if ($sAttCode === '') {
 				continue;
 			}
-			if ($sAttCode === 'id') {
-				// Always reported anyway, and not an attribute of the class.
+			if ($sAttCode === 'id' || $sAttCode === 'class') {
+				// Always reported anyway, and not attributes of the class.
 				continue;
 			}
 			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
