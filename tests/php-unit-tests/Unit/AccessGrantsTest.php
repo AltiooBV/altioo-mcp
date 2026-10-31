@@ -1107,6 +1107,29 @@ class AccessGrantsTest extends TestCase
 
 		// And the rule is scoped to those classes, not to the attribute name.
 		$this->assertFalse(AccessGrants::IsOutboundSecret('UserRequest', 'token'));
+
+		// The same gap in a sibling hierarchy the OAuth-only list did not reach:
+		// RemoteiTopConnectionToken (combodo-webhook-integration) keeps the
+		// outbound token in an AttributeString. The floor is the connection
+		// base; the descendant resolves only where the datamodel is loaded, so
+		// the base name is what a pure unit run can pin.
+		$this->assertTrue(AccessGrants::IsOutboundSecret('RemoteApplicationConnection', 'token'));
+		// token_type is "Bearer", not a secret, and the exact match leaves it.
+		$this->assertFalse(AccessGrants::IsOutboundSecret('RemoteApplicationConnection', 'token_type'));
+	}
+
+	/**
+	 * The descendant that actually carries the token is masked once the
+	 * datamodel can resolve it to the connection floor.
+	 */
+	public function testTheWebhookConnectionTokenIsMaskedWhereTheDatamodelIsLoaded(): void
+	{
+		if (!class_exists('MetaModel') || !class_exists('RemoteiTopConnectionToken')) {
+			$this->markTestSkipped('needs combodo-webhook-integration in a loaded datamodel; belongs to the integration suite');
+		}
+
+		$this->assertTrue(AccessGrants::IsOutboundSecret('RemoteiTopConnectionToken', 'token'),
+			'the outbound token on the webhook connection is reported in clear');
 	}
 
 	/**
