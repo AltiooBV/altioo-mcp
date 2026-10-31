@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -92,6 +93,12 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 	{
 		if (!ctype_digit($id)) {
 			throw new ResourceReadException("Invalid id '{$id}' in '{$uri}'.");
+		}
+		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
+		// so this is the same way into the change log core_object_get_document
+		// refuses - and the one that was missed when that refusal went in.
+		if (ObjectHistory::IsReserved($class)) {
+			throw new ResourceReadException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
 
 		try {

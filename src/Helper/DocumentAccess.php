@@ -234,6 +234,15 @@ final class DocumentAccess
 
 	public static function Fetch(string $sClass, int $iId, string $sAttCode): ormDocument
 	{
+		// Here and not only in the callers, because there is more than one of
+		// them and a caller is where it was missed. CMDBChangeOpSetAttributeBlob
+		// keeps the replaced version of a blob in prevdata, and its rows carry
+		// no organisation and no attribute right of their own: read by id, they
+		// are every past document on the instance, silos and today's
+		// per-attribute rights notwithstanding.
+		if (ObjectHistory::IsReserved($sClass)) {
+			throw new MCPDocumentException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+		}
 		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 			throw new MCPDocumentException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
