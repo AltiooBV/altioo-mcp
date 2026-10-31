@@ -21,6 +21,11 @@ them to read before writing anything.
 nothing about this one, which is why it is not the file you are reading. Everything it says that
 could expire is in [`doc/itop-branch-notes.md`](doc/itop-branch-notes.md) instead, dated.
 
+**In Claude Code this is enforced.** A hook in `.claude/settings.json` refuses the session's first
+`Write` or `Edit` in this repository until the guide has been read. A refusal pointing here is that
+hook, not a fault: read the guide and repeat the edit. What it can and cannot check is in the header
+of [`tools/hooks/guide-gate.sh`](tools/hooks/guide-gate.sh).
+
 ## 2. The guide governs documentation-only changes
 
 Its §0 precondition for writing **any** document into this repository is to list `doc/` and
