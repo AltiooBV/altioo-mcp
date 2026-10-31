@@ -157,8 +157,7 @@ jobs:
 
     services:
       mariadb:
-        # From Amazon ECR Public, not Docker Hub: see itop-matrix.yml.
-        image: public.ecr.aws/docker/library/mariadb:10.11
+        image: mariadb:10.11
         env:
           MARIADB_ROOT_PASSWORD: itop
         ports:

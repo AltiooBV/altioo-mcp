@@ -121,7 +121,7 @@ need_db() {
 				-e MARIADB_ROOT_PASSWORD="$DB_PWD" \
 				--health-cmd="healthcheck.sh --connect --innodb_initialized" \
 				--health-interval=5s --health-timeout=5s --health-retries=20 \
-				public.ecr.aws/docker/library/mariadb:10.11 >/dev/null
+				mariadb:10.11 >/dev/null
 		fi
 	fi
 
