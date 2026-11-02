@@ -515,8 +515,14 @@ class ModuleMetadataTest extends TestCase
 					continue 2;
 				}
 			}
-			if (in_array($sPath, $aExcluded, true)) {
-				continue;
+			// An entry names a file or a whole directory, as rsync reads it. Only
+			// the file half was honoured once, so a git worktree under .claude/,
+			// carrying its own copy of the guide, failed this on a working copy
+			// although /.claude keeps every file under it out of the archive.
+			foreach ($aExcluded as $sEntry) {
+				if ($sPath === $sEntry || str_starts_with($sPath, $sEntry.'/')) {
+					continue 2;
+				}
 			}
 			preg_match_all(
 				'#https?://[a-z0-9.-]+/licenses/[a-z0-9./-]*#i',
