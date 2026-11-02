@@ -20,6 +20,8 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.2.0] - Unreleased
+
 ### Fixed
 
 - **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
@@ -116,7 +118,7 @@ entry itself, not left to be inferred from it.
 
 A security patch for 1.1.1: two fixes and nothing else, released from the `maint/1.1.x` branch
 rather than from `main`, so an instance on 1.1.x can take them without the behaviour changes
-waiting under [Unreleased] above. No datamodel change, no new setting and no changed default.
+waiting for 1.2.0 above. No datamodel change, no new setting and no changed default.
 
 **Both fixes apply to 1.0.x as well**, and ship for it as **1.0.2**.
 
