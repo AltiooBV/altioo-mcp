@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -42,6 +43,8 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class PortalWriteTest extends ItopDataTestCaseAlias
 {
+	use CallsToolsOnTheWire;
+
 	private const PORTAL = 'itop-portal';
 
 	private int $iOrg;
@@ -264,6 +267,35 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 
 		$aDry = ToolOutput::Decode(PortalCreate::execute((string)$aAction['action'], ['title' => 'Found my way', 'description' => 'From the description alone.'], $iFrom));
 		$this->assertTrue($aDry['valid']);
+	}
+
+	/**
+	 * What each portal write answers, as it leaves the server, against the
+	 * outputSchema it declares - WriteResultSchemaTest's check, here because
+	 * the calls need this test's user and catalogue. From mcp/sdk 0.9.0 the
+	 * server replaces a result outside its schema with `isError: true` after
+	 * the write has run, so a portal user would be told a reply, a closure or
+	 * a new request failed when it went through. Dry runs and real writes both,
+	 * since their results differ.
+	 */
+	public function testEveryWriteAnswersInsideItsOutputSchema(): void
+	{
+		$aReply = ['class' => 'UserRequest', 'id' => $this->iNew, 'fields' => ['public_log' => 'Any news?']];
+		$this->assertConforms('core_portal_update', $aReply + ['simulate' => true]);
+		$this->assertConforms('core_portal_update', $aReply + ['simulate' => false]);
+
+		$aRequest = ['action' => $this->subcategoryAction(), 'fields' => ['title' => 'My screen is dark', 'description' => 'Since this morning.'], 'from_id' => $this->iSubcategory];
+		$this->assertConforms('core_portal_create', $aRequest + ['simulate' => true]);
+		$this->assertConforms('core_portal_create', $aRequest + ['simulate' => false]);
+
+		$aStimuli = array_column(ToolOutput::Decode(PortalGet::execute('UserRequest', $this->iResolved))['actions']['stimuli'], 'code');
+		if (!in_array('ev_close', $aStimuli, true)) {
+			$this->markTestSkipped('This portal does not offer ev_close on a resolved request.');
+		}
+		$aFields = MetaModel::IsValidAttCode('UserRequest', 'user_satisfaction') ? ['user_satisfaction' => '1'] : [];
+		$aClose = ['class' => 'UserRequest', 'id' => $this->iResolved, 'stimulus' => 'ev_close', 'fields' => (object)$aFields];
+		$this->assertConforms('core_portal_apply_stimulus', $aClose + ['simulate' => true]);
+		$this->assertConforms('core_portal_apply_stimulus', $aClose + ['simulate' => false]);
 	}
 
 	/**

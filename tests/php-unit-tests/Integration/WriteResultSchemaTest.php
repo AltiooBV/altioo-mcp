@@ -10,14 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
-use Http\Discovery\Psr17Factory;
-use Mcp\Capability\Discovery\SchemaValidator;
-use Mcp\Server\Transport\StreamableHttpTransport;
 use MetaModel;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -47,6 +42,8 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class WriteResultSchemaTest extends ItopDataTestCaseAlias
 {
+	use CallsToolsOnTheWire;
+
 	/**
 	 * Every registered tool that declares an output schema, by the test that
 	 * calls it. A tool added with a schema and no call here fails
@@ -64,9 +61,17 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 		'core_set_obsolete_data',
 	];
 
-	private int $iOrg;
+	/**
+	 * The portal's writes, called in PortalWriteTest: they need a portal user,
+	 * their requests and a service catalogue in place, which that test builds.
+	 */
+	private const COVERED_IN_PORTAL_WRITE_TEST = [
+		'core_portal_create',
+		'core_portal_update',
+		'core_portal_apply_stimulus',
+	];
 
-	private int $iRequestId = 100;
+	private int $iOrg;
 
 	protected function setUp(): void
 	{
@@ -87,10 +92,10 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 		}
 
 		sort($aDeclaring);
-		$aCovered = self::COVERED;
+		$aCovered = array_merge(self::COVERED, self::COVERED_IN_PORTAL_WRITE_TEST);
 		sort($aCovered);
 
-		$this->assertSame($aCovered, $aDeclaring, 'a tool declares an output schema this test never calls, or the list names one that is gone');
+		$this->assertSame($aCovered, $aDeclaring, 'a tool declares an output schema no test calls on the wire, or a list here names one that is gone');
 	}
 
 	public function testCreateUpdateAndDelete(): void
@@ -148,93 +153,5 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 	public function testSetObsoleteData(): void
 	{
 		$this->assertConforms('core_set_obsolete_data', ['visible' => true, 'simulate' => true]);
-	}
-
-	/**
-	 * @param array<string, mixed> $aArguments
-	 *
-	 * @return \stdClass The structured half, as it was on the wire.
-	 */
-	private function assertConforms(string $sTool, array $aArguments): \stdClass
-	{
-		$oResult = $this->call($sTool, $aArguments);
-		$sText = $oResult->content[0]->text ?? '';
-
-		$this->assertFalse($oResult->isError ?? false, "{$sTool} answered an error: {$sText}");
-		$this->assertInstanceOf(\stdClass::class, $oResult->structuredContent ?? null, "{$sTool} declares an output schema and sent no structuredContent");
-
-		MCPExtensionCollector::CollectAll();
-		$aErrors = (new SchemaValidator())->validateAgainstJsonSchema(
-			$oResult->structuredContent,
-			MCPRegistry::GetTools()[$sTool]->getOutputSchema()
-		);
-
-		$this->assertSame([], $aErrors, sprintf('%s answered outside its own output schema: %s', $sTool, json_encode($aErrors)));
-
-		return $oResult->structuredContent;
-	}
-
-	/**
-	 * @param array<string, mixed> $aArguments
-	 */
-	private function call(string $sTool, array $aArguments): \stdClass
-	{
-		$oResponse = $this->ask([
-			'jsonrpc' => '2.0',
-			'id'      => 1,
-			'method'  => 'initialize',
-			'params'  => [
-				'protocolVersion' => '2025-06-18',
-				'capabilities'    => new \stdClass(),
-				'clientInfo'      => ['name' => 'altioo-mcp-tests', 'version' => '1.0.0'],
-			],
-		]);
-
-		$oAnswer = $this->ask([
-			'jsonrpc' => '2.0',
-			'id'      => ++$this->iRequestId,
-			'method'  => 'tools/call',
-			'params'  => ['name' => $sTool, 'arguments' => (object)$aArguments],
-		], $oResponse['session']);
-
-		$this->assertInstanceOf(\stdClass::class, $oAnswer['body']->result ?? null, "{$sTool} was answered with no result: ".json_encode($oAnswer['body']));
-
-		return $oAnswer['body']->result;
-	}
-
-	/**
-	 * @param array<string, mixed> $aPayload
-	 *
-	 * @return array{session: string, body: \stdClass}
-	 */
-	private function ask(array $aPayload, ?string $sSessionId = null): array
-	{
-		MCPExtensionCollector::CollectAll();
-		$oServer = (new ReflectionMethod(MCPService::class, 'createServer'))->invoke(null, AccessPolicy::Unrestricted());
-
-		$oFactory = new Psr17Factory();
-		$oRequest = $oFactory
-			->createServerRequest('POST', 'https://itop.example.com/extensions/altioo-mcp/index.php')
-			->withHeader('Host', 'itop.example.com')
-			->withHeader('Content-Type', 'application/json')
-			->withHeader('Accept', 'application/json, text/event-stream')
-			->withBody($oFactory->createStream((string)json_encode($aPayload)));
-
-		if ($sSessionId !== null && $sSessionId !== '') {
-			$oRequest = $oRequest->withHeader('Mcp-Session-Id', $sSessionId);
-		}
-
-		$oResponse = $oServer->run(new StreamableHttpTransport($oRequest, $oFactory, middleware: []));
-
-		$oBody = $oResponse->getBody();
-		if ($oBody->isSeekable()) {
-			$oBody->rewind();
-		}
-
-		// Not decoded to arrays: `{}` and `[]` are the difference under test.
-		$oDecoded = json_decode((string)$oBody);
-		$this->assertInstanceOf(\stdClass::class, $oDecoded, 'the server answered something that is not a JSON object');
-
-		return ['session' => $oResponse->getHeaderLine('Mcp-Session-Id'), 'body' => $oDecoded];
 	}
 }
