@@ -188,8 +188,8 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");
 
 				$aOutcome = self::outcome($iId, $iRow, true, $simulate ? 'Would be updated.' : 'Updated.');
-				$aOutcome['changes']    = WritePlan::Changes($mObject, $class);
-				$aOutcome['overridden'] = $aOverridden;
+				$aOutcome['changes']    = WritePlan::Map(WritePlan::Changes($mObject, $class));
+				$aOutcome['overridden'] = WritePlan::Map($aOverridden);
 
 				if (!$simulate) {
 					$mObject->DBUpdate();

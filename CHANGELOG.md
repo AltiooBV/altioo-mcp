@@ -44,6 +44,12 @@ entry itself, not left to be inferred from it.
   asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
   refused for every query, four matches included. A page that would hold more than 25 is still
   refused, and the refusal now says to pass `limit=25` and page.
+- **`core_object_bulk_update` reports an empty `overridden` as an object.** Each row's `changes`
+  and `overridden` were the only write-result maps not built by `WritePlan::Map()`, so a row
+  where nothing was overridden — nearly every row — answered `[]` where its declared output
+  schema promises an object. A client validating `structuredContent` refused the result, and
+  from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
+  the rows have been written.
 
 ### Added
 
@@ -73,6 +79,24 @@ entry itself, not left to be inferred from it.
   `.gitignore` and `.gitattributes` of `mcp/sdk` and `psr/*`, and the `.github/` directory of
   `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
   serve `index.php` only.
+- **`mcp/sdk` 0.9.0, up from 0.8.1.** Three things change outside this module:
+  - **A request carrying an `Origin` header must come from an origin listed in
+    `mcp_allowed_origins`**, or from the endpoint's own origin. The SDK used to compare the host of
+    the `Origin` with `mcp_allowed_hosts`; it now compares the whole origin — scheme, host and
+    port — with a list of origins, and that list is `mcp_allowed_origins`, the setting that
+    already decides which browser origins may read a response. **What to do:** if a browser-based
+    client, or a desktop client that sends `Origin`, is answered `403 Forbidden: Invalid Origin
+    header.`, add its origin to `mcp_allowed_origins`. Behind a proxy that terminates TLS without
+    setting `HTTPS` for PHP, the endpoint sees itself as `http://` and a request from its own
+    `https://` origin needs listing too. Clients that send no `Origin` — command-line and
+    server-side ones — are unaffected.
+  - **A tool result that does not match the tool's declared `outputSchema` is answered as an
+    error** (`isError: true`) instead of being sent as it was. Every core tool's results are
+    checked against their schemas by the test suite.
+  - **Tool packs** compile against the SDK this module vendors, so their `require-dev` moves to
+    `^0.9.0`, which is what `MCPHelper::SDK_CONSTRAINT` now says. The SDK classes a pack uses —
+    `ToolAnnotations`, `Annotations`, `ToolCallException`, `ResourceReadException` — have not
+    changed.
 
 ### Security
 

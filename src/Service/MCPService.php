@@ -81,6 +81,13 @@ final class MCPService
 	 * The SDK documents that as the supported answer for a deployment fronted
 	 * by a proxy that validates Host itself.
 	 *
+	 * Since SDK 0.9 it checks Origin separately, against a list of origins of
+	 * its own - scheme, host and port - rather than against the hostnames.
+	 * That list is mcp_allowed_origins, the one setting that already says
+	 * which browser origins may read a response here; a request from the
+	 * endpoint's own origin passes without being listed. The argument is new
+	 * and second, so the factories are passed by name, as the SDK asks.
+	 *
 	 * ProtocolVersionMiddleware is deliberately absent, and adding it back
 	 * would break the endpoint rather than harden it. Since SDK 0.8 one URL
 	 * answers two protocol eras: the transport reads the body, classifies the
@@ -101,7 +108,12 @@ final class MCPService
 		$aMiddleware = [new CorsMiddleware(MCPHelper::GetAllowedOrigins())];
 
 		if (!in_array(MCPHttp::ANY_HOST, $aAllowedHosts, true)) {
-			$aMiddleware[] = new DnsRebindingProtectionMiddleware($aAllowedHosts, $factory, $factory);
+			$aMiddleware[] = new DnsRebindingProtectionMiddleware(
+				$aAllowedHosts,
+				allowedOrigins: MCPHelper::GetAllowedOrigins(),
+				responseFactory: $factory,
+				streamFactory: $factory,
+			);
 		}
 
 		return $aMiddleware;
