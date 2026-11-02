@@ -25,6 +25,24 @@ namespace Altioo\iTop\Extension\MCP\Test\Support;
  * Scoped to the first argument only (up to the first top-level comma, or the
  * matching close paren): the second `FromOQL()` argument is bind values, where
  * a `.` is unrelated arithmetic-adjacent code, not query text.
+ *
+ * **What this does not see.** It reads tokens, not data flow, so the query text
+ * has to be concatenated *at the call* for it to have an opinion. Each of these
+ * passes silently, and a reader should not mistake a green run for more than it
+ * is:
+ *
+ *  - a wrapper doing the joining - `sprintf('SELECT ... %s', $v)`,
+ *    `str_replace(...)`, `implode(...)`;
+ *  - a query assembled into a variable on an earlier line and passed as
+ *    `FromOQL($sOql)`;
+ *  - a receiver reached through an alias (`use DBObjectSearch as Search;`).
+ *
+ * Catching those needs the kind of source-to-sink analysis the progpilot job in
+ * .github/workflows/security.yml does, and none of them is a shape this module
+ * currently uses. Relatedly, `src/Core/Tools/ObjectSearchByOQL.php` hands a
+ * bare `$oql` straight to `FromOQL()` and is deliberately not flagged: taking
+ * an OQL from the caller is that tool's entire purpose, so the check says
+ * nothing about the module's most OQL-exposed path.
  */
 final class OQLConcatenationScanner
 {
@@ -66,9 +84,22 @@ final class OQLConcatenationScanner
 		return $aViolations;
 	}
 
+	/**
+	 * Both spellings of the receiver, because both compile to the same call.
+	 * `DBObjectSearch` is a T_STRING resolved through the file's `use`
+	 * statement; `\DBObjectSearch` is a single T_NAME_FULLY_QUALIFIED token
+	 * needing no import at all, which in a namespaced file - and every file in
+	 * src/ is namespaced - is the ordinary way to reach a global class without
+	 * one. Matching only the first spelling made a leading backslash enough to
+	 * walk past this check.
+	 */
 	private static function isFromOQLReceiver($mToken): bool
 	{
-		return is_array($mToken) && $mToken[0] === T_STRING && in_array($mToken[1], ['DBObjectSearch', 'DBSearch'], true);
+		if (!is_array($mToken) || !in_array($mToken[0], [T_STRING, T_NAME_FULLY_QUALIFIED], true)) {
+			return false;
+		}
+
+		return in_array(ltrim($mToken[1], '\\'), ['DBObjectSearch', 'DBSearch'], true);
 	}
 
 	private static function nextSignificant(array $aTokens, int $iFrom): ?int

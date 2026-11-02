@@ -1,0 +1,87 @@
+name: Security
+
+# The one workflow whose only question is "does src/ contain a known
+# vulnerability class". Separate from ci.yml rather than a job inside it, for
+# three reasons:
+#
+#  - It is the check an operator or approver asks about by name. A status named
+#    "Security" is one a branch-protection rule can require, and one a reader
+#    can find, without knowing which of ci.yml's eight jobs happens to be the
+#    security one.
+#  - Its verdict changes with no commit. A scanner release teaches it new
+#    vulnerability classes, exactly as an advisory published against a locked
+#    version changes `composer audit --locked`'s answer - so, like that check,
+#    it runs on a schedule and not only on push.
+#  - It pins PHP 8.3, where ci.yml's analysis jobs pin 8.2. Progpilot 1.3.0
+#    requires >= 8.3, above this extension's own floor; the scanner reads
+#    source and never runs inside an instance, so the interpreter it needs says
+#    nothing about the range the extension supports. Keeping that version skew
+#    out of ci.yml is what stops it reading as a claim about the extension.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Thursday morning. The other schedules in this repository are taken:
+    # itop-matrix.yml runs Monday, ci.yml and upgrade.yml Tuesday, Dependabot
+    # Wednesday. A quiet repository should not produce all its noise at once.
+    - cron: '11 6 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Why Progpilot: chosen from a measured four-way comparison (Progpilot,
+  # phpcs-security-audit, Semgrep p/php, a hand-written token check) run against
+  # a control file planting seven known vulnerability classes. Progpilot caught
+  # six, with CWE ids, and raised no false positive on src/. Semgrep caught four
+  # at the highest cost (a container and a live rule feed) and is deliberately
+  # not used.
+  progpilot:
+    name: Vulnerability scan (Progpilot)
+    runs-on: ubuntu-latest
+    # A full scan of src/ measures ~5s. This bounds a stall rather than
+    # budgeting for the work.
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          # Progpilot 1.3.0's own floor, not this extension's - see the header.
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      # From the committed lock, never `composer global require`: that pins the
+      # named package and re-resolves its fifteen transitive dependencies on
+      # every run, which would leave this gate the one input to the pipeline
+      # that is not reproducible, in a repository that pins action SHAs, an
+      # image digest and a phar checksum. The same lock installs the scanner
+      # into the local runner image (tools/ci/local/Dockerfile), so a finding
+      # here reproduces there.
+      #
+      # Build tooling, not a dependency: the release archive is built from the
+      # root composer.lock with --no-dev, so a scanner in require-dev would
+      # appear in the bill of materials an operator reads and never run.
+      - name: Install the pinned scanner
+        run: composer install --working-dir=tools/ci/local/progpilot --no-interaction --no-progress
+
+      # Progpilot prints a JSON array of findings to stdout - `[]` when clean -
+      # and exits non-zero when that array is non-empty. Verified against a
+      # control file planting seven known vulnerability classes: exit 1 with
+      # six taint-style findings and their CWE ids, against exit 0 on the
+      # current tree. So the exit code alone is a real gate, not one that can
+      # only ever pass. The JSON reaches the job log, which is where a finding
+      # is read.
+      #
+      # src/ only: vendor/ is third-party code this repository does not write,
+      # and `composer audit --locked` in ci.yml is what asks whether any of it
+      # has been declared vulnerable.
+      - name: Scan src/ for known vulnerability classes
+        run: tools/ci/local/progpilot/vendor/bin/progpilot src/
