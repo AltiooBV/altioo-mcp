@@ -667,8 +667,8 @@ records two). In particular, and specifically relevant here:
 ## Dependencies
 
 Runtime dependencies are vendored in the archive and listed in `composer.json` /
-`composer.lock`. The notable one is **`mcp/sdk`**, pinned `^0.7.1` — a pre-1.0 package, so its
-API can change between minors. The extension pins the minor it was tested against and treats an
+`composer.lock`. The notable one is **`mcp/sdk`**, pinned to one minor in `composer.json` — a
+pre-1.0 package, so its API can change between minors. The extension pins the minor it was tested against and treats an
 SDK upgrade as a release of its own, with the test suite as the gate; nothing on an installed
 instance changes until you install a new version of this extension. `composer audit` runs in CI
 against the lock file.
