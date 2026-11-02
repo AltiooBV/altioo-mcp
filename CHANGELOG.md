@@ -42,6 +42,12 @@ entry itself, not left to be inferred from it.
   asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
   refused for every query, four matches included. A page that would hold more than 25 is still
   refused, and the refusal now says to pass `limit=25` and page.
+- **`core_object_bulk_update` reports an empty `overridden` as an object.** Each row's `changes`
+  and `overridden` were the only write-result maps not built by `WritePlan::Map()`, so a row
+  where nothing was overridden — nearly every row — answered `[]` where its declared output
+  schema promises an object. A client validating `structuredContent` refused the result, and
+  from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
+  the rows have been written.
 
 ### Added
 
