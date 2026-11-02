@@ -20,7 +20,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.1.2] - Unreleased
+## [1.1.2] - 2026-11-02
 
 A security patch for 1.1.1: two fixes and nothing else, so an instance on 1.1.x can take them
 without the behaviour changes waiting on `main` for the next minor. No datamodel change, no new
