@@ -20,6 +20,52 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.1.2] - Unreleased
+
+A security patch for 1.1.1: two fixes and nothing else, so an instance on 1.1.x can take them
+without the behaviour changes waiting on `main` for the next minor. No datamodel change, no new
+setting and no changed default.
+
+**Both fixes apply to 1.0.x as well**, and ship for it as **1.0.2**.
+
+**Tested on.** iTop **3.2.3-3** and **3.3.0** (build 21411), each on PHP **8.2** and **8.4** —
+installed through iTop's own unattended setup by the local CI runner
+(`tools/ci/local/run.sh matrix`), then exercised by the module's integration suite. The unit
+suite ran on 8.2 and 8.4.
+
+### Security
+
+- **An outbound credential in `combodo-webhook-integration` is masked on read.**
+  `RemoteiTopConnectionToken.token` — the token this instance authenticates to a remote iTop
+  with — is kept in an `AttributeString`, the same shape of gap `OAuthClient`'s `refresh_token`
+  had, in a sibling hierarchy the OAuth-only mask list did not reach. A caller that could read
+  the class got the live token in clear through every read tool, the change history and the
+  schema's `isSensible` flag. The `RemoteApplicationConnection` hierarchy is now in
+  `AccessGrants::OUTBOUND_CREDENTIAL_ROOTS`, so the value is masked everywhere the OAuth secrets
+  are; its sibling connection classes carry no clear secret of their own. A new class or
+  attribute that holds an outbound secret is added to that list and to
+  `OUTBOUND_SECRET_ATTRIBUTES` beside it, with a line in
+  `AccessGrantsTest::testALiveOutboundTokenIsMaskedEvenInAPlainTextAttribute` pinning it. Found
+  by a red-team read, not by the mask list having been derived. No credential of the caller's
+  own was ever at stake — this is an outbound secret of the instance's.
+
+- **Old versions of documents could be read through the document resource, by an account
+  granted the change log.** iTop keeps the replaced contents of a file in the change log, as
+  `CMDBChangeOpSetAttributeBlob.prevdata`. `core_object_get_document` refused that class with
+  the rest of the change log; the `itop://core/document/{class}/{id}/{att_code}` template, which
+  reads the same documents, did not. Change-log rows carry no organisation and no attribute right
+  of their own, so an account allowed to read `CMDBChangeOp` and served the `documents` toolset,
+  which is on by default, could walk the ids and read the earlier version of any file replaced on
+  any object, outside its silo and past an attribute right refused to it today. Among iTop's
+  stock profiles only Administrator holds that read, and it gains nothing by it: `*` covers
+  `bizmodel` classes only, the change log is `grant_by_profile`, and SuperUser's grant on it is
+  bulk read, which this read does not consult — so Portal user and the other stock profiles were
+  never exposed. An instance with a custom profile granting read on `CMDBChangeOp` was. Affects
+  1.0.0 to 1.1.1. The template now refuses it as the tool does, and `DocumentAccess::Fetch()`,
+  which both go through, refuses it again beneath them. Clients reading documents of ordinary
+  objects are unaffected. Until an instance is upgraded, leaving `documents` out of
+  `mcp_enabled_toolsets`, or the read out of the custom profile, closes it.
+
 ## [1.1.1] - 2026-10-05
 
 A security patch for 1.1.0: two fixes and nothing else, so an instance on 1.1.0 can take it
