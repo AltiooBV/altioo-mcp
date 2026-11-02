@@ -81,11 +81,12 @@ entry itself, not left to be inferred from it.
   the class got the live token in clear through every read tool, the change history and the
   schema's `isSensible` flag. The `RemoteApplicationConnection` hierarchy is now in
   `AccessGrants::OUTBOUND_CREDENTIAL_ROOTS`, so the value is masked everywhere the OAuth secrets
-  are; its sibling connection classes carry no clear secret of their own. A new integration test
-  walks every class the installed datamodel declares and fails on any plain-text attribute whose
-  code names a stored secret, so the next such class is a failing test rather than a later
-  finding. Found by a red-team read, not by the mask list having been derived. No credential of
-  the caller's own was ever at stake — this is an outbound secret of the instance's.
+  are; its sibling connection classes carry no clear secret of their own. A new class or
+  attribute that holds an outbound secret is added to that list and to
+  `OUTBOUND_SECRET_ATTRIBUTES` beside it, with a line in
+  `AccessGrantsTest::testALiveOutboundTokenIsMaskedEvenInAPlainTextAttribute` pinning it. Found
+  by a red-team read, not by the mask list having been derived. No credential of the caller's
+  own was ever at stake — this is an outbound secret of the instance's.
 
 - **A secret the instance logs in elsewhere with is no longer writable by default, on any
   class.** The outbound credentials iTop ships — the OAuth clients, the remote connections, the
