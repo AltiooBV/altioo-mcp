@@ -112,8 +112,10 @@ entry itself, not left to be inferred from it.
     tab's condition, the parent checked against its own level, and the portal's search on the
     columns shown. "What is the status of my requests" and a FAQ search are both a list. The
     client never sends a query (doc/adr/0001).
-  - `core_portal_get` reads one object by the scopes: its view form's fields for the object as
-    it is, its attachments (listed, not served), and the fields and stimuli it accepts now.
+  - `core_object_get` is served in portal mode too, rather than a portal copy of it
+    (doc/adr/0006): it reads one object by the scopes, with its view form's fields for the object
+    as it is, its attachments (listed, not served), its rights narrowed to the portal's, the
+    stimuli the portal offers and the fields its edit form leaves settable.
   - `core_portal_update`, `core_portal_apply_stimulus` and `core_portal_create` write as the
     portal would, dry runs by default: a field must be settable in the portal's form and pass
     the console's rules too; what a value points at must be readable; a stimulus must be offered

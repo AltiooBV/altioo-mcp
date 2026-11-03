@@ -139,7 +139,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
-| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts |
+| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts. Served in portal mode too, under the portal's limits: the view form's fields, its attachments, and no attribution |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
 | `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool. Served in portal mode too, under the portal's limits as well |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
@@ -153,7 +153,6 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
 | `core_portal_describe` | Portal mode only: what the user's portal offers them — classes, fields per mode, create actions, stimuli and the states they apply in, lists — read from the portal's own configuration. See [Granting access](#granting-access) |
 | `core_portal_list` | Portal mode only: run one of the portal's lists (a ManageBrick, one of its tabs, a browse level under a parent row), with the portal's own search |
-| `core_portal_get` | Portal mode only: one object as the portal's view form shows it, its attachments, and the fields and stimuli the user may apply to it now |
 | `core_portal_create` | Portal mode only: create through one of the portal's create actions, its rules presetting what the portal presets. Dry run by default |
 | `core_portal_update` | Portal mode only: change what the portal's edit form leaves settable, such as a new log entry. Dry run by default |
 | `core_portal_apply_stimulus` | Portal mode only: apply a state change the portal offers on the object now. Dry run by default |
@@ -605,8 +604,12 @@ own code, so a customised portal is served as customised:
 - `core_portal_list` runs a list by id, on the server: the brick's own query intersected with
   the scope of its class, a tab's condition, a parent row checked against its own level, and the
   portal's own search on the columns shown. The client never sends a query.
-- `core_portal_get` reads one object by the scopes, as the portal's object page does: the fields
-  of its view form for the object as it is, its attachments, and what the user may do to it now.
+- `core_object_get`, the console's own read, reads one object by the scopes, as the portal's
+  object page does: the fields of its view form for the object as it is, its attachments, and
+  what the user may do to it now — its rights narrowed to the portal's (no delete), the stimuli
+  the portal offers, and the fields its edit form leaves settable. The creation and last-change
+  attribution is left out: it reads the change log, which `core_object_history` serves where the
+  portal shows history.
 - `core_portal_create`, `core_portal_update` and `core_portal_apply_stimulus` write as the
   portal would, and are dry runs by default. A field must be one the portal's form leaves
   settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
