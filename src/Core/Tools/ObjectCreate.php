@@ -16,6 +16,10 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -30,7 +34,7 @@ use UserRights;
  *
  * @since 1.0.0
  */
-class ObjectCreate extends AbstractMCPTool
+class ObjectCreate extends AbstractMCPTool implements PortalAware
 {
 	public function getNamespace(): string
 	{
@@ -51,6 +55,10 @@ class ObjectCreate extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Create a new iTop object of the given class. Call core_class_schema first: it reports the attribute codes, their types and which ones are mandatory. '
 			.'The dry run validates the object and reports what would be written. A new object starts in its initial state: the state, and fields that state locks, are set afterwards with core_object_apply_stimulus. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
@@ -78,8 +86,36 @@ class ObjectCreate extends AbstractMCPTool
 		]);
 	}
 
+	/** What this tool is to a portal-mode connection, which creates through the portal's create actions. */
+	private const PORTAL_DESCRIPTION = 'Create an object through one of the portal\'s create actions, as its create form would. Name the action from core_portal_describe; when it starts from an object (in iTop\'s stock portal, a service subcategory), pass that object\'s id as from_id, a row of the action\'s from_list in core_portal_list. The action decides the class, and its rules preset what the portal presets - the caller, the organisation, the service - so send only the fields the create form leaves settable. Dry run by default (simulate): it shows what the rules set and what would be created.';
+
 	public function getInputSchema(): ?array
 	{
+		if (PortalMode::Current() !== null) {
+			return [
+				'type'       => 'object',
+				'properties' => [
+					'action'   => [
+						'type'        => 'string',
+						'description' => 'A create action id from core_portal_describe.',
+					],
+					'from_id'  => [
+						'type'        => 'integer',
+						'description' => 'For an action that starts from an object: its id, a row of the action\'s from_list. 0 (the default) for one that starts from nothing.',
+						'default'     => 0,
+					],
+					'fields'   => [
+						'type'                 => MCPHelper::MAP_TYPE,
+						'description'          => 'Attribute code => value for the settable fields of the portal\'s create form for the class.',
+						'additionalProperties' => true,
+					],
+					'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+					'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
+				],
+				'required'   => ['action', 'fields'],
+			];
+		}
+
 		return [
 			'type'       => 'object',
 			'properties' => [
@@ -104,20 +140,38 @@ class ObjectCreate extends AbstractMCPTool
 	 * @param array $fields A key/value map of attribute codes to values, e.g. ['title' => 'My request', 'description' => 'Details about my request']
 	 * @param bool $simulate When true (default), the object is validated and described but not created
 	 * @param string|null $comment Why the object is being created, recorded in its history
-	 * @return array The class and ID of the newly created object, or what creating it would write
+	 * @param string $action In portal mode, the portal's create action that decides the class and presets the object
+	 * @param int $from_id In portal mode, the object the create action starts from
+	 * @return mixed The class and ID of the newly created object, or what creating it would write
 	 * @throws ToolCallException if the class is unknown, if it's abstract, if access is denied, or if any provided attribute is invalid or not writable.
 	 */
 	public static function execute(
-		string  $class,
+		string  $class = '',
 		array   $fields = [],
 		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
+		string  $action = '',
+		int     $from_id = 0,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
 		$simulate = WritePlan::Simulated($simulate);
+
+		// In portal mode the portal's create action decides the class and
+		// presets the object; on the console the class named does
+		// (doc/adr/0006). Every check below applies in both.
+		try {
+			$oAccess = ObjectAccess::Current();
+			$oPrepared = $oAccess->Prepared(trim($action), $from_id);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+		if ($oPrepared !== null) {
+			$class = get_class($oPrepared);
+		}
+		$aAction = $oPrepared === null ? [] : ['action' => trim($action)];
 
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
@@ -145,7 +199,18 @@ class ObjectCreate extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot create objects of class '{$class}'.");
 		}
 
-		$oObject = MetaModel::NewObject($class);
+		$oObject = $oPrepared ?? MetaModel::NewObject($class);
+
+		// The form once the rules are in: a portal's layout may read what
+		// they set.
+		try {
+			$sModeRefusal = $oAccess->RefusalToSet($oObject, $fields);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+		if ($sModeRefusal !== null) {
+			throw new ToolCallException($sModeRefusal);
+		}
 
 		// Validate fields before applying any changes. Every rule a value has
 		// to pass is in one place, shared with the update, the stimulus and
@@ -169,7 +234,8 @@ class ObjectCreate extends AbstractMCPTool
 
 		// Once everything is Set(), because a datamodel filter reads the
 		// object and this call may have moved what it reads. See EditPolicy.
-		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
+			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to create due to fields : ".implode(', ', $aIssues));
 		}
@@ -198,6 +264,7 @@ class ObjectCreate extends AbstractMCPTool
 			// saying so is not the same as answering with a different shape.
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, null)
+				+ $aAction
 				+ self::credentialNote($class)
 				+ [
 					'simulated'  => true,
@@ -218,6 +285,7 @@ class ObjectCreate extends AbstractMCPTool
 
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $iId)
+				+ $aAction
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
@@ -251,6 +319,7 @@ class ObjectCreate extends AbstractMCPTool
 
 			return ToolOutput::Structured(['class' => $class]
 				+ WritePlan::Identity($class, $iCommittedId)
+				+ $aAction
 				+ [
 					'simulated'  => false,
 					'valid'      => true,

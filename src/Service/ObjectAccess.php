@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Mcp\Exception\ToolCallException;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
@@ -170,6 +171,22 @@ class ObjectAccess
 	public function Extras(DBObject $oObject): array
 	{
 		return [];
+	}
+
+	/**
+	 * The object a creation starts from, when the mode decides it; null when
+	 * the caller's class decides, as on the console, where a create action
+	 * means nothing.
+	 *
+	 * @throws ToolCallException When an action or a starting object is given on the console.
+	 */
+	public function Prepared(string $sAction, int $iFromId): ?DBObject
+	{
+		if ($sAction !== '' || $iFromId !== 0) {
+			throw new ToolCallException('action and from_id are a portal\'s create action, and this connection is not served in portal mode: pass class and fields.');
+		}
+
+		return null;
 	}
 
 	/**

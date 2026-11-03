@@ -534,15 +534,6 @@
       <code><![CDATA[public function getToolset(): string]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Core/Tools/PortalCreate.php">
-    <MissingOverrideAttribute>
-      <code><![CDATA[protected function defaultTitle(): string]]></code>
-      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
-      <code><![CDATA[public function getDescription(): ?string]]></code>
-      <code><![CDATA[public function getInputSchema(): ?array]]></code>
-      <code><![CDATA[public function getOutputSchema(): ?array]]></code>
-    </MissingOverrideAttribute>
-  </file>
   <file src="src/Core/Tools/PortalDescribe.php">
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>

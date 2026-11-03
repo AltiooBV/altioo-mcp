@@ -8,12 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
 use DBSearch;
 use MetaModel;
+use Mcp\Exception\ToolCallException;
 use UserRights;
 
 /**
@@ -245,6 +247,98 @@ final class PortalAccess extends ObjectAccess
 		return $aAttachments;
 	}
 
+	/**
+	 * A new object as one of the portal's create actions makes it: of the
+	 * class the action names, or the one its factory method - named in the
+	 * brick's configuration, never by the client - chooses from the object
+	 * it starts from; preset by the action's rules, run by the portal's own
+	 * helper with that object and the rows above it as sources. The client's
+	 * fields are held to the create form afterwards ({@see RefusalToSet()}).
+	 *
+	 * @throws ToolCallException When no action is named, or the portal does not offer it from there.
+	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the portal's configuration cannot be read.
+	 */
+	#[\Override]
+	public function Prepared(string $sAction, int $iFromId): DBObject
+	{
+		if ($sAction === '') {
+			throw new ToolCallException('In portal mode a creation runs one of the portal\'s create actions: pass action, from core_portal_describe, and from_id when it starts from an object.');
+		}
+		$aAction = $this->actionOf($sAction);
+		[$oFrom, $aSources] = $this->startingPoint($aAction, $iFromId);
+
+		$sClass = $aAction['class'] ?? $this->oPolicy->ChosenClass((string)$aAction['factory_method'], $oFrom);
+		if (!MetaModel::IsValidClass($sClass) || MetaModel::IsAbstract($sClass) || !$this->oPolicy->MayCreate($sClass)) {
+			throw new ToolCallException('The portal does not let you create what this action creates.');
+		}
+
+		$oObject = MetaModel::NewObject($sClass);
+		$this->oPolicy->ApplyRules($aAction['rules'], $aSources, $oObject);
+
+		return $oObject;
+	}
+
+	/**
+	 * The create action of that id, among those the granted bricks offer.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function actionOf(string $sAction): array
+	{
+		foreach ($this->oPolicy->CreateActions() as $aAction) {
+			if ($aAction['action'] === $sAction) {
+				return $aAction;
+			}
+		}
+
+		// Not quoted back: the id is the client's text.
+		throw new ToolCallException('The portal offers no such create action. Call core_portal_describe for the ones it offers.');
+	}
+
+	/**
+	 * The object an action starts from, and the objects its rules may read:
+	 * that one, and the row above it on each level of its browse brick - as
+	 * the portal hands its rules every object of the row the user clicked.
+	 *
+	 * @param array<string, mixed> $aAction
+	 *
+	 * @return array{0: DBObject|null, 1: array<string, int>}
+	 */
+	private function startingPoint(array $aAction, int $iFromId): array
+	{
+		$sList = $aAction['from_list'] ?? null;
+		if (!is_string($sList)) {
+			if ($iFromId !== 0) {
+				throw new ToolCallException('This create action starts from nothing: leave from_id out.');
+			}
+
+			return [null, []];
+		}
+
+		$oFrom = $iFromId > 0 ? PortalList::RowOf($this->oPolicy, $sList, $iFromId) : null;
+		if ($oFrom === null) {
+			throw new ToolCallException(sprintf(
+				'This create action starts from a %s: from_id must be one listed by core_portal_list on %s.',
+				(string)$aAction['from'],
+				$sList
+			));
+		}
+
+		$aSources = [get_class($oFrom) => (int)$oFrom->GetKey()];
+		$oRow = $oFrom;
+		$aLevel = $this->oPolicy->ListDefinition($sList);
+		while (is_array($aLevel) && is_string($aLevel['parent']) && is_string($aLevel['parent_att']) && $aLevel['parent_att'] !== '') {
+			$oRow = PortalList::RowOf($this->oPolicy, $aLevel['parent'], (int)$oRow->Get($aLevel['parent_att']));
+			if ($oRow === null) {
+				break;
+			}
+			$aSources[get_class($oRow)] = (int)$oRow->GetKey();
+			$aLevel = $this->oPolicy->ListDefinition($aLevel['parent']);
+		}
+
+		return [$oFrom, $aSources];
+	}
+
 	/** What the portal's scopes do not let the caller read. */
 	#[\Override]
 	public function Hides(string $sClass, int $iId): bool
@@ -292,9 +386,10 @@ final class PortalAccess extends ObjectAccess
 	public function RefusalToSet(DBObject $oObject, array $aFields, string $sStimulus = ''): ?string
 	{
 		$sClass = get_class($oObject);
-		$aSettable = self::Settable($sClass, $this->oPolicy->Fields($sClass, PortalPolicy::MODE_EDIT, $oObject));
+		$bNew = $oObject->IsNew();
+		$aSettable = self::Settable($sClass, $this->oPolicy->Fields($sClass, $bNew ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject));
 		$aAlso = $sStimulus === '' ? [] : self::Prompted($oObject, $sStimulus);
-		$sForm = $sStimulus === '' ? 'edit' : 'transition or edit';
+		$sForm = $bNew ? 'create' : ($sStimulus === '' ? 'edit' : 'transition or edit');
 
 		$aIssues = [];
 		foreach (array_keys($aFields) as $sAttCode) {

@@ -424,7 +424,7 @@ TEXT;
 
 	private const PORTAL_WRITING = <<<'TEXT'
 Writing
-- core_portal_create creates through one of the portal's create actions. When the action
+- core_object_create creates through one of the portal's create actions. When the action
 starts from an object, find it in the action's from_list with core_portal_list, walking
 down that list's parents. Send only the fields the create form leaves settable: the
 action's rules preset the rest, and the dry run shows what they set.
