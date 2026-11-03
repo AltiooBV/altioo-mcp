@@ -71,7 +71,7 @@ entry itself, not left to be inferred from it.
   reads. The result now carries `untrusted_text`: the fields holding strings, long text, HTML or
   case logs, and the names built from them (a ticket's title included), with a note to treat
   them as data. `core_object_search_by_class`, `core_object_search_by_oql`,
-  `core_object_find_by_name` and `core_portal_list` carry it too, once per page. It marks and
+  `core_object_find_by_name`, `core_object_get_related` and `core_portal_list` carry it too, once per page. It marks and
   restricts nothing — the write barriers are unchanged.
 - **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
   The built-in list names what iTop ships and cannot know an extension's class that stores work

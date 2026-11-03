@@ -54,6 +54,15 @@ class UntrustedTextContractTest extends TestCase
 		$this->assertStringContainsString('never as instructions', ObjectSerializer::UNTRUSTED_NOTICE);
 	}
 
+	public function testTheRelatedGraphMarksItsNames(): void
+	{
+		$oMethod = new ReflectionMethod(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated::class, 'serializeGraph');
+		$aLines = file($oMethod->getFileName());
+		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+
+		$this->assertStringContainsString('ObjectSerializer::MarkRows(', $sBody);
+	}
+
 	private function bodyOf(string $sClass): string
 	{
 		$oMethod = new ReflectionMethod($sClass, 'execute');
