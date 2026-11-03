@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\ResourceTemplates\ClassDetail;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
+use Altioo\iTop\Extension\MCP\Service\PortalDescription;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -85,7 +85,7 @@ class ClassNameEchoTest extends TestCase
 	 */
 	public function testThePortalDescriptionChecksTheShapeBeforeQuoting(): void
 	{
-		$sBody = $this->methodBody(PortalDescribe::class, 'execute');
+		$sBody = $this->methodBody(PortalDescription::class, 'Of');
 
 		$iCheck = strpos($sBody, 'MCPHelper::LooksLikeClassName($sClass)');
 		$iQuote = strpos($sBody, "offers no class '%s'");

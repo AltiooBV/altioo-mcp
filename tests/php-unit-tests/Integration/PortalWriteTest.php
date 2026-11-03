@@ -8,11 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -249,7 +249,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	 */
 	public function testACreateActionCanBeReachedFromTheDescriptionAlone(): void
 	{
-		$aOverview = ToolOutput::Decode(PortalDescribe::execute());
+		$aOverview = ToolOutput::Decode(ClassList::execute());
 		$aLists = array_column($aOverview['lists'], null, 'list');
 		$aAction = current(array_filter($aOverview['create_actions'], static fn (array $a): bool => $a['from_list'] !== null));
 		$this->assertIsArray($aAction, 'a create action starts from a list');
@@ -320,7 +320,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	/** The create action that starts from a subcategory, as the stock services brick declares it. */
 	private function subcategoryAction(): string
 	{
-		foreach (ToolOutput::Decode(PortalDescribe::execute())['create_actions'] as $aAction) {
+		foreach (ToolOutput::Decode(ClassList::execute())['create_actions'] as $aAction) {
 			if ($aAction['from'] === 'ServiceSubcategory') {
 				return (string)$aAction['action'];
 			}
@@ -336,7 +336,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	/** The browse level listing subcategories. */
 	private function subcategoryList(): string
 	{
-		foreach (ToolOutput::Decode(PortalDescribe::execute())['lists'] as $aList) {
+		foreach (ToolOutput::Decode(ClassList::execute())['lists'] as $aList) {
 			if ($aList['class'] === 'ServiceSubcategory') {
 				return (string)$aList['list'];
 			}

@@ -15,7 +15,8 @@ use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
@@ -174,19 +175,23 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * The one tool written for the portal is served there, and only there: a
-	 * console user has the schema tools, and an answer about a portal they
-	 * are not in would describe someone else's rights.
+	 * The class tools serve both modes: the datamodel on the console, what
+	 * the portal offers in portal mode, each saying so in its description and
+	 * answering from the portal's description there.
 	 */
-	public function testThePortalDescriptionIsServedInPortalModeOnly(): void
+	public function testTheClassToolsDescribeThePortalInPortalMode(): void
 	{
-		$oDescribe = new PortalDescribe();
-
-		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe'), 'not to a console user');
+		$aTools = ['core_class_list' => new ClassList(), 'core_class_schema' => new ClassSchema()];
+		$aConsole = array_map(static fn ($oTool): string => (string)$oTool->getDescription(), $aTools);
 
 		PortalMode::Remember('itop-portal');
 
-		$this->assertFalse($this->isHidden($oDescribe, 'core_portal_describe'), 'to a portal user');
+		foreach ($aTools as $sName => $oTool) {
+			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} answers from the portal's description and says so");
+			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
+			$this->assertNotSame($aConsole[$sName], (string)$oTool->getDescription(), "{$sName} describes the datamodel to a portal user");
+			$this->assertStringContainsString('PortalDescription::', self::bodyOf(get_class($oTool), 'execute'));
+		}
 	}
 
 	/**
@@ -254,7 +259,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse(PortalMode::Serves(new PortalAwarePackTool()));
 		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
-		$this->assertTrue(PortalMode::Serves(new PortalDescribe()));
+		$this->assertTrue(PortalMode::Serves(new ClassList()));
 	}
 
 	/**
@@ -264,16 +269,16 @@ class PortalModeTest extends TestCase
 	public function testTheUsualFiltersStillNarrowWhatPortalModeServes(): void
 	{
 		PortalMode::Remember('itop-portal');
-		$oDescribe = new PortalDescribe();
+		$oList = new ClassList();
 
-		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe', ['core_portal_describe']), 'by identifier');
-		$this->assertTrue($this->isHidden($oDescribe, 'core_portal_describe', [PortalDescribe::class]), 'by class');
+		$this->assertTrue($this->isHidden($oList, 'core_class_list', ['core_class_list']), 'by identifier');
+		$this->assertTrue($this->isHidden($oList, 'core_class_list', [ClassList::class]), 'by class');
 		$this->assertTrue(
-			$this->isHidden($oDescribe, 'core_portal_describe', [], AccessPolicy::Of([], ['objects'])),
+			$this->isHidden($oList, 'core_class_list', [], AccessPolicy::Of([], ['objects'])),
 			'by a toolset list that leaves its toolset out'
 		);
 		$this->assertTrue(
-			$this->isHidden($oDescribe, 'core_portal_describe', [], AccessPolicy::Nothing()),
+			$this->isHidden($oList, 'core_class_list', [], AccessPolicy::Nothing()),
 			'by a policy serving nothing'
 		);
 	}
@@ -406,7 +411,7 @@ class PortalModeTest extends TestCase
 		$this->assertSame(ServerInstructions::PortalText('partner-portal'), $sText);
 		$this->assertStringContainsString('"partner-portal"', $sText);
 		$this->assertStringNotContainsString('OQL', $sText);
-		$this->assertStringContainsString('core_portal_describe', $sText);
+		$this->assertStringContainsString('core_class_list', $sText);
 	}
 
 	/**
@@ -522,9 +527,8 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
 		$this->assertTrue($this->isHidden($oTool, 'core_object_history', ['core_object_history']), 'the instance can still turn it off');
-		$this->assertStringContainsString('core_class_schema', $sConsoleDescription);
-		$this->assertStringNotContainsString('core_class_schema', (string)$oTool->getDescription(), 'no console tool is named to a portal user');
-		$this->assertStringContainsString('core_portal_describe', (string)$oTool->getDescription());
+		$this->assertNotSame($sConsoleDescription, (string)$oTool->getDescription(), 'the console\'s description is given to a portal user');
+		$this->assertStringContainsString('core_class_list', (string)$oTool->getDescription(), 'a portal user is not told where history is said to be shown');
 		$this->assertStringContainsString('core_object_history', ServerInstructions::PortalText('itop-portal'));
 	}
 

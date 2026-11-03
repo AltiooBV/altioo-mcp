@@ -10,9 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -195,7 +195,7 @@ class PortalReadTest extends ItopDataTestCaseAlias
 	 */
 	public function testTheStockPortalShowsNoHistory(): void
 	{
-		$this->assertFalse(ToolOutput::Decode(PortalDescribe::execute())['history']);
+		$this->assertFalse(ToolOutput::Decode(ClassList::execute())['history']);
 
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessage('The portal shows no history.');
@@ -232,7 +232,7 @@ class PortalReadTest extends ItopDataTestCaseAlias
 	public function testTheDescriptionSaysWhichStatesAStimulusAppliesIn(): void
 	{
 		$aRequest = current(array_filter(
-			ToolOutput::Decode(PortalDescribe::execute())['classes'],
+			ToolOutput::Decode(ClassList::execute())['classes'],
 			static fn (array $a): bool => $a['class'] === 'UserRequest'
 		));
 

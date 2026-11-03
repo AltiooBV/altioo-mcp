@@ -76,7 +76,6 @@ class CoreExtensionsTest extends TestCase
 				'core_object_search_by_class',
 				'core_object_search_by_oql',
 				'core_object_update',
-				'core_portal_describe',
 				'core_portal_list',
 				'core_set_obsolete_data',
 			],
@@ -198,7 +197,6 @@ class CoreExtensionsTest extends TestCase
 			'core_object_update'          => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_apply_stimulus'  => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_delete'          => AccessPolicy::CAPABILITY_DELETE,
-			'core_portal_describe'        => AccessPolicy::CAPABILITY_READ,
 			'core_portal_list'            => AccessPolicy::CAPABILITY_READ,
 		];
 

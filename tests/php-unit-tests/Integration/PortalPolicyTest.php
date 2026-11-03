@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
@@ -105,7 +106,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->assertNotContains('Organization', $this->offeredClasses());
 
 		$this->expectException(ToolCallException::class);
-		PortalDescribe::execute('Organization');
+		ClassSchema::execute('Organization');
 	}
 
 	/**
@@ -180,7 +181,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->assertNull(PortalPolicy::ForCurrentRequest()->ReadSet('Server'));
 
 		$this->expectException(ToolCallException::class);
-		PortalDescribe::execute('Server');
+		ClassSchema::execute('Server');
 	}
 
 	/** The stock scope on requests is the caller's own. */
@@ -238,7 +239,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	/** The overview a model reads first: requests, with their create action. */
 	public function testTheOverviewOffersRequestsAndHowToCreateOne(): void
 	{
-		$aOverview = ToolOutput::Decode(PortalDescribe::execute());
+		$aOverview = ToolOutput::Decode(ClassList::execute());
 
 		$this->assertSame(self::PORTAL, $aOverview['portal']);
 		$aRequest = current(array_filter($aOverview['classes'], static fn (array $a): bool => $a['class'] === 'UserRequest'));
@@ -253,7 +254,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	 */
 	private function offeredClasses(): array
 	{
-		return array_column(ToolOutput::Decode(PortalDescribe::execute())['classes'], 'class');
+		return array_column(ToolOutput::Decode(ClassList::execute())['classes'], 'class');
 	}
 
 	private static function profileId(string $sName): int
