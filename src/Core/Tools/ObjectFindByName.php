@@ -182,7 +182,7 @@ class ObjectFindByName extends AbstractMCPTool
 			);
 		}
 
-		return ToolOutput::Json([
+		return ToolOutput::Json(ObjectSerializer::MarkRows([
 			'search'           => $name,
 			'needles'          => $aNeedles,
 			'class'            => $class,
@@ -223,7 +223,7 @@ class ObjectFindByName extends AbstractMCPTool
 			// such object" and the caller has to be able to tell them apart.
 			'classes_withheld' => $aSearchable['withheld'],
 			'objects'          => $aResults,
-		]);
+		], $aResults, $class));
 	}
 
 	/**

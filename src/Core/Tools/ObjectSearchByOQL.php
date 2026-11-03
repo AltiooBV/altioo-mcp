@@ -152,14 +152,14 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 			$iTotal = $oSet->Count();
 
-			return ToolOutput::Json([
+			return ToolOutput::Json(ObjectSerializer::MarkRows([
 				'class' => $class,
 				'oql'       => $oql,
 				'total'     => $iTotal,
 				'limit'     => $limit,
 				'offset'    => $offset,
 				'objects'   => $aResults,
-			] + self::pagingFooter($iTotal, $limit, $offset));
+			] + self::pagingFooter($iTotal, $limit, $offset), $aResults, $class));
 		} catch (ToolCallException $e) {
 			// The refusal above, which the catch-all below would make opaque.
 			throw $e;

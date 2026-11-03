@@ -156,11 +156,17 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException($oException->getMessage());
 		}
 
-		return ToolOutput::Json([
+		$aResult = [
 			'requested_class'  => $class,
 			'class' => $sFinalClass,
 			'object' => $aObject,
-		]);
+		];
+		$aUntrusted = ObjectSerializer::UntrustedText($sFinalClass, $aObject);
+		if ($aUntrusted !== null) {
+			$aResult['untrusted_text'] = $aUntrusted;
+		}
+
+		return ToolOutput::Json($aResult);
 	}
 
 	/**

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
@@ -154,7 +155,7 @@ class PortalList extends AbstractPortalTool
 				$aRows[] = self::serialized($oObject, $aList['columns']);
 			}
 
-			return ToolOutput::Json(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows)
+			return ToolOutput::Json(ObjectSerializer::MarkRows(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows), $aRows, $sClass)
 				+ self::tabsOf($oPolicy, $aList, $sClass));
 		} catch (ToolCallException $oException) {
 			throw $oException;
