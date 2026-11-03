@@ -428,8 +428,8 @@ Writing
 starts from an object, find it in the action's from_list with core_portal_list, walking
 down that list's parents. Send only the fields the create form leaves settable: the
 action's rules preset the rest, and the dry run shows what they set.
-- core_portal_update changes what an object's edit form leaves settable now, such as
-adding an entry to a log; core_portal_apply_stimulus applies a state change the object
+- core_object_update changes what an object's edit form leaves settable now, such as
+adding an entry to a log; core_object_apply_stimulus applies a state change the object
 accepts now. core_object_get says which, for each object.
 - Every write is a dry run by default: call it once as it is, show the user what it
 would do, and call it again with simulate=false only once they agree.

@@ -244,4 +244,156 @@ final class PortalAccess extends ObjectAccess
 
 		return $aAttachments;
 	}
+
+	/** What the portal's scopes do not let the caller read. */
+	#[\Override]
+	public function Hides(string $sClass, int $iId): bool
+	{
+		return ObjectHistory::IsReserved($sClass) || $this->oPolicy->Readable($sClass, $iId) === null;
+	}
+
+	/** An object outside the portal's write scope, or the change log, which nothing here writes. */
+	#[\Override]
+	public function RefusalToChange(DBObject $oObject): ?string
+	{
+		$sClass = get_class($oObject);
+		$iId = (int)$oObject->GetKey();
+
+		return $this->oPolicy->Writable($sClass, $iId) === null
+			? "The portal lets you read {$sClass} {$iId} but not change it."
+			: null;
+	}
+
+	/** A stimulus the portal's lifecycle does not offer on the object in its state. */
+	#[\Override]
+	public function RefusalToApply(DBObject $oObject, string $sStimulus): ?string
+	{
+		$aOffered = $this->oPolicy->StimuliOn($oObject);
+		if (isset($aOffered[$sStimulus])) {
+			return null;
+		}
+
+		$sClass = get_class($oObject);
+		$sState = (string)$oObject->GetState();
+
+		// The code is the client's text: quoted only when it is shaped like one.
+		return (\Altioo\iTop\Extension\MCP\Helper\MCPHelper::LooksLikeClassName($sStimulus) ? "The portal does not offer '{$sStimulus}'" : 'The portal does not offer that stimulus')
+			." on {$sClass} {$oObject->GetKey()} in state '{$sState}'. "
+			.($aOffered === [] ? 'It offers none in this state.' : 'It offers: '.implode(', ', array_keys($aOffered)).'.');
+	}
+
+	/**
+	 * A field the portal's edit form does not leave settable - or, for a
+	 * transition, one its target state does not prompt for either. Named,
+	 * each with why, before any value is converted: a field the form hides or
+	 * shows read-only is not a value the user could have typed in.
+	 */
+	#[\Override]
+	public function RefusalToSet(DBObject $oObject, array $aFields, string $sStimulus = ''): ?string
+	{
+		$sClass = get_class($oObject);
+		$aSettable = self::Settable($sClass, $this->oPolicy->Fields($sClass, PortalPolicy::MODE_EDIT, $oObject));
+		$aAlso = $sStimulus === '' ? [] : self::Prompted($oObject, $sStimulus);
+		$sForm = $sStimulus === '' ? 'edit' : 'transition or edit';
+
+		$aIssues = [];
+		foreach (array_keys($aFields) as $sAttCode) {
+			if (!in_array((string)$sAttCode, $aSettable, true) && !in_array((string)$sAttCode, $aAlso, true)) {
+				$aIssues[] = "'{$sAttCode}' is not a field the portal's {$sForm} form lets you set";
+			}
+		}
+
+		return $aIssues === []
+			? null
+			: implode('; ', $aIssues).'. Fields you may set: '.(implode(', ', array_merge($aSettable, $aAlso)) ?: 'none').'.';
+	}
+
+	/**
+	 * What the portal's pickers would have offered: an object the caller can
+	 * read. An external key's target, a 1-n set's items, an n-n set's remote
+	 * objects.
+	 */
+	#[\Override]
+	public function RefusalsForReach(DBObject $oObject, array $aAttCodes): array
+	{
+		$aIssues = [];
+		foreach ($aAttCodes as $sAttCode) {
+			$sOutOfReach = $this->outOfReach($oObject, $sAttCode);
+			if ($sOutOfReach !== null) {
+				$aIssues[$sAttCode] = $sOutOfReach;
+			}
+		}
+
+		return $aIssues;
+	}
+
+	/**
+	 * The fields a transition's target state prompts for: those it must
+	 * change or prompt for, and those it makes mandatory that are empty.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function Prompted(DBObject $oObject, string $sStimulus): array
+	{
+		$sClass = get_class($oObject);
+		$aTransitions = MetaModel::EnumTransitions($sClass, (string)$oObject->GetState());
+		$sTarget = (string)($aTransitions[$sStimulus]['target_state'] ?? '');
+		$aStates = MetaModel::EnumStates($sClass);
+
+		/** @var array<string, int> $aFlags */
+		$aFlags = array_map('intval', $aStates[$sTarget]['attribute_list'] ?? []);
+
+		$aPrompted = [];
+		foreach ($aFlags as $sAttCode => $iFlags) {
+			if (($iFlags & (OPT_ATT_MUSTCHANGE | OPT_ATT_MUSTPROMPT)) !== 0
+				|| (($iFlags & OPT_ATT_MANDATORY) !== 0 && $oObject->Get($sAttCode) == '')) {
+				$aPrompted[] = $sAttCode;
+			}
+		}
+
+		return $aPrompted;
+	}
+
+	private function outOfReach(DBObject $oObject, string $sAttCode): ?string
+	{
+		$sClass = get_class($oObject);
+		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+
+		if ($oAttDef->IsExternalKey()) {
+			$iTarget = (int)$oObject->Get($sAttCode);
+			if ($iTarget > 0 && $this->oPolicy->Readable($oAttDef->GetTargetClass(), $iTarget) === null) {
+				return sprintf("'%s' points at a %s the portal does not show you.", $sAttCode, $oAttDef->GetTargetClass());
+			}
+
+			return null;
+		}
+
+		if (!$oAttDef->IsLinkSet()) {
+			return null;
+		}
+
+		// An n-n set points through its link class at the remote class; a 1-n
+		// set holds the objects themselves.
+		$sExtKey = $oAttDef instanceof \AttributeLinkedSetIndirect ? $oAttDef->GetExtKeyToRemote() : null;
+		$oSet = $oObject->Get($sAttCode);
+		if (!$oSet instanceof \ormLinkSet) {
+			return null;
+		}
+		foreach ($oSet as $oLink) {
+			if ($sExtKey === null) {
+				if (!$oLink->IsNew() && $this->oPolicy->Readable(get_class($oLink), (int)$oLink->GetKey()) === null) {
+					return sprintf("'%s' holds an item the portal does not show you.", $sAttCode);
+				}
+				continue;
+			}
+
+			$sRemote = MetaModel::GetAttributeDef(get_class($oLink), $sExtKey)->GetTargetClass();
+			$iRemote = (int)$oLink->Get($sExtKey);
+			if ($iRemote > 0 && $this->oPolicy->Readable($sRemote, $iRemote) === null) {
+				return sprintf("'%s' links a %s the portal does not show you.", $sAttCode, $sRemote);
+			}
+		}
+
+		return null;
+	}
 }

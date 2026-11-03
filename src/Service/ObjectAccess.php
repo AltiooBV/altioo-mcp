@@ -28,8 +28,8 @@ use UserRights;
  * by the portal's scopes, bricks and forms ({@see PortalAccess}). Nothing a
  * console read refuses is ever served in portal mode.
  *
- * The read side only, for now: the write tools move onto it when they are
- * served in portal mode.
+ * Its write side holds only what a mode adds to the console's checks, which
+ * stay in the write tools: on the console every refusal here is null.
  *
  * @internal
  * @since 1.2.0
@@ -168,6 +168,52 @@ class ObjectAccess
 	 * @return array<string, mixed>
 	 */
 	public function Extras(DBObject $oObject): array
+	{
+		return [];
+	}
+
+	/**
+	 * Whether this mode hides an object UserRights lets the caller read. A
+	 * hidden object is answered as one that does not exist.
+	 */
+	public function Hides(string $sClass, int $iId): bool
+	{
+		return false;
+	}
+
+	/** Why this mode refuses a change to the object UserRights allows, or null. */
+	public function RefusalToChange(DBObject $oObject): ?string
+	{
+		return null;
+	}
+
+	/** Why this mode refuses a stimulus UserRights allows on the object now, or null. */
+	public function RefusalToApply(DBObject $oObject, string $sStimulus): ?string
+	{
+		return null;
+	}
+
+	/**
+	 * Why this mode refuses fields the console's form would let the caller
+	 * set, or null.
+	 *
+	 * @param array<string, mixed> $aFields
+	 * @param string               $sStimulus The transition being applied, '' for an edit.
+	 */
+	public function RefusalToSet(DBObject $oObject, array $aFields, string $sStimulus = ''): ?string
+	{
+		return null;
+	}
+
+	/**
+	 * The values, once set, that point at objects this mode does not let the
+	 * caller read: attribute code => why.
+	 *
+	 * @param array<int, string> $aAttCodes
+	 *
+	 * @return array<string, string>
+	 */
+	public function RefusalsForReach(DBObject $oObject, array $aAttCodes): array
 	{
 		return [];
 	}

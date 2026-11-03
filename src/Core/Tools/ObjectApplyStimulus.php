@@ -17,6 +17,10 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -37,7 +41,7 @@ use DBObjectSet;
  *
  * @since 1.0.0
  */
-class ObjectApplyStimulus extends AbstractMCPTool
+class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -59,6 +63,10 @@ class ObjectApplyStimulus extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs. '
 			.'The dry run checks the transition against the current state and reports anything mandatory that is missing. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
@@ -114,6 +122,12 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			'required' => ['class', 'id', 'stimulus'],
 		];
 	}
+
+	/** What this tool is to a portal-mode connection, which has no class schema yet. */
+	private const PORTAL_DESCRIPTION = 'Apply a state change the portal offers this user on an object now (in iTop\'s stock portal, closing a resolved request or reopening it). '
+			.'core_object_get lists the stimuli the object\'s current state accepts; any other is refused. '
+			.'fields may set what the transition asks for (the target state\'s mandatory or prompted fields) and what the edit form leaves writable. '
+			.'Dry run by default (simulate): it reports the state the object would move to and anything mandatory still missing.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -191,11 +205,19 @@ class ObjectApplyStimulus extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
+		// What this request's mode adds to UserRights: in portal mode, the
+		// portal's scopes, forms and lifecycle (doc/adr/0006).
+		try {
+			$oAccess = ObjectAccess::Current();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
-		if ($oSet->Count() === 0) {
+		if ($oSet->Count() === 0 || $oAccess->Hides($class, $id)) {
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
@@ -231,6 +253,19 @@ class ObjectApplyStimulus extends AbstractMCPTool
 		$sCurrentState = $oObject->GetState();
 		if ($sCurrentState === '') {
 			throw new ToolCallException("Object {$class}::{$id} is in an invalid state, cannot apply stimulus.");
+		}
+
+		// The mode's refusals first: a portal lists only the stimuli it offers,
+		// never the whole lifecycle.
+		try {
+			$sModeRefusal = $oAccess->RefusalToChange($oObject)
+				?? $oAccess->RefusalToApply($oObject, $stimulus)
+				?? $oAccess->RefusalToSet($oObject, $fields, $stimulus);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+		if ($sModeRefusal !== null) {
+			throw new ToolCallException($sModeRefusal);
 		}
 
 		// Validate the stimulus is available on this class
@@ -275,7 +310,8 @@ class ObjectApplyStimulus extends AbstractMCPTool
 
 		// Once everything is Set(), because a datamodel filter reads the
 		// object and this call may have moved what it reads. See EditPolicy.
-		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
+			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to fields : ".implode(', ', $aIssues));
 		}

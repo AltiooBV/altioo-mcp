@@ -64,7 +64,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema yet and no attachment search. */
-	private const PORTAL_DESCRIPTION = 'Read one object this user\'s portal shows them: the fields of its view form for the object as it is now (output_fields narrows them), the attachments listed beside it, and what they may do to it now - its rights, the stimuli its current state accepts (for core_portal_apply_stimulus), and the fields its edit form lets them set (settable_fields, for core_portal_update). class and id come from a row of core_portal_list; a parent class such as Ticket is fine, and the answer names the class the object is. core_object_history gives what changed, where the portal shows history.';
+	private const PORTAL_DESCRIPTION = 'Read one object this user\'s portal shows them: the fields of its view form for the object as it is now (output_fields narrows them), the attachments listed beside it, and what they may do to it now - its rights, the stimuli its current state accepts (for core_object_apply_stimulus), and the fields its edit form lets them set (settable_fields, for core_object_update). class and id come from a row of core_portal_list; a parent class such as Ticket is fine, and the answer names the class the object is. core_object_history gives what changed, where the portal shows history.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{

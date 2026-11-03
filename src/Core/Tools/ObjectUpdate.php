@@ -17,6 +17,10 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -30,7 +34,7 @@ use DBObjectSet;
  *
  * @since 1.0.0
  */
-class ObjectUpdate extends AbstractMCPTool
+class ObjectUpdate extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -52,10 +56,20 @@ class ObjectUpdate extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Update one or more attributes of an existing iTop object. Only provided fields are modified; omitted attributes are left untouched. '
 			.'The dry run reports exactly which attributes would change. Only what the console form offers in the current state can be set: the state itself, and fields the state locks, change with core_object_apply_stimulus. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}
+
+	/** What this tool is to a portal-mode connection, which has no class schema yet. */
+	private const PORTAL_DESCRIPTION = 'Change an object as this user\'s portal edit form would let them, such as adding a reply to a ticket\'s log. '
+			.'core_object_get lists, for an object, the fields that may be set now (settable_fields); anything else is refused, and so is a state change, which is core_object_apply_stimulus. '
+			.'A case log field (public_log on iTop\'s stock tickets) takes the text of one new entry, and adds it; earlier entries are never replaced. '
+			.'Dry run by default (simulate). Read `overridden` on the answer as carefully as `changes`.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -162,11 +176,19 @@ class ObjectUpdate extends AbstractMCPTool
 			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
+		// What this request's mode adds to UserRights: in portal mode, the
+		// portal's scopes, forms and lifecycle (doc/adr/0006).
+		try {
+			$oAccess = ObjectAccess::Current();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
-		if ($oSet->Count() === 0) {
+		if ($oSet->Count() === 0 || $oAccess->Hides($class, $id)) {
 			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
@@ -193,6 +215,14 @@ class ObjectUpdate extends AbstractMCPTool
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY, $oSet)) {
 			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
+		}
+		try {
+			$sModeRefusal = $oAccess->RefusalToChange($oObject) ?? $oAccess->RefusalToSet($oObject, $fields);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+		if ($sModeRefusal !== null) {
+			throw new ToolCallException($sModeRefusal);
 		}
 
 		// Get the object
@@ -230,7 +260,8 @@ class ObjectUpdate extends AbstractMCPTool
 
 		// Once everything is Set(), because a datamodel filter reads the
 		// object and this call may have moved what it reads. See EditPolicy.
-		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues));
+		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
+			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
