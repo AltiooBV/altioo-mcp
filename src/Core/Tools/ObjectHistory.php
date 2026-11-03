@@ -12,16 +12,14 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
-use DBObject;
 use DBObjectSearch;
-use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
@@ -160,104 +158,51 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
-		// The portal first, so that its refusals are phrased as the portal's
-		// and an object it does not show answers as one that does not exist.
-		$oPolicy = null;
-		if (PortalMode::Current() !== null) {
-			$oPolicy = self::portalPolicy();
-			if (!$oPolicy->ShowsHistory()) {
-				throw new ToolCallException('The portal shows no history. Call core_portal_describe for what it offers.');
-			}
-			if (HistoryReader::IsReserved($class) || $oPolicy->Readable($class, $id) === null) {
-				throw new ToolCallException("Object {$class}::{$id} not found.");
-			}
+		try {
+			$oAccess = ObjectAccess::Current();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+		$bPortal = $oAccess instanceof PortalAccess;
+
+		// The portal's refusal first, so that it is phrased as the portal's.
+		if (!$oAccess->ShowsHistory()) {
+			throw new ToolCallException('The portal shows no history. Call core_portal_describe for what it offers.');
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
-		// The object gate before the object is read, so that a history request
+		// The object gate before the log is read, so that a history request
 		// cannot report the existence of something a plain read would deny.
-		$oSearch = ObjectQuery::ById($class, $id);
-		$oSet = new DBObjectSet($oSearch);
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-		}
-
-		$oObject = MetaModel::GetObject($class, $id, false);
-		if ($oObject === null) {
-			throw new ToolCallException("Object {$class}::{$id} not found.");
-		}
-
-		// Reading the parent says nothing about the leaf, at class level or at
-		// object level, and the log is filed under the leaf's own name.
+		$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
 		$sFinalClass = get_class($oObject);
-		if ($sFinalClass !== $class) {
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found.");
-			}
-			$oFinalSet = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, $oFinalSet)) {
-				throw new ToolCallException("Object {$class}::{$id} not found.");
-			}
+
+		try {
+			$fShows = $oAccess->ShownOf($oObject);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
 		}
 
+		// A field the portal hides is answered as a code the class lacks, so
+		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
-		if ($sAttCode !== '' && !MetaModel::IsValidAttCode($sFinalClass, $sAttCode)) {
-			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sFinalClass}'. Call core_class_schema for the attribute codes.");
+		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
+			throw new ToolCallException(sprintf(
+				"Unknown attribute '%s' on class '%s'. Call %s for the attribute codes.",
+				$sAttCode,
+				$sFinalClass,
+				$bPortal ? 'core_portal_describe' : 'core_class_schema'
+			));
 		}
-
-		if ($oPolicy === null) {
-			return ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset));
-		}
-
-		$fShows = self::shownBy($oPolicy, $oObject);
-		if ($sAttCode !== '' && !$fShows($sAttCode)) {
-			// Answered as the console answers a code the class lacks, so this
-			// cannot map out the fields the portal hides.
-			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sFinalClass}'. Call core_portal_describe for the field codes.");
-		}
-
-		// DBObjectSearch extends DBSearch; Psalm runs with no iTop checkout to
-		// say so (psalm.xml).
-		/** @psalm-suppress InvalidArgument */
-		$fBound = static fn (DBObjectSearch $oSearch): ?DBSearch => $oPolicy->Bounded($oSearch, $oSearch->GetClass());
 
 		return ToolOutput::Json(HistoryReader::Within(
 			$oObject,
-			$fBound,
+			static fn (DBObjectSearch $oSearch): ?DBSearch => $oAccess->Bounded($oSearch),
 			$fShows,
 			$sAttCode,
 			$limit,
 			$offset
 		));
-	}
-
-	/** The policy of this request's portal, or the refusal a client is given when it cannot be read. */
-	private static function portalPolicy(): PortalPolicy
-	{
-		try {
-			return PortalPolicy::ForCurrentRequest();
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
-	}
-
-	/**
-	 * Whether the portal's view form shows an attribute of the object, as it
-	 * is now: a row about a field the user is not shown is not theirs to read.
-	 *
-	 * @return \Closure(string): bool
-	 */
-	private static function shownBy(PortalPolicy $oPolicy, DBObject $oObject): \Closure
-	{
-		try {
-			$aFlags = $oPolicy->Fields(get_class($oObject), PortalPolicy::MODE_VIEW, $oObject);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
-
-		return static fn (string $sAttCode): bool => isset($aFlags[$sAttCode])
-			&& ($aFlags[$sAttCode] & OPT_ATT_HIDDEN) !== OPT_ATT_HIDDEN;
 	}
 }
