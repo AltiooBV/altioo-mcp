@@ -144,7 +144,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool. Served in portal mode too, under the portal's limits as well |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
 | `core_object_attach` | Attach a file to an object, or set one of its document attributes. Dry run by default |
-| `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
+| `core_object_create` | Create an object. Dry run by default (`simulate: true`). In portal mode it takes one of the portal's create actions (`action`, and `from_id` when it starts from an object) instead of a class, its rules presetting what the portal presets |
 | `core_object_update` | Update an object's attributes. Dry run by default. Served in portal mode too, under the portal's edit form, write scope and reach |
 | `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition). Dry run by default. Served in portal mode too, for the stimuli the portal offers on the object now |
 | `core_object_delete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
@@ -153,7 +153,6 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
 | `core_portal_describe` | Portal mode only: what the user's portal offers them — classes, fields per mode, create actions, stimuli and the states they apply in, lists — read from the portal's own configuration. See [Granting access](#granting-access) |
 | `core_portal_list` | Portal mode only: run one of the portal's lists (a ManageBrick, one of its tabs, a browse level under a parent row), with the portal's own search |
-| `core_portal_create` | Portal mode only: create through one of the portal's create actions, its rules presetting what the portal presets. Dry run by default |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
 are — `core` belongs to this module, an extension uses its own. Two packs from two
@@ -608,9 +607,9 @@ own code, so a customised portal is served as customised:
   the portal offers, and the fields its edit form leaves settable. The creation and last-change
   attribution is left out: it reads the change log, which `core_object_history` serves where the
   portal shows history.
-- `core_portal_create`, and the console's own `core_object_update` and
-  `core_object_apply_stimulus`, write as the portal would, and are dry runs by default. A field must be one the portal's form leaves
-  settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
+- `core_object_create`, `core_object_update` and `core_object_apply_stimulus`, the console's
+  own writes, write as the portal would, and are dry runs by default. A field must be one the
+  portal's form leaves settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
   so a case log only gains entries; an external key or a link may point only at what the user
   can read; a stimulus must be one the portal's lifecycle allows, that UserRights grants on the
   object, from its current state; and a creation starts from a row of the action's list, takes
