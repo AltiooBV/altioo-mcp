@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -158,14 +159,19 @@ class ObjectHistoryContractTest extends TestCase
 
 	/**
 	 * The object gate, applied with the object set rather than the class alone
-	 * - a silo answers per object, and this is where that answer is asked for.
+	 * - a silo answers per object. The tool asks it of the mode's access, which
+	 * asks it of UserRights in both modes.
 	 */
 	public function testTheObjectMustBeOneTheCallerCouldHaveRead(): void
 	{
-		$sBody = $this->bodyOf(HistoryTool::class, 'execute');
+		$sTool = $this->bodyOf(HistoryTool::class, 'execute');
+		$sGate = $this->bodyOf(ObjectAccess::class, 'Readable');
 
-		$this->assertStringContainsString('UR_ACTION_READ, $oSet', $sBody);
-		$this->assertStringContainsString('not found.', $sBody, 'a refused object must not be distinguishable from an absent one');
+		$this->assertStringContainsString('$oAccess->Readable($class, $id)', $sTool);
+		$this->assertStringContainsString('not found.', $sTool, 'a refused object must not be distinguishable from an absent one');
+		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sClass, $iId))', $sGate);
+		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sFinalClass, $iId))', $sGate,
+			'reading the parent was taken to say something about the leaf');
 	}
 
 	/**

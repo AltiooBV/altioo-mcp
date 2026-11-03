@@ -520,6 +520,25 @@ class PortalModeTest extends TestCase
 		);
 	}
 
+	/**
+	 * The portal's access only takes away from the console's: each read
+	 * asks the console's question before the portal's.
+	 */
+	public function testThePortalAccessNarrowsTheConsolesAndNeverReplacesIt(): void
+	{
+		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, 'Readable');
+		$this->assertLessThan(
+			strpos($sReadable, '$this->oPolicy->Readable('),
+			(int)strpos($sReadable, 'parent::Readable('),
+			'the portal is asked instead of UserRights, or before it'
+		);
+		$this->assertStringContainsString('IsReserved', $sReadable, 'the change log is read as an object in portal mode');
+
+		$oConsole = \Altioo\iTop\Extension\MCP\Service\ObjectAccess::Current();
+		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
+		$this->assertTrue($oConsole->ShowsHistory());
+	}
+
 	private static function bodyOf(string $sClass, string $sMethod): string
 	{
 		$oMethod = new ReflectionMethod($sClass, $sMethod);
