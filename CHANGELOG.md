@@ -81,8 +81,8 @@ entry itself, not left to be inferred from it.
   authent-token's `personal_tokens_allowed_profiles`, which lets a portal session mint its own
   tokens with no expiry at all, and portal mode does not accept one that never ends. iTop's
   `Portal user` profile reads every class, and what narrows it is the portal's own configuration,
-  which nothing written for the console enforces, so nothing of it is served there, a pack's
-  included. Console logins take exactly the path they took before, because portal mode starts
+  so a tool is served there only when it adds that configuration to its own checks, a pack's
+  never. Console logins take exactly the path they took before, because portal mode starts
   only from the refusal iTop already returned for them.
 - **Portal mode, second step: `core_class_list` and `core_class_schema` say what a portal user's
   portal offers.** (First as `core_portal_describe`, merged into the class tools by doc/adr/0006.)
@@ -106,8 +106,9 @@ entry itself, not left to be inferred from it.
   the states it applies in (`from_states`), each browse list the list above it (`parent`), each
   create action the list its starting object is picked from (`from_list`), and a class says
   whether the portal shows its objects' attachments.
-- **Portal mode, third step: the portal's lists, objects and writes.** Five tools, served in
-  portal mode only, each answering from the portal's configuration:
+- **Portal mode, third step: the portal's lists, objects and writes.** The portal's lists, and
+  the console's reads and writes served there with the portal's configuration added
+  (doc/adr/0006):
   - `core_portal_list` runs a list by id — a ManageBrick, one of its tabs, a browse level under
     a parent row — as the portal runs it: the brick's query intersected with the scope, the
     tab's condition, the parent checked against its own level, and the portal's search on the

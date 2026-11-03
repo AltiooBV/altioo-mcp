@@ -459,10 +459,10 @@
         existed. Such a user is served only with a token that expires (see
         mcp_portal_token_max_days), linked to a contact, holding a profile in
         mcp_allowed_profiles, and in the first portal by rank that is both
-        allowed to them and served here. Portal mode serves only
-        core_portal_describe so far, which reads the portal's own
-        configuration and no object, and the server instructions; it needs
-        iTop 3.2.2 or later: see the README, "Portal-only users".
+        allowed to them and served here. Portal mode serves the console's
+        tools with the portal's configuration added to their checks, and the
+        portal's lists; it needs iTop 3.2.2 or later: see the README,
+        "Portal-only users".
       -->
       <mcp_portals type="array">
         <item>*</item>

@@ -581,9 +581,11 @@ Personal tokens tab of My Account. See [SECURITY.md](SECURITY.md), "Hardening".
 **What portal mode serves: what the portal offers, read and written as the portal does.**
 iTop's `Portal user` profile reads every class; what keeps a portal user to their own requests
 is the portal's configuration — its bricks, scopes, forms, lifecycle and action rules — which
-iTop's rights checks never consult. So nothing written for the console is served in portal
-mode, a pack's included. What is served answers from that configuration, read with the portal's
-own code, so a customised portal is served as customised:
+iTop's rights checks never consult. So no tool is served in portal mode unless it adds that
+configuration to the checks it already makes, a pack's never. The console's own tools are
+served there that way (doc/adr/0006): each asks one mode-aware policy, which in portal mode
+narrows the console's answer by the portal's, read with the portal's own code, so a customised
+portal is served as customised:
 
 - `core_class_list` and `core_class_schema`, the console's own, say what the user's portal
   offers: the classes a brick granted to the user reaches — a class with a read scope that no
