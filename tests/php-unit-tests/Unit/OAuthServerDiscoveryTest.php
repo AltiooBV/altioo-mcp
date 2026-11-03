@@ -32,10 +32,30 @@ class OAuthServerDiscoveryTest extends TestCase
 
 	private const MODULES_ROOT = 'https://itop.example.com/env-production/';
 
-	private function url(mixed $mConfigured, bool $bInstalled, string $sModulesRoot = self::MODULES_ROOT): ?string
+	private function url(mixed $mConfigured, bool $bInstalled, string $sModulesRoot = self::MODULES_ROOT, ?string $sForCalledUrl = null): ?string
 	{
 		return (new ReflectionMethod(MCPHelper::class, 'protectedResourceMetadataUrl'))
-			->invoke(null, $mConfigured, $bInstalled, $sModulesRoot);
+			->invoke(null, $mConfigured, $bInstalled, $sModulesRoot, $sForCalledUrl);
+	}
+
+	/**
+	 * One OAuth resource per portal (doc/adr/0007): the module knows which
+	 * resource the URL called is, and its document is the one advertised, so
+	 * a client calling a portal's URL consents for that portal. The setting
+	 * still wins, and a URL the module does not know falls back to its
+	 * default resource.
+	 */
+	public function testTheResourceOfTheUrlCalledIsAdvertised(): void
+	{
+		$sPortal = 'https://itop.example.com/env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp-customer';
+		$sProxy = 'https://sso.example.com/.well-known/oauth-protected-resource';
+
+		$this->assertSame($sPortal, $this->url('', true, self::MODULES_ROOT, $sPortal));
+		$this->assertSame($sProxy, $this->url($sProxy, true, self::MODULES_ROOT, $sPortal));
+		$this->assertSame(
+			'https://itop.example.com/env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp',
+			$this->url('', true, self::MODULES_ROOT, null)
+		);
 	}
 
 	/** The document the OAuth server's README tells an operator to set by hand. */

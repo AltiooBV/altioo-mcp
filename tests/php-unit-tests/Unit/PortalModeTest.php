@@ -94,6 +94,42 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * A connection may name its portal (doc/adr/0007): served when the user
+	 * may enter it and mcp_portals serves it, and otherwise none - never the
+	 * first by rank in its place.
+	 */
+	public function testANamedPortalIsServedOnlyWhenAllowedAndServed(): void
+	{
+		$aAllowed = ['itop-portal', 'partner-portal'];
+
+		$this->assertSame('partner-portal', PortalMode::Choose($aAllowed, ['*'], 'partner-portal'), 'the second by rank, named');
+		$this->assertNull(PortalMode::Choose($aAllowed, ['itop-portal'], 'partner-portal'), 'not served: refused, not replaced');
+		$this->assertNull(PortalMode::Choose($aAllowed, ['*'], 'other-portal'), 'not allowed: refused, not replaced');
+		$this->assertNull(PortalMode::Choose(['backoffice', 'itop-portal'], ['*'], 'backoffice'), 'the console is never a portal');
+		$this->assertNull(PortalMode::Choose($aAllowed, ['*'], ''), 'a malformed id matches nothing');
+		$this->assertSame('itop-portal', PortalMode::Choose($aAllowed, ['*'], null), 'unnamed: the first by rank, as before');
+	}
+
+	/**
+	 * The token's audience is checked while the token is still at hand, and
+	 * after the login is settled; the portal served is on every audit row.
+	 */
+	public function testATokenIsHeldToItsUrlAndTheAuditNamesThePortal(): void
+	{
+		$sHandle = self::bodyOf(MCPController::class, 'handleRequest');
+		$iAccounted = strpos($sHandle, 'self::rejectATokenLoginNotAccountedFor()');
+		$iAudience = strpos($sHandle, 'self::rejectATokenGrantedForAnotherUrl()');
+		$iForget = strpos($sHandle, 'MCPHttp::ForgetAuthToken()');
+		$this->assertNotFalse($iAudience, 'a token granted for another portal\'s URL is accepted');
+		$this->assertLessThan($iAudience, $iAccounted);
+		$this->assertLessThan($iForget, $iAudience, 'the audience is asked after the token is dropped');
+
+		$this->assertStringContainsString('MCPHelper::CalledEndpointUrl()', self::bodyOf(MCPController::class, 'rejectATokenGrantedForAnotherUrl'));
+		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(MCPController::class, 'logIfConfigured'));
+		$this->assertStringContainsString('MCPHelper::RequestedPortal()', self::bodyOf(MCPController::class, 'admitInPortalMode'));
+	}
+
+	/**
 	 * "*", the default, serves every portal: who gets in is decided by the
 	 * profiles they hold. Still the first by rank, and never the console.
 	 */

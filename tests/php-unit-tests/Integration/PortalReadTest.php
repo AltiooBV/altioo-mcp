@@ -209,6 +209,12 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		ObjectGet::execute('CMDBChangeOp', 1);
 	}
 
+	/** The audit row names the portal that served the call (doc/adr/0007). */
+	public function testTheAuditRowHasAPortalField(): void
+	{
+		$this->assertTrue(MetaModel::IsValidAttCode('AltiooEventMCPService', 'portal'));
+	}
+
 	/** Not found, whether it exists or not: the portal answers both alike. */
 	public function testAnotherCallersRequestIsNotFound(): void
 	{
