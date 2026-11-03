@@ -70,6 +70,13 @@ entry itself, not left to be inferred from it.
   A value that is not a list of class names is logged and read as every class; a name the
   datamodel does not have is logged at every request. Empty by default, so nothing changes until
   it is set.
+- **A connection names its portal, and the audit row records it** (doc/adr/0007). The endpoint
+  URL may carry `portal_id`, as iTop's portal URLs do: a portal-only user is then served that
+  portal, when they may enter it and `mcp_portals` serves it, and refused otherwise — never served
+  another in its place. Without it, the first by rank, as before. With altioo-oauth-server
+  configured with one resource per portal, the `401` points at the resource of the URL called,
+  and a token granted for one portal's URL is refused at another's. `AltiooEventMCPService`
+  gains a `portal` field, empty for a console call; the setup adds the column.
 
 - **Portal mode: a portal-only user is let in by their profiles, and served what their portal
   offers.** A user with no console used to be refused outright. Now they are let in when they

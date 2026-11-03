@@ -545,10 +545,14 @@ hold, and refused otherwise, with `log/error.log` naming the account and the con
 - they hold a profile in `mcp_allowed_profiles` — required in portal mode even with
   `secure_mcp_services` off, since turning the check off for console users was never a decision
   about people with no console;
-- one of the portals they are allowed into is served. The first by rank is used, as iTop's own
-  login does; two portals are never combined. A user allowed into several cannot pick another
-  one yet: to serve them a different portal, list the portals in `mcp_portals` and leave the
-  higher-ranked one out.
+- one of the portals they are allowed into is served, never two combined: the one the endpoint
+  URL names with `portal_id`, as iTop's own portal URLs do — `…/altioo-mcp/index.php?portal_id=customer-portal`
+  — or else the first by rank, as iTop's own login picks one. A named portal the user may not
+  enter, or that `mcp_portals` does not serve, is refused and never replaced by another
+  ([doc/adr/0007](doc/adr/0007-the-connection-names-its-portal.md)). A user allowed into two
+  portals configures two client entries, one URL each; `core_current_user` reports which portal
+  a connection is served, and every audit row records it (`portal`, empty for a console call).
+  A console user is never in portal mode, and `portal_id` changes nothing for them.
 
 So by default the profile is the switch: a portal-only user holding `MCP Services User` (or
 another profile in `mcp_allowed_profiles`), with a token, is served. Giving the profile is the
@@ -789,6 +793,13 @@ iTop its own OAuth 2.1 server and issues ordinary personal tokens. It is an opti
 extension, it is set up first, and with `mcp_protected_resource_metadata` left empty the `401`
 points at the document it serves for this endpoint, so nothing has to be typed. Without it,
 nothing changes; a value in the setting always wins.
+
+With portals named in the URL, configure one of its resources per portal, its `url` carrying
+`portal_id` exactly as clients call it, and a `label` naming the portal (see that module's
+`resources` setting). The `401` then points at the resource of the URL called, the consent page
+names the portal, and a token granted for one portal's URL is refused at another's
+([doc/adr/0007](doc/adr/0007-the-connection-names-its-portal.md)). A token an administrator
+minted by hand has no such URL, and is held by the rules above only.
 
 > **If you put an OIDC proxy in front of iTop, it must not forward the upstream token as the
 > iTop credential.** The proxy authenticates the caller and then presents iTop with an

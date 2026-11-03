@@ -57,6 +57,7 @@ already records its resource, which is where the binding belongs.
 
 Rejected: an HTTP header — many MCP clients configure a URL and nothing else.
 
-Enforced by: not yet — planned. When it lands, `PortalModeTest` cases that a named portal the
-user may not enter, or that `mcp_portals` does not serve, is refused and never replaced by
-another, and that a token granted for one portal's resource is refused on another's URL.
+Enforced by: `PortalModeTest::testANamedPortalIsServedOnlyWhenAllowedAndServed` and
+`PortalModeTest::testATokenIsHeldToItsUrlAndTheAuditNamesThePortal`,
+`OAuthServerDiscoveryTest::testTheResourceOfTheUrlCalledIsAdvertised` (unit suite), and
+altioo-oauth-server's own tests of `TokenAudience` and `ResourceMetadata`.
