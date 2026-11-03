@@ -651,7 +651,11 @@ final class MCPService
 	 */
 	public static function ServedAccess(): array
 	{
-		$oPolicy = self::AccessPolicyOfCurrentRequest();
+		// The one the controller decided while the token was still at hand.
+		// Deciding it again here runs after the credential is dropped, finds
+		// no token, and answers with the instance-wide policy: a read-only
+		// token was told it could write and delete.
+		$oPolicy = AccessPolicy::Current() ?? self::AccessPolicyOfCurrentRequest();
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
 
 		$aToolsets = [];

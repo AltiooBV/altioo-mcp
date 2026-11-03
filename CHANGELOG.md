@@ -24,6 +24,10 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
+  block was worked out again after the token had been dropped, found none, and listed `read`,
+  `write` and `delete` for a read-only token even though `tools/list` served only the read tools.
+  It now reports the policy decided for the request.
 - **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
   or carries no MCP scope said only `Invalid login`, with the same challenge as a request that
   sent nothing, so an OAuth client could not tell that it should refresh or connect again. The
