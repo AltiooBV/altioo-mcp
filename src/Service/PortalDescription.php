@@ -6,28 +6,23 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Core\Tools;
+namespace Altioo\iTop\Extension\MCP\Service;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Mcp\Exception\ToolCallException;
-use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 
 /**
  * What this user's portal offers, read from the portal's own configuration.
  *
- * Portal mode's replacement for the schema tools. Those describe the
- * datamodel as UserRights sees it, which for a "Portal user" is every
- * bizmodel class; this describes the portal: the classes a brick granted to
+ * What core_class_list and core_class_schema answer in portal mode
+ * (doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md). On the console
+ * they describe the datamodel as UserRights sees it, which for a "Portal
+ * user" is every bizmodel class; in portal mode they describe the portal: the classes a brick granted to
  * the user reaches, whether its scopes let them read or change any of each,
  * the fields its forms show in each mode, the stimuli its lifecycle allows,
  * and its lists and create actions. A custom portal exposing a custom class
@@ -40,120 +35,55 @@ use UserRights;
  * Nothing here reads an object. The fields of a given object follow its
  * state and any condition in the layout, so those listed are a new object's.
  *
+ * @internal
  * @since 1.2.0
  */
-class PortalDescribe extends AbstractMCPTool implements PortalAware
+final class PortalDescription
 {
-	public function getNamespace(): string
-	{
-		return 'core';
-	}
+	/** What the class tools say they answer in portal mode: how to read the overview and a class. */
+	public const READING = 'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds; and every portal is configured differently, so read the ids here rather than assuming any. '
+		.'Choose a list or a create action by its title and class: those say what it is. A list with a parent is a browse level under that list, narrowed with core_portal_list parent_id; a create action with a from_list starts from a row of that list. '
+		.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_object_create runs one. '
+		.'Each stimulus says the states it applies in (from_states). '
+		.'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. '
+		.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
+		.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields, and what may be done to it now.';
 
 	/**
-	 * The schema tools' group, because in portal mode this is what replaces
-	 * them: an operator or a token narrowed to "datamodel" means the
-	 * description of what can be worked with, whichever user is asking.
-	 */
-	public function getToolset(): string
-	{
-		return 'datamodel';
-	}
-
-	protected function defaultTitle(): string
-	{
-		return 'Describe the Portal';
-	}
-
-	/**
-	 * Served in portal mode only. A console user has the schema tools, and an
-	 * answer about a portal they are not in would describe someone else's
-	 * rights.
-	 */
-	public function isAvailable(): bool
-	{
-		return PortalMode::Current() !== null;
-	}
-
-	public function getDescription(): ?string
-	{
-		return 'Describe what this user\'s iTop portal offers them: the classes they can work with, and for each whether they may read and change objects of it, how objects are created, the fields shown when viewing, editing and creating one, and the stimuli (state changes) they may apply. '
-			.'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds; and every portal is configured differently, so read the ids here rather than assuming any. '
-			.'Choose a list or a create action by its title and class: those say what it is. A list with a parent is a browse level under that list, narrowed with core_portal_list parent_id; a create action with a from_list starts from a row of that list. '
-			.'Without "class" the answer is an overview with no fields; pass a class from it to get that class\'s fields. '
-			.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_object_create runs one. '
-			.'Each stimulus says the states it applies in (from_states). '
-			.'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. '
-			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
-			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields, and what may be done to it now.';
-	}
-
-	public function getAnnotations(): ?ToolAnnotations
-	{
-		return new ToolAnnotations(
-			$this->getTitle() ?? 'Describe the portal',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
-		);
-	}
-
-	public function getInputSchema(): ?array
-	{
-		return [
-			'type'       => 'object',
-			'properties' => [
-				'class' => [
-					'type'        => 'string',
-					'description' => 'A class from the overview, e.g. UserRequest, to get its fields in each mode. Empty (the default) returns the overview.',
-					'default'     => '',
-				],
-			],
-			'required' => [],
-		];
-	}
-
-	/**
-	 * @param string $class Optional class to describe in full, fields included
+	 * One class in full, fields included; refused alike whether it is
+	 * unknown or not offered, so this cannot map out the classes the portal
+	 * withholds. A value that is no class name is not quoted back
+	 * (MCPHelper::LooksLikeClassName()).
 	 *
-	 * @return mixed The portal id, its classes, lists and create actions; or one class in full
-	 * @throws ToolCallException if the class is not one the portal offers, or the portal cannot be read
+	 * @return array<string, mixed>
+	 *
+	 * @throws ToolCallException When the portal does not offer the class.
+	 * @throws MCPPortalException When the portal cannot be read.
 	 */
-	public static function execute(string $class = ''): mixed
+	public static function Of(PortalPolicy $oPolicy, string $sClass): array
 	{
-		$sClass = trim($class);
-
-		try {
-			$oPolicy = PortalPolicy::ForCurrentRequest();
-
-			if ($sClass === '') {
-				return ToolOutput::Json(self::overview($oPolicy));
+		if (!in_array($sClass, self::offeredClasses($oPolicy), true)) {
+			if (!MCPHelper::LooksLikeClassName($sClass)) {
+				throw new ToolCallException('That is not a class name. Call core_class_list for the classes this portal offers.');
 			}
-
-			// Unknown and not offered answer alike, so this cannot map out
-			// the classes the portal withholds. A value that is no class name
-			// is not quoted back (MCPHelper::LooksLikeClassName()).
-			if (!in_array($sClass, self::offeredClasses($oPolicy), true)) {
-				if (!MCPHelper::LooksLikeClassName($sClass)) {
-					throw new ToolCallException('That is not a class name. Call this tool without a class for the ones it offers.');
-				}
-				throw new ToolCallException(sprintf(
-					"The portal offers no class '%s'. Call this tool without a class for the ones it offers.",
-					$sClass
-				));
-			}
-
-			return ToolOutput::Json(self::full($oPolicy, $sClass));
-		} catch (MCPPortalException $oException) {
-			// Already logged where it was thrown, and written for the caller.
-			throw new ToolCallException($oException->getMessage());
+			throw new ToolCallException(sprintf(
+				"The portal offers no class '%s'. Call core_class_list for the ones it offers.",
+				$sClass
+			));
 		}
+
+		return self::full($oPolicy, $sClass);
 	}
 
 	/**
+	 * Every offered class without its fields, the lists, the create actions
+	 * and whether the portal shows history.
+	 *
 	 * @return array<string, mixed>
+	 *
+	 * @throws MCPPortalException When the portal cannot be read.
 	 */
-	private static function overview(PortalPolicy $oPolicy): array
+	public static function Overview(PortalPolicy $oPolicy): array
 	{
 		$aClasses = [];
 		foreach (self::offeredClasses($oPolicy) as $sClass) {

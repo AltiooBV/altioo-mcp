@@ -11,6 +11,11 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -25,7 +30,7 @@ use Mcp\Schema\ToolAnnotations;
  *
  * @since 1.0.0
  */
-class ClassList extends AbstractMCPTool
+class ClassList extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -47,11 +52,18 @@ class ClassList extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'List the iTop classes this user can read, with their label, description and place in the hierarchy. '
 			.'A full datamodel holds several hundred, so narrow it: category "bizmodel" keeps the business objects and drops the technical ones, filter matches name, label or description, and may keeps the classes this user may act on - may="create" answers "what can I create here" in one call. '
 			.'A class returned under may carries all eight rights grades, not only the one asked for; may="*" reports that block on every class and drops none. '
 			.'Call core_class_schema next for the attributes of one class.';
 	}
+
+	/** What this tool is to a portal-mode connection: the portal's overview. */
+	private const PORTAL_DESCRIPTION = 'Describe what this user\'s iTop portal offers them: the classes they can work with - for each, whether they may read and change objects of it and the stimuli (state changes) they may apply - the portal\'s lists, its create actions, and whether it shows history. Start here. core_class_schema gives one class\'s fields in each form. '.PortalDescription::READING;
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -66,6 +78,10 @@ class ClassList extends AbstractMCPTool
 
 	public function getInputSchema(): ?array
 	{
+		if (PortalMode::Current() !== null) {
+			return ['type' => 'object', 'properties' => new \stdClass(), 'required' => []];
+		}
+
 		return [
 			'type'       => 'object',
 			'properties' => [
@@ -95,7 +111,7 @@ class ClassList extends AbstractMCPTool
 	 * @param string $category Optional datamodel category to restrict the list to, e.g. 'bizmodel'
 	 * @param string $filter Optional case-insensitive text matched against class name, label and description
 	 * @param string $may Optional rights gate to narrow on, e.g. 'create', or '*' to attach the rights block without narrowing; either way each class returned carries all eight grades
-	 * @return array An array containing the category, the filter, the gate narrowed on, the number of classes returned, and the classes themselves
+	 * @return mixed An array containing the category, the filter, the gate narrowed on, the number of classes returned, and the classes themselves
 	 * @throws ToolCallException if the category is not one the datamodel declares, or the gate is not one the tools check.
 	 */
 	public static function execute(
@@ -104,6 +120,16 @@ class ClassList extends AbstractMCPTool
 		string $may = '',
 	): mixed
 	{
+		// In portal mode, the portal's overview: what it offers is the
+		// portal's configuration, not the datamodel (doc/adr/0006).
+		if (PortalMode::Current() !== null) {
+			try {
+				return ToolOutput::Json(PortalDescription::Overview(PortalPolicy::ForCurrentRequest()));
+			} catch (MCPPortalException $oException) {
+				throw new ToolCallException($oException->getMessage());
+			}
+		}
+
 		$sCategory = trim($category);
 		$sFilter = trim($filter);
 		$sMay = trim($may);

@@ -87,7 +87,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, which creates through the portal's create actions. */
-	private const PORTAL_DESCRIPTION = 'Create an object through one of the portal\'s create actions, as its create form would. Name the action from core_portal_describe; when it starts from an object (in iTop\'s stock portal, a service subcategory), pass that object\'s id as from_id, a row of the action\'s from_list in core_portal_list. The action decides the class, and its rules preset what the portal presets - the caller, the organisation, the service - so send only the fields the create form leaves settable. Dry run by default (simulate): it shows what the rules set and what would be created.';
+	private const PORTAL_DESCRIPTION = 'Create an object through one of the portal\'s create actions, as its create form would. Name the action from core_class_list; when it starts from an object (in iTop\'s stock portal, a service subcategory), pass that object\'s id as from_id, a row of the action\'s from_list in core_portal_list. The action decides the class, and its rules preset what the portal presets - the caller, the organisation, the service - so send only the fields the create form leaves settable. Dry run by default (simulate): it shows what the rules set and what would be created.';
 
 	public function getInputSchema(): ?array
 	{
@@ -97,7 +97,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				'properties' => [
 					'action'   => [
 						'type'        => 'string',
-						'description' => 'A create action id from core_portal_describe.',
+						'description' => 'A create action id from core_class_list.',
 					],
 					'from_id'  => [
 						'type'        => 'integer',

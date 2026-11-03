@@ -389,9 +389,9 @@ TEXT;
 
 	private const PORTAL_OFFERS = <<<'TEXT'
 What the portal offers
-- core_portal_describe says what this user's portal offers them: the classes they can
-work with and the fields of each, its lists, its create actions, and the state changes
-they may apply and in which states. Start there. Every portal is configured
+- core_class_list says what this user's portal offers them: the classes they can
+work with, its lists, its create actions, and the state changes they may apply and in
+which states; core_class_schema gives one class's fields. Start there. Every portal is configured
 differently, so its ids are not known in advance: choose a list or an action by its
 title and class, never by an id you expect.
 - A list with a parent is one level of a hierarchy under that list; a create action
@@ -417,7 +417,7 @@ TEXT;
 
 	private const PORTAL_HISTORY = <<<'TEXT'
 History
-- When core_portal_describe says history is true, core_object_history gives what was
+- When core_class_list says history is true, core_object_history gives what was
 recorded happening to an object the portal shows this user - who changed what, and
 when - for the fields its view form shows.
 TEXT;

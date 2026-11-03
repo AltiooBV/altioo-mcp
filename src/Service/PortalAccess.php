@@ -262,7 +262,7 @@ final class PortalAccess extends ObjectAccess
 	public function Prepared(string $sAction, int $iFromId): DBObject
 	{
 		if ($sAction === '') {
-			throw new ToolCallException('In portal mode a creation runs one of the portal\'s create actions: pass action, from core_portal_describe, and from_id when it starts from an object.');
+			throw new ToolCallException('In portal mode a creation runs one of the portal\'s create actions: pass action, from core_class_list, and from_id when it starts from an object.');
 		}
 		$aAction = $this->actionOf($sAction);
 		[$oFrom, $aSources] = $this->startingPoint($aAction, $iFromId);
@@ -292,7 +292,7 @@ final class PortalAccess extends ObjectAccess
 		}
 
 		// Not quoted back: the id is the client's text.
-		throw new ToolCallException('The portal offers no such create action. Call core_portal_describe for the ones it offers.');
+		throw new ToolCallException('The portal offers no such create action. Call core_class_list for the ones it offers.');
 	}
 
 	/**

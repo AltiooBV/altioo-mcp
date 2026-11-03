@@ -14,7 +14,6 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
@@ -77,7 +76,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema. */
-	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_portal_describe says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_portal_describe or core_object_get report.';
+	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_class_list says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_class_schema or core_object_get report.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -163,11 +162,10 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		} catch (MCPPortalException $oException) {
 			throw new ToolCallException($oException->getMessage());
 		}
-		$bPortal = $oAccess instanceof PortalAccess;
 
 		// The portal's refusal first, so that it is phrased as the portal's.
 		if (!$oAccess->ShowsHistory()) {
-			throw new ToolCallException('The portal shows no history. Call core_portal_describe for what it offers.');
+			throw new ToolCallException('The portal shows no history. Call core_class_list for what it offers.');
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
@@ -192,7 +190,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 				"Unknown attribute '%s' on class '%s'. Call %s for the attribute codes.",
 				$sAttCode,
 				$sFinalClass,
-				$bPortal ? 'core_portal_describe' : 'core_class_schema'
+				'core_class_schema'
 			));
 		}
 

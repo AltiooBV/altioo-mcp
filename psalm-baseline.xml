@@ -534,7 +534,7 @@
       <code><![CDATA[public function getToolset(): string]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Core/Tools/PortalDescribe.php">
+  <file src="src/Service/PortalDescription.php">
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>

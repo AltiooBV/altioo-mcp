@@ -50,7 +50,7 @@ class PortalList extends AbstractPortalTool
 	public function getDescription(): ?string
 	{
 		return 'Run one of the lists this user\'s portal shows them, as the portal runs it: the brick\'s own query, limited to what the portal\'s scopes let them read. '
-			.'Call core_portal_describe for the lists this portal has - their ids, titles, classes and tabs differ from one portal to another. A list with tabs can be narrowed to one; without one it covers every tab. A list with a parent is a browse level: parent_id narrows it to the children of one row of its parent list, which is how a hierarchy (a service catalogue, FAQ categories) is walked down. '
+			.'Call core_class_list for the lists this portal has - their ids, titles, classes and tabs differ from one portal to another. A list with tabs can be narrowed to one; without one it covers every tab. A list with a parent is a browse level: parent_id narrows it to the children of one row of its parent list, which is how a hierarchy (a service catalogue, FAQ categories) is walked down. '
 			.'search matches words in the columns the list shows, all of them required; quote a phrase to match it whole. '
 			.'Each row carries its class and id, for core_object_get.';
 	}
@@ -73,7 +73,7 @@ class PortalList extends AbstractPortalTool
 			'properties' => [
 				'list'      => [
 					'type'        => 'string',
-					'description' => 'A list id from core_portal_describe (in iTop\'s stock portal, e.g. ongoing-tickets-for-portal-user).',
+					'description' => 'A list id from core_class_list (in iTop\'s stock portal, e.g. ongoing-tickets-for-portal-user).',
 				],
 				'tab'       => [
 					'type'        => 'string',
@@ -109,7 +109,7 @@ class PortalList extends AbstractPortalTool
 	}
 
 	/**
-	 * @param string $list      A list id from core_portal_describe
+	 * @param string $list      A list id from core_class_list
 	 * @param string $tab       One of its tabs, or '' for all of them
 	 * @param int    $parent_id For a browse level, the row above to list the children of; 0 for the whole level
 	 * @param string $search    Words to look for in the list's columns
@@ -134,7 +134,7 @@ class PortalList extends AbstractPortalTool
 		if ($aList === null || $oPolicy->ReadSet((string)$aList['class']) === null) {
 			// Not quoted back: a list id is the client's text, and an unknown
 			// one and one the scopes empty answer alike.
-			throw new ToolCallException('The portal offers no such list. Call core_portal_describe for the lists it offers.');
+			throw new ToolCallException('The portal offers no such list. Call core_class_list for the lists it offers.');
 		}
 
 		$sClass = (string)$aList['class'];
@@ -235,7 +235,7 @@ class PortalList extends AbstractPortalTool
 			return $oQuery;
 		}
 
-		throw new ToolCallException('This list has no such tab. Call core_portal_describe for its tabs.');
+		throw new ToolCallException('This list has no such tab. Call core_class_list for its tabs.');
 	}
 
 	/**
