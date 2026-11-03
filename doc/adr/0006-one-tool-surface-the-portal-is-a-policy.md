@@ -41,6 +41,6 @@ always one capability behind the portal's configuration.
 Rejected: folding the portal's lists into `core_object_search_by_class` — options that mean
 something in one mode only, in a tool both modes share.
 
-Enforced by: not yet — the merge is planned, not done. When it lands, `PortalModeTest` asserts
-that `core_portal_list` is the only `core_portal_*` tool registered, and a contract test that
-every `PortalAware` tool reaches the mode policy.
+Enforced by: `PortalModeTest::testThePortalsListsAreTheOnlyPortalOnlyTool` and
+`PortalModeTest::testEveryPortalAwareObjectToolAsksThePortal` (unit suite), since the merge
+landed (steps 1 to 5, ending at commit `5329fce`).

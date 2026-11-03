@@ -9,15 +9,17 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
-use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
-use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
+use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
@@ -577,6 +579,65 @@ class PortalModeTest extends TestCase
 		$oConsole = \Altioo\iTop\Extension\MCP\Service\ObjectAccess::Current();
 		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
 		$this->assertTrue($oConsole->ShowsHistory());
+	}
+
+	/**
+	 * ADR 0006: a capability is one tool in both modes. A portal copy of a
+	 * console tool is the duplication it ended, so the only tool of the
+	 * portal's own is its lists, which have no console counterpart.
+	 */
+	public function testThePortalsListsAreTheOnlyPortalOnlyTool(): void
+	{
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+		try {
+			$aNames = array_keys(MCPRegistry::GetTools());
+		} finally {
+			MCPRegistry::Clear();
+		}
+
+		$this->assertSame(
+			['core_portal_list'],
+			array_values(array_filter($aNames, static fn (string $sName): bool => str_starts_with($sName, 'core_portal_'))),
+			'a core_portal_* copy of a console tool was registered (doc/adr/0006)'
+		);
+	}
+
+	/**
+	 * ADR 0006: every tool served in portal mode that reads or writes objects
+	 * or describes them asks the portal - through the mode-aware access, the
+	 * portal's description, or the portal's policy - and never answers from
+	 * UserRights alone, which grants "Portal user" read on every class.
+	 */
+	public function testEveryPortalAwareObjectToolAsksThePortal(): void
+	{
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+		try {
+			$aTools = MCPRegistry::GetTools();
+		} finally {
+			MCPRegistry::Clear();
+		}
+
+		$iChecked = 0;
+		foreach ($aTools as $sName => $oTool) {
+			if (!PortalMode::Serves($oTool) || $oTool->getToolset() === 'server') {
+				continue;
+			}
+
+			$sSource = '';
+			for ($oClass = new \ReflectionClass($oTool); $oClass !== false; $oClass = $oClass->getParentClass()) {
+				$sSource .= (string)file_get_contents((string)$oClass->getFileName());
+			}
+			$this->assertMatchesRegularExpression(
+				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)/',
+				$sSource,
+				"{$sName} is served in portal mode without asking the portal"
+			);
+			$iChecked++;
+		}
+
+		$this->assertGreaterThan(5, $iChecked, 'the scan found too few portal-aware object tools to be working');
 	}
 
 	private static function bodyOf(string $sClass, string $sMethod): string
