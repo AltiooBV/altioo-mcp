@@ -134,8 +134,8 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
-| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
-| `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
+| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
+| `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
@@ -151,7 +151,6 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_bulk_create` | Create up to 100 objects of one class. Dry run by default |
 | `core_object_bulk_update` | Set the same attributes on up to 100 objects. Dry run by default |
 | `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
-| `core_portal_describe` | Portal mode only: what the user's portal offers them — classes, fields per mode, create actions, stimuli and the states they apply in, lists — read from the portal's own configuration. See [Granting access](#granting-access) |
 | `core_portal_list` | Portal mode only: run one of the portal's lists (a ManageBrick, one of its tabs, a browse level under a parent row), with the portal's own search |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
@@ -586,9 +585,9 @@ iTop's rights checks never consult. So nothing written for the console is served
 mode, a pack's included. What is served answers from that configuration, read with the portal's
 own code, so a customised portal is served as customised:
 
-- `core_portal_describe` says what the user's portal offers: the classes a brick granted to the
-  user reaches — a class with a read scope that no brick offers is left out, as is one a brick
-  offers that the scopes refuse
+- `core_class_list` and `core_class_schema`, the console's own, say what the user's portal
+  offers: the classes a brick granted to the user reaches — a class with a read scope that no
+  brick offers is left out, as is one a brick offers that the scopes refuse
   ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md)). So is a subclass the
   portal pins out by `finalclass`: the stock Ticket scope allows only `UserRequest` and
   `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered. ManageBrick,
@@ -629,7 +628,7 @@ own code, so a customised portal is served as customised:
 
 What the portal offers that is not served here — downloading, adding or deleting an
 attachment, and anything a portal extension adds through its own bricks or routes — stays in the
-portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (describe is in `datamodel`, history in
+portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (the class tools are in `datamodel`, history in
 `history`, the others in `objects`) and the token's grade narrow it as they narrow anything else:
 an `MCP-read` token is served the reads only. **Portal mode needs iTop 3.2.2 or later**, the first
 release where the portal's form merge can be called on its own; on an earlier one, and

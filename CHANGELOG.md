@@ -84,7 +84,8 @@ entry itself, not left to be inferred from it.
   which nothing written for the console enforces, so nothing of it is served there, a pack's
   included. Console logins take exactly the path they took before, because portal mode starts
   only from the refusal iTop already returned for them.
-- **Portal mode, second step: `core_portal_describe` says what a portal user's portal offers.**
+- **Portal mode, second step: `core_class_list` and `core_class_schema` say what a portal user's
+  portal offers.** (First as `core_portal_describe`, merged into the class tools by doc/adr/0006.)
   The first element served in portal mode: the classes a brick granted to the
   user reaches, whether the portal's scopes let them read and change objects of each, its create
   actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
@@ -126,7 +127,7 @@ entry itself, not left to be inferred from it.
 
   `core_object_history` is served in portal mode too, when the portal shows history — a brick
   granted to the user reaches `CMDBChangeOp` and a read scope covers it — and
-  `core_portal_describe` says so in `history`. It is the console's tool with the portal's limits
+  `core_class_list` says so in `history`. It is the console's tool with the portal's limits
   added: the object must be one the portal shows, the rows those the change log's scope holds, and
   the attributes those the object's view form shows. The portal's lists and reads refuse the
   change log, and no write in portal mode reaches it, whatever the portal grants.
