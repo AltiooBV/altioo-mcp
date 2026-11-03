@@ -563,14 +563,6 @@
       <code><![CDATA[public function isAvailable(): bool]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Core/Tools/PortalGet.php">
-    <MissingOverrideAttribute>
-      <code><![CDATA[protected function defaultTitle(): string]]></code>
-      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
-      <code><![CDATA[public function getDescription(): ?string]]></code>
-      <code><![CDATA[public function getInputSchema(): ?array]]></code>
-    </MissingOverrideAttribute>
-  </file>
   <file src="src/Core/Tools/PortalList.php">
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>

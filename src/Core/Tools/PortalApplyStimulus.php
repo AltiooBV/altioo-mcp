@@ -46,7 +46,7 @@ class PortalApplyStimulus extends AbstractPortalTool
 	public function getDescription(): ?string
 	{
 		return 'Apply a state change the portal offers this user on an object now (in iTop\'s stock portal, closing a resolved request or reopening it). '
-			.'core_portal_get lists the stimuli the object\'s current state accepts; any other is refused. '
+			.'core_object_get lists the stimuli the object\'s current state accepts; any other is refused. '
 			.'fields may set what the transition asks for (the target state\'s mandatory or prompted fields) and what the edit form leaves writable. '
 			.'The dry run reports the state the object would move to and anything mandatory still missing.';
 	}
@@ -91,7 +91,7 @@ class PortalApplyStimulus extends AbstractPortalTool
 			'properties' => [
 				'class'    => [
 					'type'        => 'string',
-					'description' => 'The class of the object, as core_portal_get names it.',
+					'description' => 'The class of the object, as core_object_get names it.',
 				],
 				'id'       => [
 					'type'        => 'integer',
@@ -99,7 +99,7 @@ class PortalApplyStimulus extends AbstractPortalTool
 				],
 				'stimulus' => [
 					'type'        => 'string',
-					'description' => 'A stimulus code from the object\'s stimuli in core_portal_get.',
+					'description' => 'A stimulus code from the object\'s stimuli in core_object_get.',
 				],
 				'fields'   => [
 					'type'                 => MCPHelper::MAP_TYPE,

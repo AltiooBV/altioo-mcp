@@ -54,7 +54,6 @@ class CoreExtensions implements iMCPServiceProvider
 		// Portal mode's, and only portal mode's: available nowhere else.
 		MCPRegistry::RegisterTool(new Tools\PortalDescribe());
 		MCPRegistry::RegisterTool(new Tools\PortalList());
-		MCPRegistry::RegisterTool(new Tools\PortalGet());
 		MCPRegistry::RegisterTool(new Tools\PortalCreate());
 		MCPRegistry::RegisterTool(new Tools\PortalUpdate());
 		MCPRegistry::RegisterTool(new Tools\PortalApplyStimulus());

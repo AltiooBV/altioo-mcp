@@ -15,15 +15,13 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use DBObject;
-use DBObjectSearch;
-use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
-use UserRights;
 
 /**
  * What the tools served in portal mode share.
@@ -191,8 +189,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
-	 * The attributes of a form the user is shown: not hidden by it, and not
-	 * refused by UserRights.
+	 * {@see PortalAccess::Shown()}.
 	 *
 	 * @param array<string, int> $aFlags As PortalPolicy::Fields() answers.
 	 *
@@ -200,21 +197,11 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	 */
 	protected static function shown(string $sClass, array $aFlags): array
 	{
-		$aShown = [];
-		foreach ($aFlags as $sAttCode => $iFlags) {
-			if (($iFlags & OPT_ATT_HIDDEN) === OPT_ATT_HIDDEN
-				|| UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
-				continue;
-			}
-			$aShown[] = $sAttCode;
-		}
-
-		return $aShown;
+		return PortalAccess::Shown($sClass, $aFlags);
 	}
 
 	/**
-	 * The attributes of a form the user may set: shown, and neither read-only
-	 * nor computed from another field.
+	 * {@see PortalAccess::Settable()}.
 	 *
 	 * @param array<string, int> $aFlags As PortalPolicy::Fields() answers.
 	 *
@@ -222,10 +209,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	 */
 	protected static function settable(string $sClass, array $aFlags): array
 	{
-		return array_values(array_filter(
-			self::shown($sClass, $aFlags),
-			static fn (string $sAttCode): bool => ($aFlags[$sAttCode] & (OPT_ATT_READONLY | OPT_ATT_SLAVE)) === 0
-		));
+		return PortalAccess::Settable($sClass, $aFlags);
 	}
 
 	/**
@@ -354,34 +338,4 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 		return [$aRequested, $aOverridden, WritePlan::Changes($oObject, $sClass)];
 	}
 
-	/**
-	 * The attachments the portal lists beside an object, without their
-	 * content. Read as the portal reads them: by the host object, which the
-	 * user has already been allowed to see, and with no scope of their own.
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	protected static function attachmentsOf(DBObject $oObject): array
-	{
-		if (!PortalPolicy::ShowsAttachments($oObject)) {
-			return [];
-		}
-
-		$oSearch = DBObjectSearch::FromOQL('SELECT Attachment WHERE item_class = :class AND item_id = :item_id');
-		$oSearch->AllowAllData();
-		$oSet = new DBObjectSet($oSearch, ['id' => true], ['class' => get_class($oObject), 'item_id' => $oObject->GetKey()]);
-
-		$aAttachments = [];
-		while ($oAttachment = $oSet->Fetch()) {
-			$oDocument = $oAttachment->Get('contents');
-			$aAttachments[] = [
-				'id'       => (int)$oAttachment->GetKey(),
-				'filename' => $oDocument instanceof \ormDocument ? $oDocument->GetFileName() : null,
-				'mimetype' => $oDocument instanceof \ormDocument ? $oDocument->GetMimeType() : null,
-				'size'     => $oDocument instanceof \ormDocument ? $oDocument->GetSize() : null,
-			];
-		}
-
-		return $aAttachments;
-	}
 }

@@ -9,24 +9,31 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
-use DBObjectSet;
 
 
 /**
  * Retrieve a single iTop object by class and ID.
  *
+ * Served in portal mode too (doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md):
+ * {@see ObjectAccess} adds the portal's limits to the console's, so a portal
+ * user reads the objects its scopes hold, the fields its view form shows,
+ * and the gates and stimuli it offers.
+ *
  * @since 1.0.0
  */
-class ObjectGet extends AbstractMCPTool
+class ObjectGet extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -48,9 +55,16 @@ class ObjectGet extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, plus an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class, and the stimuli its current state accepts, which is what core_object_apply_stimulus will take. Call core_object_history for the full record of what changed. '
 			.'Files attached to an object are not attributes of it: they are Attachment objects pointing back at it, so core_object_search_by_class on Attachment with item_class and item_id lists them.';
 	}
+
+	/** What this tool is to a portal-mode connection, which has no class schema yet and no attachment search. */
+	private const PORTAL_DESCRIPTION = 'Read one object this user\'s portal shows them: the fields of its view form for the object as it is now (output_fields narrows them), the attachments listed beside it, and what they may do to it now - its rights, the stimuli its current state accepts (for core_portal_apply_stimulus), and the fields its edit form lets them set (settable_fields, for core_portal_update). class and id come from a row of core_portal_list; a parent class such as Ticket is fine, and the answer names the class the object is. core_object_history gives what changed, where the portal shows history.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -112,57 +126,70 @@ class ObjectGet extends AbstractMCPTool
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
-		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
-		$oSearch = ObjectQuery::ById($class, $id);
-		$oSet = new DBObjectSet($oSearch);
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-		}
+		try {
+			$oAccess = ObjectAccess::Current();
 
-		$oObject = MetaModel::GetObject($class, $id, false);
-		if ($oObject === null) {
-			throw new ToolCallException("Object {$class}::{$id} not found.");
-		}
+			// The object gate before the object is read, so that a refusal
+			// cannot tell that it exists; the leaf's own rights are asked too.
+			$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
+			$sFinalClass = get_class($oObject);
 
-		// GetObject() goes through MetaModel::GetObjectByRow(), which reads the
-		// finalclass column and instantiates the leaf - so the object in hand is
-		// already the right one, and its class is already known. Asking
-		// GetFinalClassName() for that name, and then reading the object a
-		// second time under it, was two queries spent on an answer that had
-		// already arrived.
-		$sFinalClass = get_class($oObject);
-		if ($sFinalClass !== $class) {
-			// Being allowed to read the parent says nothing about the child, at
-			// class level or - a profile whose rights depend on the object - at
-			// object level. Both checks stay.
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			$aFields = self::fieldsOf($oAccess, $oObject, $output_fields);
+			$aObject = ObjectSerializer::Serialize($oObject, $sFinalClass, $aFields);
+
+			// Unconditional where it is given, being two indexed single-row
+			// reads for one object. The search tools ask for it, because there
+			// the count of those reads is the page size.
+			$aAudit = $oAccess->Attribution($oObject);
+			if ($aAudit !== null) {
+				$aObject['audit'] = $aAudit;
 			}
-			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, $oSetFinal)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-			}
+
+			// What may be done to this object now, rather than to its class:
+			// the write gates with the 'depends' ones resolved, and the
+			// stimuli its current state accepts.
+			$oInstanceSet = null;
+			$aObject['rights'] = $oAccess->RightsOn($oObject, $oInstanceSet);
+			$aObject['stimuli'] = $oAccess->StimuliOn($oObject, $aObject['rights'], $oInstanceSet);
+			$aObject += $oAccess->Extras($oObject);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
 		}
-
-		$aObject = ObjectSerializer::Serialize($oObject, $sFinalClass, ObjectSerializer::ParseFieldList($sFinalClass, $output_fields));
-
-		// Unconditional here, where it is two indexed single-row reads for one
-		// object. The search tools ask for it, because there the count of those
-		// reads is the page size.
-		$aObject['audit'] = ObjectHistory::AttributionFor($oObject);
-
-		// What may be done to this object now, rather than to its class: the
-		// write gates with the 'depends' ones resolved, and the stimuli its
-		// current state accepts. One object, so no flag - the search tools ask,
-		// because there this is a question per row.
-		$oInstanceSet = null;
-		$aObject['rights'] = ObjectSerializer::RightsOn($oObject, $sFinalClass, null, $oInstanceSet);
-		$aObject['stimuli'] = ObjectSerializer::StimuliOn($oObject, $sFinalClass, $aObject['rights'], $oInstanceSet);
 
 		return ToolOutput::Json([
 			'requested_class'  => $class,
 			'class' => $sFinalClass,
 			'object' => $aObject,
 		]);
+	}
+
+	/**
+	 * The attributes to report: those output_fields names, within those this
+	 * mode lets a read report. One it does not - a field the portal's view
+	 * form hides - is answered as a code the class lacks, so a read cannot map
+	 * out what the portal withholds.
+	 *
+	 * @return array<int, string>|null Null for every attribute the rights let through.
+	 */
+	private static function fieldsOf(ObjectAccess $oAccess, \DBObject $oObject, string $sOutputFields): ?array
+	{
+		$sClass = get_class($oObject);
+		$aRequested = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+		$aVisible = $oAccess->VisibleFields($oObject);
+		if ($aVisible === null || $aRequested === null) {
+			return $aVisible ?? $aRequested;
+		}
+
+		$aHidden = array_values(array_diff($aRequested, $aVisible));
+		if ($aHidden !== []) {
+			throw new ToolCallException(sprintf(
+				"Unknown attribute%s %s on class '%s'.",
+				count($aHidden) > 1 ? 's' : '',
+				"'".implode("', '", $aHidden)."'",
+				$sClass
+			));
+		}
+
+		return $aRequested;
 	}
 }

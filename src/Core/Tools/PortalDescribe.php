@@ -84,7 +84,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 			.'Each stimulus says the states it applies in (from_states). '
 			.'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. '
 			.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
-			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_portal_get gives one object\'s fields, and what may be done to it now.';
+			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields, and what may be done to it now.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -204,7 +204,7 @@ class PortalDescribe extends AbstractMCPTool implements PortalAware
 
 		return ['portal' => $oPolicy->Portal()] + $aClass + [
 			// Shown beside every form but a transition's, as a plugin field
-			// rather than an attribute; listed by core_portal_get.
+			// rather than an attribute; listed by core_object_get.
 			'attachments' => PortalPolicy::ShowsAttachments(MetaModel::NewObject($sClass)),
 			'forms'       => $aForms,
 		];

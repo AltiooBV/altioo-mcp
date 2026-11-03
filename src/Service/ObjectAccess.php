@@ -9,7 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
@@ -107,5 +109,66 @@ class ObjectAccess
 	public function ShowsHistory(): bool
 	{
 		return true;
+	}
+
+	/**
+	 * The attributes a read of the object may report, or null for every one
+	 * the attribute rights let through. On the console, null.
+	 *
+	 * @return array<int, string>|null
+	 */
+	public function VisibleFields(DBObject $oObject): ?array
+	{
+		return null;
+	}
+
+	/**
+	 * Who created the object and who last changed it, from the change log,
+	 * or null when this caller is not given it.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public function Attribution(DBObject $oObject): ?array
+	{
+		return ObjectHistory::AttributionFor($oObject);
+	}
+
+	/**
+	 * The write gates on the object, with 'depends' resolved where the
+	 * object settles it ({@see ObjectSerializer::RightsOn()}).
+	 *
+	 * @param DBObjectSet|null $oInstanceSet Reused across gates of one object.
+	 *
+	 * @return array<string, string>
+	 */
+	public function RightsOn(DBObject $oObject, ?DBObjectSet &$oInstanceSet): array
+	{
+		return ObjectSerializer::RightsOn($oObject, get_class($oObject), null, $oInstanceSet);
+	}
+
+	/**
+	 * The stimuli the object's current state accepts, and whether the caller
+	 * may apply each ({@see ObjectSerializer::StimuliOn()}); null for a class
+	 * with no lifecycle.
+	 *
+	 * @param array<string, string> $aRights      {@see RightsOn()} for this object.
+	 * @param DBObjectSet|null      $oInstanceSet Reused across gates of one object.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public function StimuliOn(DBObject $oObject, array $aRights, ?DBObjectSet &$oInstanceSet): ?array
+	{
+		return ObjectSerializer::StimuliOn($oObject, get_class($oObject), $aRights, $oInstanceSet);
+	}
+
+	/**
+	 * What a read adds in this mode to the object's own fields. Nothing on the
+	 * console, where an attachment is an object of its own.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function Extras(DBObject $oObject): array
+	{
+		return [];
 	}
 }

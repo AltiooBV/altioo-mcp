@@ -77,7 +77,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema. */
-	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_portal_describe says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_portal_describe or core_portal_get report.';
+	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_portal_describe says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_portal_describe or core_object_get report.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
