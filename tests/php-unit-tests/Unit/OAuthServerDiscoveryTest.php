@@ -89,6 +89,49 @@ class OAuthServerDiscoveryTest extends TestCase
 	}
 
 	/**
+	 * The module stays optional in the code too (doc/adr/0003): nothing here
+	 * imports its namespace, so no file fails to load without it, and its
+	 * API is asked only behind class_exists() - so an instance without it,
+	 * or with a version before that API, serves exactly as before: the
+	 * default resource advertised, and no token held to a URL.
+	 */
+	public function testItsApiIsOnlyCalledWhenItIsThere(): void
+	{
+		foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::ROOT.'/src', \FilesystemIterator::SKIP_DOTS)) as $oFile) {
+			if ($oFile->getExtension() === 'php') {
+				$this->assertDoesNotMatchRegularExpression(
+					'#^use\s+\\\\?Altioo\\\\iTop\\\\Extension\\\\OAuthServer\\\\#m',
+					(string)file_get_contents($oFile->getPathname()),
+					$oFile->getFilename().' imports altioo-oauth-server, which is optional'
+				);
+			}
+		}
+
+		$sMetadata = $this->bodyOf(MCPHelper::class, 'GetProtectedResourceMetadataUrl');
+		$this->assertStringContainsString('class_exists(self::OAUTH_RESOURCE_METADATA_CLASS)', $sMetadata);
+		$this->assertLessThan(
+			strpos($sMetadata, "call_user_func([self::OAUTH_RESOURCE_METADATA_CLASS"),
+			strpos($sMetadata, 'class_exists(self::OAUTH_RESOURCE_METADATA_CLASS)'),
+			'the metadata API is called before asking whether it exists'
+		);
+
+		$sAudience = $this->bodyOf(\Altioo\iTop\Extension\MCP\Controller\MCPController::class, 'rejectATokenGrantedForAnotherUrl');
+		$this->assertMatchesRegularExpression(
+			'/^[^{]*\{\s*\$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return;\s*\}/',
+			$sAudience,
+			'the audience check does anything before asking whether the module is there'
+		);
+	}
+
+	private function bodyOf(string $sClass, string $sMethod): string
+	{
+		$oMethod = new ReflectionMethod($sClass, $sMethod);
+		$aLines = file((string)$oMethod->getFileName());
+
+		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+	}
+
+	/**
 	 * iTop has no optional dependency. The declaration is an OR with a module
 	 * every installation has, so it is always satisfied and only orders the
 	 * OAuth server first when it is being installed. A bare entry would make
