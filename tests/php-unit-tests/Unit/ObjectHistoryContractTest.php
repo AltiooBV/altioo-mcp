@@ -230,11 +230,13 @@ class ObjectHistoryContractTest extends TestCase
 
 	/**
 	 * Cheap enough to be unconditional for one object; the search tools ask,
-	 * because there the number of these reads is the page size.
+	 * because there the number of these reads is the page size. Asked of the
+	 * mode's access, which on the console is the change log's attribution.
 	 */
 	public function testASingleObjectReadIsAttributedWithoutBeingAsked(): void
 	{
-		$this->assertStringContainsString('AttributionFor', $this->bodyOf(ObjectGet::class, 'execute'));
+		$this->assertStringContainsString('$oAccess->Attribution($oObject)', $this->bodyOf(ObjectGet::class, 'execute'));
+		$this->assertStringContainsString('ObjectHistory::AttributionFor($oObject)', $this->bodyOf(ObjectAccess::class, 'Attribution'));
 
 		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
 			$aSchema = (new $sTool())->getInputSchema();

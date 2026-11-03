@@ -13,11 +13,11 @@ use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
@@ -198,7 +198,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testThePortalToolsAreServedInPortalModeOnlyAndGradedByTheToken(): void
 	{
-		$aReads = ['core_portal_list' => new PortalList(), 'core_portal_get' => new PortalGet()];
+		$aReads = ['core_portal_list' => new PortalList()];
 		$aWrites = [
 			'core_portal_create'         => new PortalCreate(),
 			'core_portal_update'         => new PortalUpdate(),
@@ -436,7 +436,7 @@ class PortalModeTest extends TestCase
 		$sEverything = ServerInstructions::PortalText('itop-portal');
 		$sReadOnly = ServerInstructions::PortalText('itop-portal', AccessPolicy::FromScopes(['MCP-read']));
 
-		foreach (['core_portal_list', 'core_portal_get', 'core_portal_create', 'simulate=false'] as $sNeedle) {
+		foreach (['core_portal_list', 'core_object_get', 'core_portal_create', 'simulate=false'] as $sNeedle) {
 			$this->assertStringContainsString($sNeedle, $sEverything);
 		}
 		$this->assertStringContainsString('core_portal_list', $sReadOnly);
@@ -468,6 +468,28 @@ class PortalModeTest extends TestCase
 		$iPolicy = strpos($sBody, 'AccessPolicyOfCurrentRequest');
 		$this->assertLessThan($iAdmit, $iLogin);
 		$this->assertLessThan($iPolicy, $iAdmit);
+	}
+
+	/**
+	 * One read for both modes: served to a console user and a portal one, and
+	 * to a read-only token in either. In portal mode it names no console tool.
+	 */
+	public function testTheReadIsServedInBothModes(): void
+	{
+		$oTool = new ObjectGetTool();
+		$sConsoleDescription = (string)$oTool->getDescription();
+
+		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
+
+		PortalMode::Remember('itop-portal');
+
+		$this->assertTrue(PortalMode::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
+		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
+		$this->assertFalse($this->isHidden($oTool, 'core_object_get', [], AccessPolicy::FromScopes(['MCP-read'])));
+		$this->assertStringContainsString('core_object_search_by_class', $sConsoleDescription);
+		$this->assertStringNotContainsString('core_object_search', (string)$oTool->getDescription(), 'a console search is named to a portal user');
+		$this->assertStringContainsString('core_portal_list', (string)$oTool->getDescription());
+		$this->assertStringContainsString('ObjectAccess::Current()', self::bodyOf(ObjectGetTool::class, 'execute'));
 	}
 
 	/**

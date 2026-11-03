@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -158,7 +158,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 
 	public function testAResolvedRequestCanBeClosed(): void
 	{
-		$aStimuli = array_column(ToolOutput::Decode(PortalGet::execute('UserRequest', $this->iResolved))['actions']['stimuli'], 'code');
+		$aStimuli = array_column(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iResolved))['object']['stimuli']['available'] ?? [], 'stimulus');
 		if (!in_array('ev_close', $aStimuli, true)) {
 			$this->markTestSkipped('This portal does not offer ev_close on a resolved request.');
 		}

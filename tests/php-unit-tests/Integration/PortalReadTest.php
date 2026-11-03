@@ -10,9 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -161,29 +161,31 @@ class PortalReadTest extends ItopDataTestCaseAlias
 
 	public function testTheUsersRequestIsReadThroughItsViewForm(): void
 	{
-		$aResult = ToolOutput::Decode(PortalGet::execute('UserRequest', $this->iOwn));
+		$aResult = ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn));
 
 		$this->assertSame('UserRequest', $aResult['object']['class']);
 		$this->assertArrayHasKey('title', $aResult['object']);
 		$this->assertArrayHasKey('public_log', $aResult['object']);
 		$this->assertArrayNotHasKey('private_log', $aResult['object'], 'the agents\' log is not on the portal\'s form');
 		$this->assertIsArray($aResult['object']['attachments']);
+		$this->assertArrayNotHasKey('audit', $aResult['object'], 'the attribution reads the change log, which this portal does not show');
+		$this->assertSame('no', $aResult['object']['rights']['delete'], 'the portal deletes nothing');
 	}
 
 	/** Through a parent class, as a row of a Ticket list names it. */
 	public function testAParentClassResolvesToTheObjectsOwn(): void
 	{
-		$this->assertSame('UserRequest', ToolOutput::Decode(PortalGet::execute('Ticket', $this->iOwn))['class']);
+		$this->assertSame('UserRequest', ToolOutput::Decode(ObjectGet::execute('Ticket', $this->iOwn))['class']);
 	}
 
 	public function testANewRequestCanBeRepliedToButNotClosed(): void
 	{
-		$aActions = ToolOutput::Decode(PortalGet::execute('UserRequest', $this->iOwn))['actions'];
+		$aObject = ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn))['object'];
 
-		$this->assertTrue($aActions['editable']);
-		$this->assertContains('public_log', $aActions['settable_fields']);
-		$this->assertNotContains('caller_id', $aActions['settable_fields'], 'the caller is read-only in the portal');
-		$this->assertNotContains('ev_close', array_column($aActions['stimuli'], 'code'), 'a new request is not closed from the portal');
+		$this->assertSame('yes', $aObject['rights']['modify']);
+		$this->assertContains('public_log', $aObject['settable_fields']);
+		$this->assertNotContains('caller_id', $aObject['settable_fields'], 'the caller is read-only in the portal');
+		$this->assertNotContains('ev_close', array_column($aObject['stimuli']['available'] ?? [], 'stimulus'), 'a new request is not closed from the portal');
 	}
 
 	/**
@@ -204,19 +206,19 @@ class PortalReadTest extends ItopDataTestCaseAlias
 	public function testTheChangeLogIsNotReadAsAnObject(): void
 	{
 		$this->expectException(ToolCallException::class);
-		PortalGet::execute('CMDBChangeOp', 1);
+		ObjectGet::execute('CMDBChangeOp', 1);
 	}
 
 	/** Not found, whether it exists or not: the portal answers both alike. */
 	public function testAnotherCallersRequestIsNotFound(): void
 	{
 		try {
-			PortalGet::execute('UserRequest', $this->iOther);
+			ObjectGet::execute('UserRequest', $this->iOther);
 			$this->fail('another caller\'s request was read');
 		} catch (ToolCallException $oMissing) {
 		}
 		try {
-			PortalGet::execute('UserRequest', 999999999);
+			ObjectGet::execute('UserRequest', 999999999);
 			$this->fail('a request that does not exist was read');
 		} catch (ToolCallException $oAbsent) {
 		}
