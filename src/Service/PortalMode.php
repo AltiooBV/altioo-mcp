@@ -68,17 +68,31 @@ final class PortalMode
 	private static ?string $sCurrent = null;
 
 	/**
+	 * The parameter of the endpoint URL that names a portal, as iTop's own
+	 * portal URLs name it (doc/adr/0007-the-connection-names-its-portal.md).
+	 */
+	public const PARAMETER = 'portal_id';
+
+	/**
 	 * The portal to serve a user in, or null when there is none.
 	 *
-	 * @param array<int, string> $aAllowed Portal ids the user is allowed into, in rank order, as iTop lists them.
-	 * @param array<int, string> $aServed  mcp_portals.
+	 * The one the connection names, when it names one: the user must be
+	 * allowed into it and mcp_portals must serve it, and when either fails
+	 * there is none - never another portal in its place, which would be rules
+	 * the person did not choose. Otherwise the first by rank.
+	 *
+	 * @param array<int, string> $aAllowed   Portal ids the user is allowed into, in rank order, as iTop lists them.
+	 * @param array<int, string> $aServed    mcp_portals.
+	 * @param string|null        $sRequested The portal the connection names, or null.
 	 */
-	public static function Choose(array $aAllowed, array $aServed): ?string
+	public static function Choose(array $aAllowed, array $aServed, ?string $sRequested = null): ?string
 	{
 		$bAny = in_array(self::ANY_PORTAL, $aServed, true);
 
 		foreach ($aAllowed as $sPortal) {
-			if ($sPortal !== self::CONSOLE && ($bAny || in_array($sPortal, $aServed, true))) {
+			if ($sPortal !== self::CONSOLE
+				&& ($bAny || in_array($sPortal, $aServed, true))
+				&& ($sRequested === null || $sPortal === $sRequested)) {
 				return $sPortal;
 			}
 		}

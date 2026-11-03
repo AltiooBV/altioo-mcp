@@ -24,6 +24,7 @@ use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
 use CMDBObject;
+use DBObject;
 use ExecutionKPI;
 use LoginWebPage;
 use Throwable;
@@ -108,6 +109,10 @@ final class MCPController
 			// protects: a token login whose token this module did not see
 			// would be graded as no token at all.
 			self::rejectATokenLoginNotAccountedFor();
+			// While the token is still at hand: one a person granted for
+			// another URL of this endpoint - another portal's - is not theirs
+			// to use here (doc/adr/0007).
+			self::rejectATokenGrantedForAnotherUrl();
 
 			// The scopes are the last thing that needs the raw credential, so
 			// they are read here and the credential dropped immediately after.
@@ -407,7 +412,8 @@ final class MCPController
 			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
 		}
 
-		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed);
+		$sRequested = MCPHelper::RequestedPortal();
+		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed, $sRequested);
 		$iMaxDays = MCPHelper::GetPortalTokenMaxDays();
 		$sRefusal = PortalMode::RefusalOf(
 			$sPortal,
@@ -421,6 +427,19 @@ final class MCPController
 			PortalMode::Remember($sPortal);
 
 			return LoginWebPage::EXIT_CODE_OK;
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL && $sRequested !== null) {
+			// The id is the request's text: quoted only when it is shaped like one.
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: the URL names %s, which '%s' may not enter or '%s' does not serve (%s).",
+				$sRequested === '' ? 'a malformed '.PortalMode::PARAMETER : "the portal '{$sRequested}'",
+				UserRights::GetUser(),
+				MCPHelper::MODULE_SETTING_PORTALS,
+				implode(', ', $aServed)
+			));
+
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
 		}
 
 		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL) {
@@ -478,6 +497,53 @@ final class MCPController
 
 		// REFUSED_NO_MCP_PROFILE, answered and logged as it is for a console user.
 		return LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
+	}
+
+	/**
+	 * Refuses a token a person granted, through altioo-oauth-server, for
+	 * another URL of this endpoint: with one OAuth resource per portal, a
+	 * consent for one portal does not reach another (doc/adr/0007). A token
+	 * no connection owns - one an administrator minted - has no such URL and
+	 * is held by the other rules only; so is every token when that module is
+	 * not installed.
+	 *
+	 * @throws MCPAuthException When the token was granted for another URL; the
+	 *     401's challenge sends the client to consent for this one.
+	 */
+	private static function rejectATokenGrantedForAnotherUrl(): void
+	{
+		$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;
+		if (!class_exists($sAudienceClass)) {
+			return;
+		}
+
+		$oToken = TokenScopes::OfCurrentRequestObject();
+		if (!$oToken instanceof DBObject || !is_a($oToken, 'PersonalToken')) {
+			return;
+		}
+
+		$oAudience = call_user_func([$sAudienceClass, 'Of'], (int)$oToken->GetKey());
+		if (!is_object($oAudience) || !method_exists($oAudience, 'IsFor')) {
+			return;
+		}
+
+		$sCalled = MCPHelper::CalledEndpointUrl();
+		if ($oAudience->IsFor($sCalled) === true) {
+			return;
+		}
+
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: '%s' presented a token granted for the OAuth resource '%s', not for the URL called ('%s').",
+			UserRights::GetUser(),
+			property_exists($oAudience, 'sResourceKey') ? (string)$oAudience->sResourceKey : '?',
+			$sCalled
+		));
+
+		throw new MCPAuthException(
+			'This token was granted for another URL of this endpoint, such as another portal\'s. '
+			.'Connect again from this URL to consent to it.',
+			MCPResult::UNAUTHORIZED
+		);
 	}
 
 	/**
@@ -1052,6 +1118,10 @@ final class MCPController
 			$oLog->Set('message', self::auditLabel($oResult->message, null) ?? '');
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
+			// Which portal served the call: empty for the console's. A portal
+			// user allowed into two is served one per connection, and the row
+			// is where an administrator learns which (doc/adr/0007).
+			$oLog->Set('portal', PortalMode::Current() ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
 			// Whether this was a rehearsal. The parameters themselves are kept
 			// only at debug level, so without this a later review of this log -
