@@ -116,8 +116,8 @@ entry itself, not left to be inferred from it.
     (doc/adr/0006): it reads one object by the scopes, with its view form's fields for the object
     as it is, its attachments (listed, not served), its rights narrowed to the portal's, the
     stimuli the portal offers and the fields its edit form leaves settable.
-  - `core_portal_update`, `core_portal_apply_stimulus` and `core_portal_create` write as the
-    portal would, dry runs by default: a field must be settable in the portal's form and pass
+  - `core_object_update` and `core_object_apply_stimulus` are served in portal mode too, and
+    `core_portal_create` creates; all three write as the portal would, dry runs by default: a field must be settable in the portal's form and pass
     the console's rules too; what a value points at must be readable; a stimulus must be offered
     on the object in its state; a creation starts from a row of its action's list, takes the
     class the action names or its factory method chooses, and is preset by the action's rules,
