@@ -79,7 +79,9 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	public function getInputSchema(): ?array
 	{
 		if (PortalMode::Current() !== null) {
-			return ['type' => 'object', 'properties' => new \stdClass(), 'required' => []];
+			// No arguments: the overview is the whole portal, and narrowing it
+			// is the datamodel's business, not the portal's.
+			return ['type' => 'object', 'required' => []];
 		}
 
 		return [
