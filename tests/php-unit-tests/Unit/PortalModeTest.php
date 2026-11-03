@@ -15,11 +15,9 @@ use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
@@ -201,8 +199,6 @@ class PortalModeTest extends TestCase
 		$aReads = ['core_portal_list' => new PortalList()];
 		$aWrites = [
 			'core_portal_create'         => new PortalCreate(),
-			'core_portal_update'         => new PortalUpdate(),
-			'core_portal_apply_stimulus' => new PortalApplyStimulus(),
 		];
 
 		foreach ($aReads + $aWrites as $sName => $oTool) {
@@ -468,6 +464,37 @@ class PortalModeTest extends TestCase
 		$iPolicy = strpos($sBody, 'AccessPolicyOfCurrentRequest');
 		$this->assertLessThan($iAdmit, $iLogin);
 		$this->assertLessThan($iPolicy, $iAdmit);
+	}
+
+	/**
+	 * The update and the stimulus serve both modes too, and in portal mode
+	 * ask the mode's refusals - the portal's write scope, form, lifecycle and
+	 * reach - besides UserRights. A read-only token is not served them.
+	 */
+	public function testTheWritesAreServedInBothModesWithThePortalsRefusals(): void
+	{
+		$aWrites = [
+			'core_object_update'         => new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate(),
+			'core_object_apply_stimulus' => new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus(),
+		];
+		$aNeedles = [
+			'core_object_update'         => ['$oAccess->Hides($class, $id)', '$oAccess->RefusalToChange($oObject)', '$oAccess->RefusalToSet($oObject, $fields)', '$oAccess->RefusalsForReach('],
+			'core_object_apply_stimulus' => ['$oAccess->Hides($class, $id)', '$oAccess->RefusalToChange($oObject)', '$oAccess->RefusalToApply($oObject, $stimulus)', '$oAccess->RefusalToSet($oObject, $fields, $stimulus)', '$oAccess->RefusalsForReach('],
+		];
+
+		PortalMode::Remember('itop-portal');
+
+		foreach ($aWrites as $sName => $oTool) {
+			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
+			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
+			$this->assertTrue($this->isHidden($oTool, $sName, [], AccessPolicy::FromScopes(['MCP-read'])), "{$sName} writes, and a read-only token may not");
+			$this->assertStringNotContainsString('core_class_schema', (string)$oTool->getDescription(), 'a console tool is named to a portal user');
+
+			$sBody = self::bodyOf(get_class($oTool), 'execute');
+			foreach ($aNeedles[$sName] as $sNeedle) {
+				$this->assertStringContainsString($sNeedle, $sBody, "{$sName} skips {$sNeedle}");
+			}
+		}
 	}
 
 	/**

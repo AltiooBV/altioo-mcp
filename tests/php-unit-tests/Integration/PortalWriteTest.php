@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalApplyStimulus;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalUpdate;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
@@ -119,12 +119,12 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 
 	public function testAReplyIsRehearsedFirstAndThenAddedToThePublicLog(): void
 	{
-		$aDry = ToolOutput::Decode(PortalUpdate::execute('UserRequest', $this->iNew, ['public_log' => 'Any news?']));
+		$aDry = ToolOutput::Decode(ObjectUpdate::execute('UserRequest', $this->iNew, ['public_log' => 'Any news?']));
 		$this->assertTrue($aDry['simulated']);
 		$this->assertArrayHasKey('public_log', (array)$aDry['changes']);
 		$this->assertSame(0, $this->entriesIn($this->iNew), 'a dry run wrote');
 
-		ToolOutput::Decode(PortalUpdate::execute('UserRequest', $this->iNew, ['public_log' => 'Any news?'], false));
+		ToolOutput::Decode(ObjectUpdate::execute('UserRequest', $this->iNew, ['public_log' => 'Any news?'], false));
 		$this->assertSame(1, $this->entriesIn($this->iNew));
 	}
 
@@ -133,27 +133,27 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	{
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessage('caller_id');
-		PortalUpdate::execute('UserRequest', $this->iNew, ['caller_id' => $this->iContact]);
+		ObjectUpdate::execute('UserRequest', $this->iNew, ['caller_id' => $this->iContact]);
 	}
 
 	public function testTheStateIsNotAFieldOfTheForm(): void
 	{
 		$this->expectException(ToolCallException::class);
-		PortalUpdate::execute('UserRequest', $this->iNew, ['status' => 'closed']);
+		ObjectUpdate::execute('UserRequest', $this->iNew, ['status' => 'closed']);
 	}
 
 	public function testAnotherCallersRequestCannotBeChanged(): void
 	{
 		$this->expectException(ToolCallException::class);
-		$this->expectExceptionMessage('shows you no');
-		PortalUpdate::execute('UserRequest', $this->iOther, ['public_log' => 'Hello']);
+		$this->expectExceptionMessage('not found');
+		ObjectUpdate::execute('UserRequest', $this->iOther, ['public_log' => 'Hello']);
 	}
 
 	public function testANewRequestCannotBeClosed(): void
 	{
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessage('does not offer');
-		PortalApplyStimulus::execute('UserRequest', $this->iNew, 'ev_close');
+		ObjectApplyStimulus::execute('UserRequest', $this->iNew, 'ev_close');
 	}
 
 	public function testAResolvedRequestCanBeClosed(): void
@@ -164,12 +164,12 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		}
 
 		$aFields = MetaModel::IsValidAttCode('UserRequest', 'user_satisfaction') ? ['user_satisfaction' => '1'] : [];
-		$aDry = ToolOutput::Decode(PortalApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields));
+		$aDry = ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields));
 		$this->assertTrue($aDry['simulated']);
 		$this->assertSame('closed', $aDry['would_move_to']);
 		$this->assertSame('resolved', MetaModel::GetObject('UserRequest', $this->iResolved)->Get('status'), 'a dry run moved it');
 
-		ToolOutput::Decode(PortalApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields, false));
+		ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields, false));
 		$this->assertSame('closed', MetaModel::GetObject('UserRequest', $this->iResolved, true, true)->Get('status'));
 	}
 
