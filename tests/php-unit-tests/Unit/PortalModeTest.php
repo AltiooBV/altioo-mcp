@@ -582,6 +582,23 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * A tool's schema and description can depend on the mode, and the
+	 * registry validates them when it registers the tool: a portal-mode
+	 * schema the registry refuses stops every tool from being served there.
+	 */
+	public function testEveryToolRegistersInPortalMode(): void
+	{
+		PortalMode::Remember('itop-portal');
+		MCPRegistry::Clear();
+		try {
+			CoreExtensions::RegisterServiceProvider();
+			$this->assertNotEmpty(MCPRegistry::GetTools());
+		} finally {
+			MCPRegistry::Clear();
+		}
+	}
+
+	/**
 	 * ADR 0006: a capability is one tool in both modes. A portal copy of a
 	 * console tool is the duplication it ended, so the only tool of the
 	 * portal's own is its lists, which have no console counterpart.
