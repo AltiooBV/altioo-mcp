@@ -13,7 +13,6 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
@@ -123,8 +122,6 @@ class DerivedAttributeReportingContractTest extends TestCase
 			'core_object_apply_stimulus' => [ObjectApplyStimulus::class, 'execute'],
 			'core_object_bulk_create'    => [ObjectBulkCreate::class, 'createOne'],
 			'core_object_bulk_update'    => [ObjectBulkUpdate::class, 'execute'],
-			// The portal's own create plans through the method it shares.
-			'core_portal_create'         => [PortalCreate::class, 'plan'],
 		];
 	}
 

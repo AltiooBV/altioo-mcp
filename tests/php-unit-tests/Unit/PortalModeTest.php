@@ -15,7 +15,6 @@ use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
@@ -191,32 +190,19 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * The portal's lists, reads and writes are served there and only there,
-	 * like the description; a token that may only read is served the reads.
+	 * The portal's lists are served there and only there, like the
+	 * description, and to a token that may only read.
 	 */
-	public function testThePortalToolsAreServedInPortalModeOnlyAndGradedByTheToken(): void
+	public function testThePortalsListsAreServedInPortalModeOnly(): void
 	{
-		$aReads = ['core_portal_list' => new PortalList()];
-		$aWrites = [
-			'core_portal_create'         => new PortalCreate(),
-		];
-
-		foreach ($aReads + $aWrites as $sName => $oTool) {
-			$this->assertTrue($this->isHidden($oTool, $sName), "{$sName} is not for a console user");
-			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} enforces the portal's rules and says so");
-		}
+		$oTool = new PortalList();
+		$this->assertTrue($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list is not for a console user');
+		$this->assertTrue(PortalMode::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
 
 		PortalMode::Remember('itop-portal');
 
-		$oReadOnly = AccessPolicy::FromScopes(['MCP-read']);
-		foreach ($aReads as $sName => $oTool) {
-			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
-			$this->assertFalse($this->isHidden($oTool, $sName, [], $oReadOnly), "{$sName} to a read-only token");
-		}
-		foreach ($aWrites as $sName => $oTool) {
-			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
-			$this->assertTrue($this->isHidden($oTool, $sName, [], $oReadOnly), "{$sName} writes, and a read-only token may not");
-		}
+		$this->assertFalse($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list to a portal user');
+		$this->assertFalse($this->isHidden($oTool, 'core_portal_list', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_portal_list to a read-only token');
 	}
 
 	/** Who the user is, in both modes: it is their own identity and asks the portal for nothing. */
@@ -432,11 +418,11 @@ class PortalModeTest extends TestCase
 		$sEverything = ServerInstructions::PortalText('itop-portal');
 		$sReadOnly = ServerInstructions::PortalText('itop-portal', AccessPolicy::FromScopes(['MCP-read']));
 
-		foreach (['core_portal_list', 'core_object_get', 'core_portal_create', 'simulate=false'] as $sNeedle) {
+		foreach (['core_portal_list', 'core_object_get', 'core_object_create', 'simulate=false'] as $sNeedle) {
 			$this->assertStringContainsString($sNeedle, $sEverything);
 		}
 		$this->assertStringContainsString('core_portal_list', $sReadOnly);
-		$this->assertStringNotContainsString('core_portal_create', $sReadOnly, 'a reader is told how to write');
+		$this->assertStringNotContainsString('core_object_create', $sReadOnly, 'a reader is told how to write');
 		$this->assertStringNotContainsString('simulate', $sReadOnly);
 		$this->assertStringNotContainsString('not served through this connection yet', $sEverything, 'the text still says nothing is served');
 	}
@@ -476,10 +462,12 @@ class PortalModeTest extends TestCase
 		$aWrites = [
 			'core_object_update'         => new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate(),
 			'core_object_apply_stimulus' => new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus(),
+			'core_object_create'         => new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate(),
 		];
 		$aNeedles = [
 			'core_object_update'         => ['$oAccess->Hides($class, $id)', '$oAccess->RefusalToChange($oObject)', '$oAccess->RefusalToSet($oObject, $fields)', '$oAccess->RefusalsForReach('],
 			'core_object_apply_stimulus' => ['$oAccess->Hides($class, $id)', '$oAccess->RefusalToChange($oObject)', '$oAccess->RefusalToApply($oObject, $stimulus)', '$oAccess->RefusalToSet($oObject, $fields, $stimulus)', '$oAccess->RefusalsForReach('],
+			'core_object_create'         => ['$oAccess->Prepared(trim($action), $from_id)', '$oAccess->RefusalToSet($oObject, $fields)', '$oAccess->RefusalsForReach('],
 		];
 
 		PortalMode::Remember('itop-portal');
@@ -555,7 +543,6 @@ class PortalModeTest extends TestCase
 			self::bodyOf(PortalPolicy::class, 'WriteSet'),
 			'WriteSet() must refuse the change log before anything else'
 		);
-		$this->assertStringContainsString('IsReserved', self::bodyOf(\Altioo\iTop\Extension\MCP\Core\Tools\AbstractPortalTool::class, 'readable'));
 		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'execute'));
 
 		$sHistory = self::bodyOf(ObjectHistoryTool::class, 'execute');

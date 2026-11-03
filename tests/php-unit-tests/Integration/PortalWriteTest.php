@@ -9,9 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalDescribe;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -181,7 +181,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	{
 		$sAction = $this->subcategoryAction();
 
-		$aDry = ToolOutput::Decode(PortalCreate::execute($sAction, ['title' => 'My screen is dark', 'description' => 'Since this morning.'], $this->iSubcategory));
+		$aDry = ToolOutput::Decode(ObjectCreate::execute(fields: ['title' => 'My screen is dark', 'description' => 'Since this morning.'], action: $sAction, from_id: $this->iSubcategory));
 		$this->assertTrue($aDry['simulated']);
 		$this->assertNull($aDry['id']);
 		$aChanges = (array)$aDry['changes'];
@@ -190,7 +190,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->assertSame($this->iService, (int)$aChanges['service_id'], 'the service is the subcategory\'s');
 		$this->assertSame($this->iSubcategory, (int)$aChanges['servicesubcategory_id']);
 
-		$aDone = ToolOutput::Decode(PortalCreate::execute($sAction, ['title' => 'My screen is dark', 'description' => 'Since this morning.'], $this->iSubcategory, false));
+		$aDone = ToolOutput::Decode(ObjectCreate::execute(fields: ['title' => 'My screen is dark', 'description' => 'Since this morning.'], simulate: false, action: $sAction, from_id: $this->iSubcategory));
 		$this->assertFalse($aDone['simulated']);
 		$this->assertContains((int)$aDone['id'], array_map(
 			static fn (array $aRow): int => (int)$aRow['id'],
@@ -203,7 +203,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	{
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessage('caller_id');
-		PortalCreate::execute($this->subcategoryAction(), ['title' => 'x', 'description' => 'y', 'caller_id' => 1], $this->iSubcategory);
+		ObjectCreate::execute(fields: ['title' => 'x', 'description' => 'y', 'caller_id' => 1], action: $this->subcategoryAction(), from_id: $this->iSubcategory);
 	}
 
 	/** A subcategory under another organisation's contract is not one the user could have picked. */
@@ -211,13 +211,13 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	{
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessage('from_id');
-		PortalCreate::execute($this->subcategoryAction(), ['title' => 'x', 'description' => 'y'], $this->iForeignSubcategory);
+		ObjectCreate::execute(fields: ['title' => 'x', 'description' => 'y'], action: $this->subcategoryAction(), from_id: $this->iForeignSubcategory);
 	}
 
 	public function testAnActionThePortalDoesNotOfferIsRefusedWithoutEcho(): void
 	{
 		try {
-			PortalCreate::execute("x' OR 1=1 --", ['title' => 'x']);
+			ObjectCreate::execute(fields: ['title' => 'x'], action: "x' OR 1=1 --");
 			$this->fail('an unknown action ran');
 		} catch (ToolCallException $oException) {
 			$this->assertStringNotContainsString('OR 1=1', $oException->getMessage());
@@ -265,7 +265,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$iFrom = $this->firstLeaf(array_reverse($aPath), 0);
 		$this->assertNotNull($iFrom, 'the hierarchy leads down to a row the action starts from');
 
-		$aDry = ToolOutput::Decode(PortalCreate::execute((string)$aAction['action'], ['title' => 'Found my way', 'description' => 'From the description alone.'], $iFrom));
+		$aDry = ToolOutput::Decode(ObjectCreate::execute(fields: ['title' => 'Found my way', 'description' => 'From the description alone.'], action: (string)$aAction['action'], from_id: $iFrom));
 		$this->assertTrue($aDry['valid']);
 	}
 
