@@ -281,21 +281,21 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	public function testEveryWriteAnswersInsideItsOutputSchema(): void
 	{
 		$aReply = ['class' => 'UserRequest', 'id' => $this->iNew, 'fields' => ['public_log' => 'Any news?']];
-		$this->assertConforms('core_portal_update', $aReply + ['simulate' => true]);
-		$this->assertConforms('core_portal_update', $aReply + ['simulate' => false]);
+		$this->assertConforms('core_object_update', $aReply + ['simulate' => true]);
+		$this->assertConforms('core_object_update', $aReply + ['simulate' => false]);
 
 		$aRequest = ['action' => $this->subcategoryAction(), 'fields' => ['title' => 'My screen is dark', 'description' => 'Since this morning.'], 'from_id' => $this->iSubcategory];
-		$this->assertConforms('core_portal_create', $aRequest + ['simulate' => true]);
-		$this->assertConforms('core_portal_create', $aRequest + ['simulate' => false]);
+		$this->assertConforms('core_object_create', $aRequest + ['simulate' => true]);
+		$this->assertConforms('core_object_create', $aRequest + ['simulate' => false]);
 
-		$aStimuli = array_column(ToolOutput::Decode(PortalGet::execute('UserRequest', $this->iResolved))['actions']['stimuli'], 'code');
+		$aStimuli = array_column(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iResolved))['object']['stimuli']['available'] ?? [], 'stimulus');
 		if (!in_array('ev_close', $aStimuli, true)) {
 			$this->markTestSkipped('This portal does not offer ev_close on a resolved request.');
 		}
 		$aFields = MetaModel::IsValidAttCode('UserRequest', 'user_satisfaction') ? ['user_satisfaction' => '1'] : [];
 		$aClose = ['class' => 'UserRequest', 'id' => $this->iResolved, 'stimulus' => 'ev_close', 'fields' => (object)$aFields];
-		$this->assertConforms('core_portal_apply_stimulus', $aClose + ['simulate' => true]);
-		$this->assertConforms('core_portal_apply_stimulus', $aClose + ['simulate' => false]);
+		$this->assertConforms('core_object_apply_stimulus', $aClose + ['simulate' => true]);
+		$this->assertConforms('core_object_apply_stimulus', $aClose + ['simulate' => false]);
 	}
 
 	/**

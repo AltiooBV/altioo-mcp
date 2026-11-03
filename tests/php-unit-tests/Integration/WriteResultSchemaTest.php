@@ -61,16 +61,6 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 		'core_set_obsolete_data',
 	];
 
-	/**
-	 * The portal's writes, called in PortalWriteTest: they need a portal user,
-	 * their requests and a service catalogue in place, which that test builds.
-	 */
-	private const COVERED_IN_PORTAL_WRITE_TEST = [
-		'core_portal_create',
-		'core_portal_update',
-		'core_portal_apply_stimulus',
-	];
-
 	private int $iOrg;
 
 	protected function setUp(): void
@@ -92,7 +82,7 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 		}
 
 		sort($aDeclaring);
-		$aCovered = array_merge(self::COVERED, self::COVERED_IN_PORTAL_WRITE_TEST);
+		$aCovered = self::COVERED;
 		sort($aCovered);
 
 		$this->assertSame($aCovered, $aDeclaring, 'a tool declares an output schema no test calls on the wire, or a list here names one that is gone');

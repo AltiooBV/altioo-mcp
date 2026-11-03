@@ -78,6 +78,20 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
+		// In portal mode the answer also names the create action that ran.
+		if (PortalMode::Current() !== null) {
+			return WritePlan::OutcomeSchema([
+				'action'     => [
+					'type'        => 'string',
+					'description' => 'The create action used.',
+				],
+				'after'      => WritePlan::AfterSchemaProperty(),
+				'changes'    => WritePlan::ChangesSchemaProperty('Every attribute the new object is given, the ones the portal\'s rules preset included.'),
+				'overridden' => WritePlan::OverriddenSchemaProperty(),
+				'defaulted'  => WritePlan::DefaultedSchemaProperty(),
+			]);
+		}
+
 		return WritePlan::OutcomeSchema([
 			'after' => WritePlan::AfterSchemaProperty(),
 			'changes'    => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
