@@ -1,9 +1,10 @@
 # Architecture — system context
 
 Level 1 of the [C4 model](https://c4model.com/): who and what Altioo MCP deals with, and nothing
-inside it. It is for whoever has to place the module in an estate — an approver, an operator, a
-contributor seeing it for the first time — before reading the README's reasons for that shape,
-in [Why it runs inside iTop](../README.md#why-it-runs-inside-itop).
+inside it, then one dynamic view of how a client comes to hold its credential. It is for
+whoever has to place the module in an estate — an approver, an operator, a contributor seeing it
+for the first time — before reading the README's reasons for that shape, in
+[Why it runs inside iTop](../README.md#why-it-runs-inside-itop).
 
 The diagram names things and points; it does not describe them. Every fact behind a box or an
 arrow has its home in a file linked under it, and that file wins when the two disagree.
@@ -29,7 +30,7 @@ C4Context
   Rel(client, provider, "Sends what it read")
   Rel(client, mcp, "MCP over HTTPS, ?portal_id= names a portal", "token or Basic, portal: personal token")
   Rel(client, oauth, "Authorizes, per portal", "found through the 401")
-  Rel(mcp, oauth, "Asks what a token was granted for", "planned, ADR 0007")
+  Rel(mcp, oauth, "Asks what a token was granted for", "in-process, ADR 0007")
   Rel(client, proxy, "Authenticates")
   Rel(proxy, mcp, "Forwards an identity it controls")
   Rel(packs, mcp, "Register elements into")
@@ -50,7 +51,7 @@ C4Context
 - **No arrow from Altioo MCP leaves the iTop instance.** Its only outgoing arrows end at iTop
   core and at altioo-oauth-server, both inside the boundary, because the module opens no
   outbound connection ([README, Data flow and privacy](../README.md#data-flow-and-privacy)). The
-  one to the OAuth server is planned, not built
+  one to the OAuth server is a PHP call within the same request, not a network one
   ([ADR 0007](adr/0007-the-connection-names-its-portal.md)). The arrow to the model provider
   starts at the client, and what crosses it is out of this module's reach
   ([SECURITY.md, Threat model](../SECURITY.md#threat-model), "What is out of scope").
@@ -73,6 +74,71 @@ C4Context
 - **Tool packs run inside the same boundary, with the caller's rights**
   ([doc/extending.md](extending.md)).
 
+## How a client gets its credential
+
+A dynamic view of the same elements: the two ways a client comes to hold an iTop token, and what
+every call then goes through. OAuth is optional. Without altioo-oauth-server the first way is the
+only one, and nothing else changes.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor P as Person
+  actor A as Administrator
+  participant C as MCP client
+  box iTop instance
+    participant M as Altioo MCP
+    participant O as altioo-oauth-server
+    participant I as iTop core
+  end
+
+  alt Token given directly
+    alt Console user
+      P->>I: My Account, Personal tokens: MCP scope
+    else Portal user
+      A->>I: User management, Personal tokens: MCP scope and an expiry
+    end
+    I-->>P: Token value, shown once
+    P->>C: Configures it as a header, Bearer or Auth-Token
+  else OAuth, altioo-oauth-server installed
+    C->>M: MCP request with no credential
+    M-->>C: 401, resource_metadata for the URL called
+    C->>O: Metadata, then registration
+    C->>O: Authorization request with PKCE
+    O->>P: iTop sign-in, then consent naming the portal when the URL does
+    P->>O: Consents
+    O->>I: Creates a personal token, one hour, refreshed
+    O-->>C: Access and refresh token
+  end
+
+  C->>M: MCP request, Bearer token
+  M->>I: Login through authent-token, held to the MCP scopes
+  M->>I: Portal mode admission, then the profile gate
+  opt altioo-oauth-server installed and the token came from a grant
+    M->>O: Granted for the URL called? (in-process)
+  end
+  M->>I: Each tool: UserRights, or in portal mode the portal's rules
+  alt Accepted
+    M-->>C: Result
+  else Token refused
+    M-->>C: 401 invalid_token, so an OAuth client refreshes or connects again
+  end
+```
+
+- **The direct way needs no OAuth at all.** Basic authentication works the same way for a
+  console user, and a proxy in `external` mode replaces both ways with its own; portal mode
+  accepts only a personal token. All of it is in
+  [README, Granting access](../README.md#granting-access), and the headers and the `401` in
+  [README, Endpoint](../README.md#endpoint).
+- **The OAuth way is the OAuth server's to describe** — discovery, registration, consent, token
+  lifetime and refresh are in altioo-oauth-server's README,
+  [How a connection is made](https://github.com/AltiooBV/altioo-oauth-server#how-a-connection-is-made). What
+  this module adds is the `401` that starts it and, with
+  [ADR 0007](adr/0007-the-connection-names-its-portal.md), the check that a granted token is
+  used only at the URL it was granted for.
+- **Every call passes the same gates whichever way the token came**; the list and their order
+  are in [doc/security-summary.md](security-summary.md), "The gates a call passes".
+
 ## What it leaves out
 
 - **Containers and components** — the endpoint, the policy layer, the element registry. The code
@@ -87,7 +153,7 @@ C4Context
 ## Keeping it true
 
 Change the diagram in the same pull request as the change that alters it: a new kind of client
-credential, a new optional dependency, a new actor, or the planned check landing. **An arrow
+credential, a new optional dependency, a new actor, a new check a call passes. **An arrow
 from Altioo MCP that leaves the iTop boundary is the one change that would make the README's
 privacy section false**, so a pull request adding one fixes both, and says so in its
 description.
