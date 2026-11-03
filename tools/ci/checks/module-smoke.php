@@ -92,3 +92,82 @@ if ($sSecret === null || $sSecret === '') {
 
 fwrite(STDERR, "token created for $sAdmin with scope MCP\n");
 $sHttpSmokeToken = $sSecret;
+
+// A portal-only user for the portal smoke (checks/portal-smoke.sh): a contact with a colleague in
+// the same organisation, a request each, and a personal token for the first that carries the most
+// a portal token can ask for. MCP-delete is there on purpose - README says portal mode serves the
+// same whatever the grade, and a token that asked for less would make "core_object_delete is not
+// served" a fact about the token and not about the mode. The expiry is inside
+// mcp_portal_token_max_days, since a portal token that never expires is refused (README, "Giving
+// a portal user a token"). Only if the stock portal and request management are installed: the
+// instance is the iTop's own default choices, so they are, and a branch without them skips this
+// with a line saying so rather than failing.
+if (!MetaModel::IsValidClass('UserRequest') || !class_exists('Combodo\iTop\Portal\Brick\BrickCollection')) {
+	echo "  --   no stock portal or request management: the portal smoke has nothing to run against\n";
+	return;
+}
+
+$oOrgSet = new DBObjectSet(DBSearch::FromOQL('SELECT Organization'));
+$iOrg = (int)$oOrgSet->Fetch()->GetKey();
+$sSuffix = bin2hex(random_bytes(3));
+
+$aPeople = [];
+foreach (['Portal', 'Colleague'] as $sFirst) {
+	$oPerson = MetaModel::NewObject('Person');
+	$oPerson->Set('first_name', $sFirst);
+	$oPerson->Set('name', 'Smoke'.$sSuffix);
+	$oPerson->Set('org_id', $iOrg);
+	$oPerson->Set('email', strtolower($sFirst).'.'.$sSuffix.'@example.com');
+	$oPerson->DBInsert();
+	$aPeople[$sFirst] = (int)$oPerson->GetKey();
+}
+
+$aRequests = [];
+foreach (['Portal' => 'own', 'Colleague' => 'other'] as $sFirst => $sWhich) {
+	$oRequest = MetaModel::NewObject('UserRequest');
+	$oRequest->Set('org_id', $iOrg);
+	$oRequest->Set('caller_id', $aPeople[$sFirst]);
+	$oRequest->Set('title', 'portal-smoke '.$sWhich.' '.$sSuffix);
+	$oRequest->Set('description', 'Made by tools/ci/checks/module-smoke.php');
+	$oRequest->DBInsert();
+	$aRequests[$sWhich] = (int)$oRequest->GetKey();
+}
+
+$sPortalLogin = 'portal-smoke-'.$sSuffix;
+$oUserProfiles = DBObjectSet::FromScratch('URP_UserProfile');
+foreach (['Portal user', 'MCP Services User'] as $sProfile) {
+	$oProfile = MetaModel::GetObjectFromOQL('SELECT URP_Profiles WHERE name = :name', ['name' => $sProfile]);
+	$oLink = MetaModel::NewObject('URP_UserProfile');
+	$oLink->Set('profileid', $oProfile->GetKey());
+	$oLink->Set('reason', 'CI portal smoke');
+	$oUserProfiles->AddObject($oLink);
+}
+$oPortalUser = MetaModel::NewObject('UserLocal');
+$oPortalUser->Set('login', $sPortalLogin);
+$oPortalUser->Set('password', 'Portal-Smoke-'.$sSuffix.'!');
+$oPortalUser->Set('contactid', $aPeople['Portal']);
+$oPortalUser->Set('language', 'EN US');
+$oPortalUser->Set('profile_list', $oUserProfiles);
+$oPortalUser->DBInsert();
+
+// A personal token logs in only if its owner holds a profile authent-token lists (README). The
+// HTTP server reads the config file afresh on every request, so it is written, not set in memory.
+$oConfig = MetaModel::GetConfig();
+$oConfig->SetModuleSetting('authent-token', 'personal_tokens_allowed_profiles', ['Administrator', 'MCP Services User']);
+$oConfig->WriteToFile();
+
+$oPortalToken = MetaModel::NewObject('PersonalToken');
+$oPortalToken->Set('user_id', $oPortalUser->GetKey());
+$oPortalToken->Set('application', 'ci-portal-smoke');
+$oPortalToken->Set('scope', 'MCP-write,MCP-delete');
+$oPortalToken->Set('expiration_date', date('Y-m-d H:i:s', strtotime('+30 days')));
+$oPortalToken->DBInsert();
+
+$sPortalSecret = $oPortalToken->GetToken();
+if ($sPortalSecret === null || $sPortalSecret === '') {
+	fwrite(STDERR, "the portal token was created but carries no readable secret\n");
+	exit(1);
+}
+
+// Prefix-keyed like http-smoke-token, for the same reason: taken by its prefix, never as the last line.
+echo 'portal-smoke: '.$sPortalSecret.':'.$aRequests['own'].':'.$aRequests['other']."\n";

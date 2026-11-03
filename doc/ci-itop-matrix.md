@@ -21,7 +21,7 @@ on a schedule, which matters more: nothing in this repository changes when Combo
 | iTop's `ModuleIntegration` suite ([`module-validation.sh`](../tools/ci/module-validation.sh)) | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
 | The module's own `Integration` suite | Everything that needs a live `MetaModel`, `UserRights` and a database |
 | `itop-smoke.php` | Module settings, the audit class, the token scopes and the profile — the pieces the security model is made of, checked in the instance rather than in a fixture |
-| `http-smoke.sh` | The endpoint over the wire: refused without a credential — asked of both the compiled URL and the one under `extensions/`, since a boot that fatals answers `500` there and `401` nowhere — then `initialize` and `tools/list` with a credential |
+| `http-smoke.sh` | The endpoint over the wire: refused without a credential — asked of both the compiled URL and the one under `extensions/`, since a boot that fatals answers `500` there and `401` nowhere — then `initialize` and `tools/list` with a credential; then, through `checks/portal-smoke.sh`, a portal-only user with a personal token — served the portal's tools and none of the console's (`core_object_delete` absent though the token holds `MCP-delete`), no request but their own, nothing the portal's form leaves read-only, and a `portal_id` they may not enter refused rather than replaced. Its fixture is made by `checks/module-smoke.php` and handed over as `PORTAL_SMOKE` |
 
 Everything after the first two rows exists because **"the setup succeeded" and "the module was
 installed" are different statements**. A setup that cannot select an extension logs one line

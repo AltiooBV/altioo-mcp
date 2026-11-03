@@ -10,7 +10,7 @@
 # without a credential, one accepts a call with one, and answers a real MCP
 # method.
 #
-# Usage: ITOP_DIR=... ITOP_TOKEN=... tools/ci/http-smoke.sh
+# Usage: ITOP_DIR=... ITOP_TOKEN=... [PORTAL_SMOKE=...] tools/ci/http-smoke.sh
 #
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -136,5 +136,15 @@ RPC_ERROR=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo is
 COUNT=$(php -r '$a=json_decode(file_get_contents($argv[1]),true); echo count($a["result"]["tools"] ?? []);' "$BODY")
 echo "   $COUNT tools advertised"
 [ "$COUNT" -gt 0 ] || { echo "--- response ---"; cat "$BODY"; fail "tools/list advertised no tools"; }
+
+# Portal mode, when the post-setup checks made a portal-only user to try it with. Run last: the
+# portal fixture is the checks' own, and a failure there says nothing about the rest above.
+PORTAL_CHECKS="$MODULE_SRC/tools/ci/checks/portal-smoke.sh"
+if [ -n "${PORTAL_SMOKE:-}" ] && [ -f "$PORTAL_CHECKS" ]; then
+  # shellcheck source=checks/portal-smoke.sh
+  . "$PORTAL_CHECKS"
+else
+  echo "5. no PORTAL_SMOKE: portal mode is not exercised over HTTP"
+fi
 
 echo "both endpoints are reachable, refuse anonymous callers, and the published one serves tools"

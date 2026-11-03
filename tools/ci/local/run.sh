@@ -304,12 +304,13 @@ step "the module's integration suite" module_integration
 
 smoke() {
 	cd "$sDest" || return 1
-	local sOut sToken
+	local sOut sToken sPortal
 	sOut=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER") || { printf '%s\n' "$sOut"; return 1; }
-	printf '%s\n' "$sOut" | grep -v '^http-smoke-token: '
+	printf '%s\n' "$sOut" | grep -v -e '^http-smoke-token: ' -e '^portal-smoke: '
 	sToken=$(printf '%s\n' "$sOut" | sed -n 's/^http-smoke-token: //p')
+	sPortal=$(printf '%s\n' "$sOut" | sed -n 's/^portal-smoke: //p')
 	[ -n "$sToken" ] || { echo "checks/module-smoke.php minted no token for the HTTP smoke"; return 1; }
-	ITOP_TOKEN="$sToken" tools/ci/http-smoke.sh
+	ITOP_TOKEN="$sToken" PORTAL_SMOKE="$sPortal" tools/ci/http-smoke.sh
 }
 step "datamodel checks, then the endpoint over HTTP" smoke
 

@@ -246,10 +246,12 @@ jobs:
             exit 1
           fi
           token=$(printf '%s\n' "$out" | sed -n 's/^http-smoke-token: //p')
+          portal=$(printf '%s\n' "$out" | sed -n 's/^portal-smoke: //p')
           if [ -n "$token" ]; then echo "::add-mask::$token"; fi
-          printf '%s\n' "$out" | grep -v '^http-smoke-token: ' || true
+          if [ -n "$portal" ]; then echo "::add-mask::${portal%%:*}"; fi
+          printf '%s\n' "$out" | grep -v -e '^http-smoke-token: ' -e '^portal-smoke: ' || true
           [ -n "$token" ] || { echo "::error::checks/module-smoke.php minted no token for the HTTP smoke"; exit 1; }
-          ITOP_TOKEN="$token" tools/ci/http-smoke.sh
+          ITOP_TOKEN="$token" PORTAL_SMOKE="$portal" tools/ci/http-smoke.sh
 
       # The setup log is the only account of why a module was not selected, and
       # it is on a machine that is about to be deleted.
