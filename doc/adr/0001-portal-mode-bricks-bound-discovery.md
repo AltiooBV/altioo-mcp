@@ -42,3 +42,5 @@ Enforced by: `PortalPolicyTest::testAClassWithAReadScopeThatNoBrickReachesIsNotO
 (integration suite), on describe since 1.2.0: in the stock portal the user's own organisation
 has a read scope and no brick, and is neither listed nor described. The step that adds search
 by class extends it to search.
+`PortalPolicyTest::testAnObjectInScopeIsReadByIdWithoutABrickAndNoOtherIs` holds the other half: the same
+class is read by id inside the scope, and another organisation and an absent id are refused alike.

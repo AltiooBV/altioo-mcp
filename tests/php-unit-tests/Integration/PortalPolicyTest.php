@@ -110,6 +110,29 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * The other half of the test above, and of ADR 0001: a class no brick
+	 * offers is still read by id where the scope covers it, so a ticket's
+	 * organisation resolves. Only the user's own: another organisation, and an
+	 * id that does not exist, are refused alike, so the answer is no oracle.
+	 */
+	public function testAnObjectInScopeIsReadByIdWithoutABrickAndNoOtherIs(): void
+	{
+		UserRights::Logoff();
+		$iOther = (int)$this->CreateOrganization('PortalPolicyTest other '.bin2hex(random_bytes(4)))->GetKey();
+		UserRights::Login($this->sLogin);
+
+		$oPolicy = PortalPolicy::ForCurrentRequest();
+		$this->assertSame([], $oPolicy->ReachedBy('Organization'), 'no brick reaches Organization');
+
+		$oOwn = $oPolicy->Readable('Organization', $this->iOrg);
+		$this->assertNotNull($oOwn, 'the user\'s own organisation resolves by scope');
+		$this->assertSame($this->iOrg, (int)$oOwn->GetKey());
+
+		$this->assertNull($oPolicy->Readable('Organization', $iOther), 'another organisation is out of scope');
+		$this->assertNull($oPolicy->Readable('Organization', $iOther + 100000), 'an absent id answers the same');
+	}
+
+	/**
 	 * A class a granted brick reaches that the scopes give the user none of -
 	 * Change or Problem under the stock ticket bricks, or Incident where its
 	 * module is installed without a scope. Found rather than named, because
