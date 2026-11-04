@@ -24,6 +24,18 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **A write in portal mode reported attributes the portal's view form hides.** `changes` (and so
+  `defaulted`) of `core_object_create`, `core_object_update` and `core_object_apply_stimulus`
+  listed every attribute the write set or iTop filled in — presets, defaults, computed and
+  lifecycle values — whether or not the portal shows it. They now list the attributes the view
+  form shows and the ones the caller sent.
+- **An external key accepted an OQL query or criteria object in portal mode.** The query ran
+  under the account's rights, wider than the portal's scope, and the answer ("matches no X",
+  "matches N objects") told the caller about objects the portal does not show. In portal mode
+  an external key takes an id only, checked against the portal's scope.
+- **`core_object_history` and `core_object_get_document` returned other people's text unmarked.**
+  History now carries `untrusted_text` when it has entries, and a document is returned after a
+  notice that its contents are data. The `core_current_user` entry below is unrelated.
 - **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
   block was worked out again after the token had been dropped, found none, and listed `read`,
   `write` and `delete` for a read-only token even though `tools/list` served only the read tools.
@@ -175,6 +187,12 @@ entry itself, not left to be inferred from it.
 
 ### Changed
 
+- **Portal mode is on after an upgrade.** `mcp_portals` defaults to `array('*')`, so a portal-only
+  user who holds the `MCP Services User` profile (or another in `mcp_allowed_profiles`), has a
+  token and is linked to a contact is served what their portal offers, where they were refused
+  before. Nobody gains the console. **To keep it off, set `'mcp_portals' => array()` before
+  upgrading** (or `array('itop-portal')` to serve one portal only); see the README's
+  [Granting access](README.md#granting-access).
 - **A refused class is quoted back only when it is shaped like a class name.** Every tool that
   refuses a class, and `core_portal_describe`, repeated the value it was given, so
   `UserRequest' OR 1=1 --` came back in the error and went into the audit row's message

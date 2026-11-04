@@ -557,7 +557,7 @@ reference.
 
 | Threat | What answers it |
 |---|---|
-| Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | Dry run by default on every write; `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; `UserRights` on every object and attribute |
+| Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; the `MCP-advisory` scope, which forces every write to a dry run; `UserRights` on every object and attribute. The dry run a write tool starts with is a default the caller can turn off with `simulate: false` in the same call, so it protects only a client that obeys it, and is not an answer to injection by itself |
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
