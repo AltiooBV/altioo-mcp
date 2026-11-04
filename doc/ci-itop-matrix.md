@@ -202,7 +202,9 @@ an experiment is how an untested branch becomes a published claim. That order is
 naming the branch is what makes it testable, and reverting is what keeps it from being a promise.
 
 It runs the same `tools/ci/` scripts the workflow steps run; the only thing it adds is the
-machine. The image is built once per PHP version and per version of its Dockerfile — the tag
+machine. That machine is not root, as an Actions runner is not: its containers run as your uid
+(1001 if you invoke it as root), so a step that writes a file iTop left read-only fails here too.
+`docker exec -u 0` is the way in for anything that does need root. The image is built once per PHP version and per version of its Dockerfile — the tag
 carries a hash of it, so a tool added there is never missing from an image built before — and
 the installed iTop is kept in a Docker volume, which is what makes `integration` a two-second loop rather than a ten-minute one — the
 loop an integration test actually gets written in. `matrix` records a verdict per step and

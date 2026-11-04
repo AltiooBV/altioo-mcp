@@ -73,6 +73,8 @@ say() { printf '\n\033[1m>>> %s\033[0m\n' "$*"; }
 dockerfile_hash() { sha256sum "$REPO/tools/ci/local/Dockerfile" | cut -c1-12; }
 image_for() { echo "altioo-ci:php$1-$(dockerfile_hash)"; }
 runner_name() { echo "itop-ci-php${1//./}"; }
+# Whoever called this, unless that is root - then the uid Actions runs its jobs as.
+runner_user() { if [ "$(id -u)" = 0 ]; then echo 1001:1001; else echo "$(id -u):$(id -g)"; fi; }
 
 need_image() {
 	local sPhp=$1 sImage
@@ -177,13 +179,31 @@ need_runner() {
 	need_net
 	need_volume
 	docker rm -f "$sName" >/dev/null 2>&1 || true
-	docker run -d --name "$sName" --network "$NET" \
+	# Not root, because Actions is not: root ignores file modes, so a step that
+	# writes the 0440 config-itop.php passed here and died on GitHub. The caller's
+	# uid rather than the runner's 1001, because /src is theirs: git tracks no read
+	# bits, and a working-copy file another uid cannot read is not in a checkout.
+	local sUser
+	sUser=$(runner_user)
+	docker run -d --name "$sName" --network "$NET" --user "$sUser" \
 		-v "$VOLUME":/work \
 		-v "$REPO":/src:ro \
 		-e DB_HOST="$DB_CONTAINER" -e DB_PORT=3306 -e DB_USER=root -e DB_PWD="$DB_PWD" \
 		-e ITOP_ADMIN_USER="$ITOP_ADMIN_USER" -e ITOP_ADMIN_PWD="$ITOP_ADMIN_PWD" \
-		-e HOME=/work/.home \
+		-e HOME=/work/.runner-home \
 		"$(image_for "$sPhp")" sleep infinity >/dev/null
+
+	# A named volume starts out root's, and what a root runner left in it stays
+	# root's. This repository's paths for this PHP only, by name: the volume is
+	# shared with other extensions' runners, which may still be root and keep their
+	# own. That is also why the home is not their /work/.home.
+	docker exec -u 0 "$sName" sh -c '
+		mkdir -p /work/.runner-home
+		chown "$1" /work
+		chown -R "$1" /work/.runner-home
+		find /work -mindepth 1 -maxdepth 1 \( -name "itop-*-$2" -o -name "module-$2" -o -name "unit-$2" \
+			-o -name matrix.sh -o -name unit.sh -o -name integration.sh \) -exec chown -R "$1" {} +
+	' sh "$sUser" "$sPhp"
 }
 
 cmd_build() {

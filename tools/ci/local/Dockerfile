@@ -99,5 +99,7 @@ RUN if php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);'; then \
       echo "progpilot 1.3.0 needs PHP >= 8.3; this image is $(php -r 'echo PHP_VERSION;') and does not carry it"; \
     fi
 
-ENV COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/work/.composer
+# No USER here: run.sh starts the container as the caller's uid, which an image
+# cannot know. COMPOSER_HOME is under the home it makes writable for that uid.
+ENV COMPOSER_HOME=/work/.runner-home/.composer
 WORKDIR /work
