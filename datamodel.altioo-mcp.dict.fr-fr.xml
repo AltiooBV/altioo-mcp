@@ -15,6 +15,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:mcp_method+" _delta="force"><![CDATA[Méthode JSON-RPC portée par la requête, par exemple tools/call]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:mcp_name" _delta="force"><![CDATA[Outil / ressource]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+" _delta="force"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:portal" _delta="force"><![CDATA[Portail]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:portal+" _delta="force"><![CDATA[Le portail qui a servi l'appel ; vide pour un appel de la console]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status" _delta="force"><![CDATA[Statut]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status+" _delta="force"><![CDATA[Résultat de l'appel]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success" _delta="force"><![CDATA[Succès]]></entry>
@@ -113,6 +115,7 @@
         <entry id="MCP:tool:core_object_get_document:title" _delta="force"><![CDATA[Obtenir un document]]></entry>
         <entry id="MCP:tool:core_object_get_related:title" _delta="force"><![CDATA[Obtenir les objets liés]]></entry>
         <entry id="MCP:tool:core_object_history:title" _delta="force"><![CDATA[Historique d'un objet]]></entry>
+        <entry id="MCP:tool:core_portal_list:title" _delta="force"><![CDATA[Lister depuis le portail]]></entry>
         <entry id="MCP:tool:core_object_search_by_class:title" _delta="force"><![CDATA[Rechercher des objets par classe]]></entry>
         <entry id="MCP:tool:core_object_search_by_oql:title" _delta="force"><![CDATA[Rechercher des objets en OQL]]></entry>
         <entry id="MCP:tool:core_object_update:title" _delta="force"><![CDATA[Modifier un objet]]></entry>

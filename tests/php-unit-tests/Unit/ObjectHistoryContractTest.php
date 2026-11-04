@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -158,28 +159,40 @@ class ObjectHistoryContractTest extends TestCase
 
 	/**
 	 * The object gate, applied with the object set rather than the class alone
-	 * - a silo answers per object, and this is where that answer is asked for.
+	 * - a silo answers per object. The tool asks it of the mode's access, which
+	 * asks it of UserRights in both modes.
 	 */
 	public function testTheObjectMustBeOneTheCallerCouldHaveRead(): void
 	{
-		$sBody = $this->bodyOf(HistoryTool::class, 'execute');
+		$sTool = $this->bodyOf(HistoryTool::class, 'execute');
+		$sGate = $this->bodyOf(ObjectAccess::class, 'Readable');
 
-		$this->assertStringContainsString('UR_ACTION_READ, $oSet', $sBody);
-		$this->assertStringContainsString('not found.', $sBody, 'a refused object must not be distinguishable from an absent one');
+		$this->assertStringContainsString('$oAccess->Readable($class, $id)', $sTool);
+		$this->assertStringContainsString('not found.', $sTool, 'a refused object must not be distinguishable from an absent one');
+		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sClass, $iId))', $sGate);
+		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sFinalClass, $iId))', $sGate,
+			'reading the parent was taken to say something about the leaf');
 	}
 
 	/**
 	 * Today's rights, not the ones in force when the row was written. A
 	 * revoked permission that stayed readable through the log would be a
 	 * revocation in name only.
+	 *
+	 * Asked in the one place both ways in read the log, so that the portal's
+	 * narrower read cannot be the one that forgets it.
 	 */
 	public function testEveryRowIsFilteredByTodaysAttributeRights(): void
 	{
 		$this->assertStringContainsString(
 			'MayReadAttribute',
-			$this->bodyOf(ObjectHistory::class, 'For'),
+			$this->bodyOf(ObjectHistory::class, 'read'),
 			'rows naming an attribute are served without asking whether this caller may read it'
 		);
+		foreach (['For', 'Within'] as $sWay) {
+			$this->assertStringContainsString('self::read(', $this->bodyOf(ObjectHistory::class, $sWay),
+				"{$sWay}() reads the log without the gates read() applies");
+		}
 	}
 
 	/**
@@ -192,7 +205,7 @@ class ObjectHistoryContractTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'get_class($oObject)',
-			$this->bodyOf(ObjectHistory::class, 'For')
+			$this->bodyOf(ObjectHistory::class, 'read')
 		);
 	}
 
@@ -217,11 +230,13 @@ class ObjectHistoryContractTest extends TestCase
 
 	/**
 	 * Cheap enough to be unconditional for one object; the search tools ask,
-	 * because there the number of these reads is the page size.
+	 * because there the number of these reads is the page size. Asked of the
+	 * mode's access, which on the console is the change log's attribution.
 	 */
 	public function testASingleObjectReadIsAttributedWithoutBeingAsked(): void
 	{
-		$this->assertStringContainsString('AttributionFor', $this->bodyOf(ObjectGet::class, 'execute'));
+		$this->assertStringContainsString('$oAccess->Attribution($oObject)', $this->bodyOf(ObjectGet::class, 'execute'));
+		$this->assertStringContainsString('ObjectHistory::AttributionFor($oObject)', $this->bodyOf(ObjectAccess::class, 'Attribution'));
 
 		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
 			$aSchema = (new $sTool())->getInputSchema();

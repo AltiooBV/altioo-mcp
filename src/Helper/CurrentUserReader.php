@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use MetaModel;
 use UserRights;
 use utils;
@@ -53,6 +54,13 @@ final class CurrentUserReader
 			'access' => MCPService::ServedAccess(),
 			'current_contact_friendlyname' => self::ContactFriendlyname(),
 			'current_contact_id' => UserRights::GetContactId(),
+			// The organisation the contact belongs to: in the portal, whose
+			// requests a portal power user sees, and what a new request is
+			// filed under.
+			'current_organization' => self::ContactOrganization(),
+			// The portal this connection is served through, or null for the
+			// console.
+			'current_portal' => PortalMode::Current(),
 			'current_id' => UserRights::GetUserId(),
 			'current_user_language' => UserRights::GetUserLanguage(),
 			// Not a lock, and not a feature flag. iTop's archive mode is a
@@ -108,13 +116,51 @@ final class CurrentUserReader
 	 */
 	private static function ContactFriendlyname(): ?string
 	{
+		$oContact = self::Contact();
+
+		return $oContact === null ? null : $oContact->GetRawName();
+	}
+
+	/**
+	 * The organisation of the caller's own contact, or null when it has none.
+	 *
+	 * Read off the contact {@see ContactFriendlyname()} reads, for the same
+	 * reason and on the same terms: the caller's own, whatever their silo.
+	 *
+	 * @return array{id: int, friendlyname: string|null}|null
+	 * @since 1.2.0
+	 */
+	private static function ContactOrganization(): ?array
+	{
+		$oContact = self::Contact();
+		if ($oContact === null || !MetaModel::IsValidAttCode(get_class($oContact), 'org_id')) {
+			return null;
+		}
+
+		$iOrg = (int) $oContact->Get('org_id');
+		if ($iOrg === 0) {
+			return null;
+		}
+
+		return [
+			'id'           => $iOrg,
+			'friendlyname' => MetaModel::IsValidAttCode(get_class($oContact), 'org_id_friendlyname')
+				? (string) $oContact->Get('org_id_friendlyname')
+				: null,
+		];
+	}
+
+	/**
+	 * The caller's own contact, by the id on their own user record, read
+	 * whatever their silo; null when there is none or it is gone.
+	 */
+	private static function Contact(): ?\DBObject
+	{
 		$iContactId = (int) UserRights::GetContactId();
 		if ($iContactId === 0) {
 			return null;
 		}
 
-		$oContact = MetaModel::GetObject('Contact', $iContactId, false, true);
-
-		return $oContact === null ? null : $oContact->GetRawName();
+		return MetaModel::GetObject('Contact', $iContactId, false, true);
 	}
 }

@@ -134,6 +134,19 @@
           <max_size>255</max_size>
         </field>
 
+        <!--
+          The portal that served the call, empty for a console call. A portal
+          user allowed into several is served one per connection, named by
+          the endpoint URL's portal_id (doc/adr/0007).
+        -->
+        <field id="portal" xsi:type="AttributeString">
+          <sql>portal</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>64</max_size>
+        </field>
+
         <!-- Execution status: success, error -->
         <field id="status" xsi:type="AttributeEnum">
           <sql>status</sql>
@@ -308,6 +321,9 @@
                     <item id="personal_token_id">
                       <rank>40</rank>
                     </item>
+                    <item id="portal">
+                      <rank>50</rank>
+                    </item>
                   </items>
                 </item>
                 <item id="fieldset:AltiooEventMCPService:what">
@@ -451,6 +467,34 @@
       -->
       <mcp_disabled_tools type="array"/>
       <!--
+        Portal mode: the ids of the iTop portals (itop-portal, or a custom
+        portal's id) whose users this endpoint may serve although they have no
+        console. "*", the default, means every portal: a portal-only user is
+        then let in by the profiles they hold, like a console user. Empty turns
+        portal mode off, and a portal-only user is refused, as before it
+        existed. Such a user is served only with a token that expires (see
+        mcp_portal_token_max_days), linked to a contact, holding a profile in
+        mcp_allowed_profiles, and in the first portal by rank that is both
+        allowed to them and served here. Portal mode serves the console's
+        tools with the portal's configuration added to their checks, and the
+        portal's lists; it needs iTop 3.2.2 or later: see the README,
+        "Portal-only users".
+      -->
+      <mcp_portals type="array">
+        <item>*</item>
+      </mcp_portals>
+      <!--
+        Portal mode: how many days ahead a token may still be valid to be
+        accepted. A token that never expires is refused, and so is one that
+        expires later than this from now. A portal user's token may be one
+        they minted themselves - every personal token needs its owner's
+        profile in authent-token's personal_tokens_allowed_profiles, and that
+        lets their portal session create tokens with any expiry - so this is
+        what keeps a forgotten one from being a key to their portal for good.
+        90 is altioo-oauth-server's own max_grant_days. 0 lifts the bound.
+      -->
+      <mcp_portal_token_max_days type="integer">90</mcp_portal_token_max_days>
+      <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",
         "relations", "documents", "history" and "server", each with a matching
@@ -572,7 +616,9 @@
         advertised in the WWW-Authenticate header of a 401, which is how a
         client that only offers a "Connect" button finds the authorization
         server. This module implements no OAuth itself. Empty means the
-        challenge carries no such pointer.
+        challenge carries no such pointer - unless altioo-oauth-server is
+        installed, in which case the document it serves for this endpoint is
+        advertised. A value here always wins.
       -->
       <mcp_protected_resource_metadata type="string"></mcp_protected_resource_metadata>
       <!--

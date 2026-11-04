@@ -7,7 +7,9 @@
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Dict;
+use MetaModel;
 use Throwable;
 use utils;
 
@@ -145,6 +147,21 @@ class MCPHelper
 	const MODULE_SETTING_RESOURCE_METADATA = 'mcp_protected_resource_metadata';
 
 	/**
+	 * A class altioo-oauth-server's datamodel defines, read as "it is
+	 * installed": a compiled class is what an installed module leaves, and
+	 * asking costs no query.
+	 */
+	private const OAUTH_SERVER_CLASS = 'AltiooOAuthClient';
+
+	/**
+	 * That module's API for the metadata of the resource at a URL, and for
+	 * which resource a token was granted for. Named as strings, never
+	 * imported: the module is optional (doc/adr/0003).
+	 */
+	private const OAUTH_RESOURCE_METADATA_CLASS = '\\Altioo\\iTop\\Extension\\OAuthServer\\ResourceMetadata';
+	public const OAUTH_TOKEN_AUDIENCE_CLASS = '\\Altioo\\iTop\\Extension\\OAuthServer\\TokenAudience';
+
+	/**
 	 * Toolsets served by this instance. Empty means every toolset, which is
 	 * the right default for an instance that has not been asked to narrow.
 	 */
@@ -159,15 +176,6 @@ class MCPHelper
 	/** Shorthand for mcp_capabilities = array('read'). */
 	const MODULE_SETTING_READ_ONLY = 'mcp_read_only';
 
-	/**
-	 * Whether the classes that decide what a caller may do can be written
-	 * through this endpoint at all - tokens, users, and iTop's rights model.
-	 *
-	 * Off, and off is the answer for almost every instance. On, the caller may
-	 * administer other people's access and still never its own: see
-	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
-	 * self-guard is unconditional and this setting cannot reach it.
-	 */
 	/**
 	 * What a tool says when it will not act on the class it was given.
 	 *
@@ -188,13 +196,51 @@ class MCPHelper
 	 * Used by every site that refuses a class, so the two cases cannot drift
 	 * into different wording by being written twice.
 	 *
+	 * A value that could not be a class name is not repeated back: see
+	 * {@see self::LooksLikeClassName()}.
+	 *
 	 * @since 1.0.0
 	 */
 	public static function UnreadableClassRefusal(string $sClass): string
 	{
+		if (!self::LooksLikeClassName($sClass)) {
+			return "That is not a class name: a class name is letters, digits and underscores, and does not start with a digit. "
+				."core_class_list shows the classes you can reach.";
+		}
+
+		if (PortalMode::Current() !== null) {
+			return "Unknown class '{$sClass}': the portal does not offer it. core_class_list shows the classes it offers you.";
+		}
+
 		return "Unknown class '{$sClass}': either this datamodel has no such class, or this account may not read it. "
 			."iTop reserves its rights model, its credentials and its automation for administrators, so if you named one "
 			."of those, no profile you can be granted changes this. core_class_list shows the classes you can reach.";
+	}
+
+	/**
+	 * Whether a value has the shape of an iTop class name, so that a refusal
+	 * may quote it.
+	 *
+	 * Refusals quote the class they were given, because a client that typed
+	 * `UserReqest` fixes it from the quote. A value that is no class name at
+	 * all - `UserRequest' OR 1=1 --`, markup, a paragraph - gains nothing from
+	 * being repeated, and repeating it puts the caller's text, verbatim, into
+	 * the audit row's message and whatever shows it next. iTop escapes that
+	 * row in the console; this keeps the text out rather than relying on every
+	 * later reader of it to escape.
+	 *
+	 * The shape is the PHP class name a compiled iTop class becomes, in ASCII:
+	 * a non-ASCII class name, legal in PHP and unseen in any datamodel, is
+	 * refused without the quote and is still refused. It is checked on the
+	 * value alone, never against the datamodel, so it tells a caller nothing
+	 * about which classes exist. `\z` rather than `$`, which would let a
+	 * trailing newline through.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function LooksLikeClassName(string $sValue): bool
+	{
+		return preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $sValue) === 1;
 	}
 
 	/**
@@ -229,6 +275,15 @@ class MCPHelper
 	 */
 	const MAP_TYPE = ['object', 'array'];
 
+	/**
+	 * Whether the classes that decide what a caller may do can be written
+	 * through this endpoint at all - tokens, users, and iTop's rights model.
+	 *
+	 * Off, and off is the answer for almost every instance. On, the caller may
+	 * administer other people's access and still never its own: see
+	 * {@see \Altioo\iTop\Extension\MCP\Helper\AccessGrants}, where the
+	 * self-guard is unconditional and this setting cannot reach it.
+	 */
 	const MODULE_SETTING_ALLOW_ACCESS_ADMINISTRATION = 'mcp_allow_access_administration';
 
 	/**
@@ -283,6 +338,25 @@ class MCPHelper
 	 * Sits next to mcp_allowed_profiles as the other operator-side gate.
 	 */
 	const MODULE_SETTING_DISABLED = 'mcp_disabled_tools';
+
+	/**
+	 * Portals whose users are served in portal mode. Empty means portal mode
+	 * is off, which is the default and the behaviour of every earlier version.
+	 *
+	 * @since 1.2.0
+	 */
+	const MODULE_SETTING_PORTALS = 'mcp_portals';
+
+	/**
+	 * How many days ahead a token may still be valid to be accepted in portal
+	 * mode. 0 lifts the bound.
+	 *
+	 * @since 1.2.0
+	 */
+	const MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS = 'mcp_portal_token_max_days';
+
+	/** The default bound: altioo-oauth-server's own max_grant_days. */
+	const DEFAULT_PORTAL_TOKEN_MAX_DAYS = 90;
 
 	/**
 	 * Pseudo-method stamped on the audit row when the request died before its
@@ -564,11 +638,22 @@ class MCPHelper
 		return sprintf(
 			'%s. The cause is server-side and was not something this call could have avoided; '
 			.'it is recorded in the iTop log, and on this call\'s own audit row, under reference %s. '
-			.'Report that reference rather than retrying: an account that may read AltiooEventMCPService '
-			.'can find the row with core_object_search_by_class on error_ref.',
+			.'Report that reference rather than retrying%s',
 			$sWhat,
-			$sReference
+			$sReference,
+			self::auditLookup()
 		);
+	}
+
+	/**
+	 * Where the audit row is found, for the account that may read it. A portal
+	 * user may not, and the tools that would find it are not served to them.
+	 */
+	private static function auditLookup(): string
+	{
+		return PortalMode::Current() !== null
+			? '.'
+			: ': an account that may read AltiooEventMCPService can find the row with core_object_search_by_class on error_ref.';
 	}
 
 	/**
@@ -620,10 +705,10 @@ class MCPHelper
 			'%s. iTop refused the value and its reason is in the instance log, not in this answer. '
 			.'Check the attribute against core_class_schema - its type, its allowed values, its pattern - and correct the call. '
 			.'If the value looks right, tell the user it failed and give them reference %s: it is in the instance log, and on '
-			.'this call\'s own audit row, which an account that may read AltiooEventMCPService can find with '
-			.'core_object_search_by_class on error_ref.',
+			.'this call\'s own audit row%s',
 			$sWhat,
-			$sReference
+			$sReference,
+			self::auditLookup()
 		);
 	}
 
@@ -955,15 +1040,92 @@ class MCPHelper
 	}
 
 	/**
+	 * The portal the endpoint URL names in portal_id, or null when it names
+	 * none; '' when the value is not shaped like a portal id, which then
+	 * matches no portal and is never quoted back (doc/adr/0007).
+	 *
+	 * @since 1.2.0
+	 */
+	public static function RequestedPortal(): ?string
+	{
+		$mRaw = utils::ReadParam(PortalMode::PARAMETER, null, false, utils::ENUM_SANITIZATION_FILTER_RAW_DATA);
+		if ($mRaw === null || $mRaw === '') {
+			return null;
+		}
+
+		return is_string($mRaw) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $mRaw) === 1 ? $mRaw : '';
+	}
+
+	/**
+	 * The URL this request called the endpoint at, as an OAuth resource is
+	 * configured with it: the compiled environment's, with portal_id when the
+	 * request names a portal. One resource per portal is one URL per portal
+	 * (doc/adr/0007), and an authorization server compares them exactly.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function CalledEndpointUrl(): string
+	{
+		$sUrl = rtrim(utils::GetAbsoluteUrlModulesRoot(), '/').'/'.self::MODULE_NAME.'/index.php';
+		$sPortal = self::RequestedPortal();
+
+		return $sPortal === null ? $sUrl : $sUrl.'?'.PortalMode::PARAMETER.'='.rawurlencode($sPortal);
+	}
+
+	/**
 	 * The protected-resource metadata URL to advertise, or null.
+	 *
+	 * The setting when it is set. Otherwise, when altioo-oauth-server is
+	 * installed beside this module, the document it serves for this endpoint
+	 * - which is what its README tells an operator to copy into the setting,
+	 * so an install of both connects from a "Connect" button with nothing
+	 * typed. That module stays optional in both directions (doc/adr/0003):
+	 * without it, nothing changes.
+	 *
+	 * The document for the URL this request was made at, when that module
+	 * has a resource configured with exactly it: a client that called one
+	 * portal's URL is sent to consent for that portal (doc/adr/0007).
 	 *
 	 * @since 1.0.0
 	 */
 	public static function GetProtectedResourceMetadataUrl(): ?string
 	{
-		$sUrl = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, '');
+		$bOAuthServerInstalled = class_exists('MetaModel') && MetaModel::IsValidClass(self::OAUTH_SERVER_CLASS);
 
-		return is_string($sUrl) && $sUrl !== '' ? $sUrl : null;
+		$mForCalledUrl = $bOAuthServerInstalled && class_exists(self::OAUTH_RESOURCE_METADATA_CLASS)
+			? call_user_func([self::OAUTH_RESOURCE_METADATA_CLASS, 'UrlFor'], self::CalledEndpointUrl())
+			: null;
+
+		return self::protectedResourceMetadataUrl(
+			utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_RESOURCE_METADATA, ''),
+			$bOAuthServerInstalled,
+			utils::GetAbsoluteUrlModulesRoot(),
+			is_string($mForCalledUrl) ? $mForCalledUrl : null
+		);
+	}
+
+	/**
+	 * The decision, without iTop.
+	 *
+	 * @param mixed       $mConfigured  The setting, as the configuration holds it.
+	 * @param string      $sModulesRoot utils::GetAbsoluteUrlModulesRoot(), the compiled environment's URL.
+	 * @param string|null $sForCalledUrl What that module serves for the URL called, when it knows it.
+	 */
+	private static function protectedResourceMetadataUrl(mixed $mConfigured, bool $bOAuthServerInstalled, string $sModulesRoot, ?string $sForCalledUrl = null): ?string
+	{
+		if (is_string($mConfigured) && $mConfigured !== '') {
+			return $mConfigured;
+		}
+
+		if (!$bOAuthServerInstalled || $sModulesRoot === '') {
+			return null;
+		}
+
+		if ($sForCalledUrl !== null && $sForCalledUrl !== '') {
+			return $sForCalledUrl;
+		}
+
+		return rtrim($sModulesRoot, '/').'/altioo-oauth-server/index.php?route=protected-resource&for=mcp';
 	}
 
 	/**
@@ -1049,5 +1211,52 @@ class MCPHelper
 		}
 
 		return array_values(array_filter($aDisabled, 'is_string'));
+	}
+
+	/**
+	 * Portal ids served in portal mode, or an empty list when it is off.
+	 * PortalMode::ANY_PORTAL, the default, serves every portal: who is let in
+	 * is then decided by the profiles a user holds.
+	 *
+	 * A value that is not a list turns portal mode off rather than on: the
+	 * safe reading of a setting that admits people is the one admitting
+	 * nobody, which is also what every earlier version did.
+	 *
+	 * @return array<int, string>
+	 * @since 1.2.0
+	 */
+	public static function GetServedPortals(): array
+	{
+		$aPortals = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTALS, ['*']);
+		if (!is_array($aPortals)) {
+			$sType = gettype($aPortals);
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTALS."' should be an array instead of $sType. Portal mode is off until it is corrected.");
+
+			return [];
+		}
+
+		return array_values(array_filter($aPortals, 'is_string'));
+	}
+
+	/**
+	 * The bound on a portal-mode token's remaining validity, in days; 0 for
+	 * none.
+	 *
+	 * A value that is not a non-negative integer falls back to the default
+	 * rather than to 0: lifting the bound is a decision, and a typo is not
+	 * one.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function GetPortalTokenMaxDays(): int
+	{
+		$iDays = utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS, self::DEFAULT_PORTAL_TOKEN_MAX_DAYS);
+		if (!is_int($iDays) || $iDays < 0) {
+			self::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS."' should be a non-negative integer. Using ".self::DEFAULT_PORTAL_TOKEN_MAX_DAYS.' until it is corrected.');
+
+			return self::DEFAULT_PORTAL_TOKEN_MAX_DAYS;
+		}
+
+		return $iDays;
 	}
 }

@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
@@ -23,6 +24,7 @@ use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
 use AltiooEventMCPService;
 use CMDBObject;
+use DBObject;
 use ExecutionKPI;
 use LoginWebPage;
 use Throwable;
@@ -89,6 +91,12 @@ final class MCPController
 			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
 			$oKPI->ComputeAndReport('User login');
 
+			// Only ever from the console refusal, so a console login reaches
+			// none of it and goes on exactly as before portal mode existed.
+			if ($iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED) {
+				$iRet = self::admitInPortalMode();
+			}
+
 			if ($iRet === LoginWebPage::EXIT_CODE_OK && MCPHelper::IsAccessRestricted() && !self::userHasMCPProfile()) {
 				$iRet = LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
 			}
@@ -101,6 +109,10 @@ final class MCPController
 			// protects: a token login whose token this module did not see
 			// would be graded as no token at all.
 			self::rejectATokenLoginNotAccountedFor();
+			// While the token is still at hand: one a person granted for
+			// another URL of this endpoint - another portal's - is not theirs
+			// to use here (doc/adr/0007).
+			self::rejectATokenGrantedForAnotherUrl();
 
 			// The scopes are the last thing that needs the raw credential, so
 			// they are read here and the credential dropped immediately after.
@@ -373,6 +385,186 @@ final class MCPController
 		);
 	}
 
+	/**
+	 * Lets a user with no console in under portal mode, or leaves the console
+	 * refusal as it was.
+	 *
+	 * Reached only after DoLogin() returned EXIT_CODE_PORTALUSERNOTAUTHORIZED,
+	 * which iTop returns from ChangeLocation(), after the login itself has
+	 * succeeded - so the user is authenticated here, and UserRights answers
+	 * for them. Taking portal mode from that one refusal, rather than logging
+	 * in with DoLoginEx(null) and sorting users afterwards, is what keeps
+	 * every console login on the path it has always taken.
+	 *
+	 * With mcp_portals empty nothing is read and the refusal stands; its
+	 * default, "*", serves every portal, so a portal-only user holding the
+	 * MCP profile is let in by that profile. A user in none of the listed
+	 * portals gets the refusal unchanged, with a log line saying why. The other failures are portal mode's own and are told to
+	 * the caller as what to change, on the usual split: the caller learns what
+	 * to fix, the log names who.
+	 *
+	 * @throws MCPAuthException For a refusal that is portal mode's own.
+	 */
+	private static function admitInPortalMode(): int
+	{
+		$aServed = MCPHelper::GetServedPortals();
+		if ($aServed === []) {
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
+		}
+
+		$sRequested = MCPHelper::RequestedPortal();
+		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed, $sRequested);
+		$iMaxDays = MCPHelper::GetPortalTokenMaxDays();
+		$sRefusal = PortalMode::RefusalOf(
+			$sPortal,
+			TokenScopes::LoginWasAToken(Session::Get('login_mode')),
+			PortalMode::TokenIsBounded(self::presentedTokenExpiration(), time(), $iMaxDays),
+			(int)UserRights::GetContactId() > 0,
+			self::userHasMCPProfile()
+		);
+
+		if ($sRefusal === null) {
+			PortalMode::Remember($sPortal);
+
+			return LoginWebPage::EXIT_CODE_OK;
+		}
+
+		self::auditAdmissionRefusal($sRefusal);
+
+		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL && $sRequested !== null) {
+			// The id is the request's text: quoted only when it is shaped like one.
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: the URL names %s, which '%s' may not enter or '%s' does not serve (%s).",
+				$sRequested === '' ? 'a malformed '.PortalMode::PARAMETER : "the portal '{$sRequested}'",
+				UserRights::GetUser(),
+				MCPHelper::MODULE_SETTING_PORTALS,
+				implode(', ', $aServed)
+			));
+
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' is allowed into none of the portals in '%s' (%s).",
+				UserRights::GetUser(),
+				MCPHelper::MODULE_SETTING_PORTALS,
+				implode(', ', $aServed)
+			));
+
+			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NOT_A_TOKEN) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' did not log in with a token.",
+				UserRights::GetUser()
+			));
+
+			throw new MCPAuthException(
+				'A user without console access is served with a token only. Send it in the '
+				.'Authorization header (Bearer) or the Auth-Token header.',
+				MCPResult::UNAUTHORIZED
+			);
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_TOKEN_UNBOUNDED) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' presented a token that never expires, or expires more than %d days from now ('%s').",
+				UserRights::GetUser(),
+				$iMaxDays,
+				MCPHelper::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS
+			));
+
+			throw new MCPAuthException(sprintf(
+				'In portal mode a token must expire within %d days. Ask for a personal token with an '
+				.'expiry date no later than %s, or set one on this token.',
+				$iMaxDays,
+				date('Y-m-d', time() + $iMaxDays * 86400)
+			), MCPResult::UNAUTHORIZED);
+		}
+
+		if ($sRefusal === PortalMode::REFUSED_NO_CONTACT) {
+			MCPHelper::LogError(sprintf(
+				"Refused an MCP request in portal mode: '%s' is linked to no contact.",
+				UserRights::GetUser()
+			));
+
+			throw new MCPAuthException(
+				'This account is linked to no contact, which an iTop portal requires. '
+				.'Ask an administrator to link it to the person it belongs to.',
+				MCPResult::UNAUTHORIZED
+			);
+		}
+
+		// REFUSED_NO_MCP_PROFILE, answered and logged as it is for a console user.
+		return LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
+	}
+
+	/**
+	 * Refuses a token a person granted, through altioo-oauth-server, for
+	 * another URL of this endpoint: with one OAuth resource per portal, a
+	 * consent for one portal does not reach another (doc/adr/0007). A token
+	 * no connection owns - one an administrator minted - has no such URL and
+	 * is held by the other rules only; so is every token when that module is
+	 * not installed.
+	 *
+	 * @throws MCPAuthException When the token was granted for another URL; the
+	 *     401's challenge sends the client to consent for this one.
+	 */
+	private static function rejectATokenGrantedForAnotherUrl(): void
+	{
+		$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;
+		if (!class_exists($sAudienceClass)) {
+			return;
+		}
+
+		$oToken = TokenScopes::OfCurrentRequestObject();
+		if (!$oToken instanceof DBObject || !is_a($oToken, 'PersonalToken')) {
+			return;
+		}
+
+		$oAudience = call_user_func([$sAudienceClass, 'Of'], (int)$oToken->GetKey());
+		if (!is_object($oAudience) || !method_exists($oAudience, 'IsFor')) {
+			return;
+		}
+
+		$sCalled = MCPHelper::CalledEndpointUrl();
+		if ($oAudience->IsFor($sCalled) === true) {
+			return;
+		}
+
+		MCPHelper::LogError(sprintf(
+			"Refused an MCP request: '%s' presented a token granted for the OAuth resource '%s', not for the URL called ('%s').",
+			UserRights::GetUser(),
+			property_exists($oAudience, 'sResourceKey') ? (string)$oAudience->sResourceKey : '?',
+			$sCalled
+		));
+
+		throw new MCPAuthException(
+			'This token was granted for another URL of this endpoint, such as another portal\'s. '
+			.'Connect again from this URL to consent to it.',
+			MCPResult::UNAUTHORIZED
+		);
+	}
+
+	/**
+	 * The expiry of the token this request presented, as iTop stores it, or
+	 * null when it has none - including a token class that carries no expiry
+	 * at all, which portal mode therefore cannot bound and refuses.
+	 */
+	private static function presentedTokenExpiration(): ?string
+	{
+		$oToken = TokenScopes::OfCurrentRequestObject();
+		if ($oToken === null || !MetaModel::IsValidAttCode(get_class($oToken), 'expiration_date')) {
+			return null;
+		}
+
+		$mExpiration = $oToken->Get('expiration_date');
+
+		return is_string($mExpiration) && $mExpiration !== '' ? $mExpiration : null;
+	}
+
 	private static function userHasMCPProfile(): bool
 	{
 		/** @var \User $oUser */
@@ -489,14 +681,17 @@ final class MCPController
 		MCPHelper::LogError(sprintf(
 			"Refused an MCP request: '%s' authenticated but holds no profile granting access to the "
 			.'console, so there is no interface for this endpoint to serve. A portal-only user cannot '
-			.'use the MCP services whatever their token scopes or MCP profile are.',
-			UserRights::GetUser()
+			.'use the MCP services whatever their token scopes or MCP profile are, unless portal mode '
+			."serves one of their portals ('%s').",
+			UserRights::GetUser(),
+			MCPHelper::MODULE_SETTING_PORTALS
 		));
 
 		return new MCPAuthException(
 			'This user has no access to the iTop console. The MCP services serve what the console '
 			.'serves, so a portal-only user cannot reach them - the account needs a profile granting '
-			.'console access in addition to whatever lets it through the MCP gate.',
+			.'console access in addition to whatever lets it through the MCP gate, or an administrator '
+			.'has to serve its portal in portal mode (the mcp_portals module parameter).',
 			MCPResult::UNAUTHORIZED
 		);
 	}
@@ -925,6 +1120,10 @@ final class MCPController
 			$oLog->Set('message', self::auditLabel($oResult->message, null) ?? '');
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
+			// Which portal served the call: empty for the console's. A portal
+			// user allowed into two is served one per connection, and the row
+			// is where an administrator learns which (doc/adr/0007).
+			$oLog->Set('portal', PortalMode::Current() ?? '');
 			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
 			// Whether this was a rehearsal. The parameters themselves are kept
 			// only at debug level, so without this a later review of this log -
@@ -965,6 +1164,37 @@ final class MCPController
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
 			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
+		}
+	}
+
+	/**
+	 * A row for a portal-only user turned away at login, which otherwise left
+	 * error.log and nothing an administrator reads in the audit table.
+	 *
+	 * Only the refusal's own code is recorded, never text from the request.
+	 * Written whatever the log level, an error row like any other, unless the
+	 * instance does not log calls at all. This is reached after the login, so
+	 * there is always a user to name.
+	 */
+	private static function auditAdmissionRefusal(string $sRefusal): void
+	{
+		if (!MCPHelper::LogsCalls()) {
+			return;
+		}
+
+		try {
+			$oLog = new AltiooEventMCPService();
+			$oLog->SetTrim('userinfo', UserRights::GetUser());
+			$oLog->Set('message', 'Refused at login in portal mode: '.$sRefusal);
+			$oLog->Set('mcp_method', 'login');
+			$oLog->Set('mcp_name', 'portal_admission');
+			$oLog->Set('status', 'error');
+			// Nothing has remembered the token yet: the refusal comes first.
+			TokenScopes::RememberIdentity();
+			self::describeCredential($oLog);
+			$oLog->DBInsertNoReload();
+		} catch (Throwable $e) {
+			MCPHelper::LogError('Failed to log a portal admission refusal: '.$e->getMessage());
 		}
 	}
 

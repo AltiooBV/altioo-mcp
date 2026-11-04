@@ -364,7 +364,8 @@ audited party may edit with the operator's permission is an audit trail the audi
 edit. Reading stays open — an assistant that can answer "what did I call, and what failed" is
 useful, and reading a record does not alter it. iTop's change log is the same idea one layer
 earlier: `CMDBChange` and `CMDBChangeOp` are not merely unwritable but unreadable through the
-object tools, because `core_object_history` serves them instead.
+object tools, because `core_object_history` serves them instead. In portal mode it serves them under
+the portal's limits as well, and nothing there writes them.
 
 **And it does not queue work for the cron to carry out.** `AsyncSendEmail` extends `AsyncTask` and
 *is* the outbound mail queue iTop's cron drains, with free-text `to`, `subject` and `message` and
@@ -556,15 +557,15 @@ reference.
 
 | Threat | What answers it |
 |---|---|
-| Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | Dry run by default on every write; `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; `UserRights` on every object and attribute |
+| Prompt injection reaching a write tool — a ticket description, an email, a web page tells the model to delete something | `mcp_capabilities` / `mcp_read_only` instance-wide; `MCP-read` / `MCP-write` token scopes; the `MCP-advisory` scope, which forces every write to a dry run; `UserRights` on every object and attribute. The dry run a write tool starts with is a default the caller can turn off with `simulate: false` in the same call, so it protects only a client that obeys it, and is not an answer to injection by itself |
 | A leaked token used against another iTop API | `MCP*` scopes are distinct from `REST`/`Export` scopes: a token minted for REST cannot call this endpoint, and the reverse holds too |
 | A credential stronger than the assistant needs | Scope the token (`MCP-read`, `MCP-toolset-<name>`) rather than creating a second user account |
 | An assistant widening the credential it was handed — editing its token's scope, minting a wider one, granting itself a profile | `PersonalToken`, `UserToken`, `User` and `URP_*`, with their subclasses, are read-only through this endpoint, as is any class declaring an `MCP*` scope or filed under iTop's user-rights category; the refusal does not consult `UserRights`, so it holds for an administrator too. An instance that opts into `mcp_allow_access_administration` can administer other people's access and still never its own — that half has no switch |
 | An assistant staging a privileged write for something else to carry out — a synchronisation source pointed at the user classes, applied later by the synchro engine, which checks no rights on what it writes and can be triggered by the account the source names as its owner | A definition pointed at a class behind the barrier above is refused and no setting lifts it; one pointed at any other class is allowed only where the caller holds create, modify, delete and the bulk rights on it themselves; one that names no target is refused. Per-attribute rights are not covered — see above |
 | An assistant leaving a standing instruction behind it — a trigger wired to a webhook action, firing on everyone's changes long after the session ends, pointed at an attacker's collector or an internal address (SSRF) | `Trigger`, `Action`, their descendants, anything carrying an external key to one, and `RemoteApplicationConnection` are read-only unless `mcp_allow_privilege_escalation` is on — its own setting, since no tool here can send mail or call a URL directly and so there is no rights answer that makes staging one equivalent |
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
-| Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes` |
-| An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included |
+| Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes`. In portal mode it is served only when the portal shows history, for an object the portal shows, the rows its change-log scope holds and the fields its view form shows; nothing in portal mode writes them |
+| An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included, except through `core_object_history` |
 | Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element and the message recorded on each row are reduced to one line before they are stored, and the element is cut to its column. It is still what the caller declared, never verified: it names a well-behaved client, it does not authenticate one |
 | One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted. An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
 | Mass notification through @mentions — hand-written mention markup in a case-log entry, naming any class and any number of objects, each firing `TriggerOnObjectMention` | Mentions are held to iTop's `mentions.allowed_classes` and to objects the caller can see, and one call may mention at most `mcp_max_mentions` distinct objects (default 5, `0` for none). The parser and the trigger are iTop's; this caps what the endpoint lets through to them |
@@ -577,6 +578,7 @@ reference.
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |
+| A portal-only user reading what their portal hides — iTop's `Portal user` profile reads every class, and the portal's scopes and forms, which narrow it, are not consulted by iTop's rights checks | Served in portal mode only, and only with a token that expires within `mcp_portal_token_max_days`, a linked contact and a profile in `mcp_allowed_profiles` whatever `secure_mcp_services` says, in a portal `mcp_portals` serves (every one by default; empty refuses them as before). Portal mode serves only this extension's elements that add the portal's configuration to their own checks (`ObjectAccess` and `PortalPolicy`: the portal's granted bricks, scopes, forms and lifecycle, on top of `UserRights`) — the class tools describing the portal, its lists, object reads, writes and history, the caller's own identity, and the server instructions. Lists run on the server and the client never sends a query; a read is bounded by the read scope, a write by the write scope, the portal's form *and* the console's (doc/adr/0004, 0005), and anything a written value points at by the read scope; a creation is preset by the action's own rules, run by the portal's helper. A pack's element is never served there, even one claiming to be portal-aware. The check comes before every other filter on the surface, so no setting can let one through, and the filters after it still narrow what it admits. A portal that cannot be read — no portal module, an iTop before 3.2.2, a configuration that fails to load — is served nothing, never the scopes or the datamodel without it |
 | Enumeration of the datamodel by an unauthorised caller | The profile gate runs before anything is advertised; `tools/list` is filtered per caller, and the `initialize` guidance is assembled from the same policy, so it names no tool the caller is not served |
 
 **What is out of scope.** This extension cannot control what the MCP *client* does with data it
@@ -619,6 +621,20 @@ records two). In particular, and specifically relevant here:
   so adding a profile to it widens who can hold a working credential for every API on this
   instance, this endpoint included — and it is the reason a token minted against the wrong
   account is worth something rather than nothing.
+- **Before listing a portal user's profile there for portal mode**, know what it opens — and
+  that a portal user cannot hold a working personal token without it. A portal
+  session of anyone holding it can then mint personal tokens for itself through
+  `authent-token/ajax.php`, which logs in without asking for the console and takes the scope and
+  expiry from the posted form (authent-token's `AuthentTokenAjaxController`, iTop 3.2.2): a
+  portal user can hold a token graded `MCP-delete`, with no expiry, that no administrator
+  issued. What bounds it is on the server, not on the token: in portal mode only what
+  `PortalMode::Serves()` admits is served, whatever the grade; iTop's REST, export, import
+  and synchro endpoints ask for the console and refuse a portal-only user; and portal mode
+  refuses a token that never expires or expires later than `mcp_portal_token_max_days` (90 by
+  default), so no token a portal user minted stays usable past that. Every such token is
+  a `PersonalToken` row naming its user, scope and application, listed under User management →
+  Personal tokens, and every call it makes carries its id on the audit row. A console user
+  holding the same profile gets the Personal tokens tab of My Account, for every scope.
 - Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
   standing**: `debug` stores raw request parameters, which may contain data your users would
   not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,

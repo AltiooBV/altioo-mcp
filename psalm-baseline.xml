@@ -95,13 +95,14 @@
       <code><![CDATA[public function read(): mixed]]></code>
     </MissingOverrideAttribute>
   </file>
+  <file src="src/Core/Tools/AbstractPortalTool.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[public function getNamespace(): string]]></code>
+      <code><![CDATA[public function getToolset(): string]]></code>
+      <code><![CDATA[public function isAvailable(): bool]]></code>
+    </MissingOverrideAttribute>
+  </file>
   <file src="src/Core/Tools/ClassList.php">
-    <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter, $sMay))]]></code>
-    </InvalidReturnStatement>
-    <InvalidReturnType>
-      <code><![CDATA[array]]></code>
-    </InvalidReturnType>
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
@@ -112,12 +113,6 @@
     </MissingOverrideAttribute>
   </file>
   <file src="src/Core/Tools/ClassSchema.php">
-    <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(DatamodelReader::Describe($class, $include, $attributes, $required_only))]]></code>
-    </InvalidReturnStatement>
-    <InvalidReturnType>
-      <code><![CDATA[array]]></code>
-    </InvalidReturnType>
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
@@ -165,6 +160,7 @@
 					'would_move_to' => $sTargetState,
 					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
@@ -182,6 +178,7 @@
 				'would_move_to' => $sTargetState,
 				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 			])]]></code>
@@ -251,47 +248,6 @@
     </MissingOverrideAttribute>
   </file>
   <file src="src/Core/Tools/ObjectCreate.php">
-    <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $iCommittedId)
-				+ [
-					'simulated'  => false,
-					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-					'warning'    => MCPHelper::OpaqueFailure(
-						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
-						$e
-					),
-				])]]></code>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $iId)
-				+ [
-					'simulated'  => false,
-					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-				]
-				+ self::credentialNote($class))]]></code>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, null)
-				+ self::credentialNote($class)
-				+ [
-					'simulated'  => true,
-					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-				])]]></code>
-    </InvalidReturnStatement>
-    <InvalidReturnType>
-      <code><![CDATA[array]]></code>
-    </InvalidReturnType>
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
@@ -348,11 +304,7 @@
   </file>
   <file src="src/Core/Tools/ObjectGet.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json([
-			'requested_class'  => $class,
-			'class' => $sFinalClass,
-			'object' => $aObject,
-		])]]></code>
+      <code><![CDATA[ToolOutput::Json($aResult)]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
       <code><![CDATA[array]]></code>
@@ -396,12 +348,6 @@
     </MissingOverrideAttribute>
   </file>
   <file src="src/Core/Tools/ObjectHistory.php">
-    <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset))]]></code>
-    </InvalidReturnStatement>
-    <InvalidReturnType>
-      <code><![CDATA[array]]></code>
-    </InvalidReturnType>
     <MissingOverrideAttribute>
       <code><![CDATA[protected function defaultTitle(): string]]></code>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
@@ -413,6 +359,15 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByClass.php">
     <InvalidReturnStatement>
+      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
+				'requested_class'  => $class,
+				'class' => $sSetClass,
+				'filters' => $filters,
+				'total'   => $iTotal,
+				'limit'   => $limit,
+				'offset'  => $offset,
+				'objects' => $aResults,
+			] + self::pagingFooter($iTotal, $limit, $offset), $aResults, $sSetClass))]]></code>
       <code><![CDATA[ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $class,
@@ -440,15 +395,6 @@
 				'offset'  => $offset,
 				'objects' => $aResults, // hides objects that the user shouldn't see
 			] + self::pagingFooter(0, $limit, $offset))]]></code>
-      <code><![CDATA[ToolOutput::Json([
-				'requested_class'  => $class,
-				'class' => $sSetClass,
-				'filters' => $filters,
-				'total'   => $iTotal,
-				'limit'   => $limit,
-				'offset'  => $offset,
-				'objects' => $aResults,
-			] + self::pagingFooter($iTotal, $limit, $offset))]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
       <code><![CDATA[array]]></code>
@@ -463,14 +409,14 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByOQL.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json([
+      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
 				'class' => $class,
 				'oql'       => $oql,
 				'total'     => $iTotal,
 				'limit'     => $limit,
 				'offset'    => $offset,
 				'objects'   => $aResults,
-			] + self::pagingFooter($iTotal, $limit, $offset))]]></code>
+			] + self::pagingFooter($iTotal, $limit, $offset), $aResults, $class))]]></code>
       <code><![CDATA[ToolOutput::Json([
 				'class' => $class,
 				'oql' => $oql,
@@ -500,6 +446,7 @@
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
@@ -510,6 +457,7 @@
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
@@ -525,6 +473,14 @@
       <code><![CDATA[public function getNamespace(): string]]></code>
       <code><![CDATA[public function getOutputSchema(): ?array]]></code>
       <code><![CDATA[public function getToolset(): string]]></code>
+    </MissingOverrideAttribute>
+  </file>
+  <file src="src/Core/Tools/PortalList.php">
+    <MissingOverrideAttribute>
+      <code><![CDATA[protected function defaultTitle(): string]]></code>
+      <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
+      <code><![CDATA[public function getDescription(): ?string]]></code>
+      <code><![CDATA[public function getInputSchema(): ?array]]></code>
     </MissingOverrideAttribute>
   </file>
   <file src="src/Core/Tools/SetObsoleteData.php">
@@ -612,9 +568,6 @@
       <code><![CDATA[$sAttCode]]></code>
       <code><![CDATA[$sAttCode]]></code>
     </NoValue>
-    <RedundantCast>
-      <code><![CDATA[(string) $value]]></code>
-    </RedundantCast>
     <RedundantCondition>
       <code><![CDATA[!is_string($sAttCode)]]></code>
     </RedundantCondition>

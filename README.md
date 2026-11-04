@@ -134,23 +134,24 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
-| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create` |
-| `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it |
+| `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
+| `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
-| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts |
+| `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts. Served in portal mode too, under the portal's limits: the view form's fields, its attachments, and no attribution |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
-| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool |
+| `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool. Served in portal mode too, under the portal's limits as well |
 | `core_object_get_document` | Read one document held by an object: an attachment, a picture, any blob attribute |
 | `core_object_attach` | Attach a file to an object, or set one of its document attributes. Dry run by default |
-| `core_object_create` | Create an object. Dry run by default (`simulate: true`) |
-| `core_object_update` | Update an object's attributes. Dry run by default |
-| `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition). Dry run by default |
+| `core_object_create` | Create an object. Dry run by default (`simulate: true`). In portal mode it takes one of the portal's create actions (`action`, and `from_id` when it starts from an object) instead of a class, its rules presetting what the portal presets |
+| `core_object_update` | Update an object's attributes. Dry run by default. Served in portal mode too, under the portal's edit form, write scope and reach |
+| `core_object_apply_stimulus` | Apply a lifecycle stimulus (state transition). Dry run by default. Served in portal mode too, for the stimuli the portal offers on the object now |
 | `core_object_delete` | Delete an object, reporting its deletion plan. Dry run by default (`simulate: true`) |
 | `core_object_bulk_create` | Create up to 100 objects of one class. Dry run by default |
 | `core_object_bulk_update` | Set the same attributes on up to 100 objects. Dry run by default |
 | `core_object_bulk_delete` | Delete up to 100 objects, reporting the combined deletion plan. Dry run by default |
+| `core_portal_list` | Portal mode only: run one of the portal's lists (a ManageBrick, one of its tabs, a browse level under a parent row), with the portal's own search |
 
 Names are qualified by the namespace that owns them, the way resource URIs already
 are — `core` belongs to this module, an extension uses its own. Two packs from two
@@ -528,7 +529,136 @@ The MCP services serve what the console serves, so a portal-only user is refused
 `MCP Services User` and a correctly scoped token — the endpoint answers that the user has no
 console access, and `log/error.log` names the account. Neither `mcp_allowed_profiles` nor
 `secure_mcp_services` lifts this: it is iTop's login deciding the user has no interface to be
-sent to, before any of this extension's gates are reached.
+sent to, before any of this extension's gates are reached. Portal mode, below, is what lets
+them in instead.
+
+**Portal-only users: portal mode.** A user with no console is let in by the profiles they hold,
+as a console user is, and served what their portal offers. `mcp_portals` lists the portals (by
+id, such as `itop-portal`) this endpoint serves to them; its default, `array('*')`, is every
+portal, and `array()` turns portal mode off. A portal-only user is let in only when all of these
+hold, and refused otherwise, with `log/error.log` naming the account and the condition:
+
+- they logged in with a token, not a password;
+- the token expires within `mcp_portal_token_max_days` (90 by default) — one that never expires
+  is refused (below, for why);
+- their account is linked to a contact;
+- they hold a profile in `mcp_allowed_profiles` — required in portal mode even with
+  `secure_mcp_services` off, since turning the check off for console users was never a decision
+  about people with no console;
+- one of the portals they are allowed into is served, never two combined: the one the endpoint
+  URL names with `portal_id`, as iTop's own portal URLs do — `…/altioo-mcp/index.php?portal_id=customer-portal`
+  — or else the first by rank, as iTop's own login picks one. A named portal the user may not
+  enter, or that `mcp_portals` does not serve, is refused and never replaced by another
+  ([doc/adr/0007](doc/adr/0007-the-connection-names-its-portal.md)). A user allowed into two
+  portals configures two client entries, one URL each; `core_current_user` reports which portal
+  a connection is served, and every audit row records it (`portal`, empty for a console call).
+  A console user is never in portal mode, and `portal_id` changes nothing for them.
+
+So by default the profile is the switch: a portal-only user holding `MCP Services User` (or
+another profile in `mcp_allowed_profiles`), with a token, is served. Giving the profile is the
+decision, per person, as it is for console users.
+
+**Turning portal mode off, or taking it from one person.**
+
+- For everyone: set `'mcp_portals' => array()` in the module settings. Portal-only users are
+  refused again from the next request, and nothing else about the extension changes. To keep it
+  off across an **upgrade** from a version before portal mode, set that before upgrading: the
+  default, `array('*')`, serves every portal.
+- For one portal: list the others' ids instead of `'*'`.
+- For one person: remove `MCP Services User` (or the profile in `mcp_allowed_profiles`) from
+  them, and delete their personal tokens under **User management → Personal tokens**. A deleted
+  token stops working on the next request. Connections made through
+  [altioo-oauth-server](https://github.com/AltiooBV/altioo-oauth-server) are ended there, by the
+  person under *My profile → Connected applications* or by an administrator under *OAuth
+  connections*.
+- To see who was served and who was turned away: the audit table's `portal` column names the
+  portal of each call, and a refusal at login is a row with method `login` and element
+  `portal_admission`.
+
+**Giving a portal user a token.** With altioo-oauth-server installed, they connect their client
+themselves, and see and disconnect it under *My profile → Connected applications* in the portal.
+Without it an administrator mints a personal token, as below, and the user has no page of their
+own to see or revoke it. Two things iTop decides, not this extension, on either route:
+
+- A personal token logs in only if its owner holds a profile listed in authent-token's
+  `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
+  profile your portal users hold for this — `MCP Services User`, which they need anyway — or
+  every token minted for them fails as an invalid login.
+- They have no page to mint one: My Account is console-only. An administrator creates it under
+  **User management → Personal tokens**, setting the user to the portal account, ticking an
+  **MCP** scope and **setting an expiry date** within `mcp_portal_token_max_days`; the value is
+  shown once, in the message after the creation.
+
+**What listing that profile gives them, and what bounds it.** It gives no data right anywhere:
+the only other token scopes are REST/JSON, Export, Import and Synchro, and iTop's endpoints for
+all four ask for the console and refuse a portal-only user whatever the token says; here, they
+are in portal mode whatever the grade, `MCP-delete` included. What it does give is
+self-service credentials: a portal session of anyone holding the profile can mint personal
+tokens for itself through authent-token's own endpoint, with whatever scope and expiry it
+posts — none included, and authent-token treats no expiry as never expiring. A token typed into
+an assistant and forgotten would be a key to that person's portal for good, outside their
+password and any second factor. That is why portal mode refuses a token that never expires, or
+that expires further out than `mcp_portal_token_max_days`: self-minted or not, every token it
+accepts stops working within that many days. A console user holding the profile also gets the
+Personal tokens tab of My Account. See [SECURITY.md](SECURITY.md), "Hardening".
+
+**What portal mode serves: what the portal offers, read and written as the portal does.**
+iTop's `Portal user` profile reads every class; what keeps a portal user to their own requests
+is the portal's configuration — its bricks, scopes, forms, lifecycle and action rules — which
+iTop's rights checks never consult. So no tool is served in portal mode unless it adds that
+configuration to the checks it already makes, a pack's never. The console's own tools are
+served there that way (doc/adr/0006): each asks one mode-aware policy, which in portal mode
+narrows the console's answer by the portal's, read with the portal's own code, so a customised
+portal is served as customised:
+
+- `core_class_list` and `core_class_schema`, the console's own, say what the user's portal
+  offers: the classes a brick granted to the user reaches — a class with a read scope that no
+  brick offers is left out, as is one a brick offers that the scopes refuse
+  ([doc/adr/0001](doc/adr/0001-portal-mode-bricks-bound-discovery.md)). So is a subclass the
+  portal pins out by `finalclass`: the stock Ticket scope allows only `UserRequest` and
+  `Incident`, so `Change` and `Problem`, the agents' tickets, are not offered. ManageBrick,
+  BrowseBrick and CreateBrick are read, and a custom brick class extending one is read as that
+  type ([doc/adr/0002](doc/adr/0002-portal-mode-reads-brick-subclasses-as-their-parent.md)).
+  For each class, whether the user may read and change it, its create actions, its stimuli
+  and the states each applies in, and the fields of its view, edit and create forms. Each list
+  names its tabs and, for a browse level, the list above it; each create action the list its
+  starting object is picked from. That is enough for a client that has never seen the portal.
+- `core_portal_list` runs a list by id, on the server: the brick's own query intersected with
+  the scope of its class, a tab's condition, a parent row checked against its own level, and the
+  portal's own search on the columns shown. The client never sends a query.
+- `core_object_get`, the console's own read, reads one object by the scopes, as the portal's
+  object page does: the fields of its view form for the object as it is, its attachments, and
+  what the user may do to it now — its rights narrowed to the portal's (no delete), the stimuli
+  the portal offers, and the fields its edit form leaves settable. The creation and last-change
+  attribution is left out: it reads the change log, which `core_object_history` serves where the
+  portal shows history.
+- `core_object_create`, `core_object_update` and `core_object_apply_stimulus`, the console's
+  own writes, write as the portal would, and are dry runs by default. A field must be one the
+  portal's form leaves settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
+  so a case log only gains entries; an external key or a link may point only at what the user
+  can read; a stimulus must be one the portal's lifecycle allows, that UserRights grants on the
+  object, from its current state; and a creation starts from a row of the action's list, takes
+  the class the action names or its factory method chooses, and is preset by the action's
+  rules, run by the portal's own helper — in the stock portal, the caller and organisation
+  from the user's contact and the service from the subcategory
+  ([doc/adr/0005](doc/adr/0005-portal-mode-writes-follow-the-portal-form.md)).
+- `core_current_user` and `itop://core/current-user`, with the user's organisation and portal;
+  the `core_my_open_tickets` prompt, answered from the portal's ticket lists; and the server
+  instructions (`core_instructions`, `itop://core/instructions`), rewritten for portal mode.
+- `core_object_history`, the console's own tool, when the portal shows history: a brick granted
+  to the user reaches `CMDBChangeOp` and a read scope covers it, and describe says `history:
+  true`. Everything it checks on the console still applies, and the portal narrows it further:
+  the object must be one the portal shows the user, the rows those the change log's scope
+  holds, and the attributes those the object's view form shows. The portal's lists and reads
+  refuse the change log, which would skip those checks, and nothing in portal mode writes it.
+
+What the portal offers that is not served here — downloading, adding or deleting an
+attachment, and anything a portal extension adds through its own bricks or routes — stays in the
+portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (the class tools are in `datamodel`, history in
+`history`, the others in `objects`) and the token's grade narrow it as they narrow anything else:
+an `MCP-read` token is served the reads only. **Portal mode needs iTop 3.2.2 or later**, the first
+release where the portal's form merge can be called on its own; on an earlier one, and
+on a portal whose configuration cannot be read, nothing is served and `log/error.log` says why.
 
 **2. A credential iTop accepts.** Authentication is delegated to iTop's login stack
 (`LoginWebPage::DoLogin()`), so any login mode iTop can perform **non-interactively** works
@@ -543,9 +673,11 @@ here, subject to your `allowed_login_types`:
   objects, so none applies here — the profile gate and iTop's permissions are what protect the
   endpoint.
 - **`external` mode**, where a reverse proxy authenticates the caller and passes `REMOTE_USER`.
-  This is where OAuth/OIDC belongs: terminate it in the web server (`mod_auth_openidc`,
-  `oauth2-proxy`) and let iTop consume the result. The extension carries no OAuth code of its
-  own, and needs none.
+  This is one place OAuth/OIDC can live: terminate it in the web server (`mod_auth_openidc`,
+  `oauth2-proxy`) and let iTop consume the result. The other is the optional
+  altioo-oauth-server, which makes iTop the authorization server and issues personal tokens, so
+  its callers arrive by the first route above. The extension carries no OAuth code of its own,
+  and needs none.
 
 Browser-redirect modes (CAS, `combodo-hybridauth`) cannot serve this endpoint — a headless MCP
 client has no way to follow a redirect to an identity provider — and neither can a session
@@ -675,6 +807,20 @@ add it to a `401` it never sees. When the call presented a token and it was refu
 challenge also carries `error="invalid_token"` (RFC 6750), which tells an OAuth client to
 refresh or connect again; a call that presented nothing gets no error code.
 
+**Or install [altioo-oauth-server](https://github.com/AltiooBV/altioo-oauth-server)**, which makes
+iTop its own OAuth 2.1 server and issues ordinary personal tokens. It is an optional dependency
+([doc/adr/0003](doc/adr/0003-optional-dependency-on-altioo-oauth-server.md)): installed beside this
+extension, it is set up first, and with `mcp_protected_resource_metadata` left empty the `401`
+points at the document it serves for this endpoint, so nothing has to be typed. Without it,
+nothing changes; a value in the setting always wins.
+
+With portals named in the URL, configure one of its resources per portal, its `url` carrying
+`portal_id` exactly as clients call it, and a `label` naming the portal (see that module's
+`resources` setting). The `401` then points at the resource of the URL called, the consent page
+names the portal, and a token granted for one portal's URL is refused at another's
+([doc/adr/0007](doc/adr/0007-the-connection-names-its-portal.md)). A token an administrator
+minted by hand has no such URL, and is held by the rules above only.
+
 > **If you put an OIDC proxy in front of iTop, it must not forward the upstream token as the
 > iTop credential.** The proxy authenticates the caller and then presents iTop with an
 > identity it controls — `REMOTE_USER` in `external` mode, or an iTop token the proxy holds
@@ -701,6 +847,8 @@ $MyModuleSettings = array(
         'mcp_allowed_hosts' => array(),
         'mcp_allowed_origins' => array(),
         'mcp_disabled_tools' => array(),
+        'mcp_portals' => array('*'),
+        'mcp_portal_token_max_days' => 90,
         'mcp_enabled_toolsets' => array(),
         'mcp_capabilities' => array(),
         'mcp_read_only' => false,
@@ -733,6 +881,8 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allowed_hosts` | *(derived)* | Hostnames this endpoint answers to, checked against `Origin` — or against `Host` when there is no `Origin` — before anything else happens, and against `Host` again inside the MCP SDK. Leave it empty and it is derived from `app_root_url` plus the localhost variants and the hosts of `mcp_allowed_origins`, which is right for a normal install. Set it when iTop is reached under a name `app_root_url` does not carry. `array('*')` turns the check off, which is what a reverse proxy that validates `Host` itself wants — and is what an `app_root_url` written with iTop's `$SERVER_NAME$` placeholder gets, since there is then no name to check against |
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential. The MCP SDK also refuses, with `403`, a request whose `Origin` is neither listed here nor the endpoint's own — so a desktop client that sends one has to be listed too, and so does the endpoint's own `https://` origin behind a proxy that terminates TLS without setting `HTTPS` for PHP |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
+| `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **what their portal offers, read and written as the portal does**. Needs iTop 3.2.2 or later |
+| `mcp_portal_token_max_days` | `90` | Portal mode accepts a token only if it expires within this many days from now; one that never expires is refused, since a portal user may have minted it themselves. `0` lifts the bound. Any other value than a non-negative integer is reported and read as 90 |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
@@ -743,7 +893,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_max_mentions` | `5` | Distinct objects one call may @mention in the case-log entries it writes. A mention is markup iTop turns into a notification, and here the caller types that markup directly, where the console offers it one autocomplete pick at a time. Mentions are also held to the classes in iTop's `mentions.allowed_classes` and to objects the caller can see; a value breaking any of the three is refused, and says which. `0` turns mentions off for this endpoint |
 | `mcp_refuse_formula_values` | `true` | Refuse a text value that starts — after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — what a spreadsheet runs as a formula (CSV injection) once the data is exported by iTop, returned by REST, or turned into a CSV by an assistant. A value that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone numbers, negative numbers and dates are unaffected. Case logs and secret attributes are not checked. Values that reach iTop some other way are not checked either — see [SECURITY.md](SECURITY.md#hardening-the-deployment) for finding them. Anything but an explicit `false` keeps it on |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. This module sets it on every request, so the SDK's own default of 50 never applies. What is past the limit is paged behind a cursor, which a client that ignores `nextCursor` never asks for — those elements then exist, are callable, and are advertised to nobody |
-| `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows |
+| `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows. Left empty with altioo-oauth-server installed, that module's document for this endpoint is advertised instead |
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
@@ -938,7 +1088,8 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 
 | Symptom | Cause |
 |---|---|
-| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does. See [Granting access](#granting-access) |
+| `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does, or let portal mode serve it: check `mcp_portals` serves its portal (the default `'*'` serves every one), which serves only what that portal offers. `log/error.log` names the account either way. See [Granting access](#granting-access) |
+| `401`, "In portal mode a token must expire within … days" | A portal-only user presented a token that never expires, or expires later than `mcp_portal_token_max_days` from now. Set an expiry date on the token under User management → Personal tokens, or mint one that has it. `log/error.log` names the account |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
@@ -1011,8 +1162,11 @@ that decision belongs at the profile you grant, before the first connection.
 
 **What the module stores.** One `AltiooEventMCPService` row per audited call: timestamp, user,
 method, element invoked, outcome, whether it was a dry run, duration, response size, a link to
-the credential it authenticated with, and — when it wrote — a link to the `CMDBChange` plus a
-readable list of the objects that change touched.
+the credential it authenticated with, the portal that served it (`portal`, empty for a console
+call), and — when it wrote — a link to the `CMDBChange` plus a readable list of the objects that
+change touched. The change's own information line names the channel, the tool and, in portal mode,
+the portal. A portal-only user turned away at login leaves a row too, with the reason's code and
+nothing the request said.
 
 That list names objects as `Class::id` and **does not record what they now contain**: it says
 `UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request
@@ -1104,12 +1258,17 @@ Known and deliberate, so that none of them is a discovery made after installing:
   `initialize`, the only message the block is carried in. It is fetchable — `core_instructions`,
   or `itop://core/instructions` at `priority: 1` — but whether a client reads it is the client's
   decision, not this server's.
-- **No OAuth.** By design — terminate it in a proxy in front of iTop. A client that offers only
-  a "Connect" button needs `mcp_protected_resource_metadata` set so the `401` can point at the
-  proxy's discovery document.
+- **No OAuth of its own.** By design — terminate it in a proxy in front of iTop, or install the
+  optional altioo-oauth-server. A client that offers only a "Connect" button needs the `401` to
+  point at a discovery document: `mcp_protected_resource_metadata` for a proxy, automatic with
+  altioo-oauth-server.
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.
+- **Portal-only users get what their portal offers, and no attachments.** Portal mode serves
+  the portal's lists, objects and writes — see [Granting access](#granting-access) — but lists
+  an object's attachments without serving their content or taking new ones. It needs iTop 3.2.2
+  or later, and a user allowed into several portals gets the first served one by rank.
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
 - **A tool with no annotations is graded `delete`**, so a pack that skips `getAnnotations()`

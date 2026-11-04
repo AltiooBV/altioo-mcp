@@ -51,6 +51,8 @@ class CoreExtensions implements iMCPServiceProvider
 		MCPRegistry::RegisterTool(new Tools\ObjectApplyStimulus());
 		MCPRegistry::RegisterTool(new Tools\ObjectGetRelated());
 		MCPRegistry::RegisterTool(new Tools\ObjectHistory());
+		// Portal mode's, and only portal mode's: available nowhere else.
+		MCPRegistry::RegisterTool(new Tools\PortalList());
 
 		//Prompts
 		MCPRegistry::RegisterPrompt(new Prompts\MyOpenTickets());

@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
@@ -73,7 +74,7 @@ class ClassDetail extends AbstractMCPResourceTemplate
 		// Unknown and forbidden answer alike, so reading this template cannot
 		// map out the classes the caller is not allowed to see.
 		if (!DatamodelReader::IsReadable($sClass)) {
-			throw new ResourceReadException("Unknown class '{$sClass}'.");
+			throw new ResourceReadException(MCPHelper::UnreadableClassRefusal($sClass));
 		}
 
 		return ResourceOutput::Json(DatamodelReader::Describe($sClass));

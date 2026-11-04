@@ -268,6 +268,31 @@ Paths confirmed at 3.2.2. Stable across several majors, but confirm on your bran
 
 ---
 
+## 12. Portal internals reused outside the portal's kernel — `itop-extension-guide.md` §3.1
+
+Verified 2026-10-28 by running them on an installed 3.2.3-3, and by reading the 3.2.0, 3.2.1,
+3.2.2 and 3.3.0 sources. Paths relative to `datamodels/2.x/itop-portal-base/portal/src/`. None of
+this is a declared extension point: it is the portal's own code called from somewhere else, so
+re-check every row on each branch targeted.
+
+| What | Status |
+|---|---|
+| `Brick\BrickCollection` constructor | `(ModuleDesign)` on 3.2.0; `(ModuleDesign, TemplatesProviderService)` from 3.2.1 (still on 3.3.0). Keeps only the bricks that are active and whose `<security>` passes for `UserRights::ListProfiles()` |
+| `Service\TemplatesProvider\TemplatesProviderService` | `@since 3.2.1`. Its constructor needs the portal configuration and a Symfony cache pool, and sets the static `AbstractBrick::SetTemplatesProviderService()` that every brick's `LoadFromXml()` uses as soon as its XML overrides a template |
+| `TemplatesRegister::GetProviderTemplatesIds()` | For a provider never registered, its fallback is `['tile', 'page']` — strings — on which it then calls `GetId()`: a fatal for any `ManageBrick` overriding a template if the register is empty. Register each brick class's `RegisterTemplates()` first (3.2.3, 3.3.0) |
+| `Helper\ScopeValidatorHelper`, `Helper\LifecycleValidatorHelper` | Constructor `(ModuleDesign, $sPortalId, $sCachePath = null)` on 3.2.0 to 3.3.0. Compile to fixed global classes `PortalScopesValues` and `PortalLifecycleValues`: one portal per PHP process. A class without a scope makes `GetScopeFilterForProfiles()` return null and `AddScopeToQuery()` leave the query unfiltered |
+| `PortalXmlConfiguration\Forms`, `\Lists` `Process()` | Take a `Symfony\Component\DependencyInjection\Container` and only write the `combodo.portal.instance.conf` parameter: a bare container works (3.2.0 to 3.3.0) |
+| `<fields><field><read_only>` | Stored as `readonly` (`Forms.php`), read as `read_only` (`ObjectFormManager.php`): ignored by the portal, field shown writable (3.2.3, 3.3.0) |
+| `Form\ObjectFormManager::PrepareFields()` | Public from **3.2.2**; absent on 3.2.0 and 3.2.1, where the merge is inlined in `Build()`. Its result is the private `$aFieldsAtts`, with no accessor (3.2.2 to 3.3.0) |
+| A `<twig>` form layout | Rendered before its fields are parsed, by `ObjectFormHandlerHelper::RenderFormFromTwig()`: an `ArrayLoader` environment with `Combodo\iTop\Application\TwigBase\Twig\Extension::GetFilters()` / `GetFunctions()`. The stock ticket form is one (it uses `dict_s`) |
+| Scope and lifecycle cache | The portal kernel compiles under `utils::GetCachePath().'/portals/<id>-<env>/'`; setup clears `data/cache-<env>` with it |
+| `Helper\ContextManipulatorHelper` | Constructor `(ModuleDesign, RouterInterface, BrickCollection, ScopeValidatorHelper)`; the router serves only the deprecated callback URLs. Built here with `newInstanceWithoutConstructor()`, then the public `Init(GetNodes('/module_design/action_rules/action_rule'))` and the private `$oScopeValidator` set; `PrepareObject(['rules' => …, 'sources' => [class => id]], $oObject)` uses nothing else. A rule's source must be in `sources` under its exact class, else it has no condition and is refused (N°2555). Retrofits change the source in memory only and are never written (verified 2026-10-30 on 3.2.3-3, read in 3.2.2) |
+| `create_from_this` with a factory method | `ObjectController::CreateFromFactoryAction()` calls the method with the origin object and keeps only `get_class()` of what it returns; the stock one is `\Ticket::CreateFromServiceSubcategory` (itop-full-itil). The portal takes the method name from its URL and checks only `is_callable()`; here it is taken from the brick's configuration only (read in 3.2.2) |
+| Attachments in a portal form | Added to every form but a transition's when `AttachmentPlugIn::IsAttachmentAllowedForObject()` answers true, whether or not the layout names them (`ObjectFormManager::Build()` fallback); listed with `AllowAllData()` by host object (`BsFileUploadFieldRenderer`) (read in 3.2.2) |
+| Picking an external key or a link's remote object | `ObjectController::SearchFromAttributeAction()` searches the target class through its read scope and answers "does not exist" when the class has none: the stock portal declares no scope on `Contact`, so a portal user cannot add one to `contacts_list` there (read in 3.2.2) |
+
+---
+
 ## Licence
 
 Copyright © 2026 Altioo. Licensed under

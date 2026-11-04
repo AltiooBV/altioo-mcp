@@ -12,7 +12,9 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Mcp\Exception\ToolCallException;
+use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
 
 /**
@@ -96,7 +98,7 @@ class ObjectGetDocument extends AbstractMCPTool
 	 * @param int    $id       The ID of that object
 	 * @param string $att_code The blob attribute to read
 	 *
-	 * @return mixed The document, as image content or as an embedded file
+	 * @return mixed The untrusted-text notice, then the document as image content or as an embedded file
 	 *
 	 * @throws ToolCallException When the object, the attribute or the document cannot be read.
 	 */
@@ -118,6 +120,11 @@ class ObjectGetDocument extends AbstractMCPTool
 			throw new ToolCallException($e->getMessage());
 		}
 
-		return DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code));
+		// The notice first: the file is whatever its author put in it, and the
+		// bytes carry no field to mark.
+		return [
+			new TextContent(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE),
+			DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
+		];
 	}
 }

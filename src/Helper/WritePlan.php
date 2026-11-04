@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 
 use DBObject;
 use DBObjectSearch;
@@ -572,17 +574,36 @@ final class WritePlan
 	{
 		$bNumeric = is_int($value) || (is_string($value) && ctype_digit($value));
 
-		if (!$bNumeric && !is_string($value)) {
+		if (!$bNumeric && !is_string($value) && !(is_array($value) && PortalMode::Current() !== null)) {
 			return null;
 		}
 
 		try {
 			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if ($oAttDef->IsLinkSet() && is_array($value) && PortalMode::Current() !== null) {
+				return self::refusalInPortalLinks($oAttDef->GetLinkedClass(), $sAttCode, $value);
+			}
 			if (!$oAttDef->IsExternalKey()) {
 				return null;
 			}
 
 			$sTarget = $oAttDef->GetTargetClass();
+
+			// An OQL string or a criteria object is searched under the account's
+			// rights, which in portal mode are wider than the portal's scope:
+			// whether it found one, none or several would tell the caller about
+			// objects the portal does not show, a letter at a time. So an id is
+			// all the portal accepts, and an id it does not show is answered
+			// alike whether or not the object exists.
+			if (PortalMode::Current() !== null) {
+				if (!$bNumeric) {
+					return sprintf("Give '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+				}
+
+				return ((int) $value === 0 && $oAttDef->IsNullAllowed()) || ObjectAccess::Current()->Readable($sTarget, (int) $value) !== null
+					? null
+					: sprintf("'%s' points at a %s the portal does not show you.", $sAttCode, $sTarget);
+			}
 
 			if (!$bNumeric) {
 				return self::RefusalForExternalKeyQuery($sTarget, $sAttCode, (string) $value);
@@ -605,10 +626,60 @@ final class WritePlan
 				$sTarget
 			);
 		} catch (Throwable $e) {
+			// In portal mode the ORM's say is what this keeps from running.
+			if (PortalMode::Current() !== null) {
+				MCPHelper::LogError("Could not check '{$sAttCode}' against the portal: ".$e->getMessage());
+
+				return sprintf("'%s' could not be checked against what the portal shows, so it was not accepted.", $sAttCode);
+			}
+
 			// A question about the datamodel must not become the refusal. The
 			// ORM still gets its say, which is where this started.
 			return null;
 		}
+	}
+
+	/**
+	 * The same rule for a link set's items, which RestUtils::MakeValue() turns
+	 * into objects through the same search. An item's own external keys take an
+	 * id the portal shows, as the portal's pickers would have offered, and
+	 * nothing else. A code the link class lacks is left to the ORM, which stops
+	 * at it before searching for anything after it.
+	 *
+	 * @param array<mixed> $aItems As the caller sent them.
+	 */
+	private static function refusalInPortalLinks(string $sLinkClass, string $sAttCode, array $aItems): ?string
+	{
+		foreach ($aItems as $aItem) {
+			if (!is_array($aItem)) {
+				continue;
+			}
+			foreach ($aItem as $sItemAttCode => $mValue) {
+				if (!MetaModel::IsValidAttCode($sLinkClass, (string) $sItemAttCode)) {
+					continue;
+				}
+				$oItemDef = MetaModel::GetAttributeDef($sLinkClass, (string) $sItemAttCode);
+				if ($oItemDef->IsLinkSet() && is_array($mValue)) {
+					$sNested = self::refusalInPortalLinks($oItemDef->GetLinkedClass(), $sAttCode, $mValue);
+					if ($sNested !== null) {
+						return $sNested;
+					}
+					continue;
+				}
+				if (!$oItemDef->IsExternalKey()) {
+					continue;
+				}
+				$sTarget = $oItemDef->GetTargetClass();
+				if (!is_int($mValue) && !(is_string($mValue) && ctype_digit($mValue))) {
+					return sprintf("Give the items of '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+				}
+				if ((int) $mValue !== 0 && ObjectAccess::Current()->Readable($sTarget, (int) $mValue) === null) {
+					return sprintf("'%s' links a %s the portal does not show you.", $sAttCode, $sTarget);
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -1501,6 +1572,24 @@ final class WritePlan
 		throw new ToolCallException(empty($aIssues)
 			? "{$sWhat} cannot be written as described."
 			: "{$sWhat} cannot be written as described: ".implode(' ', array_map('strval', $aIssues)));
+	}
+
+	/**
+	 * The marker for what a write reports: the free text in `changes`, and
+	 * the friendly name `after` carries, which is built from it.
+	 *
+	 * @param array<string, mixed> $aChanges As {@see Changes()} reports them.
+	 *
+	 * @return array{untrusted_text?: array{fields: array<int, string>, note: string}}
+	 * @since 1.2.0
+	 */
+	public static function Untrusted(string $sClass, array $aChanges): array
+	{
+		$aMarked = ObjectSerializer::UntrustedText($sClass, $aChanges);
+		$aFields = array_map(static fn (string $s): string => 'changes.'.$s, $aMarked['fields'] ?? []);
+		$aFields[] = 'after.friendlyname';
+
+		return ['untrusted_text' => ['fields' => $aFields, 'note' => ObjectSerializer::UNTRUSTED_NOTICE]];
 	}
 
 	/**

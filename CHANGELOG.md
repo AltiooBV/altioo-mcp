@@ -24,6 +24,42 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **Portal mode leaves more of a trail.** A portal-only user refused at login is now a row in the
+  audit table (method `login`, element `portal_admission`, the refusal's code), where it was a
+  line in `error.log` only. The change information of a write made in portal mode names the
+  portal, so history says it without joining to the audit row. `core_portal_list` search takes at
+  most 10 words, since each is a condition on every column the list shows. The first build of a
+  portal's compiled rules is done under a lock, so two requests starting together cannot load a
+  half-written file.
+- **Error and output text no longer tells a portal user more than the portal shows.** A
+  form-hidden attribute code is refused in the same words as one the class lacks, in
+  `core_object_get`, `core_object_history` and the field lists, and a code that is not shaped like
+  one is not quoted back. Portal refusals no longer name tools portal mode does not serve
+  (`core_object_search_by_class`, `core_object_find_by_name`, the audit class) or the console's
+  "rights model", and `core_object_history` leaves the raw iTop `user_id` empty in portal mode. A refused field key is
+  quoted only when it is shaped like an attribute code, since the text is recorded in the audit
+  row.
+- **More of what other people wrote is marked `untrusted_text`.** Linked-set names and document
+  file names are covered by the marker, and `core_object_create`, `core_object_update` and
+  `core_object_apply_stimulus` carry it for the free text in `changes` and for `after.friendlyname`.
+- **A write in portal mode reported attributes the portal's view form hides.** `changes` (and so
+  `defaulted`) of `core_object_create`, `core_object_update` and `core_object_apply_stimulus`
+  listed every attribute the write set or iTop filled in — presets, defaults, computed and
+  lifecycle values — whether or not the portal shows it. They now list the attributes the view
+  form shows and the ones the caller sent.
+- **A portal user could read data the portal hides, one yes or no at a time.** An external key,
+  or a link item's (`contacts_list` on the stock portal), accepted an OQL query or criteria object.
+  It ran under the account's rights, wider than the portal's scope, and which refusal came back
+  said whether it matched: `SELECT Person WHERE id=1 AND email LIKE 'a%'`, in a dry run, read
+  another organisation's data a letter at a time. In portal mode these take an id only, and an id
+  the portal does not show is answered alike whether or not the object exists.
+- **`core_object_history` and `core_object_get_document` returned other people's text unmarked.**
+  History now carries `untrusted_text` when it has entries, and a document is returned after a
+  notice that its contents are data.
+- **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
+  block was worked out again after the token had been dropped, found none, and listed `read`,
+  `write` and `delete` for a read-only token even though `tools/list` served only the read tools.
+  It now reports the policy decided for the request.
 - **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
   or carries no MCP scope said only `Invalid login`, with the same challenge as a request that
   sent nothing, so an OAuth client could not tell that it should refresh or connect again. The
@@ -51,8 +87,24 @@ entry itself, not left to be inferred from it.
   from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
   the rows have been written.
 
+- **`core_current_user` reports only the capabilities a served tool uses.** Its `capabilities`
+  were the token's grade, so a token graded `MCP-delete` was reported able to delete in portal
+  mode, where no tool deletes, and on an instance whose delete tools are all disabled. They are
+  now the grades of the tools actually served, within what the token grants, as the toolsets
+  beside them already were.
+  The block also names the served `tools`, since the portal's tools share the console's
+  toolset names and `objects` alone does not say which kind a connection has.
+
 ### Added
 
+- **`core_object_get` names the free text other people wrote.** Ticket titles, descriptions and
+  logs came back verbatim with nothing marking them as untrusted; the only protection was the
+  server instruction that object content is data, which a client that ignores instructions never
+  reads. The result now carries `untrusted_text`: the fields holding strings, long text, HTML or
+  case logs, and the names built from them (a ticket's title included), with a note to treat
+  them as data. `core_object_search_by_class`, `core_object_search_by_oql`,
+  `core_object_find_by_name`, `core_object_get_related` and `core_portal_list` carry it too, once per page. It marks and
+  restricts nothing — the write barriers are unchanged.
 - **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
   The built-in list names what iTop ships and cannot know an extension's class that stores work
   something else carries out later — a scheduled mass update, a script runner — whose rows were
@@ -62,6 +114,114 @@ entry itself, not left to be inferred from it.
   A value that is not a list of class names is logged and read as every class; a name the
   datamodel does not have is logged at every request. Empty by default, so nothing changes until
   it is set.
+- **A connection names its portal, and the audit row records it** (doc/adr/0007). The endpoint
+  URL may carry `portal_id`, as iTop's portal URLs do: a portal-only user is then served that
+  portal, when they may enter it and `mcp_portals` serves it, and refused otherwise — never served
+  another in its place. Without it, the first by rank, as before. With altioo-oauth-server
+  configured with one resource per portal, the `401` points at the resource of the URL called,
+  and a token granted for one portal's URL is refused at another's. `AltiooEventMCPService`
+  gains a `portal` field, empty for a console call; the setup adds the column.
+
+- **Portal mode: a portal-only user is let in by their profiles, and served what their portal
+  offers.** A user with no console used to be refused outright. Now they are let in when they
+  hold a profile in `mcp_allowed_profiles` — that one even with `secure_mcp_services` off — with a
+  token, linked to a contact, in the first portal by rank they may enter that the new
+  `mcp_portals` setting serves. Its default, `array('*')`, serves every portal, so holding the MCP
+  profile is the switch; `array()` refuses them as before. The token must expire within the new
+  `mcp_portal_token_max_days` (90 by default): every personal token needs its owner's profile in
+  authent-token's `personal_tokens_allowed_profiles`, which lets a portal session mint its own
+  tokens with no expiry at all, and portal mode does not accept one that never ends. iTop's
+  `Portal user` profile reads every class, and what narrows it is the portal's own configuration,
+  so a tool is served there only when it adds that configuration to its own checks, a pack's
+  never. Console logins take exactly the path they took before, because portal mode starts
+  only from the refusal iTop already returned for them.
+- **Portal mode, second step: `core_class_list` and `core_class_schema` say what a portal user's
+  portal offers.** (First as `core_portal_describe`, merged into the class tools by doc/adr/0006.)
+  The first element served in portal mode: the classes a brick granted to the
+  user reaches, whether the portal's scopes let them read and change objects of each, its create
+  actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
+  is read with the portal's own code — its brick collection, scope and lifecycle helpers and form
+  merge — so a customised portal is described as customised. A class
+  with a read scope that no granted brick reaches is not offered (doc/adr/0001), nor is a subclass
+  whose inherited scope pins `finalclass` to other classes — in the stock portal, `Change` and
+  `Problem`, which an end user never sees there. ManageBrick, BrowseBrick and CreateBrick are read,
+  and a custom brick class extending one is read as that type; one extending none of them offers
+  nothing (doc/adr/0002). A form field
+  marked `read_only` in `<fields>` is reported read-only, although iTop's portal shows it
+  writable. Needs iTop 3.2.2 or later; on an earlier one, or for a portal whose configuration
+  cannot be read, nothing is served and the log says why. In the `datamodel` toolset, so an
+  operator or a token narrowed to other toolsets does not get it. A create action whose class
+  the portal picks with a method, as the stock services brick does wherever requests and
+  incidents are both installed, is listed with no class and `class_chosen_by_portal`, and each
+  class the user may create lists such actions in `create_chosen_by_portal`. Each stimulus names
+  the states it applies in (`from_states`), each browse list the list above it (`parent`), each
+  create action the list its starting object is picked from (`from_list`), and a class says
+  whether the portal shows its objects' attachments.
+- **Portal mode, third step: the portal's lists, objects and writes.** The portal's lists, and
+  the console's reads and writes served there with the portal's configuration added
+  (doc/adr/0006):
+  - `core_portal_list` runs a list by id — a ManageBrick, one of its tabs, a browse level under
+    a parent row — as the portal runs it: the brick's query intersected with the scope, the
+    tab's condition, the parent checked against its own level, and the portal's search on the
+    columns shown. "What is the status of my requests" and a FAQ search are both a list. The
+    client never sends a query (doc/adr/0001).
+  - `core_object_get` is served in portal mode too, rather than a portal copy of it
+    (doc/adr/0006): it reads one object by the scopes, with its view form's fields for the object
+    as it is, its attachments (listed, not served), its rights narrowed to the portal's, the
+    stimuli the portal offers and the fields its edit form leaves settable.
+  - `core_object_create`, `core_object_update` and `core_object_apply_stimulus` are served in
+    portal mode too, a creation taking one of the portal's create actions (`action`, `from_id`)
+    instead of a class. They write as the portal would, dry runs by default: a field must be
+    settable in the portal's form and pass the console's rules too; what a value points at must
+    be readable; a stimulus must be offered on the object in its state; a creation starts from a row of its action's list, takes the
+    class the action names or its factory method chooses, and is preset by the action's rules,
+    run by the portal's own helper (doc/adr/0005).
+
+  `core_object_history` is served in portal mode too, when the portal shows history — a brick
+  granted to the user reaches `CMDBChangeOp` and a read scope covers it — and
+  `core_class_list` says so in `history`. It is the console's tool with the portal's limits
+  added: the object must be one the portal shows, the rows those the change log's scope holds, and
+  the attributes those the object's view form shows. The portal's lists and reads refuse the
+  change log, and no write in portal mode reaches it, whatever the portal grants.
+
+  `core_current_user` and `itop://core/current-user` are served in portal mode, and now report
+  `current_organization` and `current_portal` in both modes. The `core_my_open_tickets` prompt is
+  offered there too, answered from the portal's ticket lists. A token graded `MCP-read` is served
+  the reads only, as everywhere.
+- **The server instructions are served in portal mode** (`core_instructions`,
+  `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
+  has no `initialize`, and is told there how to read the portal's lists and write through them,
+  narrowed to what its token is served.
+- **altioo-oauth-server is an optional dependency** (doc/adr/0003). Declared in
+  `module.altioo-mcp.php` in a form that is always satisfied, so it never stops an install and
+  only sets that module up first when it is being installed. With it installed and
+  `mcp_protected_resource_metadata` empty, the `401` now advertises the document it serves for
+  this endpoint; before, the operator copied that URL into the setting by hand. Without it,
+  nothing changes, and a value in the setting always wins.
+- **How a portal-only user gets a token**, in the README: the profile it needs in authent-token's
+  `personal_tokens_allowed_profiles`, that an administrator mints it, and what listing that
+  profile opens — a portal session can then mint its own tokens of any scope through
+  authent-token's endpoint, bounded here by what portal mode serves. SECURITY.md's hardening
+  advice says the same, and `doc/security-summary.md` now names portal mode and the compiled
+  portal rules it has iTop write under `data/cache-<env>/`.
+
+### Changed
+
+- **Portal mode is on after an upgrade.** `mcp_portals` defaults to `array('*')`, so a portal-only
+  user who holds the `MCP Services User` profile (or another in `mcp_allowed_profiles`), has a
+  token and is linked to a contact is served what their portal offers, where they were refused
+  before. Nobody gains the console. **To keep it off, set `'mcp_portals' => array()` before
+  upgrading** (or `array('itop-portal')` to serve one portal only); see the README's
+  [Granting access](README.md#granting-access).
+- **A refused class is quoted back only when it is shaped like a class name.** Every tool that
+  refuses a class, and `core_portal_describe`, repeated the value it was given, so
+  `UserRequest' OR 1=1 --` came back in the error and went into the audit row's message
+  verbatim. iTop escapes that row in the console, so nothing rendered it as markup; a value
+  that is not letters, digits and underscores is now answered "That is not a class name"
+  instead, and a typo like `UserReqest` is still quoted. The check reads the value only, never
+  the datamodel, so unknown and unreadable classes still answer alike. The
+  `itop://core/class/{class}` resource answered with a plain "Unknown class 'X'." of its own;
+  it now gives the same refusal as `core_class_schema`.
 
 ### Packaging
 

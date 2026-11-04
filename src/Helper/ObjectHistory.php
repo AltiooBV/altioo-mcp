@@ -8,9 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
+use DBSearch;
 use MetaModel;
 use UserRights;
 
@@ -236,6 +238,34 @@ final class ObjectHistory
 	 */
 	public static function For(DBObject $oObject, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0): array
 	{
+		return self::read($oObject, $sAttCode, $iLimit, $iOffset, null, null);
+	}
+
+	/**
+	 * {@see For()}, under a portal's rules as well: the portal decides which
+	 * rows of the change log the user may read, and which attributes of the
+	 * object they are shown. Every gate For() applies still applies; these
+	 * only narrow it, so a row is served when both allow it.
+	 *
+	 * @param \Closure(DBObjectSearch): ?DBSearch $fBound The query narrowed to what the user may read of it, null for none.
+	 * @param \Closure(string): bool        $fShows Whether the user is shown that attribute of $oObject.
+	 *
+	 * @return array<string, mixed>
+	 * @internal Portal mode's, as long as PortalPolicy is not on the surface a pack builds on.
+	 */
+	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0): array
+	{
+		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows);
+	}
+
+	/**
+	 * @param (\Closure(DBObjectSearch): ?DBSearch)|null $fBound
+	 * @param (\Closure(string): bool)|null        $fShows
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows): array
+	{
 		$sClass = get_class($oObject);
 		$iKey = (int)$oObject->GetKey();
 
@@ -247,16 +277,18 @@ final class ObjectHistory
 			$oSearch->AddCondition('attcode', $sAttCode, '=');
 		}
 
-		$oSet = new DBObjectSet($oSearch, self::NEWEST_FIRST, [], null, $iLimit, $iOffset);
-		$iTotal = $oSet->Count();
+		$oBounded = $fBound === null ? $oSearch : $fBound($oSearch);
+		$oSet = $oBounded === null ? null : new DBObjectSet($oBounded, self::NEWEST_FIRST, [], null, $iLimit, $iOffset);
+		$iTotal = $oSet === null ? 0 : $oSet->Count();
 
 		$aEntries = [];
 		$oInstanceSet = null;
 		$aCaseLogs = [];
-		while ($oOp = $oSet->Fetch()) {
+		while ($oSet !== null && ($oOp = $oSet->Fetch())) {
 			$aEntry = self::describe($oOp);
 			$sOn = $aEntry['attribute'];
-			if ($sOn !== null && !ObjectSerializer::MayReadAttribute($oObject, $sClass, $sOn, $oInstanceSet)) {
+			if ($sOn !== null && (($fShows !== null && !$fShows($sOn))
+				|| !ObjectSerializer::MayReadAttribute($oObject, $sClass, $sOn, $oInstanceSet))) {
 				continue;
 			}
 
@@ -426,7 +458,8 @@ final class ObjectHistory
 		return [
 			'when'      => $oOp->Get('date'),
 			'who'       => $oOp->Get('userinfo'),
-			'user_id'   => $oOp->Get('user_id'),
+			// The raw iTop account id says nothing a portal user may use, and `who` names the person.
+			'user_id'   => PortalMode::Current() !== null ? null : $oOp->Get('user_id'),
 			'operation' => $sOpClass,
 			'attribute' => self::valueOf($oOp, $sOpClass, 'attcode'),
 			'from'      => self::valueOf($oOp, $sOpClass, 'oldvalue'),

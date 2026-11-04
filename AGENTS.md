@@ -77,3 +77,7 @@ Settings agent skills read here.
   the ones this repository adds, for the agent calling the endpoint, the client organisation's
   end-user behind it, and the people whose data it reads. Findings go beside it and are
   gitignored; only the list is tracked.
+- **Decisions:** [`doc/adr/`](doc/adr/), one numbered file per decision. Read the ones touching
+  your change before writing it, and do not reverse one without a new record superseding it.
+  The one most easily undone: a capability is one tool in both modes, so add no `core_portal_*`
+  copy of a console tool — `core_portal_list` is the only portal-only one ([0006](doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md)).

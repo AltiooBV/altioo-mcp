@@ -9,13 +9,18 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
-use DBObjectSet;
+use DBObjectSearch;
+use DBSearch;
 use MetaModel;
 use UserRights;
 
@@ -35,9 +40,15 @@ use UserRights;
  * the history without withholding object reads. {@see HistoryReader} applies
  * the gates that make it safe to serve at all.
  *
+ * Served in portal mode too, one tool for both: there the portal is one more
+ * set of limits on top of the same gates. It shows history when a brick it
+ * grants reaches the change log; the object must be one it shows the user,
+ * the rows those its change-log scope holds, and the attributes those the
+ * object's view form shows. Nothing a console read refuses is served.
+ *
  * @since 1.0.0
  */
-class ObjectHistory extends AbstractMCPTool
+class ObjectHistory extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -58,8 +69,15 @@ class ObjectHistory extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
 	}
+
+	/** What this tool is to a portal-mode connection, which has no class schema. */
+	private const PORTAL_DESCRIPTION = 'Report what iTop recorded happening to one object the portal shows this user: each change with its date, who made it, the attribute affected and the values before and after, newest first. Served when the portal shows history - core_class_list says so in "history" - and limited to the fields the object\'s view form shows. Narrow to one attribute with att_code, using the field codes core_class_schema or core_object_get report.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -115,7 +133,7 @@ class ObjectHistory extends AbstractMCPTool
 	 * @param string $att_code Optional attribute code to restrict the history to, e.g. 'status'
 	 * @param int $limit Maximum number of entries to return (default 50, max 500)
 	 * @param int $offset Number of entries to skip for paging
-	 * @return array An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
+	 * @return mixed An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
 	 * @throws ToolCallException if the class is unknown, if the object is not found, or if the attribute is not one the class declares.
 	 */
 	public static function execute(
@@ -139,41 +157,54 @@ class ObjectHistory extends AbstractMCPTool
 		if (!MetaModel::IsValidClass($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
+
+		try {
+			$oAccess = ObjectAccess::Current();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
+		// The portal's refusal first, so that it is phrased as the portal's.
+		if (!$oAccess->ShowsHistory()) {
+			throw new ToolCallException('The portal shows no history. Call core_class_list for what it offers.');
+		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
-		// The object gate before the object is read, so that a history request
+		// The object gate before the log is read, so that a history request
 		// cannot report the existence of something a plain read would deny.
-		$oSearch = ObjectQuery::ById($class, $id);
-		$oSet = new DBObjectSet($oSearch);
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
-		}
-
-		$oObject = MetaModel::GetObject($class, $id, false);
-		if ($oObject === null) {
-			throw new ToolCallException("Object {$class}::{$id} not found.");
-		}
-
-		// Reading the parent says nothing about the leaf, at class level or at
-		// object level, and the log is filed under the leaf's own name.
+		$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
 		$sFinalClass = get_class($oObject);
-		if ($sFinalClass !== $class) {
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found.");
-			}
-			$oFinalSet = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, $oFinalSet)) {
-				throw new ToolCallException("Object {$class}::{$id} not found.");
-			}
+
+		try {
+			$fShows = $oAccess->ShownOf($oObject);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
 		}
 
+		// A field the portal hides is answered as a code the class lacks, so
+		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
-		if ($sAttCode !== '' && !MetaModel::IsValidAttCode($sFinalClass, $sAttCode)) {
-			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sFinalClass}'. Call core_class_schema for the attribute codes.");
+		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
+			throw new ToolCallException(ObjectSerializer::UnknownAttributes([$sAttCode], $sFinalClass));
 		}
 
-		return ToolOutput::Json(HistoryReader::For($oObject, $sAttCode, $limit, $offset));
+		$aHistory = HistoryReader::Within(
+			$oObject,
+			static fn (DBObjectSearch $oSearch): ?DBSearch => $oAccess->Bounded($oSearch),
+			$fShows,
+			$sAttCode,
+			$limit,
+			$offset
+		);
+
+		// Before and after values and case-log entries are what other people
+		// wrote, and a planted instruction later edited out stays readable here.
+		if ($aHistory['entries'] !== []) {
+			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+		}
+
+		return ToolOutput::Json($aHistory);
 	}
 }

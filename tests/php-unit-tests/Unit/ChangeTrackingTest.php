@@ -28,6 +28,15 @@ class ChangeTrackingTest extends TestCase
 	/** The width of CMDBChange::userinfo, which is what everything is cut to. */
 	private const COLUMN = 255;
 
+	public function testThePortalIsNamedOnTheChange(): void
+	{
+		$this->assertSame(
+			'Jane Doe (MCP: core_object_update, portal itop-portal)',
+			ChangeTracking::Compose('Jane Doe', false, 'core_object_update', null, 'itop-portal')
+		);
+		$this->assertSame('Jane Doe (MCP: core_object_update)', ChangeTracking::Compose('Jane Doe', false, 'core_object_update', null, ''));
+	}
+
 	public function testTheUserIsNamedEvenWhenNobodyExplainedAnything(): void
 	{
 		$sInfo = ChangeTracking::Compose('Jane Doe', false, null, null);

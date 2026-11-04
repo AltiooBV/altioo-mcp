@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
@@ -346,6 +347,9 @@ class ObjectGetRelated extends AbstractMCPTool
 			// anyone parsing the answer at all.
 			'truncated' => $aWithheld !== [],
 		];
+
+		// The names are what people typed into the objects.
+		$aPayload = ObjectSerializer::MarkRows($aPayload, array_values($aObjects));
 
 		if ($aWithheld !== []) {
 			$aPayload['withheld'] = [

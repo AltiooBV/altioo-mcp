@@ -12,6 +12,11 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -27,7 +32,7 @@ use Mcp\Schema\ToolAnnotations;
  *
  * @since 1.0.0
  */
-class ClassSchema extends AbstractMCPTool
+class ClassSchema extends AbstractMCPTool implements PortalAware
 {
 
 	public function getNamespace(): string
@@ -49,6 +54,10 @@ class ClassSchema extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return self::PORTAL_DESCRIPTION;
+		}
+
 		return 'Describe one iTop class: attributes, relations, lifecycle states and stimuli, and what this user may do with it. '
 			.'Attributes arrive in two blocks: "attributes" can be written - that is what a create or an update needs - and "derived" cannot - computed or structural, including the _friendlyname each external key carries - which on a class with many of them is most of the payload. '
 			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply. '
@@ -60,6 +69,9 @@ class ClassSchema extends AbstractMCPTool
 			.'An external key reports its target class, not its candidate objects: search that class with core_object_search_by_class and pass the id you find. '
 			.'Read this before creating or updating an object of the class, or before applying a stimulus; core_class_list finds the class name.';
 	}
+
+	/** What this tool is to a portal-mode connection: one class as the portal offers it. */
+	private const PORTAL_DESCRIPTION = 'Describe one class as this user\'s portal offers it: whether they may read and change objects of it, how objects of it are created, the fields shown when viewing, editing and creating one, and the stimuli they may apply. Pass a class from core_class_list. '.PortalDescription::READING;
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -74,6 +86,19 @@ class ClassSchema extends AbstractMCPTool
 
 	public function getInputSchema(): ?array
 	{
+		if (PortalMode::Current() !== null) {
+			return [
+				'type'       => 'object',
+				'properties' => [
+					'class' => [
+						'type'        => 'string',
+						'description' => 'A class from core_class_list, e.g. UserRequest.',
+					],
+				],
+				'required'   => ['class'],
+			];
+		}
+
 		return [
 			'type'       => 'object',
 			'properties' => [
@@ -107,7 +132,7 @@ class ClassSchema extends AbstractMCPTool
 	 * @param string $attributes    Attribute codes to describe, comma-separated; '*' for all of them
 	 * @param bool   $required_only Keep only the attributes a write must set
 	 *
-	 * @return array The class summary and whichever of rights, attributes, derived, relations and lifecycle were asked for, plus a `reported` block echoing the narrowing
+	 * @return mixed The class summary and whichever of rights, attributes, derived, relations and lifecycle were asked for, plus a `reported` block echoing the narrowing
 	 * @throws ToolCallException if the class is unknown or access is denied.
 	 */
 	public static function execute(
@@ -119,6 +144,16 @@ class ClassSchema extends AbstractMCPTool
 	{
 		if ($class === '') {
 			throw new ToolCallException("Missing class argument.");
+		}
+
+		// In portal mode, the class as the portal offers it: its forms,
+		// lifecycle and create actions, not the datamodel (doc/adr/0006).
+		if (PortalMode::Current() !== null) {
+			try {
+				return ToolOutput::Json(PortalDescription::Of(PortalPolicy::ForCurrentRequest(), trim($class)));
+			} catch (MCPPortalException $oException) {
+				throw new ToolCallException($oException->getMessage());
+			}
 		}
 
 		// Unknown and forbidden answer alike, so calling this tool cannot map

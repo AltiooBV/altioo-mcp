@@ -23,7 +23,9 @@ Protocol](https://modelcontextprotocol.io) server at a single authenticated HTTP
 that an AI assistant can search, read and update CMDB and ticketing objects. It runs entirely
 inside iTop, against `MetaModel` and `UserRights` directly: there is no external service, no
 copy of your datamodel anywhere, and no path by which a caller sees or changes more than the
-user they authenticated as could through the console. iTop itself opens no outbound connection
+user they authenticated as could through the console — or, for a portal-only user holding the
+MCP profile, through their portal (portal mode; `mcp_portals` turns it off). iTop itself
+opens no outbound connection
 — the MCP client is what talks to a model, and it is the client, not this extension, that
 decides which one.
 
@@ -113,7 +115,7 @@ the [README](../README.md#what-the-install-changes):
 |---|---|
 | **Does it require an administrator?** | No. It creates its own profile and expects to be paired with a functional profile chosen for the purpose. An Administrator-scoped credential is possible and is the configuration to review hardest |
 | **Outbound network** | **None.** No call to a model provider, to Altioo, or anywhere else. Traffic is inbound only |
-| **Filesystem writes** | **None** outside what iTop itself writes (its own logs, and `env-<env>/` during setup) |
+| **Filesystem writes** | **None** outside what iTop itself writes (its own logs, and `env-<env>/` during setup) — with one exception when portal mode serves a portal: iTop's own portal helpers compile that portal's scope and lifecycle rules into PHP files under `data/cache-<env>/altioo-mcp/portals/`, a directory this module names and creates. Generated from the portal's configuration, the same for every user, and cleared by setup with the rest of iTop's cache |
 | **Cron or background jobs** | **None.** The module declares no background process and no scheduled task |
 | **Console UI** | None. Configuration is module parameters in `config-itop.php` |
 | **New HTTP surface** | Exactly one file. The shipped `.htaccess` / `web.config` re-grant web access to `index.php` and leave iTop's blanket deny over the rest of `extensions/` in place, so `src/`, `vendor/`, `tests/` and `composer.json` stay unreachable. The release build refuses an archive missing either file |
@@ -123,6 +125,15 @@ the [README](../README.md#what-the-install-changes):
 scope can only ever make a credential *narrower* than its owner, never wider; the instance
 capability grading (`mcp_capabilities` / `mcp_read_only`) and the toolset filter; and iTop's own
 `UserRights`, checked per class, per object, per attribute and per stimulus inside every tool.
+
+**Portal-only users are a different case**, let in by the MCP profile, with a token that expires
+within `mcp_portal_token_max_days`, unless `mcp_portals` is emptied. For them `UserRights` is not the boundary — iTop's `Portal user` profile reads every
+class — so portal mode serves only the elements of this module that add that portal's own
+configuration (its granted bricks, scopes and forms) to the console's checks, and nothing by a
+tool pack: the class tools describing the portal, its lists, object reads and history, writes
+held to the portal's forms and the console's together, the caller's own identity, and the
+server instructions. See
+the README, "Portal-only users: portal mode", and SECURITY.md for how their tokens are issued.
 
 **Writes are dry runs by default.** Create, update, delete, attach, apply-stimulus and the bulk
 tools return what the call *would* change, having run iTop's `CheckToWrite()`, and write only when the

@@ -188,6 +188,11 @@ final class MCPService
 	 */
 	public static function InstructionsFor(AccessPolicy $oPolicy): string
 	{
+		$sPortal = PortalMode::Current();
+		if ($sPortal !== null) {
+			return ServerInstructions::PortalText($sPortal, $oPolicy);
+		}
+
 		return ServerInstructions::Text(
 			$oPolicy,
 			self::internalFormatOf(\AttributeDateTime::class),
@@ -585,6 +590,17 @@ final class MCPService
 	 */
 	private static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy): bool
 	{
+		// Portal mode serves only what enforces the portal's rules itself.
+		// Every other element asks UserRights, which grants "Portal user" read
+		// on every bizmodel class - so an element not written for the portal,
+		// a pack's included, would serve that user the instance. First, so
+		// that no filter below can be what lets one through; the ones below
+		// still narrow what it lets through, because portal mode widens
+		// nothing.
+		if (PortalMode::Current() !== null && !PortalMode::Serves($oElement)) {
+			return true;
+		}
+
 		if (!$oElement->isAvailable()) {
 			return true;
 		}
@@ -635,10 +651,16 @@ final class MCPService
 	 */
 	public static function ServedAccess(): array
 	{
-		$oPolicy = self::AccessPolicyOfCurrentRequest();
+		// The one the controller decided while the token was still at hand.
+		// Deciding it again here runs after the credential is dropped, finds
+		// no token, and answers with the instance-wide policy: a read-only
+		// token was told it could write and delete.
+		$oPolicy = AccessPolicy::Current() ?? self::AccessPolicyOfCurrentRequest();
 		$aDisabled = MCPHelper::GetDisabledIdentifiers();
 
 		$aToolsets = [];
+		$aServedGrades = [];
+		$aTools = [];
 		$aRegistries = [
 			MCPRegistry::GetTools(),
 			MCPRegistry::GetResources(),
@@ -649,6 +671,11 @@ final class MCPService
 			foreach ($aElements as $sIdentifier => $oElement) {
 				if (!self::isHidden((string)$sIdentifier, $oElement, $aDisabled, $oPolicy)) {
 					$aToolsets[$oElement->getToolset()] = true;
+					if ($oElement instanceof AbstractMCPTool) {
+						[$bReadOnly, $bDestructive] = self::annotatedHints($oElement);
+						$aServedGrades[AccessPolicy::CapabilityOf($bReadOnly, $bDestructive)] = true;
+						$aTools[] = (string)$sIdentifier;
+					}
 				}
 			}
 		}
@@ -656,9 +683,26 @@ final class MCPService
 		$aNames = array_keys($aToolsets);
 		sort($aNames);
 
+		// What the caller may do *and* has a tool to do it with, for the same
+		// reason the toolsets are the reachable set: a grade the token carries
+		// that no served tool needs is not one the caller can use. In portal
+		// mode a token graded MCP-delete holds a grade nothing there deletes
+		// with, and reporting it sent a client looking for a delete tool.
+		$aGranted = $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES;
+
+		sort($aTools);
+
 		return [
 			'toolsets'     => $aNames,
-			'capabilities' => $oPolicy->capabilities() ?? AccessPolicy::CAPABILITIES,
+			// The tools themselves, for a caller that cannot tell from a
+			// toolset's name what is in it: the portal's tools share the
+			// console's toolsets, so that one setting narrows both, and
+			// "objects" alone does not say which kind this connection has.
+			'tools'        => $aTools,
+			'capabilities' => array_values(array_filter(
+				AccessPolicy::CAPABILITIES,
+				static fn (string $sGrade): bool => in_array($sGrade, $aGranted, true) && isset($aServedGrades[$sGrade])
+			)),
 			// Named here as well as in the instructions, for the same reason
 			// the class schema is served as a tool as well as a resource: a
 			// client that never calls prompts/list leaves its model unable to

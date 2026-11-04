@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 use CMDBChange;
 use CMDBObject;
 use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Psr\Http\Message\MessageInterface;
 use Throwable;
 use UserRights;
@@ -149,14 +150,20 @@ final class ChangeTracking
 	 * @param bool        $bImpersonated Whether iTop will prepend that name itself.
 	 * @param string|null $sTool         Qualified tool name, when it is known.
 	 * @param string|null $sComment      The caller's reason, when it gave one.
+	 * @param string|null $sPortal       The portal serving the call, in portal mode.
 	 *
 	 * @since 1.0.0
 	 */
-	public static function Compose(string $sUser, bool $bImpersonated, ?string $sTool, ?string $sComment): string
+	public static function Compose(string $sUser, bool $bImpersonated, ?string $sTool, ?string $sComment, ?string $sPortal = null): string
 	{
 		$sChannel = ($sTool === null || $sTool === '')
 			? self::CHANNEL
 			: self::CHANNEL.': '.$sTool;
+
+		// Which portal served the call, so history says it without a join to the audit row.
+		if ($sPortal !== null && $sPortal !== '') {
+			$sChannel .= ', portal '.$sPortal;
+		}
 
 		// Under impersonation GetTrackInfo() writes "A (on behalf of B) (<this>)"
 		// - prefixing the name here as well would say it twice.
@@ -194,7 +201,8 @@ final class ChangeTracking
 				CMDBChange::GetCurrentUserName(),
 				UserRights::IsImpersonated(),
 				self::$sTool,
-				self::$sComment
+				self::$sComment,
+				PortalMode::Current()
 			));
 			CMDBObject::SetTrackOrigin(CMDBChangeOrigin::CUSTOM_EXTENSION);
 			CMDBObject::SetCurrentChange(null);
