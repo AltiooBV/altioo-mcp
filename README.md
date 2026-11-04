@@ -567,12 +567,18 @@ decision, per person, as it is for console users.
 - For one portal: list the others' ids instead of `'*'`.
 - For one person: remove `MCP Services User` (or the profile in `mcp_allowed_profiles`) from
   them, and delete their personal tokens under **User management → Personal tokens**. A deleted
-  token stops working on the next request.
+  token stops working on the next request. Connections made through
+  [altioo-oauth-server](https://github.com/AltiooBV/altioo-oauth-server) are ended there, by the
+  person under *My profile → Connected applications* or by an administrator under *OAuth
+  connections*.
 - To see who was served and who was turned away: the audit table's `portal` column names the
   portal of each call, and a refusal at login is a row with method `login` and element
   `portal_admission`.
 
-**Giving a portal user a token.** Two things iTop decides, not this extension:
+**Giving a portal user a token.** With altioo-oauth-server installed, they connect their client
+themselves, and see and disconnect it under *My profile → Connected applications* in the portal.
+Without it an administrator mints a personal token, as below, and the user has no page of their
+own to see or revoke it. Two things iTop decides, not this extension, on either route:
 
 - A personal token logs in only if its owner holds a profile listed in authent-token's
   `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
