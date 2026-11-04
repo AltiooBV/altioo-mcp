@@ -11,6 +11,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -49,6 +51,23 @@ class PortalWriteOutcomeContractTest extends TestCase
 			strpos($sBody, 'PortalMode::Current()', strpos($sBody, 'GetTargetClass')),
 			'the portal refusal must come before the OQL lookup'
 		);
+	}
+
+	/** Hidden and unknown read alike, and a value that is no code is not repeated. */
+	public function testAHiddenAttributeIsRefusedInTheWordsOfAnUnknownOne(): void
+	{
+		$this->assertSame(
+			"Unknown attribute 'org_id' on class 'UserRequest'. Call core_class_schema for the attribute codes of the class.",
+			ObjectSerializer::UnknownAttributes(['org_id'], 'UserRequest')
+		);
+		$this->assertStringNotContainsString('OR 1=1', ObjectSerializer::UnknownAttributes(["x' OR 1=1 --"], 'UserRequest'));
+	}
+
+	public function testThePortalTextNamesNoToolItDoesNotServe(): void
+	{
+		$sBody = $this->bodyOf(MCPHelper::class, 'UnreadableClassRefusal');
+		$this->assertLessThan(strpos($sBody, 'rights model'), strpos($sBody, 'PortalMode::Current()'));
+		$this->assertStringContainsString('PortalMode::Current()', $this->bodyOf(MCPHelper::class, 'auditLookup'));
 	}
 
 	private function bodyOf(string $sClass, string $sMethod): string

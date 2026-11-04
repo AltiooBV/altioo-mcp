@@ -607,6 +607,10 @@ final class WritePlan
 				return null;
 			}
 
+			if (PortalMode::Current() !== null) {
+				return sprintf("No %s has id %s, or the portal does not show it to you. Pass the id of one a list of the portal shows.", $sTarget, (string) $value);
+			}
+
 			return sprintf(
 				"No %s has id %s, or it is not one you may read. Search %s for the object you want and pass its id: "
 				."core_object_find_by_name finds it by name, core_object_search_by_class by attribute.",
@@ -1511,6 +1515,24 @@ final class WritePlan
 		throw new ToolCallException(empty($aIssues)
 			? "{$sWhat} cannot be written as described."
 			: "{$sWhat} cannot be written as described: ".implode(' ', array_map('strval', $aIssues)));
+	}
+
+	/**
+	 * The marker for what a write reports: the free text in `changes`, and
+	 * the friendly name `after` carries, which is built from it.
+	 *
+	 * @param array<string, mixed> $aChanges As {@see Changes()} reports them.
+	 *
+	 * @return array{untrusted_text?: array{fields: array<int, string>, note: string}}
+	 * @since 1.2.0
+	 */
+	public static function Untrusted(string $sClass, array $aChanges): array
+	{
+		$aMarked = ObjectSerializer::UntrustedText($sClass, $aChanges);
+		$aFields = array_map(static fn (string $s): string => 'changes.'.$s, $aMarked['fields'] ?? []);
+		$aFields[] = 'after.friendlyname';
+
+		return ['untrusted_text' => ['fields' => $aFields, 'note' => ObjectSerializer::UNTRUSTED_NOTICE]];
 	}
 
 	/**

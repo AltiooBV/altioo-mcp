@@ -329,12 +329,25 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// all three, is refused on c, and cannot tell a typo from a denial.
 		$aMissingFillable = [];
 		$aMissingBlocked  = [];
+		$iUnshown         = 0;
+
+		try {
+			$fShown = $oAccess->ShownOf($oObject);
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
 
 		foreach ($aExpectedAttributes as $sAttCode => $iExpectCode) {
 			// Soft comparison on purpose: Get() returns mixed (string, int, ormLinkSet,
 			// AttributeDate...) depending on the attribute, so neither === '' nor
 			// utils::IsNullOrEmptyString() (typed ?string) can stand in here.
 			if (!($iExpectCode & OPT_ATT_MANDATORY) || ($oObject->Get($sAttCode) != '')) {
+				continue;
+			}
+
+			// Named only when the portal shows it: the list is a way to read the form.
+			if (!$fShown((string)$sAttCode)) {
+				$iUnshown++;
 				continue;
 			}
 
@@ -351,8 +364,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// only on the next call means the caller sets a and b onto an object
 		// for a transition it was never going to be allowed to complete, and
 		// learns that on a second round trip.
-		if (!empty($aMissingFillable) || !empty($aMissingBlocked)) {
-			throw new ToolCallException(self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked));
+		if (!empty($aMissingFillable) || !empty($aMissingBlocked) || $iUnshown > 0) {
+			$sMessage = self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked);
+			if ($iUnshown > 0) {
+				$sMessage = ($aMissingFillable === [] && $aMissingBlocked === []
+					? "Stimulus '{$stimulus}' cannot be applied: the transition needs information this portal does not let you give."
+					: rtrim($sMessage, '.').sprintf(', and %d more the portal does not show.', $iUnshown));
+			}
+			throw new ToolCallException($sMessage);
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()
@@ -411,6 +430,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 					'would_move_to' => $sTargetState,
 					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
@@ -446,6 +466,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'would_move_to' => $sTargetState,
 				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'       => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WritePlan::Map($aOverridden),
 					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]);

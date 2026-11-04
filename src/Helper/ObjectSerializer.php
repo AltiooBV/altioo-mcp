@@ -290,8 +290,12 @@ final class ObjectSerializer
 			}
 		}
 
+		// A link set carries the names of what it links, and a document the
+		// name of its file, both written by someone else.
 		return $oAttDef instanceof AttributeCaseLog
 			|| $oAttDef instanceof AttributeFriendlyName
+			|| $oAttDef instanceof AttributeLinkedSet
+			|| $oAttDef instanceof AttributeBlob
 			|| ($oAttDef instanceof AttributeString && !$oAttDef instanceof AttributeEnum && !$oAttDef instanceof AttributeFinalClass);
 	}
 
@@ -819,15 +823,34 @@ final class ObjectSerializer
 		}
 
 		if (!empty($aUnknown)) {
-			throw new ToolCallException(sprintf(
-				"Unknown attribute%s %s on class '%s'. Call core_class_schema for the attribute codes of the class.",
-				count($aUnknown) > 1 ? 's' : '',
-				"'".implode("', '", $aUnknown)."'",
-				$sClass
-			));
+			throw new ToolCallException(self::UnknownAttributes($aUnknown, $sClass));
 		}
 
 		return $aFields;
+	}
+
+	/**
+	 * The refusal for attribute codes a class does not have - or has, and the
+	 * portal's view form hides. One wording for both, so a portal user cannot
+	 * tell which real attributes the form withholds from the text.
+	 *
+	 * @param array<int, string> $aCodes
+	 *
+	 * @since 1.2.0
+	 */
+	public static function UnknownAttributes(array $aCodes, string $sClass): string
+	{
+		$aShown = array_map(
+			static fn (string $sCode): string => MCPHelper::LooksLikeClassName($sCode) ? "'{$sCode}'" : 'a code that is not an attribute code',
+			array_values($aCodes)
+		);
+
+		return sprintf(
+			"Unknown attribute%s %s on class '%s'. Call core_class_schema for the attribute codes of the class.",
+			count($aCodes) > 1 ? 's' : '',
+			implode(', ', $aShown),
+			$sClass
+		);
 	}
 
 	/**

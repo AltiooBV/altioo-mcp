@@ -303,6 +303,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
@@ -322,6 +323,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'valid'      => true,
 					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
 					'changes'    => WritePlan::Map($aChanges),
+					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);

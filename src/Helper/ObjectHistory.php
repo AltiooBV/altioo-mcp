@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
@@ -457,7 +458,8 @@ final class ObjectHistory
 		return [
 			'when'      => $oOp->Get('date'),
 			'who'       => $oOp->Get('userinfo'),
-			'user_id'   => $oOp->Get('user_id'),
+			// The raw iTop account id says nothing a portal user may use, and `who` names the person.
+			'user_id'   => PortalMode::Current() !== null ? null : $oOp->Get('user_id'),
 			'operation' => $sOpClass,
 			'attribute' => self::valueOf($oOp, $sOpClass, 'attcode'),
 			'from'      => self::valueOf($oOp, $sOpClass, 'oldvalue'),

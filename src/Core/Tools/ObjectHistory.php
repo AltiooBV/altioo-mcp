@@ -187,12 +187,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
 		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
-			throw new ToolCallException(sprintf(
-				"Unknown attribute '%s' on class '%s'. Call %s for the attribute codes.",
-				$sAttCode,
-				$sFinalClass,
-				'core_class_schema'
-			));
+			throw new ToolCallException(ObjectSerializer::UnknownAttributes([$sAttCode], $sFinalClass));
 		}
 
 		$aHistory = HistoryReader::Within(

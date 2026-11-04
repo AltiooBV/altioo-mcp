@@ -109,10 +109,15 @@ class OrmFailureRedactionTest extends TestCase
 		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'RejectedValue');
 
 		$this->assertStringContainsString('core_class_schema', $sBody, 'the caller is told nothing it can check');
-		$this->assertStringContainsString('AltiooEventMCPService', $sBody,
+		// Said by auditLookup(), which keeps it from a portal user, who may read
+		// neither the class nor be served the tool.
+		$this->assertStringContainsString('self::auditLookup()', $sBody);
+		$sLookup = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'auditLookup');
+		$this->assertStringContainsString('AltiooEventMCPService', $sLookup,
 			'the reference is handed out without naming anything that resolves it');
-		$this->assertStringContainsString('core_object_search_by_class', $sBody,
+		$this->assertStringContainsString('core_object_search_by_class', $sLookup,
 			'nothing tells the reader how to find the row the reference is on');
+		$this->assertStringContainsString('PortalMode::Current()', $sLookup);
 		$this->assertStringNotContainsString('quote that reference', $sBody);
 
 		// And the reference has to reach that row, which is the half that was

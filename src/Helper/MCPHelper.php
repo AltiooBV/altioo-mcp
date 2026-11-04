@@ -208,6 +208,10 @@ class MCPHelper
 				."core_class_list shows the classes you can reach.";
 		}
 
+		if (PortalMode::Current() !== null) {
+			return "Unknown class '{$sClass}': the portal does not offer it. core_class_list shows the classes it offers you.";
+		}
+
 		return "Unknown class '{$sClass}': either this datamodel has no such class, or this account may not read it. "
 			."iTop reserves its rights model, its credentials and its automation for administrators, so if you named one "
 			."of those, no profile you can be granted changes this. core_class_list shows the classes you can reach.";
@@ -634,11 +638,22 @@ class MCPHelper
 		return sprintf(
 			'%s. The cause is server-side and was not something this call could have avoided; '
 			.'it is recorded in the iTop log, and on this call\'s own audit row, under reference %s. '
-			.'Report that reference rather than retrying: an account that may read AltiooEventMCPService '
-			.'can find the row with core_object_search_by_class on error_ref.',
+			.'Report that reference rather than retrying%s',
 			$sWhat,
-			$sReference
+			$sReference,
+			self::auditLookup()
 		);
+	}
+
+	/**
+	 * Where the audit row is found, for the account that may read it. A portal
+	 * user may not, and the tools that would find it are not served to them.
+	 */
+	private static function auditLookup(): string
+	{
+		return PortalMode::Current() !== null
+			? '.'
+			: ': an account that may read AltiooEventMCPService can find the row with core_object_search_by_class on error_ref.';
 	}
 
 	/**
@@ -690,10 +705,10 @@ class MCPHelper
 			'%s. iTop refused the value and its reason is in the instance log, not in this answer. '
 			.'Check the attribute against core_class_schema - its type, its allowed values, its pattern - and correct the call. '
 			.'If the value looks right, tell the user it failed and give them reference %s: it is in the instance log, and on '
-			.'this call\'s own audit row, which an account that may read AltiooEventMCPService can find with '
-			.'core_object_search_by_class on error_ref.',
+			.'this call\'s own audit row%s',
 			$sWhat,
-			$sReference
+			$sReference,
+			self::auditLookup()
 		);
 	}
 

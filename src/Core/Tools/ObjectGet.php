@@ -188,12 +188,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 
 		$aHidden = array_values(array_diff($aRequested, $aVisible));
 		if ($aHidden !== []) {
-			throw new ToolCallException(sprintf(
-				"Unknown attribute%s %s on class '%s'.",
-				count($aHidden) > 1 ? 's' : '',
-				"'".implode("', '", $aHidden)."'",
-				$sClass
-			));
+			throw new ToolCallException(ObjectSerializer::UnknownAttributes($aHidden, $sClass));
 		}
 
 		return $aRequested;

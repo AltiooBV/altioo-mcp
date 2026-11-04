@@ -415,7 +415,9 @@ final class PortalAccess extends ObjectAccess
 		$aIssues = [];
 		foreach (array_keys($aFields) as $sAttCode) {
 			if (!in_array((string)$sAttCode, $aSettable, true) && !in_array((string)$sAttCode, $aAlso, true)) {
-				$aIssues[] = "'{$sAttCode}' is not a field the portal's {$sForm} form lets you set";
+				// Quoted only when it is shaped like a code: the text lands in the audit row.
+				$aIssues[] = (\Altioo\iTop\Extension\MCP\Helper\MCPHelper::LooksLikeClassName((string)$sAttCode) ? "'{$sAttCode}'" : 'A key')
+					." is not a field the portal's {$sForm} form lets you set";
 			}
 		}
 
