@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 
 use DBObject;
@@ -579,6 +580,9 @@ final class WritePlan
 
 		try {
 			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if ($oAttDef->IsLinkSet() && is_array($value) && PortalMode::Current() !== null) {
+				return self::refusalInPortalLinks($oAttDef->GetLinkedClass(), $sAttCode, $value);
+			}
 			if (!$oAttDef->IsExternalKey()) {
 				return null;
 			}
@@ -587,11 +591,18 @@ final class WritePlan
 
 			// An OQL string or a criteria object is searched under the account's
 			// rights, which in portal mode are wider than the portal's scope:
-			// the count it answers with would tell the caller about objects the
-			// portal does not show. An id is checked against the scope by
-			// RefusalsForReach(), so an id is all the portal accepts.
-			if (!$bNumeric && PortalMode::Current() !== null) {
-				return sprintf("Give '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+			// whether it found one, none or several would tell the caller about
+			// objects the portal does not show, a letter at a time. So an id is
+			// all the portal accepts, and an id it does not show is answered
+			// alike whether or not the object exists.
+			if (PortalMode::Current() !== null) {
+				if (!$bNumeric) {
+					return sprintf("Give '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+				}
+
+				return ((int) $value === 0 && $oAttDef->IsNullAllowed()) || ObjectAccess::Current()->Readable($sTarget, (int) $value) !== null
+					? null
+					: sprintf("'%s' points at a %s the portal does not show you.", $sAttCode, $sTarget);
 			}
 
 			if (!$bNumeric) {
@@ -607,10 +618,6 @@ final class WritePlan
 				return null;
 			}
 
-			if (PortalMode::Current() !== null) {
-				return sprintf("No %s has id %s, or the portal does not show it to you. Pass the id of one a list of the portal shows.", $sTarget, (string) $value);
-			}
-
 			return sprintf(
 				"No %s has id %s, or it is not one you may read. Search %s for the object you want and pass its id: "
 				."core_object_find_by_name finds it by name, core_object_search_by_class by attribute.",
@@ -619,10 +626,60 @@ final class WritePlan
 				$sTarget
 			);
 		} catch (Throwable $e) {
+			// In portal mode the ORM's say is what this keeps from running.
+			if (PortalMode::Current() !== null) {
+				MCPHelper::LogError("Could not check '{$sAttCode}' against the portal: ".$e->getMessage());
+
+				return sprintf("'%s' could not be checked against what the portal shows, so it was not accepted.", $sAttCode);
+			}
+
 			// A question about the datamodel must not become the refusal. The
 			// ORM still gets its say, which is where this started.
 			return null;
 		}
+	}
+
+	/**
+	 * The same rule for a link set's items, which RestUtils::MakeValue() turns
+	 * into objects through the same search. An item's own external keys take an
+	 * id the portal shows, as the portal's pickers would have offered, and
+	 * nothing else. A code the link class lacks is left to the ORM, which stops
+	 * at it before searching for anything after it.
+	 *
+	 * @param array<mixed> $aItems As the caller sent them.
+	 */
+	private static function refusalInPortalLinks(string $sLinkClass, string $sAttCode, array $aItems): ?string
+	{
+		foreach ($aItems as $aItem) {
+			if (!is_array($aItem)) {
+				continue;
+			}
+			foreach ($aItem as $sItemAttCode => $mValue) {
+				if (!MetaModel::IsValidAttCode($sLinkClass, (string) $sItemAttCode)) {
+					continue;
+				}
+				$oItemDef = MetaModel::GetAttributeDef($sLinkClass, (string) $sItemAttCode);
+				if ($oItemDef->IsLinkSet() && is_array($mValue)) {
+					$sNested = self::refusalInPortalLinks($oItemDef->GetLinkedClass(), $sAttCode, $mValue);
+					if ($sNested !== null) {
+						return $sNested;
+					}
+					continue;
+				}
+				if (!$oItemDef->IsExternalKey()) {
+					continue;
+				}
+				$sTarget = $oItemDef->GetTargetClass();
+				if (!is_int($mValue) && !(is_string($mValue) && ctype_digit($mValue))) {
+					return sprintf("Give the items of '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+				}
+				if ((int) $mValue !== 0 && ObjectAccess::Current()->Readable($sTarget, (int) $mValue) === null) {
+					return sprintf("'%s' links a %s the portal does not show you.", $sAttCode, $sTarget);
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/**

@@ -70,6 +70,9 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 	/** A subcategory offered to another organisation only. */
 	private int $iForeignSubcategory;
 
+	/** A person of another organisation, whom the portal does not show. */
+	private int $iForeignContact;
+
 	protected function setUp(): void
 	{
 		parent::setUp();
@@ -91,6 +94,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 
 		[$this->iService, $this->iSubcategory] = $this->catalogue('Mine '.$sSuffix, $iProvider, $this->iOrg);
 		[, $this->iForeignSubcategory] = $this->catalogue('Theirs '.$sSuffix, $iProvider, $iForeign);
+		$this->iForeignContact = (int)$this->CreatePerson(3, $iForeign)->GetKey();
 
 		$this->iNew = (int)$this->CreateUserRequest(1, ['org_id' => $this->iOrg, 'caller_id' => $this->iContact])->GetKey();
 		$this->iResolved = (int)$this->CreateUserRequest(2, ['org_id' => $this->iOrg, 'caller_id' => $this->iContact])->GetKey();
@@ -126,6 +130,65 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 
 		ToolOutput::Decode(ObjectUpdate::execute('UserRequest', $this->iNew, ['public_log' => 'Any news?'], false));
 		$this->assertSame(1, $this->entriesIn($this->iNew));
+	}
+
+	/**
+	 * A link item's key was searched under the account's rights, wider than the
+	 * portal's scope, and which refusal came back said whether a hidden object
+	 * matched: another organisation's data, a letter at a time.
+	 */
+	public function testALinkItemTakesAnIdAndCannotProbeWhatThePortalHides(): void
+	{
+		$iHidden = $this->iForeignContact;
+
+		$aAnswers = array_map(fn (mixed $mKey): string => $this->refusalOfContact($mKey), [
+			"SELECT Person WHERE id={$iHidden}",
+			'SELECT Person WHERE id=-1',
+			'SELECT Person',
+			['name' => 'nobody'],
+		]);
+		$this->assertCount(1, array_unique($aAnswers), 'the answer depends on what the query matched: '.implode(' / ', $aAnswers));
+		$this->assertStringContainsString('the id of a', $aAnswers[0]);
+
+		$this->assertSame($this->refusalOfContact($iHidden), $this->refusalOfContact(99999999), 'an id the portal hides reads as one that does not exist');
+
+		$aDry = ToolOutput::Decode(ObjectUpdate::execute('UserRequest', $this->iNew, ['contacts_list' => [['contact_id' => $this->iContact]]]));
+		$this->assertTrue($aDry['valid'], 'an id the portal shows is still accepted');
+	}
+
+	/** A hidden code beside one the class lacks must not be told apart from it. */
+	public function testAFieldListCannotMapWhatTheFormHides(): void
+	{
+		try {
+			ObjectGet::execute('UserRequest', $this->iNew, 'org_id,zzz_no_such_code');
+			$this->fail('the list was served');
+		} catch (ToolCallException $oException) {
+			$this->assertStringContainsString("'org_id'", $oException->getMessage());
+			$this->assertStringContainsString("'zzz_no_such_code'", $oException->getMessage());
+		}
+	}
+
+	/** What a transition still needs is what its form prompts for, whichever form shows it otherwise. */
+	public function testATransitionNamesTheMandatoryFieldItStillNeeds(): void
+	{
+		try {
+			ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen');
+			$this->markTestSkipped('This datamodel leaves no mandatory field empty on reopening.');
+		} catch (ToolCallException $oException) {
+			$this->assertStringContainsString('Missing mandatory attribute(s)', $oException->getMessage());
+			$this->assertStringContainsString('request_type', $oException->getMessage());
+		}
+	}
+
+	private function refusalOfContact(mixed $mKey): string
+	{
+		try {
+			ObjectUpdate::execute('UserRequest', $this->iNew, ['contacts_list' => [['contact_id' => $mKey]]]);
+		} catch (ToolCallException $oException) {
+			return $oException->getMessage();
+		}
+
+		$this->fail('accepted: '.json_encode($mKey));
 	}
 
 	/** Read-only in the portal's form, so not the user's to set, whatever UserRights says. */

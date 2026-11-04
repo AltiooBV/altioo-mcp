@@ -36,8 +36,7 @@ entry itself, not left to be inferred from it.
   `core_object_get`, `core_object_history` and the field lists, and a code that is not shaped like
   one is not quoted back. Portal refusals no longer name tools portal mode does not serve
   (`core_object_search_by_class`, `core_object_find_by_name`, the audit class) or the console's
-  "rights model". A transition's missing-mandatory list names only fields the portal shows, and
-  `core_object_history` leaves the raw iTop `user_id` empty in portal mode. A refused field key is
+  "rights model", and `core_object_history` leaves the raw iTop `user_id` empty in portal mode. A refused field key is
   quoted only when it is shaped like an attribute code, since the text is recorded in the audit
   row.
 - **More of what other people wrote is marked `untrusted_text`.** Linked-set names and document
@@ -48,13 +47,15 @@ entry itself, not left to be inferred from it.
   listed every attribute the write set or iTop filled in — presets, defaults, computed and
   lifecycle values — whether or not the portal shows it. They now list the attributes the view
   form shows and the ones the caller sent.
-- **An external key accepted an OQL query or criteria object in portal mode.** The query ran
-  under the account's rights, wider than the portal's scope, and the answer ("matches no X",
-  "matches N objects") told the caller about objects the portal does not show. In portal mode
-  an external key takes an id only, checked against the portal's scope.
+- **A portal user could read data the portal hides, one yes or no at a time.** An external key,
+  or a link item's (`contacts_list` on the stock portal), accepted an OQL query or criteria object.
+  It ran under the account's rights, wider than the portal's scope, and which refusal came back
+  said whether it matched: `SELECT Person WHERE id=1 AND email LIKE 'a%'`, in a dry run, read
+  another organisation's data a letter at a time. In portal mode these take an id only, and an id
+  the portal does not show is answered alike whether or not the object exists.
 - **`core_object_history` and `core_object_get_document` returned other people's text unmarked.**
   History now carries `untrusted_text` when it has entries, and a document is returned after a
-  notice that its contents are data. The `core_current_user` entry below is unrelated.
+  notice that its contents are data.
 - **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
   block was worked out again after the token had been dropped, found none, and listed `read`,
   `write` and `delete` for a read-only token even though `tools/list` served only the read tools.

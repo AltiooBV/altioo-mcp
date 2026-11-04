@@ -180,12 +180,19 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	private static function fieldsOf(ObjectAccess $oAccess, \DBObject $oObject, string $sOutputFields): ?array
 	{
 		$sClass = get_class($oObject);
-		$aRequested = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
 		$aVisible = $oAccess->VisibleFields($oObject);
-		if ($aVisible === null || $aRequested === null) {
-			return $aVisible ?? $aRequested;
+		if ($aVisible === null) {
+			return ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
 		}
 
+		$sOutputFields = trim($sOutputFields);
+		if ($sOutputFields === '' || $sOutputFields === ObjectSerializer::ALL_FIELDS) {
+			return $aVisible;
+		}
+
+		// Against the form alone, the class never asked: a list naming a hidden
+		// code beside a code the class lacks must not name only the second.
+		$aRequested = array_values(array_diff(array_filter(array_map('trim', explode(',', $sOutputFields)), 'strlen'), ['id', 'class']));
 		$aHidden = array_values(array_diff($aRequested, $aVisible));
 		if ($aHidden !== []) {
 			throw new ToolCallException(ObjectSerializer::UnknownAttributes($aHidden, $sClass));
