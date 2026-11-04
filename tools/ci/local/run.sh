@@ -230,9 +230,11 @@ rm -rf "$sDest"; mkdir -p "$sDest"
 # doc/example-pack/composer.lock is the one that changes an answer - the pack's
 # lock is deliberately uncommitted, and a stale one pins it to packages needing
 # a PHP this job is not running, so `composer test` in there fails for a reason
-# that does not exist on GitHub.
+# that does not exist on GitHub. .claude/worktrees/ holds whole git worktrees,
+# other branches' trees that no checkout of this one contains.
 rsync -a \
   --exclude=.git/ \
+  --exclude=.claude/worktrees/ \
   --exclude=vendor/ \
   --exclude=.phpunit.result.cache \
   --exclude=.phpunit.cache/ \
