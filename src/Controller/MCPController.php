@@ -429,6 +429,8 @@ final class MCPController
 			return LoginWebPage::EXIT_CODE_OK;
 		}
 
+		self::auditAdmissionRefusal($sRefusal);
+
 		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL && $sRequested !== null) {
 			// The id is the request's text: quoted only when it is shaped like one.
 			MCPHelper::LogError(sprintf(
@@ -1162,6 +1164,35 @@ final class MCPController
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
 			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
+		}
+	}
+
+	/**
+	 * A row for a portal-only user turned away at login, which otherwise left
+	 * error.log and nothing an administrator reads in the audit table.
+	 *
+	 * Only the refusal's own code is recorded, never text from the request,
+	 * and nothing is written when the instance's log level or setting says the
+	 * calls are not logged. A refusal for a user who never authenticated has no
+	 * row to write and none is attempted: this is reached after the login.
+	 */
+	private static function auditAdmissionRefusal(string $sRefusal): void
+	{
+		if (!MCPHelper::LogsCalls()) {
+			return;
+		}
+
+		try {
+			$oLog = new AltiooEventMCPService();
+			$oLog->SetTrim('userinfo', UserRights::GetUser());
+			$oLog->Set('message', 'Refused at login in portal mode: '.$sRefusal);
+			$oLog->Set('mcp_method', 'login');
+			$oLog->Set('mcp_name', 'portal_admission');
+			$oLog->Set('status', 'error');
+			self::describeCredential($oLog);
+			$oLog->DBInsertNoReload();
+		} catch (Throwable $e) {
+			MCPHelper::LogError('Failed to log a portal admission refusal: '.$e->getMessage());
 		}
 	}
 

@@ -790,8 +790,24 @@ final class PortalPolicy
 				: new BrickCollection($oDesign);
 
 			$sCompiled = self::compiledRulesPath();
-			$oScopes = new ScopeValidatorHelper($oDesign, $sPortal, $sCompiled);
-			$oLifecycle = new LifecycleValidatorHelper($oDesign, $sPortal, $sCompiled);
+
+			// iTop's helpers compile the portal's rules into $sCompiled when no
+			// file is there yet, writing it in place; a second request starting at
+			// the same moment could require a half-written file and fail with a
+			// ParseError. Built one at a time, the second finds the first's file whole.
+			$rLock = @fopen($sCompiled.'compile.lock', 'c');
+			if ($rLock !== false) {
+				flock($rLock, LOCK_EX);
+			}
+			try {
+				$oScopes = new ScopeValidatorHelper($oDesign, $sPortal, $sCompiled);
+				$oLifecycle = new LifecycleValidatorHelper($oDesign, $sPortal, $sCompiled);
+			} finally {
+				if ($rLock !== false) {
+					flock($rLock, LOCK_UN);
+					fclose($rLock);
+				}
+			}
 
 			// Forms and Lists write into a container parameter and read
 			// nothing else from it, so a bare container stands in for the

@@ -41,6 +41,9 @@ use MetaModel;
 class PortalList extends AbstractPortalTool
 {
 	private const DEFAULT_LIMIT = 20;
+
+	/** Each word is a condition on every column the list shows, and the portal sets no limit of its own. */
+	private const MAX_SEARCH_WORDS = 10;
 	private const MAX_LIMIT = 100;
 
 	protected function defaultTitle(): string
@@ -307,6 +310,9 @@ class PortalList extends AbstractPortalTool
 		$aNeedles = preg_match('/^"(.*)"$/', $sSearch, $aMatches) === 1
 			? [$aMatches[1]]
 			: array_values(array_filter(explode(' ', $sSearch), static fn (string $s): bool => $s !== ''));
+		if (count($aNeedles) > self::MAX_SEARCH_WORDS) {
+			throw new ToolCallException(sprintf('A search takes at most %d words; narrow it, or quote a phrase to match it whole.', self::MAX_SEARCH_WORDS));
+		}
 		foreach ($aNeedles as $sNeedle) {
 			$oQuery->AddCondition_FullTextOnAttributes($aAttCodes, $sNeedle);
 		}
