@@ -24,6 +24,18 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **Error and output text no longer tells a portal user more than the portal shows.** A
+  form-hidden attribute code is refused in the same words as one the class lacks, in
+  `core_object_get`, `core_object_history` and the field lists, and a code that is not shaped like
+  one is not quoted back. Portal refusals no longer name tools portal mode does not serve
+  (`core_object_search_by_class`, `core_object_find_by_name`, the audit class) or the console's
+  "rights model". A transition's missing-mandatory list names only fields the portal shows, and
+  `core_object_history` leaves the raw iTop `user_id` empty in portal mode. A refused field key is
+  quoted only when it is shaped like an attribute code, since the text is recorded in the audit
+  row.
+- **More of what other people wrote is marked `untrusted_text`.** Linked-set names and document
+  file names are covered by the marker, and `core_object_create`, `core_object_update` and
+  `core_object_apply_stimulus` carry it for the free text in `changes` and for `after.friendlyname`.
 - **A write in portal mode reported attributes the portal's view form hides.** `changes` (and so
   `defaulted`) of `core_object_create`, `core_object_update` and `core_object_apply_stimulus`
   listed every attribute the write set or iTop filled in — presets, defaults, computed and
