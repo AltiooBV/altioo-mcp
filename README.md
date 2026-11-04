@@ -558,6 +558,20 @@ So by default the profile is the switch: a portal-only user holding `MCP Service
 another profile in `mcp_allowed_profiles`), with a token, is served. Giving the profile is the
 decision, per person, as it is for console users.
 
+**Turning portal mode off, or taking it from one person.**
+
+- For everyone: set `'mcp_portals' => array()` in the module settings. Portal-only users are
+  refused again from the next request, and nothing else about the extension changes. To keep it
+  off across an **upgrade** from a version before portal mode, set that before upgrading: the
+  default, `array('*')`, serves every portal.
+- For one portal: list the others' ids instead of `'*'`.
+- For one person: remove `MCP Services User` (or the profile in `mcp_allowed_profiles`) from
+  them, and delete their personal tokens under **User management → Personal tokens**. A deleted
+  token stops working on the next request.
+- To see who was served and who was turned away: the audit table's `portal` column names the
+  portal of each call, and a refusal at login is a row with method `login` and element
+  `portal_admission`.
+
 **Giving a portal user a token.** Two things iTop decides, not this extension:
 
 - A personal token logs in only if its owner holds a profile listed in authent-token's
@@ -1142,8 +1156,11 @@ that decision belongs at the profile you grant, before the first connection.
 
 **What the module stores.** One `AltiooEventMCPService` row per audited call: timestamp, user,
 method, element invoked, outcome, whether it was a dry run, duration, response size, a link to
-the credential it authenticated with, and — when it wrote — a link to the `CMDBChange` plus a
-readable list of the objects that change touched.
+the credential it authenticated with, the portal that served it (`portal`, empty for a console
+call), and — when it wrote — a link to the `CMDBChange` plus a readable list of the objects that
+change touched. The change's own information line names the channel, the tool and, in portal mode,
+the portal. A portal-only user turned away at login leaves a row too, with the reason's code and
+nothing the request said.
 
 That list names objects as `Class::id` and **does not record what they now contain**: it says
 `UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request

@@ -24,6 +24,13 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **Portal mode leaves more of a trail.** A portal-only user refused at login is now a row in the
+  audit table (method `login`, element `portal_admission`, the refusal's code), where it was a
+  line in `error.log` only. The change information of a write made in portal mode names the
+  portal, so history says it without joining to the audit row. `core_portal_list` search takes at
+  most 10 words, since each is a condition on every column the list shows. The first build of a
+  portal's compiled rules is done under a lock, so two requests starting together cannot load a
+  half-written file.
 - **Error and output text no longer tells a portal user more than the portal shows.** A
   form-hidden attribute code is refused in the same words as one the class lacks, in
   `core_object_get`, `core_object_history` and the field lists, and a code that is not shaped like
