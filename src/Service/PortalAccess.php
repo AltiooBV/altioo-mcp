@@ -82,6 +82,27 @@ final class PortalAccess extends ObjectAccess
 			&& ($aFlags[$sAttCode] & OPT_ATT_HIDDEN) !== OPT_ATT_HIDDEN;
 	}
 
+	/**
+	 * Only what the portal's view form shows of the object, and what the
+	 * caller sent: a value they supplied is theirs already. The rest -
+	 * presets, defaults, computed and lifecycle-filled attributes - is shown
+	 * on the same terms as a read, never because a write happened to set it.
+	 *
+	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the portal's forms cannot be read.
+	 */
+	#[\Override]
+	public function Disclosed(DBObject $oObject, array $aChanges, array $aSupplied): array
+	{
+		$fShown = $this->ShownOf($oObject);
+		$aSent  = array_flip($aSupplied);
+
+		return array_filter(
+			$aChanges,
+			static fn (string $sAttCode): bool => isset($aSent[$sAttCode]) || $fShown($sAttCode),
+			ARRAY_FILTER_USE_KEY
+		);
+	}
+
 	/** When a brick granted to the caller reaches the change log, and a scope covers it. */
 	#[\Override]
 	public function ShowsHistory(): bool

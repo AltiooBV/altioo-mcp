@@ -106,6 +106,22 @@ class ObjectAccess
 		return static fn (string $sAttCode): bool => true;
 	}
 
+	/**
+	 * What of a write's `changes` the caller is shown. A write reports every
+	 * attribute it touches, the ones iTop fills in as well as the ones named,
+	 * and on the console the attribute rights already decided what each shows.
+	 * On the console, all of them.
+	 *
+	 * @param array<string, mixed> $aChanges  As WritePlan::Changes() reports them.
+	 * @param array<int, string>   $aSupplied The attribute codes the caller sent.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function Disclosed(DBObject $oObject, array $aChanges, array $aSupplied): array
+	{
+		return $aChanges;
+	}
+
 	/** Whether the caller may read what was recorded happening to objects. */
 	public function ShowsHistory(): bool
 	{

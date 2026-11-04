@@ -273,6 +273,14 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 
 		$aChanges = WritePlan::Changes($oObject, $class);
 
+		// The portal shows what its view form shows; a write that fills in
+		// more reports no more than a read would (doc/adr/0005).
+		try {
+			$aChanges = $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues));
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
 		if ($simulate) {
 			// id is null rather than absent: a dry run has created nothing, and
 			// saying so is not the same as answering with a different shape.

@@ -373,6 +373,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		$aChanges = WritePlan::Changes($oObject, $class);
 
+		// The portal shows what its view form shows; a write that fills in
+		// more reports no more than a read would (doc/adr/0005).
+		try {
+			$aChanges = $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues));
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
+
 		// The one change a transition is guaranteed to make, which nothing else
 		// here can see.
 		//
