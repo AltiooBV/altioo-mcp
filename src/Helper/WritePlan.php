@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 
 use DBObject;
 use DBObjectSearch;
@@ -572,7 +573,7 @@ final class WritePlan
 	{
 		$bNumeric = is_int($value) || (is_string($value) && ctype_digit($value));
 
-		if (!$bNumeric && !is_string($value)) {
+		if (!$bNumeric && !is_string($value) && !(is_array($value) && PortalMode::Current() !== null)) {
 			return null;
 		}
 
@@ -583,6 +584,15 @@ final class WritePlan
 			}
 
 			$sTarget = $oAttDef->GetTargetClass();
+
+			// An OQL string or a criteria object is searched under the account's
+			// rights, which in portal mode are wider than the portal's scope:
+			// the count it answers with would tell the caller about objects the
+			// portal does not show. An id is checked against the scope by
+			// RefusalsForReach(), so an id is all the portal accepts.
+			if (!$bNumeric && PortalMode::Current() !== null) {
+				return sprintf("Give '%s' the id of a %s, taken from a list the portal shows.", $sAttCode, $sTarget);
+			}
 
 			if (!$bNumeric) {
 				return self::RefusalForExternalKeyQuery($sTarget, $sAttCode, (string) $value);
