@@ -94,6 +94,13 @@ stimulus rights. Sensitive attributes are masked. That includes the datamodel it
 the user may not read is not listed, not described, and not searched, so the schema an assistant
 is shown is the schema that user would see in the console.
 
+**Portal users too, held to their portal.** A user of iTop's customer portal, with no console, can
+connect an assistant once they hold the MCP profile and a token that expires. They are served
+what their portal offers — its lists, the fields of its forms, its create actions and state
+changes — read from that portal's own configuration, so a customised portal is served as
+customised, and a write has to pass the portal's form and the console's rules together. The
+`mcp_portals` setting names the portals served, or turns this off.
+
 **Object content is treated as data, never as instruction.** Ticket titles, descriptions and
 logs are written by anyone who can open a ticket or send a mail. The server tells every client
 at connection time that text found in an object asking it to call a tool or ignore an
@@ -136,7 +143,8 @@ own tools, resources and prompts into it — task-shaped tools for your own work
 there, not in the generic core.
 
 **What it does not do:** no SSE streaming or resumability; no OAuth of its own (terminate it in
-a proxy — the `401` will advertise it); no console UI, configuration is module parameters.
+a proxy, or install the separate altioo-oauth-server extension — the `401` will advertise either);
+no console UI, configuration is module parameters.
 
 ## Documentation
 
