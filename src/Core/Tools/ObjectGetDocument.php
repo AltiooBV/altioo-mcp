@@ -123,7 +123,7 @@ class ObjectGetDocument extends AbstractMCPTool
 		// The notice first: the file is whatever its author put in it, and the
 		// bytes carry no field to mark.
 		return [
-			new TextContent(ObjectSerializer::UNTRUSTED_NOTICE),
+			new TextContent(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE),
 			DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
 		];
 	}

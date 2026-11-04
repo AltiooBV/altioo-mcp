@@ -1171,10 +1171,10 @@ final class MCPController
 	 * A row for a portal-only user turned away at login, which otherwise left
 	 * error.log and nothing an administrator reads in the audit table.
 	 *
-	 * Only the refusal's own code is recorded, never text from the request,
-	 * and nothing is written when the instance's log level or setting says the
-	 * calls are not logged. A refusal for a user who never authenticated has no
-	 * row to write and none is attempted: this is reached after the login.
+	 * Only the refusal's own code is recorded, never text from the request.
+	 * Written whatever the log level, an error row like any other, unless the
+	 * instance does not log calls at all. This is reached after the login, so
+	 * there is always a user to name.
 	 */
 	private static function auditAdmissionRefusal(string $sRefusal): void
 	{
@@ -1189,6 +1189,8 @@ final class MCPController
 			$oLog->Set('mcp_method', 'login');
 			$oLog->Set('mcp_name', 'portal_admission');
 			$oLog->Set('status', 'error');
+			// Nothing has remembered the token yet: the refusal comes first.
+			TokenScopes::RememberIdentity();
 			self::describeCredential($oLog);
 			$oLog->DBInsertNoReload();
 		} catch (Throwable $e) {

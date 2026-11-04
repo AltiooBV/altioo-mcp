@@ -70,7 +70,7 @@ class UntrustedTextContractTest extends TestCase
 	{
 		$this->assertStringContainsString("'untrusted_text'", $this->bodyOf(ObjectHistory::class));
 		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_NOTICE', $this->bodyOf(ObjectHistory::class));
-		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_NOTICE', $this->bodyOf(ObjectGetDocument::class));
+		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE', $this->bodyOf(ObjectGetDocument::class));
 	}
 
 	private function bodyOf(string $sClass): string
