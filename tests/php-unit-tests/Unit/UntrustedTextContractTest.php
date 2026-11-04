@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetDocument;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
@@ -61,6 +63,14 @@ class UntrustedTextContractTest extends TestCase
 		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 
 		$this->assertStringContainsString('ObjectSerializer::MarkRows(', $sBody);
+	}
+
+	/** The history holds before and after values and case-log entries; the document is the file itself. */
+	public function testTheHistoryAndTheDocumentCarryTheNotice(): void
+	{
+		$this->assertStringContainsString("'untrusted_text'", $this->bodyOf(ObjectHistory::class));
+		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_NOTICE', $this->bodyOf(ObjectHistory::class));
+		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_NOTICE', $this->bodyOf(ObjectGetDocument::class));
 	}
 
 	private function bodyOf(string $sClass): string

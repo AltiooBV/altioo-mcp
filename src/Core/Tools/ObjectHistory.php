@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
@@ -194,13 +195,21 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			));
 		}
 
-		return ToolOutput::Json(HistoryReader::Within(
+		$aHistory = HistoryReader::Within(
 			$oObject,
 			static fn (DBObjectSearch $oSearch): ?DBSearch => $oAccess->Bounded($oSearch),
 			$fShows,
 			$sAttCode,
 			$limit,
 			$offset
-		));
+		);
+
+		// Before and after values and case-log entries are what other people
+		// wrote, and a planted instruction later edited out stays readable here.
+		if ($aHistory['entries'] !== []) {
+			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+		}
+
+		return ToolOutput::Json($aHistory);
 	}
 }
