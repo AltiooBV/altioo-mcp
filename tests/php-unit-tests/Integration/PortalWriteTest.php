@@ -186,12 +186,15 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->assertNull($aDry['id']);
 		$aChanges = (array)$aDry['changes'];
 		$this->assertSame($this->iContact, (int)$aChanges['caller_id'], 'the caller is the user');
-		$this->assertSame($this->iOrg, (int)$aChanges['org_id'], 'the organisation is the user\'s');
+		// Set by the portal's rules, but no form of the stock portal shows it, so a write
+		// does not report it any more than a read would.
+		$this->assertArrayNotHasKey('org_id', $aChanges, 'the portal hides the organisation, so the outcome does');
 		$this->assertSame($this->iService, (int)$aChanges['service_id'], 'the service is the subcategory\'s');
 		$this->assertSame($this->iSubcategory, (int)$aChanges['servicesubcategory_id']);
 
 		$aDone = ToolOutput::Decode(ObjectCreate::execute(fields: ['title' => 'My screen is dark', 'description' => 'Since this morning.'], simulate: false, action: $sAction, from_id: $this->iSubcategory));
 		$this->assertFalse($aDone['simulated']);
+		$this->assertSame($this->iOrg, (int)MetaModel::GetObject('UserRequest', (int)$aDone['id'], true, true)->Get('org_id'), 'the organisation is the user\'s');
 		$this->assertContains((int)$aDone['id'], array_map(
 			static fn (array $aRow): int => (int)$aRow['id'],
 			ToolOutput::Decode(PortalList::execute('ongoing-tickets-for-portal-user'))['objects']
