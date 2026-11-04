@@ -121,6 +121,9 @@ A separate service is the right shape if you need to put an MCP endpoint in fron
 iTop instances at once, or to run it where the instance cannot be touched. This is the right
 shape if you want the assistant to be exactly as privileged as the person it acts for.
 
+Who and what the module deals with, as one diagram, is in
+[doc/architecture.md](doc/architecture.md).
+
 ## What it exposes
 
 The core surface stays close to iTop's own primitives, in the same spirit as its REST/JSON
