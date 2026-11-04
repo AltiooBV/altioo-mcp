@@ -152,9 +152,14 @@ $oPortalUser->DBInsert();
 
 // A personal token logs in only if its owner holds a profile authent-token lists (README). The
 // HTTP server reads the config file afresh on every request, so it is written, not set in memory.
+// The setup leaves the file read-only (0440), which only root gets past: made writable for the
+// write and put back, as upgrade-fixture.php does and as an administrator would.
 $oConfig = MetaModel::GetConfig();
+$sConfigFile = $oConfig->GetLoadedFile();
+@chmod($sConfigFile, 0770);
 $oConfig->SetModuleSetting('authent-token', 'personal_tokens_allowed_profiles', ['Administrator', 'MCP Services User']);
 $oConfig->WriteToFile();
+@chmod($sConfigFile, 0440);
 
 $oPortalToken = MetaModel::NewObject('PersonalToken');
 $oPortalToken->Set('user_id', $oPortalUser->GetKey());
