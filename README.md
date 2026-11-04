@@ -575,10 +575,15 @@ decision, per person, as it is for console users.
   portal of each call, and a refusal at login is a row with method `login` and element
   `portal_admission`.
 
-**Giving a portal user a token.** With altioo-oauth-server installed, they connect their client
-themselves, and see and disconnect it under *My profile → Connected applications* in the portal.
-Without it an administrator mints a personal token, as below, and the user has no page of their
-own to see or revoke it. Two things iTop decides, not this extension, on either route:
+**Giving a portal user a token.** It has to be a personal token. An application token
+(`UserToken`) has no expiry date to check — the class defines no `expiration_date`
+(authent-token's datamodel, verified on iTop 3.2.2) — so portal mode reads it as a token that
+never expires and refuses it, unless `mcp_portal_token_max_days` is `0`, which lifts the bound
+for every portal token. A token issued by altioo-oauth-server is a personal token and
+qualifies. With altioo-oauth-server installed, they connect their client themselves, and see and
+disconnect it under *My profile → Connected applications* in the portal. Without it an
+administrator mints a personal token, as below, and the user has no page of their own to see or
+revoke it. Two things iTop decides, not this extension, on either route:
 
 - A personal token logs in only if its owner holds a profile listed in authent-token's
   `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
