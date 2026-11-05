@@ -78,6 +78,11 @@ entry itself, not left to be inferred from it.
     anonymizer's case-log step.
   - `ChangeTracking::Compose()` (`@api`) still returns what it did and is `@deprecated`: nothing
     writes its line any more.
+  - **Released in a minor, though `ChangeTracking` is `@api`.** Read strictly, the rule above makes
+    this a major. `CommentSchemaProperty()` and `Explain()`, the calls a tool pack is told to use, keep
+    their signatures and their purpose, and `Compose()` stays for at least one minor. What a pack
+    should know: the reason it passes to `Explain()` is now kept on the audit row only, so with
+    `log_mcp_service => false` it is not kept at all.
 
 ### Fixed
 
