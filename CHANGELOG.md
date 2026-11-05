@@ -22,6 +22,23 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **`core_object_count`: how many, and how many per value.** "Open tickets per team" used to mean paging every
+  ticket. One call now answers a count, optionally per value of one or two attributes, with up to 100 groups,
+  the value and a label for each. Console: `class` and `filters`, or `oql`, `group_by`, `archived`. Portal
+  mode, the same tool (ADR 0006): one of the portal's lists (`list`, `tab`, `parent_id`), per column the list
+  shows, over the query the list itself runs, so a count can never see a row the list would not. It is a read
+  and is treated as one: a class that is reserved, unreadable or without bulk read, and an attribute that is a
+  secret, of a type that is not a plain value (long text, documents, linked sets, a field read from another
+  object) or that the account may not read for every object, are all refused **in the words of a class or
+  attribute that does not exist**, whether they are grouped by or filtered on. The label of an external key is
+  given only where its target is readable (in the portal, shown by its scopes), the id alone otherwise. The
+  count is the database's and is taken before object-level rights remove rows, so it can exceed what the
+  account could list, as `total` of a search can; the answer says so. Read grade, toolset `objects`. It adds
+  about 1.3 KB to what a client is told about a full-scope token (measured: `tools/measure-surface.php`).
+- **`tools/measure-surface.php` and a size budget.** The script measures, over JSON-RPC against a running
+  instance, what a client is told (descriptions, schemas, instructions) per token; `ContextBudgetTest` fails when a
+  core tool's description or input schema, or the instructions, grow past the measured sizes, so growth is
+  a decision. One repeated sentence was cut from `core_object_search_by_class` (79 bytes).
 - **Two entries under Administration: an *MCP activity* dashboard and the *MCP service calls* list.**
   Both are administrator-only; neither is shown to anyone else, and a direct URL renders nothing for
   them. *MCP service calls* is `SELECT AltiooEventMCPService`, which until now had no menu: the README
