@@ -216,13 +216,14 @@
           impersonation, as CMDBChange does. Nullable: a row from before this
           column, and a refusal before any account was known, hold none.
 
-          DEL_NONE, not DEL_AUTO and not DEL_MANUAL: for a nullable key both
-          of those make iTop *reset* every referencing row when the user is
-          deleted, inside the request that deletes them, and an account that
-          made a hundred thousand calls would rewrite a hundred thousand rows
-          there. DEL_NONE does nothing: the deletion is not blocked, the row
-          survives with its `userinfo`, and the key is left pointing at a user
-          who is gone, which names nobody and is never reused.
+          DEL_AUTO, the same as the token links below: deleting the user is not
+          blocked by these rows, and the rows survive it with `userinfo` intact
+          and this key reset. iTop does that reset one row at a time inside the
+          request that deletes the user - measured at about 2 ms a row on 3.2.3
+          (1000 rows, 2 s) - so deleting an account with a very long history is
+          slow. DEL_MANUAL does exactly the same on a nullable key; DEL_NONE
+          would skip it and leave the key pointing at a user who is gone, which
+          the maintainer chose against.
         -->
         <field id="user_id" xsi:type="AttributeExternalKey">
           <sql>user_id</sql>
@@ -230,7 +231,7 @@
           <is_null_allowed>true</is_null_allowed>
           <allow_target_creation>false</allow_target_creation>
           <target_class>User</target_class>
-          <on_target_delete>DEL_NONE</on_target_delete>
+          <on_target_delete>DEL_AUTO</on_target_delete>
         </field>
 
         <!--

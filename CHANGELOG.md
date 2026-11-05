@@ -36,8 +36,9 @@ entry itself, not left to be inferred from it.
     'error'`, which writes no successful rows, it is not written either.
   - `user_id`: an external key to the account the call ran as, the real user under impersonation
     as `CMDBChange.user_id` is. `userinfo` stays the record; deleting a user is not blocked by
-    these rows and does not rewrite them (`DEL_NONE`: a nullable key would otherwise be reset on
-    every row in the request that deletes the user).
+    these rows, and the rows survive it with `userinfo` intact and `user_id` reset (`DEL_AUTO`, as
+    the token links). iTop resets them one at a time inside the deleting request, about 2 ms a
+    row, so deleting an account with a very long history is slow.
 
 ### Fixed
 
