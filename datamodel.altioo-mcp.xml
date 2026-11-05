@@ -147,6 +147,24 @@
           <max_size>64</max_size>
         </field>
 
+        <!--
+          The client that made the call, as it declared itself: the name and
+          version of `clientInfo` on an `initialize` request, or of
+          `_meta["io.modelcontextprotocol/clientInfo"]` on any request of a
+          2026-07-28 client, which never sends `initialize`. Free text written
+          by the caller and verified by nobody: it identifies a well-behaved
+          client, it does not authenticate one. Empty on a row from a client
+          that sends neither, which an older one need not: the endpoint is
+          stateless, so there is no session to remember it from.
+        -->
+        <field id="client" xsi:type="AttributeString">
+          <sql>client</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>255</max_size>
+        </field>
+
         <!-- Execution status: success, error -->
         <field id="status" xsi:type="AttributeEnum">
           <sql>status</sql>
@@ -189,6 +207,30 @@
               <rank>30</rank>
             </value>
           </values>
+        </field>
+
+        <!--
+          The account the call ran as: a stable key where `userinfo` is a login
+          string, which a rename changes and a deletion loses, as
+          CMDBChange.user_id is for a change. Set from the real user under
+          impersonation, as CMDBChange does. Nullable: a row from before this
+          column, and a refusal before any account was known, hold none.
+
+          DEL_NONE, not DEL_AUTO and not DEL_MANUAL: for a nullable key both
+          of those make iTop *reset* every referencing row when the user is
+          deleted, inside the request that deletes them, and an account that
+          made a hundred thousand calls would rewrite a hundred thousand rows
+          there. DEL_NONE does nothing: the deletion is not blocked, the row
+          survives with its `userinfo`, and the key is left pointing at a user
+          who is gone, which names nobody and is never reused.
+        -->
+        <field id="user_id" xsi:type="AttributeExternalKey">
+          <sql>user_id</sql>
+          <dependencies/>
+          <is_null_allowed>true</is_null_allowed>
+          <allow_target_creation>false</allow_target_creation>
+          <target_class>User</target_class>
+          <on_target_delete>DEL_NONE</on_target_delete>
         </field>
 
         <!--
@@ -261,6 +303,21 @@
           <is_null_allowed>true</is_null_allowed>
         </field>
 
+        <!--
+          What a read returned, as class and id only: `UserRequest: 12, 15
+          (+41 more); Person: 7`. Never a value and never a name, so this row
+          still does not record what the objects contain. The counterpart of
+          `changed_objects` for the calls that write nothing, kept for the
+          question a data owner asks afterwards: was this ticket sent to a
+          model? Not written at all at the `error` log level, which skips
+          successful rows.
+        -->
+        <field id="read_objects" xsi:type="AttributeText">
+          <sql>read_objects</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
         <!-- Wall-clock duration of the whole request, in milliseconds -->
         <field id="duration_ms" xsi:type="AttributeInteger">
           <sql>duration_ms</sql>
@@ -324,6 +381,12 @@
                     <item id="portal">
                       <rank>50</rank>
                     </item>
+                    <item id="user_id">
+                      <rank>60</rank>
+                    </item>
+                    <item id="client">
+                      <rank>70</rank>
+                    </item>
                   </items>
                 </item>
                 <item id="fieldset:AltiooEventMCPService:what">
@@ -370,6 +433,9 @@
                     </item>
                     <item id="changed_objects">
                       <rank>20</rank>
+                    </item>
+                    <item id="read_objects">
+                      <rank>30</rank>
                     </item>
                   </items>
                 </item>
