@@ -30,6 +30,10 @@ entry itself, not left to be inferred from it.
   An id with a dot or a space could not be named in `portal_id` already, but could be served as a
   user's first portal: **check the ids of any custom portal before upgrading.** A `portal_id` ending
   in a newline no longer passes as well-formed.
+- **`core_object_get_related` answered "Failed to walk" on every call.** It read the relation graph
+  with `RelationGraph::GetNodes()`, `GetEdges()` and `RelationObjectNode::GetObject()`, none of
+  which iTop has (it has `_GetNodes()`, `_GetEdges()` and `GetProperty('object')`). No test had
+  called the tool against a live datamodel; one now does.
 
 ## [1.2.0] - 2026-11-05
 
