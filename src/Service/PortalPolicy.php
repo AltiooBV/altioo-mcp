@@ -795,7 +795,8 @@ final class PortalPolicy
 			// file is there yet, writing it in place; a second request starting at
 			// the same moment could require a half-written file and fail with a
 			// ParseError. Built one at a time, the second finds the first's file whole.
-			$rLock = @fopen($sCompiled.'compile.lock', 'c');
+			// A portal shares these files with no other, so it waits for no other.
+			$rLock = @fopen(self::CompileLockPath($sCompiled, $sPortal), 'c');
 			if ($rLock !== false) {
 				flock($rLock, LOCK_EX);
 			}
@@ -1192,6 +1193,16 @@ final class PortalPolicy
 			'This portal\'s configuration could not be read, so nothing is served for it. '
 			.'The administrator will find the reason in the iTop error log.'
 		);
+	}
+
+	/**
+	 * The file a portal's compilation is locked on, beside the files it writes.
+	 *
+	 * @param string $sCompiled The directory the rules are compiled in, with its trailing slash.
+	 */
+	public static function CompileLockPath(string $sCompiled, string $sPortal): string
+	{
+		return $sCompiled.$sPortal.'.compile.lock';
 	}
 
 	/**
