@@ -367,6 +367,20 @@
           <max_size>255</max_size>
         </field>
 
+        <!--
+          What a tool said when it refused the call, only at log_mcp_level
+          'debug', cleaned to one line. The refusal is the caller's answer and
+          can quote what was refused - a value, a name - so at the other levels
+          the row says only "The tool refused the call". Debug-only like
+          request_params, and cleared with it when the account's person is
+          anonymised.
+        -->
+        <field id="refusal_text" xsi:type="AttributeText">
+          <sql>refusal_text</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
         <!-- Raw JSON request payload for audit/debugging -->
         <field id="request_params" xsi:type="AttributeText">
           <sql>request_params</sql>
@@ -469,6 +483,9 @@
                     </item>
                     <item id="request_params">
                       <rank>20</rank>
+                    </item>
+                    <item id="refusal_text">
+                      <rank>30</rank>
                     </item>
                   </items>
                 </item>

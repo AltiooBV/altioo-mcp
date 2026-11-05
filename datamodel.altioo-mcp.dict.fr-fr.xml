@@ -41,6 +41,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Référence de log]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:refusal_text" _delta="force"><![CDATA[Texte du refus]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:refusal_text+" _delta="force"><![CDATA[Ce que l'outil a répondu en refusant l'appel, enregistré seulement quand le niveau de journalisation du module est debug. Il peut citer ce qui a été refusé]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Paramètres de la requête]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:user_id" _delta="force"><![CDATA[Utilisateur]]></entry>

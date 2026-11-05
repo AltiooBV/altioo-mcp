@@ -797,6 +797,29 @@ final class MCPController
 		return $oResult;
 	}
 
+	/** What every refused call says on its audit row, whatever the tool said. @since 1.3.0 */
+	public const TOOL_REFUSED_MESSAGE = 'The tool refused the call';
+
+	/**
+	 * The text parts of a tool result's content, as one string.
+	 *
+	 * @param mixed $mContent The decoded `content` of the result.
+	 */
+	private static function textOfContent(mixed $mContent): ?string
+	{
+		if (!is_array($mContent)) {
+			return null;
+		}
+		$aTexts = [];
+		foreach ($mContent as $aPart) {
+			if (is_array($aPart) && ($aPart['type'] ?? null) === 'text' && is_string($aPart['text'] ?? null)) {
+				$aTexts[] = $aPart['text'];
+			}
+		}
+
+		return $aTexts === [] ? null : implode(' ', $aTexts);
+	}
+
 	private static function buildResultFromBody(ResponseInterface $response, string $sBody): MCPResult
 	{
 		if (!str_contains($response->getHeaderLine('Content-Type'), 'application/json')) {
@@ -813,11 +836,15 @@ final class MCPController
 		// protocol sends as HTTP 200 and a JSON-RPC success. The caller is meant to
 		// read it as an answer; the audit trail is not the caller. A row saying
 		// "success" for a call that was refused is the one an operator cannot afford,
-		// so it is recorded as an error. The tool's own text is not copied: it is
+		// so it is recorded as an error. The message is fixed. The tool's own text is
 		// written for the caller and may quote what the caller sent or the value that
-		// was refused, and this row does not record what objects contain.
+		// was refused, and this row does not record what objects contain: it is kept
+		// apart, and written only at log_mcp_level => 'debug'.
 		if (is_array($aDecoded) && ($aDecoded['result']['isError'] ?? false) === true) {
-			return new MCPResult(MCPResult::TOOL_REFUSED, 'The tool refused the call (answered with isError)');
+			$oRefused = new MCPResult(MCPResult::TOOL_REFUSED, self::TOOL_REFUSED_MESSAGE);
+			$oRefused->toolText = self::textOfContent($aDecoded['result']['content'] ?? null);
+
+			return $oRefused;
 		}
 
 		return new MCPResult(MCPResult::OK, 'Response emitted successfully');
@@ -1209,6 +1236,10 @@ final class MCPController
 			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
 			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
+				// And what the tool said when it refused, which can quote the value it
+				// refused: the same standing as the parameters, and cleared with them
+				// when the person is anonymised.
+				$oLog->Set('refusal_text', self::truncate(self::auditLabel($oResult->toolText, null), 65535) ?? '');
 			}
 			$oLog->DBInsertNoReload();
 			ReadSummary::Forget();

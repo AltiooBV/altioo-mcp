@@ -34,8 +34,8 @@ use Throwable;
  * `user_id` when it anonymises a person. Neither touches this module's rows,
  * so this does what the anonymizer does for a change: a row whose `user_id`
  * leads to an anonymised person and whose `userinfo` is not the account's
- * current login gets the login, and loses `request_params` and
- * `change_comment`, which are free text and may name people. `changed_objects`
+ * current login gets the login, and loses `request_params`,
+ * `change_comment` and `refusal_text`, which are free text and may name people. `changed_objects`
  * and `read_objects` are left: `Class::id` is what iTop keeps on other objects'
  * history too. Runs whether retention is on or not, and a row is found again
  * only while its `userinfo` differs, so a row is done once. Lag is up to one
@@ -132,8 +132,9 @@ final class AuditHousekeeping implements iBackgroundProcess
 						continue;
 					}
 					$oRow->Set('userinfo', $sLogin);
-					$oRow->Set('request_params', '');
-					$oRow->Set('change_comment', '');
+					foreach (AuditRetention::CLEARED_ON_ANONYMISATION as $sColumn) {
+						$oRow->Set($sColumn, '');
+					}
 					$oRow->DBUpdate();
 					$iInBatch++;
 				}

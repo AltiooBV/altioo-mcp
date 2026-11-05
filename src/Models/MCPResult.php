@@ -69,6 +69,17 @@ class MCPResult implements \JsonSerializable
 	// ------------------------------------------------------------------
 
 	/**
+	 * @var string|null What the tool said when it refused the call, for the audit row at
+	 *      `log_mcp_level => 'debug'` only.
+	 *
+	 * The caller's own answer, which can quote what was refused. Never part of
+	 * jsonSerialize(), and never written at the other levels.
+	 *
+	 * @since 1.3.0
+	 */
+	public ?string $toolText = null;
+
+	/**
 	 * @var string|null The reference correlating this call to log/error.log.
 	 *
 	 * The caller is given it in the message of an internal error, so that the
