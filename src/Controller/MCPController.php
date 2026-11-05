@@ -16,13 +16,16 @@ use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\TokenScopes;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Combodo\iTop\Application\Helper\Session;
 use Combodo\iTop\Application\WebPage\JsonPage;
+use Mcp\Server\Stateless\RequestMeta;
 use AltiooEventMCPService;
+use CMDBChange;
 use CMDBObject;
 use DBObject;
 use ExecutionKPI;
@@ -812,6 +815,7 @@ final class MCPController
 		// Extract MCP context from the request body for audit logging
 		$sMcpMethod     = null;
 		$sMcpName       = null;
+		$sClient        = null;
 		$sRequestParams = null;
 
 		$body = $request->getBody();
@@ -838,15 +842,20 @@ final class MCPController
 					// well-behaved integration rather than authenticating
 					// anyone - which is what an operator reading the trail is
 					// after: which of these connected, and when did it stop.
-					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription($aParams),
+					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription(self::clientInfoOf($aParams)),
 					default                              => null,
 				};
 				$sMcpName = self::auditLabel($sMcpName);
+				// On every row, so a client that never sends initialize (protocol
+				// 2026-07-28) is still named - by the same text, with the same
+				// standing: declared by the caller, verified by nobody.
+				$sClient = self::auditLabel(self::clientDescription(self::clientInfoOf($aParams)));
 			}
 		}
 
 		$oResult->mcpMethod     = $sMcpMethod;
 		$oResult->mcpName       = $sMcpName;
+		$oResult->client        = $sClient;
 		$oResult->requestParams = $sRequestParams;
 		return $oResult;
 	}
@@ -965,22 +974,46 @@ final class MCPController
 
 
 	/**
-	 * How an initialize request describes the client sending it.
+	 * Where a request declares its client: `clientInfo` on an initialize
+	 * request, else the `_meta` entry of the same name that a client of
+	 * protocol 2026-07-28 carries on every request (a SHOULD, and such a
+	 * client never sends initialize). A client of the older protocol that
+	 * sent neither has none, and the endpoint, being stateless, does not
+	 * remember it from an earlier call.
+	 *
+	 * @param mixed $mParams The params of the request, as decoded.
+	 *
+	 * @return mixed The declared value, whatever it is: it is the caller's.
+	 */
+	private static function clientInfoOf(mixed $mParams): mixed
+	{
+		if (!is_array($mParams)) {
+			return null;
+		}
+		if (is_array($mParams['clientInfo'] ?? null)) {
+			return $mParams['clientInfo'];
+		}
+		$aMeta = $mParams['_meta'] ?? null;
+
+		return is_array($aMeta) ? ($aMeta[RequestMeta::CLIENT_INFO] ?? null) : null;
+	}
+
+	/**
+	 * How a client describes itself: its name, then its version.
 	 *
 	 * Free text written by the caller, so it is never treated as anything but
 	 * a label; auditLabel() makes it fit to store.
 	 *
-	 * @param array<string, mixed> $aParams The params of the initialize request.
+	 * @param mixed $mClient The declared `clientInfo`, of whatever shape.
 	 */
-	private static function clientDescription(array $aParams): ?string
+	private static function clientDescription(mixed $mClient): ?string
 	{
-		$aClient = $aParams['clientInfo'] ?? null;
-		if (!is_array($aClient)) {
+		if (!is_array($mClient)) {
 			return null;
 		}
 
-		$sName    = is_string($aClient['name'] ?? null) ? trim($aClient['name']) : '';
-		$sVersion = is_string($aClient['version'] ?? null) ? trim($aClient['version']) : '';
+		$sName    = is_string($mClient['name'] ?? null) ? trim($mClient['name']) : '';
+		$sVersion = is_string($mClient['version'] ?? null) ? trim($mClient['version']) : '';
 
 		if ($sName === '') {
 			return null;
@@ -1120,6 +1153,7 @@ final class MCPController
 			$oLog->Set('message', self::auditLabel($oResult->message, null) ?? '');
 			$oLog->Set('mcp_method', $sMethod);
 			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
+			$oLog->Set('client', $oResult->client ?? '');
 			// Which portal served the call: empty for the console's. A portal
 			// user allowed into two is served one per connection, and the row
 			// is where an administrator learns which (doc/adr/0007).
@@ -1137,7 +1171,9 @@ final class MCPController
 			// click each, and `changed_objects` keeps the readable answer for
 			// after the change rows are purged.
 			self::describeCredential($oLog);
+			self::describeUser($oLog);
 			self::describeChange($oLog);
+			self::describeReads($oLog);
 			// What the row could not answer before: how long the call took, how
 			// much it sent back - the two numbers that tell a slow instance from
 			// a client filling its context - and which log entry explains it.
@@ -1161,6 +1197,7 @@ final class MCPController
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
 			}
 			$oLog->DBInsertNoReload();
+			ReadSummary::Forget();
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
 			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
@@ -1192,6 +1229,7 @@ final class MCPController
 			// Nothing has remembered the token yet: the refusal comes first.
 			TokenScopes::RememberIdentity();
 			self::describeCredential($oLog);
+			self::describeUser($oLog);
 			$oLog->DBInsertNoReload();
 		} catch (Throwable $e) {
 			MCPHelper::LogError('Failed to log a portal admission refusal: '.$e->getMessage());
@@ -1237,6 +1275,40 @@ final class MCPController
 		}
 
 		$oLog->Set($sField, $aIdentity['key']);
+	}
+
+	/**
+	 * Links the row to the account the call ran as.
+	 *
+	 * The real user under impersonation, as `CMDBChange` records it
+	 * (`CMDBChange::GetCurrentUserId()`): the account that acted, not the one
+	 * it acted as. Left empty when no account is known - the row then has
+	 * only `userinfo`, which is the case for a refusal before login.
+	 *
+	 * @since 1.3.0
+	 */
+	private static function describeUser(AltiooEventMCPService $oLog): void
+	{
+		$iUserId = (int)CMDBChange::GetCurrentUserId();
+		if ($iUserId > 0) {
+			$oLog->Set('user_id', $iUserId);
+		}
+	}
+
+	/**
+	 * Names the objects the call returned, as class and id.
+	 *
+	 * Cut to a TEXT column like `changed_objects`; {@see ReadSummary} has
+	 * already capped what it lists, so the cut is a backstop.
+	 *
+	 * @since 1.3.0
+	 */
+	private static function describeReads(AltiooEventMCPService $oLog): void
+	{
+		$sReads = ReadSummary::Compose();
+		if ($sReads !== '') {
+			$oLog->Set('read_objects', self::truncate($sReads, 65535));
+		}
 	}
 
 	/**

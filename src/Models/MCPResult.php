@@ -41,6 +41,16 @@ class MCPResult implements \JsonSerializable
 	/** @var string|null Tool/resource/prompt name that was invoked */
 	public ?string $mcpName = null;
 
+	/**
+	 * @var string|null The client the caller declared itself to be, as one line.
+	 *
+	 * From `clientInfo` of an initialize request or from the `_meta` of any
+	 * other. Free text written by the caller: a label for the audit row.
+	 *
+	 * @since 1.3.0
+	 */
+	public ?string $client = null;
+
 	/** @var string|null Raw JSON request params for audit trail */
 	public ?string $requestParams = null;
 
