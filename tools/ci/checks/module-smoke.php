@@ -40,6 +40,13 @@ check(
 	in_array(\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class, \Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class), true)
 );
 
+// The two entries under Administration, compiled from the datamodel. A menu that did not compile is a
+// dashboard nobody can open and nothing else says so.
+ApplicationMenu::LoadAdditionalMenus();
+foreach (['MCPActivity', 'MCPServiceCalls'] as $sMenuId) {
+	check('the '.$sMenuId.' menu exists', ApplicationMenu::GetMenuIndexById($sMenuId) >= 0);
+}
+
 // The audit trail. No class, no record of what a model was asked to do.
 check('AltiooEventMCPService exists', MetaModel::IsValidClass('AltiooEventMCPService'));
 
