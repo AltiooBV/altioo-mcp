@@ -22,6 +22,17 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **Two entries under Administration: an *MCP activity* dashboard and the *MCP service calls* list.**
+  Both are administrator-only; neither is shown to anyone else, and a direct URL renders nothing for
+  them. *MCP service calls* is `SELECT AltiooEventMCPService`, which until now had no menu: the README
+  sent administrators to an "event log" that iTop does not have. *MCP activity* is iTop's own
+  dashboard, shipped as data (no dashboard code): the last seven days of calls by outcome, writes by
+  tool and by day (dry runs excluded), writes and protocol errors by login as recorded, portal users
+  refused at login, calls by client and by portal, and response bytes by tool. An administrator
+  customises it with iTop's editor and reverts it from the same menu; the copy is per user. Read it as
+  the README says: a login is not a person, an "error" is the protocol's (a tool's own refusal is
+  recorded as a success), and the client is what it declared. No alerts: the trail is watched, not
+  pushed.
 - **The audit row names the client, the objects a read returned, and the account as a link.**
   `AltiooEventMCPService` gains three nullable columns, so the upgrade needs no step beyond the
   setup the module always asks for, and a row from before holds nothing in them.

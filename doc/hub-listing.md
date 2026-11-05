@@ -133,8 +133,10 @@ one credential weaker than its owner (`MCP-read`, `MCP-write`, `MCP-delete`,
 per class, per object, per attribute and per stimulus inside every tool. An operator narrows the surface
 further without touching code: `mcp_enabled_toolsets` serves only the groups an instance uses,
 and `mcp_disabled_tools` withdraws individual tools, prompts or resources whichever extension
-registered them. Every call is recorded as an **MCP Service Call** object, visible in the
-console, with its outcome, duration and response size.
+registered them. Every call is recorded as an **MCP Service Call** object, visible to administrators
+under *Administration → MCP service calls*, with its outcome, duration and response size, and
+summarised on an **MCP activity** dashboard of the last seven days that each administrator can
+customise.
 
 **iTop opens no outbound connection.** Traffic is inbound only; no telemetry, no callbacks.
 

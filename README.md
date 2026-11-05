@@ -447,9 +447,10 @@ the allowed profiles *and* presents a credential. See [Granting access](#grantin
 
 Four checks. Each one fails in a way that is much harder to diagnose later than now:
 
-1. **The audit class exists.** In the console, an administrator should find **MCP Service Call**
-   under the event log (class `AltiooEventMCPService`). If it is absent, the datamodel did not
-   compile and nothing below will work.
+1. **The audit class exists.** In the console, an administrator should find **MCP activity** and
+   **MCP service calls** in the **Administration** menu (the first is the dashboard, the second the
+   list of **MCP Service Call** objects, class `AltiooEventMCPService`). iTop has no "event log"
+   menu to look in. If they are absent, the datamodel did not compile and nothing below will work.
 2. **The profile exists.** Administration → Profiles should list **MCP Services User**. That is
    the profile named in `mcp_allowed_profiles`, and it is what the endpoint checks for. A
    profile list without it means the same compilation problem as above — and note that the
@@ -479,7 +480,8 @@ again afterwards:
 | **One file** | `index.php`. Clients are given it as `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file — and the same pair ships under `extensions/`, where it re-grants that directory's `index.php` through iTop's deny. So the file answers at both paths, on identical terms: same code, same authentication, one of the two published |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
 | **One background process** | `AuditHousekeeping`, run hourly by iTop's own cron (`iBackgroundProcess`): it deletes audit rows past `mcp_audit_retention_days` (off by default) and brings the rows of an anonymised person in step with iTop's history. It opens no connection and does nothing at all on an instance where cron does not run |
-| **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no outbound connection |
+| **Two menu entries** | **MCP activity** (a dashboard) and **MCP service calls** (the audit list), in the **Administration** menu beside altioo-oauth-server's, both administrator-only. No core menu is replaced |
+| **Nothing else** | Beyond the enum values above, no core class is touched — and no outbound connection |
 
 **Removing it.** Back up first, for the same reason as installing: this is another setup run.
 Untick the extension in the setup (or delete `<itop>/extensions/altioo-mcp/`) and run the setup
@@ -949,8 +951,28 @@ other half of the opening position — an instance that cannot write — is
 ### Audit trail
 
 Calls are recorded as **MCP Service Call** (`AltiooEventMCPService`) objects, visible in the
-console. Each entry holds the MCP method, the tool or resource invoked, the outcome, and the
-calling user.
+console under **Administration → MCP service calls** (administrators only). Each entry holds the
+MCP method, the tool or resource invoked, the outcome, and the calling user.
+
+**Administration → MCP activity** is a dashboard over the last seven days of that list: calls by
+outcome, writes by tool and by day (dry runs excluded), portal users refused at login, calls by
+client and by portal, and the response bytes sent per tool (top ten). It is iTop's own dashboard, so
+an administrator **customises it with iTop's editor** (the ⋮ menu → *Create a custom version…*) and
+**reverts** it from the same menu (*Delete custom version…*); the copy is stored per user. Read the
+dashboard as what it is:
+
+- **"By login as recorded"** is the `userinfo` of the row: the account's login string, which is
+  personal where logins are email addresses, and which iTop's anonymisation follow-up rewrites
+  (see [Data flow and privacy](#data-flow-and-privacy)). It is not a person.
+- **An "error" is the protocol's.** A call a tool refuses (an object you may not change, a class
+  you may not read) is *answered*, with `isError`, and is recorded as a success. So the dashboard's
+  errors are unknown tools, bad requests and refusals before a call is made; a refusal by a tool is
+  not among them. A refused portal login is a `login` row of element `portal_admission`, and also
+  leaves an `exceptions` row, so it counts twice in *Calls by outcome*.
+- *Calls by client* is what the client declared, not verified. *By tool* looks at `tools/call` rows
+  only: the name of an `initialize` row is the client.
+
+The trail is **watched, not pushed**: there are no alerts. Someone has to open it, or query it.
 
 Three more columns say who and what, beyond the login string:
 

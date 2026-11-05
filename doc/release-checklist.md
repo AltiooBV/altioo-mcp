@@ -198,7 +198,9 @@ baseline, so drive it by hand from an earlier commit and record which one you us
 needs a browser: log into the upgraded instance and confirm the console still shows the module's
 three surfaces — the **MCP Services User** profile under *Administration → User Management →
 Profiles*, the module's parameters in the configuration editor, and the **MCP Service Call**
-audit rows. This module declares no menu; there is nothing to look for in the sidebar.
+audit rows. Two entries sit under *Administration*: **MCP activity** (the dashboard, with rows to
+show) and **MCP service calls** (the list); neither may appear for a user who is not an
+administrator.
 
 **Archive contents.** `vendor/` present and built with `--no-dev`; `README.md`, `SECURITY.md`,
 `CHANGELOG.md`, `LICENSE` and `doc/` present; `tests/` present (iTop's own Extensions testsuite
