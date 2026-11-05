@@ -71,7 +71,23 @@ release archive.
 - **Blocks:** release when the account reads or writes past what its own console or portal
   shows it; otherwise backlog.
 
-### Data owner — purple, after the company end-user above
+### Counterpart on the ticket — purple, after the company end-user above
+
+- **Question:** the support agent or colleague on the other side of a ticket, reading what someone's
+  assistant wrote or did: can they tell it came through an assistant rather than from the person
+  typing, and where? Can they answer it, correct it and trust who it names? Does the assistant's
+  speed or volume change their work in ways nobody decided: repeated entries, state changes
+  arriving faster than they can follow, replies to a question already answered?
+- **Open:** what a write through this endpoint looks like on the counterpart's own screens, in
+  the console and the portal, never only in the audit table: a case log entry's author line, the
+  Activity panel, notifications a write fires, and the mentions it makes. Then what those screens
+  draw on: `src/Helper/ChangeTracking.php` and `doc/security-summary.md`, for what is recorded
+  against what is displayed; `mcp_max_mentions`, for who gets notified; and the end-user's own
+  account of the write, for whether the two sides can be reconciled.
+- **Blocks:** backlog. Say so as a question for a professional where disclosure to the counterpart
+  may be a legal duty, not a ruling.
+
+### Data owner — purple, after the counterpart above
 
 - **Question:** the people the data is about — callers, agents, contacts: where does their data go
   that iTop alone would not send it, is it limited to what the caller needed, and can the instance
