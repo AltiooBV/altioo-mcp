@@ -64,6 +64,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 
 	protected function tearDown(): void
 	{
+		UserRights::Deimpersonate();
 		PortalMode::Forget();
 		parent::tearDown();
 	}
@@ -143,7 +144,9 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		try {
 			$this->assertSame(['real-user'], array_column($this->mine()['activity'], 'name'));
 		} finally {
-			UserRights::Impersonate('');
+			// Impersonate('') finds no user and does nothing, and Login() puts the session's
+			// impersonation back for every test that follows: end it for real.
+			UserRights::Deimpersonate();
 		}
 	}
 
