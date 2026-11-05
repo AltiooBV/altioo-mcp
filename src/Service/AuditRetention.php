@@ -17,6 +17,15 @@ namespace Altioo\iTop\Extension\MCP\Service;
 final class AuditRetention
 {
 	/**
+	 * The free-text columns cleared from a row when the person behind its
+	 * account is anonymised: what a caller wrote or was told, which can name
+	 * people.
+	 *
+	 * @var array<int, string>
+	 */
+	public const CLEARED_ON_ANONYMISATION = ['request_params', 'change_comment', 'refusal_text'];
+
+	/**
 	 * The date before which a row is past retention.
 	 *
 	 * @since 1.3.0

@@ -85,6 +85,14 @@ if (!UserRights::Login($sAdmin)) {
 }
 CMDBObject::SetTrackInfo('CI smoke test');
 
+// The two entries under Administration, compiled from the datamodel. They are administrator-only, so
+// this is asked after logging in as one. A menu that did not compile is a dashboard nobody can open,
+// and nothing else says so.
+ApplicationMenu::LoadAdditionalMenus();
+foreach (['MCPActivity', 'MCPServiceCalls'] as $sMenuId) {
+	check('the '.$sMenuId.' menu exists', ApplicationMenu::GetMenuIndexById($sMenuId) >= 0);
+}
+
 $oToken = MetaModel::NewObject('PersonalToken');
 $oToken->Set('user_id', UserRights::GetUserId());
 $oToken->Set('application', 'ci-http-smoke');

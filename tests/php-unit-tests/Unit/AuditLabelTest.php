@@ -110,6 +110,57 @@ class AuditLabelTest extends TestCase
 		$this->assertGreaterThan(300, mb_strlen((string) $sStored), 'a text column is not cut to 255');
 	}
 
+	/**
+	 * A tool that refuses a call answers it with isError, which the protocol
+	 * sends as a JSON-RPC success (HTTP 200). The audit row records it as an
+	 * error all the same, without the tool's own text.
+	 */
+	public function testAToolsOwnRefusalIsAnErrorOnTheAuditRowAndCarriesNoToolText(): void
+	{
+		$oFactory = new Psr17Factory();
+		$oResponse = $oFactory->createResponse(200)->withHeader('Content-Type', 'application/json');
+		$sBody = (string)json_encode(['jsonrpc' => '2.0', 'id' => 1, 'result' => [
+			'content' => [['type' => 'text', 'text' => "Value 'jane.doe@example.com' is not allowed for 'email'."]],
+			'isError' => true,
+		]]);
+
+		$oResult = (new ReflectionMethod(MCPController::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
+
+		$this->assertFalse($oResult->isSuccess());
+		$this->assertSame(MCPResult::TOOL_REFUSED, $oResult->code);
+		$this->assertStringNotContainsString('jane.doe', $oResult->message, 'a refusal may quote what was refused');
+		$this->assertSame(MCPController::TOOL_REFUSED_MESSAGE, $oResult->message);
+		$this->assertStringContainsString('jane.doe@example.com', (string)$oResult->toolText, 'kept apart, for the debug level');
+		$this->assertArrayNotHasKey('toolText', $oResult->jsonSerialize(), 'never part of what a caller is sent');
+	}
+
+	public function testAnAnsweredCallIsStillASuccess(): void
+	{
+		$oFactory = new Psr17Factory();
+		$oResponse = $oFactory->createResponse(200)->withHeader('Content-Type', 'application/json');
+		$oBuild = new ReflectionMethod(MCPController::class, 'buildResultFromBody');
+
+		foreach ([
+			['result' => ['content' => [['type' => 'text', 'text' => 'ok']], 'isError' => false]],
+			['result' => ['content' => [['type' => 'text', 'text' => 'ok']]]],
+			['result' => ['isError' => 'true']],
+		] as $aPayload) {
+			$this->assertTrue($oBuild->invoke(null, $oResponse, (string)json_encode(['jsonrpc' => '2.0', 'id' => 1] + $aPayload))->isSuccess(), json_encode($aPayload));
+		}
+	}
+
+	public function testAProtocolErrorKeepsItsOwnCodeAndMessage(): void
+	{
+		$oFactory = new Psr17Factory();
+		$oResponse = $oFactory->createResponse(200)->withHeader('Content-Type', 'application/json');
+		$sBody = (string)json_encode(['jsonrpc' => '2.0', 'id' => 1, 'error' => ['code' => -32602, 'message' => 'Tool not found']]);
+
+		$oResult = (new ReflectionMethod(MCPController::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
+
+		$this->assertSame(-32602, $oResult->code);
+		$this->assertSame('Tool not found', $oResult->message);
+	}
+
 	public function testTheAuditRowsMessageGoesThroughTheSameNormaliser(): void
 	{
 		$sSource = (string) file_get_contents((string) (new \ReflectionClass(MCPController::class))->getFileName());

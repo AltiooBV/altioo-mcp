@@ -200,18 +200,37 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 	// the upgrade, and a row written before it holds nothing in them. A row
 	// that came out with a value would be the upgrade inventing an answer, and
 	// a column missing would be the setup not having added it.
-	foreach (['client', 'read_objects', 'user_id'] as $sNewAtt) {
+	foreach (['client', 'read_objects', 'user_id', 'change_comment', 'refusal_text'] as $sNewAtt) {
 		check(FIXTURE_CLASS.' has the '.$sNewAtt.' column', in_array($sNewAtt, $aNow, true));
 	}
 	foreach ($aState['events'] as $sId => $aExpected) {
 		$oEvent = MetaModel::GetObject(FIXTURE_CLASS, (int)$sId, false, true);
-		if ($oEvent === null || !in_array('client', $aNow, true) || !in_array('read_objects', $aNow, true) || !in_array('user_id', $aNow, true)) {
+		if ($oEvent === null || array_diff(['client', 'read_objects', 'user_id', 'change_comment', 'refusal_text'], $aNow) !== []) {
 			continue;
 		}
 		check(
 			FIXTURE_CLASS." #$sId holds nothing in the columns added since",
-			(string)$oEvent->Get('client') === '' && (string)$oEvent->Get('read_objects') === '' && (int)$oEvent->Get('user_id') === 0
+			(string)$oEvent->Get('client') === '' && (string)$oEvent->Get('read_objects') === '' && (string)$oEvent->Get('change_comment') === '' && (string)$oEvent->Get('refusal_text') === '' && (int)$oEvent->Get('user_id') === 0
 		);
+	}
+
+	// The hourly background process added since 1.2: iTop's cron finds it by its own discovery, so an
+	// upgrade that left it out of the class map would leave retention and the follow-up of anonymised
+	// people silently never running.
+	check(
+		'cron finds the audit clean-up process after the upgrade',
+		in_array(
+			\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class,
+			\Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class),
+			true
+		)
+	);
+
+	// The menus added since 1.2 are part of the compiled datamodel, so an upgrade has to bring them.
+	// Reached the way the console reaches them: by id, and only for an administrator.
+	ApplicationMenu::LoadAdditionalMenus();
+	foreach (['MCPActivity', 'MCPServiceCalls'] as $sMenuId) {
+		check('the '.$sMenuId.' menu exists after the upgrade', ApplicationMenu::GetMenuIndexById($sMenuId) >= 0);
 	}
 
 	// Rows are added, never removed, by an upgrade.

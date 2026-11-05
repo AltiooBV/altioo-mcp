@@ -638,8 +638,8 @@ records two). In particular, and specifically relevant here:
   Personal tokens, and every call it makes carries its id on the audit row. A console user
   holding the same profile gets the Personal tokens tab of My Account, for every scope.
 - Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
-  standing**: `debug` stores raw request parameters, which may contain data your users would
-  not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
+  standing**: `debug` stores raw request parameters and what a tool said when it refused a call, which may
+  contain data your users would not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
 - **Rate-limit and cap concurrency in the web server or proxy in front of the endpoint.** The
