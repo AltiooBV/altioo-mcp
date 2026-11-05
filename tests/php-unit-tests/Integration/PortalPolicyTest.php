@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
@@ -204,6 +205,24 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		PortalPolicy::ForCurrentRequest();
 
 		$this->assertFileExists(PortalPolicy::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
+	}
+
+	/** An id that is no file name is refused before anything is read or written under it. */
+	public function testAPortalIdThatIsNoFileNameIsRefused(): void
+	{
+		$sId = '../../altioo-mcp-escaped';
+		$sCompiled = rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/';
+		PortalMode::Remember($sId);
+
+		try {
+			PortalPolicy::ForCurrentRequest();
+			$this->fail('The id was read.');
+		} catch (MCPPortalException $oException) {
+			// A failure while reading the portal is wrapped, with its cause.
+			$this->assertNull($oException->getPrevious(), 'Refused by its shape, before anything tried to read it.');
+			$this->assertFileDoesNotExist(PortalPolicy::CompileLockPath($sCompiled, $sId));
+			$this->assertFileDoesNotExist($sCompiled.$sId.'.scopes.php');
+		}
 	}
 
 	/** A class the portal never mentions is refused like an unknown one. */

@@ -371,6 +371,34 @@ class PortalModeTest extends TestCase
 		$this->assertSame([], PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
 	}
 
+	/** The id becomes a file name that iTop then requires, so nothing else passes for one. */
+	public function testOnlyAPlainNameIsAPortalId(): void
+	{
+		foreach (['itop-portal', 'partner_portal', 'Portal2', str_repeat('a', 64)] as $sId) {
+			$this->assertTrue(PortalMode::IsPortalId($sId), $sId);
+		}
+
+		$aRefused = [
+			'',
+			'../../conf/x',
+			'..',
+			'.',
+			'a/b',
+			'a\\b',
+			"itop-portal\n",
+			"itop-portal\0.php",
+			'itop-portal.php',
+			'<?php phpinfo();?>',
+			'a b',
+			'a;b',
+			'portál',
+			str_repeat('a', 65),
+		];
+		foreach ($aRefused as $sId) {
+			$this->assertFalse(PortalMode::IsPortalId($sId), json_encode($sId));
+		}
+	}
+
 	/**
 	 * A request for one portal does not queue behind the compilation of
 	 * another: each has a lock of its own, beside the files it compiles.
