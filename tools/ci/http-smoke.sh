@@ -137,6 +137,38 @@ COUNT=$(php -r '$a=json_decode(file_get_contents($argv[1]),true); echo count($a[
 echo "   $COUNT tools advertised"
 [ "$COUNT" -gt 0 ] || { echo "--- response ---"; cat "$BODY"; fail "tools/list advertised no tools"; }
 
+# The audit row of a call, read back from the database: the client the call declared in its
+# _meta (protocol 2026-07-28 sends it on every request and never sends initialize), the
+# objects the read returned, and the account it ran as. Needs the database the checks above
+# were installed into, so it is skipped, and says so, where the caller did not export one.
+echo "4b. the audit row names the client, the objects read and the account"
+if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+  # shellcheck source=itop-db.sh
+  . "$MODULE_SRC/tools/ci/itop-db.sh"
+  AUDIT_TABLE="${DB_PREFIX:-}priv_altioo_event_mcp_service"
+  curl -s -o "$BODY" \
+    -X POST "$ENDPOINT" \
+    -H "Authorization: Bearer ${ITOP_TOKEN}" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+    ${SESSION:+-H "Mcp-Session-Id: ${SESSION}"} \
+    -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"core_object_search_by_class","arguments":{"class":"Organization","limit":2},"_meta":{"io.modelcontextprotocol/clientInfo":{"name":"smoke-client","version":"9.9"}}}}'
+  # shellcheck disable=SC2016
+  RPC_ERROR=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo isset($a["error"]) || ($a["result"]["isError"] ?? false) ? json_encode($a) : "";' "$BODY")
+  [ -z "$RPC_ERROR" ] || fail "the tools/call that the audit check makes was refused: $RPC_ERROR"
+  AUDIT_WHERE="mcp_name = 'core_object_search_by_class' ORDER BY id DESC LIMIT 1"
+  AUDIT_CLIENT=$(itop_sql "SELECT client FROM \`${AUDIT_TABLE}\` WHERE ${AUDIT_WHERE}")
+  AUDIT_READ=$(itop_sql "SELECT read_objects FROM \`${AUDIT_TABLE}\` WHERE ${AUDIT_WHERE}")
+  AUDIT_USER=$(itop_sql "SELECT user_id FROM \`${AUDIT_TABLE}\` WHERE ${AUDIT_WHERE}")
+  echo "   client='${AUDIT_CLIENT}' read_objects='${AUDIT_READ}' user_id='${AUDIT_USER}'"
+  [ "$AUDIT_CLIENT" = "smoke-client 9.9" ] || fail "the audit row does not name the client the call declared in _meta"
+  case "$AUDIT_READ" in "Organization: "*) ;; *) fail "the audit row does not list the Organizations the call returned" ;; esac
+  case "$AUDIT_USER" in ''|0) fail "the audit row holds no user_id" ;; esac
+else
+  echo "   no DB_HOST/DB_NAME: the audit row is not read back"
+fi
+
 # Portal mode, when the post-setup checks made a portal-only user to try it with. Run last: the
 # portal fixture is the checks' own, and a failure there says nothing about the rest above.
 PORTAL_CHECKS="$MODULE_SRC/tools/ci/checks/portal-smoke.sh"
