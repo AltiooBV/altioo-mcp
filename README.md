@@ -478,7 +478,8 @@ again afterwards:
 | **Enum values** | The `MCP*` values on the `scope` field of `PersonalToken` and `UserToken` — the four grades and one per toolset, ten in all (`_delta="if_exists"`, so no core class is redefined) |
 | **One file** | `index.php`. Clients are given it as `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file — and the same pair ships under `extensions/`, where it re-grants that directory's `index.php` through iTop's deny. So the file answers at both paths, on identical terms: same code, same authentication, one of the two published |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
-| **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no cron task, no scheduled job, no outbound connection |
+| **One background process** | `AuditHousekeeping`, run hourly by iTop's own cron (`iBackgroundProcess`): it deletes audit rows past `mcp_audit_retention_days` (off by default) and brings the rows of an anonymised person in step with iTop's history. It opens no connection and does nothing at all on an instance where cron does not run |
+| **Nothing else** | Beyond the enum values above, no core class is touched — and no core menu, no outbound connection |
 
 **Removing it.** Back up first, for the same reason as installing: this is another setup run.
 Untick the extension in the setup (or delete `<itop>/extensions/altioo-mcp/`) and run the setup
@@ -868,6 +869,7 @@ $MyModuleSettings = array(
         'mcp_refuse_formula_values' => true,
         'mcp_protected_resource_metadata' => '',
         'mcp_source_url' => '',
+        'mcp_audit_retention_days' => 0,
         'log_mcp_service' => true,
         'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
         'log_mcp_level' => 'info',
@@ -903,6 +905,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_protected_resource_metadata` | *(empty)* | URL of the RFC 9728 document your OAuth proxy serves. Advertised in the `WWW-Authenticate` header of a `401`, which is what a Connect-button client follows. Left empty with altioo-oauth-server installed, that module's document for this endpoint is advertised instead |
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
+| `mcp_audit_retention_days` | `0` | Days an audit row is kept before an hourly background process deletes it, oldest first. `0` keeps everything, as before. **iTop has no retention of its own for its event log**, so without this the table only grows. A value that is not a non-negative integer reads as `0` and is logged to `log/error.log`. The process also brings the rows of an anonymised person in step with iTop's history (see [Data flow and privacy](#data-flow-and-privacy)) whether this is on or not; it needs iTop's cron to be running |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
 | `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and is a troubleshooting setting, not a standing one |
 
@@ -1204,10 +1207,35 @@ nothing the request said.
 Those lists name objects as `Class::id` and **do not record what they now contain**: it says
 `UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request
 *parameters* are the only place object data could appear, and they are stored only at
-`log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your own
-retention on that table as you do for iTop's other event classes — the object list is kept on
-the row precisely so that purging `CMDBChange` does not leave the audit trail saying a write
-happened without saying to what.
+`log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. The object
+list is kept on the row precisely so that purging `CMDBChange` does not leave the audit trail
+saying a write happened without saying to what.
+
+**Retention.** iTop has **no retention of its own for its event log** (checked on 3.2.3 and
+3.3.0: it purges its log *files*, its read notifications and its backups, nothing in `priv_event`),
+so this table only grows unless you set `mcp_audit_retention_days`. It defaults to `0`, which keeps
+every row; a positive number has an hourly background process, run by iTop's cron, delete rows
+older than that many days, oldest first. Without cron running nothing is deleted. Rows are gone
+for good, with the tool, the reason and the objects they named, so set it against your own
+retention policy and never lower than your audit needs.
+
+**Anonymising a person.** iTop keeps what history says about a user who is deleted, and Combodo's
+Personal data anonymizer, when it anonymises a person, rewrites the name on their *changes* by the
+account's key. This module follows what iTop does: the audit row keeps what history keeps, and
+changes the name when history changes the name.
+
+- When the person behind a row's account (`user_id`) is anonymised, the hourly process sets the
+  row's *User* line to the account's current login, and clears the request parameters and the reason
+  (free text, which may name people). The objects named in *Objects changed* and *Objects read* stay:
+  they are `Class::id`, as iTop keeps change operations on other objects. Up to one run of lag.
+- **A user deleted before their person is anonymised is not reached.** Deleting a user resets
+  `user_id` on their rows (to 0, "no link"), so nothing leads from those rows to the person any more,
+  and they keep the login in the *User* line. Where logins are email addresses, that stays until
+  retention removes the row. The same holds for rows written before `user_id` existed (1.2.0 and
+  earlier).
+- A reason (or a log entry) can name a person other than the account's holder; nothing finds that.
+- Changes written by 1.0 to 1.2 carry a `(MCP: tool)` suffix and are not reached by the anonymizer's
+  case-log step ([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
 
 ## Security
 
@@ -1319,8 +1347,8 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **No rate limit.** Each call is bounded, but calls are not counted: one valid token can keep
   the instance busy for everyone else. Throttle at the web server — see
   [SECURITY.md](SECURITY.md#hardening-the-deployment).
-- **The audit trail grows.** One `AltiooEventMCPService` row per audited call, with no built-in purge
-  — set retention as you do for iTop's other event classes.
+- **The audit trail grows.** One `AltiooEventMCPService` row per audited call. iTop has no retention
+  for its event log, so set `mcp_audit_retention_days` (off by default) — it needs iTop's cron.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.
 
 ## Development

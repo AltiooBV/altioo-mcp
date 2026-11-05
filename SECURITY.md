@@ -544,9 +544,9 @@ What earns a row depends on `log_mcp_level`, and **the default `info` records ev
 call** — which is what makes "every call is audited" true of an instance nobody configured,
 rather than true only of one whose operator found the setting.
 
-The cost is a row per call, including every read, and the table has no built-in purge. That is
-the operator's to manage in the ordinary way: set retention on it as on iTop's other event
-classes, and if the volume is genuinely not worth it, `error` narrows the trail to failures and
+The cost is a row per call, including every read. iTop has no retention for its event log, so
+`mcp_audit_retention_days` (README, Configuration) is the lever, off by default and run by iTop's
+cron; and if the volume is genuinely not worth it, `error` narrows the trail to failures and
 client connections. Narrowing it is a decision to record less than the documentation claims, so
 make it deliberately — a successful read that left no trace is one nobody can account for
 later.
@@ -641,7 +641,7 @@ records two). In particular, and specifically relevant here:
   standing**: `debug` stores raw request parameters, which may contain data your users would
   not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
-- Review `AltiooEventMCPService` retention against your own data-retention policy.
+- Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
 - **Rate-limit and cap concurrency in the web server or proxy in front of the endpoint.** The
   module counts nothing, and it is the wrong place to: by the time its first line runs, iTop has
   already loaded its datamodel, so a limiter there would still pay most of the cost of every call
