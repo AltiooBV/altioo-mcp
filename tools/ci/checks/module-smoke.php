@@ -33,6 +33,13 @@ check(
 // the setup - it fails later, as a default nobody chose.
 check('secure_mcp_services defaults to on', MetaModel::GetModuleSetting($sModuleCode, 'secure_mcp_services', null) === true);
 
+// The hourly audit clean-up is found by iTop's own discovery, which is what cron asks. A process that
+// is not listed here is never run, and nothing else says so.
+check(
+	'cron finds the audit clean-up process',
+	in_array(\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class, InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class), true)
+);
+
 // The audit trail. No class, no record of what a model was asked to do.
 check('AltiooEventMCPService exists', MetaModel::IsValidClass('AltiooEventMCPService'));
 
