@@ -9,13 +9,18 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use AltiooEventMCPService;
 use CMDBChange;
+use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -45,12 +50,16 @@ use UserRights;
  * this account's own credential sent in that very call; it is marked as text to
  * report and not to follow, since a model wrote it.
  *
- * Console only until doc/adr/0010 is decided: this tool does not declare
- * itself portal-aware, so a portal user is never served it.
+ * **Served in portal mode too, as one deliberate exception** to "what the
+ * portal offers" (doc/adr/0010): an account's own trail. There an object is
+ * named only if the portal shows it now ({@see ObjectAccess::Readable()}), an
+ * attribute code only if the portal's view form shows it and the change it
+ * belongs to still exists, and coverage says nothing of the instance's
+ * configuration.
  *
  * @since 1.3.0
  */
-class MyActivity extends AbstractMCPTool
+class MyActivity extends AbstractMCPTool implements PortalAware
 {
 	public const DEFAULT_LIMIT = 20;
 	public const MAX_LIMIT = 100;
@@ -182,6 +191,8 @@ class MyActivity extends AbstractMCPTool
 			]);
 		} catch (ToolCallException $oException) {
 			throw $oException;
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
 		} catch (Throwable $oException) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to read your activity', $oException));
 		}
@@ -212,6 +223,7 @@ class MyActivity extends AbstractMCPTool
 			'portal'     => (string)$oRow->Get('portal'),
 			'credential' => (int)$oRow->Get('personal_token_id') > 0 ? 'personal token' : ((int)$oRow->Get('user_token_id') > 0 ? 'application token' : null),
 			'reason'     => (string)$oRow->Get('change_comment') === '' ? null : (string)$oRow->Get('change_comment'),
+			'_change'    => (int)$oRow->Get('change_id'),
 			'_changed'   => (string)$oRow->Get('changed_objects'),
 			'_read'      => (string)$oRow->Get('read_objects'),
 		];
@@ -248,7 +260,10 @@ class MyActivity extends AbstractMCPTool
 				$aWanted[$aObject['class']][$aObject['id']] = true;
 			}
 		}
-		$aReadable = self::readable($aWanted);
+		$bPortal = PortalMode::Current() !== null;
+		$oAccess = ObjectAccess::Current();
+		$aObjects = $bPortal ? self::readableInPortal($oAccess, $aWanted) : [];
+		$aReadable = $bPortal ? array_map(static fn (array $a): array => array_fill_keys(array_keys($a), true), $aObjects) : self::readable($aWanted);
 
 		foreach ($aRows as $i => $aRow) {
 			[$aChanged, $aRead] = $aParsed[$i];
@@ -256,8 +271,11 @@ class MyActivity extends AbstractMCPTool
 			$iHidden = 0;
 			foreach ($aChanged as $aObject) {
 				$sClass = $aObject['class'];
+				// An object the call deleted cannot be asked about. On the console its class is enough, the
+				// act being the caller's own; in portal mode it is counted, since the portal cannot say
+				// whether it showed it.
 				$bShown = $aObject['verb'] === 'deleted'
-					? self::classIsReadable($sClass)
+					? (!$bPortal && self::classIsReadable($sClass))
 					: isset($aReadable[$sClass][$aObject['id']]);
 				if (!$bShown) {
 					$iHidden++;
@@ -267,7 +285,7 @@ class MyActivity extends AbstractMCPTool
 					'class'      => $sClass,
 					'id'         => $aObject['id'],
 					'verb'       => $aObject['verb'],
-					'attributes' => self::readableAttributes($sClass, $aObject['attributes']),
+					'attributes' => self::attributesShown($oAccess, $aObjects[$sClass][$aObject['id']] ?? null, $sClass, $aObject['attributes'], (int)$aRow['_change'] > 0),
 				];
 			}
 			$aShownRead = [];
@@ -278,7 +296,7 @@ class MyActivity extends AbstractMCPTool
 					$iHidden++;
 				}
 			}
-			unset($aRows[$i]['_changed'], $aRows[$i]['_read']);
+			unset($aRows[$i]['_changed'], $aRows[$i]['_read'], $aRows[$i]['_change']);
 			$aRows[$i]['changed'] = $aShownChanged;
 			$aRows[$i]['read'] = $aShownRead;
 			$aRows[$i]['objects_you_cannot_see'] = $iHidden;
@@ -368,6 +386,64 @@ class MyActivity extends AbstractMCPTool
 		return $aOut;
 	}
 
+	/** Objects asked about in one page, in portal mode, where each is asked through the portal. */
+	private const MAX_PORTAL_CHECKS = 300;
+
+	/**
+	 * Portal mode: the objects the portal shows this user now, each asked the
+	 * way a read by id is asked ({@see ObjectAccess::Readable()}: the user's
+	 * rights, then the portal's scope). Bounded, since each question is a
+	 * handful of queries; what is not asked about is counted, not named.
+	 *
+	 * @param array<string, array<int, true>> $aWanted
+	 *
+	 * @return array<string, array<int, DBObject>>
+	 */
+	private static function readableInPortal(ObjectAccess $oAccess, array $aWanted): array
+	{
+		$aOut = [];
+		$iAsked = 0;
+		foreach ($aWanted as $sClass => $aIds) {
+			foreach (array_keys($aIds) as $iId) {
+				if (++$iAsked > self::MAX_PORTAL_CHECKS) {
+					return $aOut;
+				}
+				$oObject = $oAccess->Readable($sClass, (int)$iId);
+				if ($oObject !== null) {
+					$aOut[$sClass][(int)$iId] = $oObject;
+				}
+			}
+		}
+
+		return $aOut;
+	}
+
+	/**
+	 * The attribute codes to list for one changed object.
+	 *
+	 * The console's rule (see readableAttributes()); in portal mode also only
+	 * what the portal's view form shows of the object as it is now, and none
+	 * at all once the change they belong to is gone: the code of a field the
+	 * form hides, or of one a vanished change cannot vouch for, is not named.
+	 *
+	 * @param array<int, string> $aCodes
+	 *
+	 * @return array<int, string>
+	 */
+	private static function attributesShown(ObjectAccess $oAccess, ?DBObject $oObject, string $sClass, array $aCodes, bool $bChangeExists): array
+	{
+		$aCodes = self::readableAttributes($sClass, $aCodes);
+		if (PortalMode::Current() === null) {
+			return $aCodes;
+		}
+		if (!$bChangeExists || $oObject === null) {
+			return [];
+		}
+		$fShown = $oAccess->ShownOf($oObject);
+
+		return array_values(array_filter($aCodes, static fn (string $sCode): bool => $fShown($sCode)));
+	}
+
 	/**
 	 * The attribute codes of a change this account may read, whatever the
 	 * object: a code names a field, and a field the account cannot read is not
@@ -399,6 +475,12 @@ class MyActivity extends AbstractMCPTool
 	 */
 	private static function coverage(): array
 	{
+		// A portal user is told that the record is not complete, and nothing of how this
+		// instance is set up: no level, no retention, no switch.
+		if (PortalMode::Current() !== null) {
+			return ['notes' => ['Some earlier calls may not be listed. Objects you can no longer see are counted in objects_you_cannot_see.']];
+		}
+
 		$sLevel = (string)MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL);
 		// An unset or unknown level records every call, which is what "info" is.
 		if (!in_array($sLevel, [MCPHelper::LOG_LEVEL_ERROR, MCPHelper::LOG_LEVEL_DEBUG], true)) {
