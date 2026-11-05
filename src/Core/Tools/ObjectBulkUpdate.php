@@ -97,7 +97,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	 * @param array<int, mixed>  $ids      Ids of the objects to update
 	 * @param array<string, mixed> $fields  Attribute values applied to all of them
 	 * @param bool               $simulate When true (default), nothing is written
-	 * @param string|null        $comment  Why the batch is being applied, recorded in the history of every object in it
+	 * @param string|null        $comment  Why the batch is being applied, recorded on the audit row
 	 *
 	 * @return mixed A per-object report
 	 *

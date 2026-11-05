@@ -112,7 +112,7 @@ class ObjectDelete extends AbstractMCPTool
 	 * @param int $id The ID of the object to delete
 	 * @param bool $simulate When true (default), only the deletion plan is computed and returned
 	 * @param bool $obsolete_ok Delete an obsolete object even though this account hides them
-	 * @param string|null $comment Why the object is being deleted, recorded in the history of everything the deletion touches
+	 * @param string|null $comment Why the object is being deleted, recorded on the audit row
 	 * @return array The result of the deletion operation
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
 	 */

@@ -167,7 +167,7 @@ class ObjectAttach extends AbstractMCPTool
 	 * @param string|null $mimetype       Media type, verified against the bytes; read off the file when not given
 	 * @param string|null $att_code       Blob attribute to set instead of adding an Attachment
 	 * @param bool        $simulate       When true (default), everything is checked and nothing is stored
-	 * @param string|null $comment        Why the file is being attached, recorded in the object's history
+	 * @param string|null $comment        Why the file is being attached, recorded on the audit row
 	 *
 	 * @return mixed Where the document landed, and what it is
 	 *

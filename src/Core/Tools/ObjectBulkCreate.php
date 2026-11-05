@@ -118,7 +118,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 	 * @param string                          $class    The class to instantiate
 	 * @param array<int, array<string, mixed>> $objects One attribute map per object
 	 * @param bool                            $simulate When true (default), nothing is created
-	 * @param string|null                     $comment  Why the batch is being created, recorded in the history of every object in it
+	 * @param string|null                     $comment  Why the batch is being created, recorded on the audit row
 	 *
 	 * @return mixed A per-row report
 	 *

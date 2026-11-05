@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Controller;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
+use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
@@ -1174,6 +1175,7 @@ final class MCPController
 			self::describeUser($oLog);
 			self::describeChange($oLog);
 			self::describeReads($oLog);
+			$oLog->Set('change_comment', ChangeTracking::Comment() ?? '');
 			// What the row could not answer before: how long the call took, how
 			// much it sent back - the two numbers that tell a slow instance from
 			// a client filling its context - and which log entry explains it.

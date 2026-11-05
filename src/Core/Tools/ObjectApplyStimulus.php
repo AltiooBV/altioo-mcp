@@ -148,7 +148,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 	 * @param string $stimulus The stimulus code to apply, e.g. 'ev_assign'
 	 * @param array $fields Optional attribute values to set before applying the stimulus, e.g. ['agent_id' => 3]
 	 * @param bool $simulate When true (default), the transition is validated but not applied
-	 * @param string|null $comment Why the transition is being applied, recorded in the object's history
+	 * @param string|null $comment Why the transition is being applied, recorded on the audit row
 	 * @return array The state the object is in, or the state it would move to
 	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
 	 */

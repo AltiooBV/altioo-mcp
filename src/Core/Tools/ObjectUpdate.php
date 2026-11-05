@@ -124,7 +124,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 	 * @param array $fields An array of attribute => value pairs to update
 	 * @param bool $simulate When true (default), the change is validated and described but not written
 	 * @param bool $obsolete_ok Act on an obsolete object even though this account hides them
-	 * @param string|null $comment Why the change is being made, recorded in the object's history
+	 * @param string|null $comment Why the change is being made, recorded on the audit row
 	 * @return array The class and ID of the object, and the attributes the call changes or would change
 	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
 	 */
