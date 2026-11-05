@@ -51,6 +51,7 @@ class ContextBudgetTest extends TestCase
 		'ClassSchema'         => [1860, 900],
 		'CurrentUser'         => [740, 40],
 		'Instructions'        => [780, 40],
+		'MyActivity'          => [330, 440],
 		'ObjectApplyStimulus' => [520, 1020],
 		'ObjectAttach'        => [400, 1610],
 		'ObjectBulkCreate'    => [420, 920],
@@ -72,8 +73,8 @@ class ContextBudgetTest extends TestCase
 	];
 
 	/** The whole of what the budgets above add up to, with a little room. */
-	private const TOTAL_DESCRIPTIONS = 13550;
-	private const TOTAL_INPUT_SCHEMAS = 24400;
+	private const TOTAL_DESCRIPTIONS = 13850;
+	private const TOTAL_INPUT_SCHEMAS = 24800;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
 	private const INSTRUCTIONS = 4500;
