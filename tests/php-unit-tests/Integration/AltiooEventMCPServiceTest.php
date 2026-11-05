@@ -139,11 +139,11 @@ class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 
 	/**
 	 * The audit trail must outlive the account it records, and deleting an
-	 * account must neither be blocked by it nor rewrite its rows inside the
-	 * request that deletes it - DEL_AUTO and DEL_MANUAL both do the second,
-	 * on a nullable key, so the key is left alone (DEL_NONE).
+	 * account must not be blocked by it. The key is reset (DEL_AUTO, like the
+	 * token links), one row at a time in the deleting request, which is the
+	 * cost the maintainer accepted; `userinfo` stays the record.
 	 */
-	public function testDeletingTheUserKeepsItsRowsAndIsNotBlockedByThem(): void
+	public function testDeletingTheUserKeepsItsRowsClearsTheKeyAndIsNotBlockedByThem(): void
 	{
 		$iOrg = (int)$this->CreateOrganization('AuditUserDelete '.bin2hex(random_bytes(4)))->GetKey();
 		$iContact = (int)$this->CreatePerson(1, $iOrg)->GetKey();
@@ -165,7 +165,7 @@ class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 		$oSurvivor = MetaModel::GetObject(self::CLASS_NAME, $iRow, false);
 		$this->assertNotNull($oSurvivor, 'the audit row survives its user');
 		$this->assertSame($sLogin, $oSurvivor->Get('userinfo'));
-		$this->assertSame($iUser, (int)$oSurvivor->Get('user_id'), 'the row is not rewritten by the deletion');
+		$this->assertSame(0, (int)$oSurvivor->Get('user_id'), 'the key is reset, not left pointing at a deleted user');
 	}
 
 	/**

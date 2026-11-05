@@ -970,8 +970,9 @@ Three more columns say who and what, beyond the login string:
   neither is this column**, and a call that returned nothing leaves it empty.
 - **User** (`user_id`) is the account the call ran as, as a link: the real user under
   impersonation, as `CMDBChange` records it. `userinfo` stays, and stays the record: deleting the
-  user neither blocks on these rows nor rewrites them, and the link then points at an account
-  that is gone. Rows from before this column hold no link, and neither does a refusal made
+  user is not blocked by these rows, and they survive it with `userinfo` intact and the link
+  cleared. iTop clears it one row at a time inside the request that deletes the user, at about
+  2 ms a row, so deleting an account with a very long history is slow. Rows from before this column hold no link, and neither does a refusal made
   before any account was known.
 
 It also holds three numbers that turn the log into something you can act on. **Duration**
