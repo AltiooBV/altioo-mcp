@@ -8,7 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 
@@ -139,6 +142,35 @@ class ContextBudgetTest extends TestCase
 
 		$this->assertLessThanOrEqual(self::TOTAL_DESCRIPTIONS, $iDescriptions, 'the descriptions together grew: '.$iDescriptions);
 		$this->assertLessThanOrEqual(self::TOTAL_INPUT_SCHEMAS, $iSchemas, 'the input schemas together grew: '.$iSchemas);
+	}
+
+	/**
+	 * What a portal user is told: the tools portal mode serves, in portal mode,
+	 * where descriptions and schemas differ from the console's. Measured with
+	 * core_my_activity served there (doc/adr/0010).
+	 */
+	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
+	{
+		MCPRegistry::Clear();
+		CoreExtensions::RegisterServiceProvider();
+		PortalMode::Remember('itop-portal');
+		try {
+			$iDescriptions = 0;
+			$iSchemas = 0;
+			foreach (MCPRegistry::GetTools() as $oTool) {
+				if (!PortalMode::Serves($oTool)) {
+					continue;
+				}
+				$iDescriptions += strlen((string)$oTool->getDescription());
+				$iSchemas += strlen((string)json_encode($oTool->getInputSchema()));
+			}
+		} finally {
+			PortalMode::Forget();
+			MCPRegistry::Clear();
+		}
+
+		$this->assertLessThanOrEqual(8100, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(6800, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
 	public function testTheInstructionsDoNotGrowPastTheirBudget(): void

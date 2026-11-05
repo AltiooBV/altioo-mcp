@@ -229,7 +229,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->assertSame([['class' => 'UserRequest', 'id' => $iOwn, 'verb' => 'updated', 'attributes' => ['title']]], $aRow['changed']);
 		$this->assertSame([['class' => 'UserRequest', 'id' => $iOwn]], $aRow['read']);
 		$this->assertSame(2, $aRow['objects_you_cannot_see'], 'the hidden one, once as changed and once as read');
-		$this->assertStringNotContainsString((string)$iHidden, (string)json_encode($aRow), 'its id is not given');
+		$this->assertNotContains($iHidden, array_merge(array_column($aRow['changed'], 'id'), array_column($aRow['read'], 'id')), 'its id is not given');
 	}
 
 	/** A code names a field. One the account may not read is not learned from a list of what changed. */
@@ -288,10 +288,133 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->assertStringContainsString('30 days', $sNotes);
 	}
 
-	/** Not served to a portal user until doc/adr/0010 is decided. */
-	public function testItIsNotServedInPortalMode(): void
+	/** Served to a portal user as the one exception of doc/adr/0010. */
+	public function testItIsServedInPortalMode(): void
 	{
-		$this->assertFalse(PortalMode::Serves(new MyActivity()));
+		$this->assertTrue(PortalMode::Serves(new MyActivity()));
+	}
+
+	private const PORTAL = 'itop-portal';
+
+	/**
+	 * @return array{login: string, user: int, contact: int, own: int, other: int, hidden: int}
+	 */
+	private function portalUser(): array
+	{
+		if (!MetaModel::IsValidClass('UserRequest') || !class_exists('Combodo\iTop\Portal\Brick\BrickCollection')
+			|| !method_exists('Combodo\iTop\Portal\Form\ObjectFormManager', 'PrepareFields')) {
+			$this->markTestSkipped('Needs the stock portal and request management, iTop 3.2.2 or later.');
+		}
+		$iContact = (int)$this->CreatePerson(50, $this->iOrgA)->GetKey();
+		$sLogin = 'own-portal-'.$this->sSuffix;
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Portal user'), 'Own-Portal-'.$this->sSuffix.'!', $iContact)->GetKey();
+		$iOwn = (int)$this->CreateUserRequest(50, ['org_id' => $this->iOrgA, 'caller_id' => $iContact, 'title' => 'Own portal '.$this->sSuffix])->GetKey();
+		// A colleague's request in the same organisation: the portal's scope hides it from this user.
+		$iColleague = (int)$this->CreatePerson(51, $this->iOrgA)->GetKey();
+		$iOther = (int)$this->CreateUserRequest(51, ['org_id' => $this->iOrgA, 'caller_id' => $iColleague, 'title' => 'Colleague '.$this->sSuffix])->GetKey();
+		$iHidden = (int)$this->CreateUserRequest(52, ['org_id' => $this->iOrgB, 'caller_id' => $this->iPersonB, 'title' => 'Other org '.$this->sSuffix])->GetKey();
+
+		return ['login' => $sLogin, 'user' => $iUser, 'contact' => $iContact, 'own' => $iOwn, 'other' => $iOther, 'hidden' => $iHidden];
+	}
+
+	public function testThePortalUserSeesTheirOwnRowsAndNotAnotherPortalUsers(): void
+	{
+		$aMe = $this->portalUser();
+		$iSecond = (int)$this->CreateUser('own-portal2-'.$this->sSuffix, self::profileId('Portal user'), 'Own-Portal2-'.$this->sSuffix.'!', (int)$this->CreatePerson(53, $this->iOrgA)->GetKey())->GetKey();
+		$this->row($aMe['user'], ['mcp_name' => 'portal-mine']);
+		$this->row($iSecond, ['mcp_name' => 'portal-second']);
+		UserRights::Login($aMe['login']);
+		PortalMode::Remember(self::PORTAL);
+
+		$this->assertSame(['portal-mine'], array_column($this->mine()['activity'], 'name'));
+	}
+
+	/** The portal's scope, not UserRights: a colleague's request and another organisation's are counted and not named. */
+	public function testAnObjectThePortalHidesIsCountedAndNeverNamed(): void
+	{
+		$aMe = $this->portalUser();
+		$this->row($aMe['user'], [
+			'changed_objects' => "UserRequest::{$aMe['own']} updated (title)\nUserRequest::{$aMe['other']} updated (title)\nUserRequest::{$aMe['hidden']} updated (title)",
+			'read_objects'    => "UserRequest: {$aMe['own']}, {$aMe['other']}, {$aMe['hidden']}",
+			'change_id'       => $this->aChangeId(),
+		]);
+		UserRights::Login($aMe['login']);
+		PortalMode::Remember(self::PORTAL);
+
+		$aRow = $this->mine()['activity'][0];
+
+		$this->assertSame([$aMe['own']], array_column($aRow['changed'], 'id'));
+		$this->assertSame([$aMe['own']], array_column($aRow['read'], 'id'));
+		$this->assertSame(4, $aRow['objects_you_cannot_see'], 'two hidden objects, each as changed and as read');
+		$aNamed = array_merge(array_column($aRow['changed'], 'id'), array_column($aRow['read'], 'id'));
+		$this->assertNotContains($aMe['other'], $aNamed);
+		$this->assertNotContains($aMe['hidden'], $aNamed);
+	}
+
+	/** A code the portal's view form does not show is not named, and without the change none is. */
+	public function testAFormHiddenCodeIsNeverNamedAndNoCodeSurvivesALostChange(): void
+	{
+		$aMe = $this->portalUser();
+		$sChanged = "UserRequest::{$aMe['own']} updated (title, private_log, agent_id)";
+		$this->row($aMe['user'], ['changed_objects' => $sChanged, 'change_id' => $this->aChangeId(), 'mcp_name' => 'with-change']);
+		$this->row($aMe['user'], ['changed_objects' => $sChanged, 'mcp_name' => 'change-gone']);
+		UserRights::Login($aMe['login']);
+		PortalMode::Remember(self::PORTAL);
+
+		$aByName = [];
+		foreach ($this->mine()['activity'] as $aRow) {
+			$aByName[$aRow['name']] = $aRow;
+		}
+
+		$aShown = $aByName['with-change']['changed'][0]['attributes'];
+		$this->assertContains('title', $aShown, 'the portal shows the title');
+		$this->assertNotContains('private_log', $aShown, 'the agents log is not on the portal\'s view form');
+		$this->assertNotContains('agent_id', $aShown);
+		$this->assertSame([], $aByName['change-gone']['changed'][0]['attributes'], 'no change, no codes');
+	}
+
+	public function testThePortalIsToldNothingOfTheInstancesSetup(): void
+	{
+		$aMe = $this->portalUser();
+		UserRights::Login($aMe['login']);
+		PortalMode::Remember(self::PORTAL);
+		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', 'log_mcp_level', 'error');
+		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', 'mcp_audit_retention_days', 30);
+
+		$aCoverage = $this->mine()['coverage'];
+
+		$this->assertSame(['notes'], array_keys($aCoverage));
+		$sJson = (string)json_encode($aCoverage);
+		foreach (['error', 'retention', '30', 'log_mcp', 'level'] as $sConfig) {
+			$this->assertStringNotContainsString($sConfig, $sJson, $sConfig);
+		}
+		$this->assertStringContainsString('Some earlier calls may not be listed.', $sJson);
+	}
+
+	/** The name of a row is what this account itself sent, or a word of this module. */
+	public function testTheNameOfARowIsTheCallersOwnRequest(): void
+	{
+		$aMe = $this->portalUser();
+		$this->row($aMe['user'], ['mcp_method' => 'resources/read', 'mcp_name' => 'itop://core/object-document/UserRequest/'.$aMe['hidden'].'/screenshot']);
+		$this->row($aMe['user'], ['mcp_method' => 'login', 'mcp_name' => 'portal_admission', 'status' => 'error']);
+		UserRights::Login($aMe['login']);
+		PortalMode::Remember(self::PORTAL);
+
+		$aNames = array_column($this->mine()['activity'], 'name');
+
+		$this->assertContains('portal_admission', $aNames);
+		// The resource URI is what this account asked for, so it quotes only what it already knew; the
+		// tool does not decode it or look anything up through it.
+		$this->assertContains('itop://core/object-document/UserRequest/'.$aMe['hidden'].'/screenshot', $aNames);
+	}
+
+	private function aChangeId(): int
+	{
+		$oChange = MetaModel::NewObject('CMDBChange');
+		$oChange->Set('date', date('Y-m-d H:i:s'));
+		$oChange->Set('userinfo', 'own activity test');
+
+		return (int)$oChange->DBInsert();
 	}
 
 	private static function profileId(string $sName): int

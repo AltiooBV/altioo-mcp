@@ -81,11 +81,34 @@ class MyActivityContractTest extends TestCase
 		];
 	}
 
-	/** Not served to a portal user until the ADR is decided (doc/adr/0010). */
-	public function testItIsNotPortalAwareUntilTheMaintainerDecides(): void
+	/**
+	 * Served in portal mode as the one exception ADR 0010 records, and read
+	 * grade: it changes nothing.
+	 */
+	public function testItIsServedInPortalModeUnderADecidedAdr(): void
 	{
-		$this->assertNotInstanceOf(PortalAware::class, new MyActivity());
-		$this->assertStringContainsString('Status: proposed', (string)file_get_contents(dirname(__DIR__, 3).'/doc/adr/0010-portal-mode-may-serve-the-users-own-activity.md'));
+		$oTool = new MyActivity();
+
+		$this->assertInstanceOf(PortalAware::class, $oTool);
+		$this->assertTrue($oTool->getAnnotations()->readOnlyHint);
+		$sAdr = (string)file_get_contents(dirname(__DIR__, 3).'/doc/adr/0010-portal-mode-serves-the-users-own-activity.md');
+		$this->assertStringContainsString('Status: accepted', $sAdr);
+		$this->assertStringContainsString('Decided by: Guy Couronne', $sAdr);
+		$this->assertStringContainsString('not as a precedent', $sAdr);
+	}
+
+	/**
+	 * In portal mode an object is named only if the portal shows it, a code
+	 * only if the view form does, and the instance's configuration is not
+	 * told: pinned in the source, run in OwnActivityTest.
+	 */
+	public function testThePortalNarrowingIsThePortalsOwn(): void
+	{
+		$sSource = self::source();
+
+		$this->assertStringContainsString('$oAccess->Readable($sClass, (int)$iId)', $sSource);
+		$this->assertStringContainsString('$oAccess->ShownOf($oObject)', $sSource);
+		$this->assertStringContainsString("Some earlier calls may not be listed.", $sSource);
 	}
 
 	public function testItReadsBackWhatChangeSummaryWrites(): void
