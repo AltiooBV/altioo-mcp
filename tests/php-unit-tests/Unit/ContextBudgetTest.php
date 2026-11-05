@@ -56,6 +56,7 @@ class ContextBudgetTest extends TestCase
 		'ObjectBulkCreate'    => [420, 920],
 		'ObjectBulkDelete'    => [560, 1240],
 		'ObjectBulkUpdate'    => [420, 1500],
+		'ObjectCount'         => [260, 1080],
 		'ObjectCreate'        => [580, 850],
 		'ObjectDelete'        => [430, 1000],
 		'ObjectFindByName'    => [910, 1180],
@@ -71,11 +72,11 @@ class ContextBudgetTest extends TestCase
 	];
 
 	/** The whole of what the budgets above add up to, with a little room. */
-	private const TOTAL_DESCRIPTIONS = 13300;
-	private const TOTAL_INPUT_SCHEMAS = 23400;
+	private const TOTAL_DESCRIPTIONS = 13550;
+	private const TOTAL_INPUT_SCHEMAS = 24400;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
-	private const INSTRUCTIONS = 4400;
+	private const INSTRUCTIONS = 4500;
 
 	/** @return array<string, string> Short class name => class. */
 	private static function coreTools(): array

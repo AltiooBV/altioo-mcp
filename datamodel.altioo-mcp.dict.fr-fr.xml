@@ -142,6 +142,7 @@
         <entry id="MCP:tool:core_object_history:title" _delta="force"><![CDATA[Historique d'un objet]]></entry>
         <entry id="MCP:tool:core_portal_list:title" _delta="force"><![CDATA[Lister depuis le portail]]></entry>
         <entry id="MCP:tool:core_object_search_by_class:title" _delta="force"><![CDATA[Rechercher des objets par classe]]></entry>
+        <entry id="MCP:tool:core_object_count:title" _delta="force"><![CDATA[Compter des objets]]></entry>
         <entry id="MCP:tool:core_object_search_by_oql:title" _delta="force"><![CDATA[Rechercher des objets en OQL]]></entry>
         <entry id="MCP:tool:core_object_update:title" _delta="force"><![CDATA[Modifier un objet]]></entry>
         <entry id="MCP:resource:core_class_list:title" _delta="force"><![CDATA[Classes iTop]]></entry>
