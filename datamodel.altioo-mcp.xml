@@ -583,6 +583,14 @@
       -->
       <mcp_portal_token_max_days type="integer">90</mcp_portal_token_max_days>
       <!--
+        Days an audit row (AltiooEventMCPService) is kept before the hourly
+        background process deletes it. iTop has no retention for its event log
+        of its own, so 0, the default, keeps everything, as every earlier
+        version did. A value that is not a non-negative integer reads as 0 and
+        is logged.
+      -->
+      <mcp_audit_retention_days type="integer">0</mcp_audit_retention_days>
+      <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",
         "relations", "documents", "history" and "server", each with a matching
