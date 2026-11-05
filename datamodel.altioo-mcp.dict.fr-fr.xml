@@ -55,6 +55,21 @@
         <entry id="Class:AltiooEventMCPService/Attribute:change_comment+" _delta="force"><![CDATA[Le motif que l'appelant a donné pour la modification, s'il en a donné un. Texte libre écrit par l'appelant : il peut nommer des personnes. Conservé ici et non dans la ligne de la modification elle-même, pour que l'anonymiseur de données personnelles retrouve les entrées de la personne]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects" _delta="force"><![CDATA[Objets modifiés]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects+" _delta="force"><![CDATA[Ce que la modification a touché, une ligne par objet, conservé ici afin de survivre à une purge de rétention de la modification elle-même]]></entry>
+        <entry id="Menu:MCPActivity" _delta="force"><![CDATA[Activité MCP]]></entry>
+        <entry id="Menu:MCPActivity+" _delta="force"><![CDATA[Appels faits par le point d'accès MCP ces 7 derniers jours : qui, quel outil, ce qui a été écrit, ce qui a échoué, le volume renvoyé]]></entry>
+        <entry id="Menu:MCPServiceCalls" _delta="force"><![CDATA[Appels du service MCP]]></entry>
+        <entry id="Menu:MCPServiceCalls+" _delta="force"><![CDATA[Tous les appels enregistrés par le point d'accès MCP (la piste d'audit)]]></entry>
+        <entry id="MCP:Dashboard:Title" _delta="force"><![CDATA[Activité MCP, 7 derniers jours]]></entry>
+        <entry id="MCP:Dashboard:Calls" _delta="force"><![CDATA[Appels par résultat]]></entry>
+        <entry id="MCP:Dashboard:WritesByTool" _delta="force"><![CDATA[Écritures par outil (hors simulations)]]></entry>
+        <entry id="MCP:Dashboard:WritesByDay" _delta="force"><![CDATA[Écritures par jour du mois]]></entry>
+        <entry id="MCP:Dashboard:WritesByLogin" _delta="force"><![CDATA[Écritures par identifiant enregistré]]></entry>
+        <entry id="MCP:Dashboard:FailedByTool" _delta="force"><![CDATA[Erreurs de protocole par outil]]></entry>
+        <entry id="MCP:Dashboard:FailedByLogin" _delta="force"><![CDATA[Erreurs de protocole par identifiant enregistré]]></entry>
+        <entry id="MCP:Dashboard:RefusedLogins" _delta="force"><![CDATA[Utilisateurs du portail refusés à la connexion, par identifiant enregistré]]></entry>
+        <entry id="MCP:Dashboard:CallsByClient" _delta="force"><![CDATA[Appels par client, tel qu'il s'est déclaré]]></entry>
+        <entry id="MCP:Dashboard:CallsByPortal" _delta="force"><![CDATA[Appels par portail (vide : la console)]]></entry>
+        <entry id="MCP:Dashboard:BytesByTool" _delta="force"><![CDATA[Octets renvoyés, par outil (10 premiers)]]></entry>
         <entry id="fieldset:AltiooEventMCPService:who" _delta="force"><![CDATA[Qui]]></entry>
         <entry id="fieldset:AltiooEventMCPService:what" _delta="force"><![CDATA[Ce qui a été appelé]]></entry>
         <entry id="fieldset:AltiooEventMCPService:outcome" _delta="force"><![CDATA[Résultat]]></entry>

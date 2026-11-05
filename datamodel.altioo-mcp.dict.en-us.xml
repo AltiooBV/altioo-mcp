@@ -55,6 +55,21 @@
         <entry id="Class:AltiooEventMCPService/Attribute:change_comment+" _delta="force"><![CDATA[The reason the caller gave for the change, if it gave one. Free text written by the caller: it may name people. Kept here, not in the change's own line, so that the personal data anonymizer can find the person's entries]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects" _delta="force"><![CDATA[Objects changed]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects+" _delta="force"><![CDATA[What the change touched, one line per object, kept here so it survives a retention purge of the change itself]]></entry>
+        <entry id="Menu:MCPActivity" _delta="force"><![CDATA[MCP activity]]></entry>
+        <entry id="Menu:MCPActivity+" _delta="force"><![CDATA[Calls made through the MCP endpoint in the last 7 days: who, which tool, what it wrote, what failed, how much it sent back]]></entry>
+        <entry id="Menu:MCPServiceCalls" _delta="force"><![CDATA[MCP service calls]]></entry>
+        <entry id="Menu:MCPServiceCalls+" _delta="force"><![CDATA[Every call recorded by the MCP endpoint (the audit trail)]]></entry>
+        <entry id="MCP:Dashboard:Title" _delta="force"><![CDATA[MCP activity, last 7 days]]></entry>
+        <entry id="MCP:Dashboard:Calls" _delta="force"><![CDATA[Calls by outcome]]></entry>
+        <entry id="MCP:Dashboard:WritesByTool" _delta="force"><![CDATA[Writes by tool (not dry runs)]]></entry>
+        <entry id="MCP:Dashboard:WritesByDay" _delta="force"><![CDATA[Writes by day of the month]]></entry>
+        <entry id="MCP:Dashboard:WritesByLogin" _delta="force"><![CDATA[Writes by login as recorded]]></entry>
+        <entry id="MCP:Dashboard:FailedByTool" _delta="force"><![CDATA[Protocol errors by tool]]></entry>
+        <entry id="MCP:Dashboard:FailedByLogin" _delta="force"><![CDATA[Protocol errors by login as recorded]]></entry>
+        <entry id="MCP:Dashboard:RefusedLogins" _delta="force"><![CDATA[Portal users refused at login, by login as recorded]]></entry>
+        <entry id="MCP:Dashboard:CallsByClient" _delta="force"><![CDATA[Calls by client, as it declared itself]]></entry>
+        <entry id="MCP:Dashboard:CallsByPortal" _delta="force"><![CDATA[Calls by portal (empty is the console)]]></entry>
+        <entry id="MCP:Dashboard:BytesByTool" _delta="force"><![CDATA[Response bytes sent, by tool (top 10)]]></entry>
         <entry id="fieldset:AltiooEventMCPService:who" _delta="force"><![CDATA[Who]]></entry>
         <entry id="fieldset:AltiooEventMCPService:what" _delta="force"><![CDATA[What was called]]></entry>
         <entry id="fieldset:AltiooEventMCPService:outcome" _delta="force"><![CDATA[Outcome]]></entry>

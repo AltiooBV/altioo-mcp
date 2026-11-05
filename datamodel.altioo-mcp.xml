@@ -522,6 +522,166 @@
       </profile>
     </profiles>
   </user_rights>
+  <menus>
+    <!--
+      Two entries under Admin tools, beside altioo-oauth-server's at ranks 90 and
+      91, both admin-only: the audit trail holds every call anyone made through
+      this endpoint. The dashboard is iTop's own DashboardMenuNode, so an
+      administrator customises it with iTop's editor and reverts it from the
+      same place; it is stored per user, and nothing here is dashboard code.
+
+      Each dashlet looks at the last 7 days. Where one groups on `userinfo` it
+      is the account's login as recorded on the row, not a person: the title
+      says so. The writes are rows with `simulate = 'no'` and a change. An
+      "error" is the protocol's: a call a tool refuses is answered, and is
+      recorded as a success. The tables by tool look at `tools/call` only,
+      because the name of an `initialize` row is the client. A refused portal
+      login is `login` / `portal_admission`.
+    -->
+    <menu id="MCPActivity" xsi:type="DashboardMenuNode" _delta="define">
+      <rank>92</rank>
+      <parent>AdminTools</parent>
+      <enable_admin_only>1</enable_admin_only>
+      <definition>
+        <layout>DashboardLayoutTwoCols</layout>
+        <title>MCP:Dashboard:Title</title>
+        <cells>
+          <cell id="0">
+            <rank>0</rank>
+            <dashlets>
+              <dashlet id="1" xsi:type="DashletGroupByTable">
+                <rank>1</rank>
+                <title>MCP:Dashboard:Calls</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY)</query>
+                <group_by>status</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="1">
+            <rank>1</rank>
+            <dashlets>
+              <dashlet id="2" xsi:type="DashletGroupByTable">
+                <rank>2</rank>
+                <title>MCP:Dashboard:WritesByTool</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND simulate = 'no' AND change_id != 0</query>
+                <group_by>mcp_name</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="2">
+            <rank>2</rank>
+            <dashlets>
+              <dashlet id="3" xsi:type="DashletGroupByBars">
+                <rank>3</rank>
+                <title>MCP:Dashboard:WritesByDay</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND simulate = 'no' AND change_id != 0</query>
+                <group_by>date:day_of_month</group_by>
+                <style>bars</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="3">
+            <rank>3</rank>
+            <dashlets>
+              <dashlet id="4" xsi:type="DashletGroupByTable">
+                <rank>4</rank>
+                <title>MCP:Dashboard:WritesByLogin</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND simulate = 'no' AND change_id != 0</query>
+                <group_by>userinfo</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="4">
+            <rank>4</rank>
+            <dashlets>
+              <dashlet id="5" xsi:type="DashletGroupByTable">
+                <rank>5</rank>
+                <title>MCP:Dashboard:FailedByTool</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'error' AND mcp_method = 'tools/call'</query>
+                <group_by>mcp_name</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="5">
+            <rank>5</rank>
+            <dashlets>
+              <dashlet id="6" xsi:type="DashletGroupByTable">
+                <rank>6</rank>
+                <title>MCP:Dashboard:FailedByLogin</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'error'</query>
+                <group_by>userinfo</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="6">
+            <rank>6</rank>
+            <dashlets>
+              <dashlet id="7" xsi:type="DashletGroupByTable">
+                <rank>7</rank>
+                <title>MCP:Dashboard:RefusedLogins</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND mcp_method = 'login' AND mcp_name = 'portal_admission'</query>
+                <group_by>userinfo</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="7">
+            <rank>7</rank>
+            <dashlets>
+              <dashlet id="8" xsi:type="DashletGroupByTable">
+                <rank>8</rank>
+                <title>MCP:Dashboard:CallsByClient</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY)</query>
+                <group_by>client</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="8">
+            <rank>8</rank>
+            <dashlets>
+              <dashlet id="9" xsi:type="DashletGroupByTable">
+                <rank>9</rank>
+                <title>MCP:Dashboard:CallsByPortal</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY)</query>
+                <group_by>portal</group_by>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+          <cell id="9">
+            <rank>9</rank>
+            <dashlets>
+              <dashlet id="10" xsi:type="DashletGroupByTable">
+                <rank>10</rank>
+                <title>MCP:Dashboard:BytesByTool</title>
+                <query>SELECT AltiooEventMCPService WHERE date &gt; DATE_SUB(NOW(), INTERVAL 7 DAY) AND mcp_method = 'tools/call'</query>
+                <group_by>mcp_name</group_by>
+                <aggregation_function>sum</aggregation_function>
+                <aggregation_attribute>response_bytes</aggregation_attribute>
+                <order_by>function</order_by>
+                <order_direction>desc</order_direction>
+                <limit>10</limit>
+                <style>table</style>
+              </dashlet>
+            </dashlets>
+          </cell>
+        </cells>
+      </definition>
+    </menu>
+    <menu id="MCPServiceCalls" xsi:type="OQLMenuNode" _delta="define">
+      <rank>93</rank>
+      <parent>AdminTools</parent>
+      <oql><![CDATA[SELECT AltiooEventMCPService]]></oql>
+      <do_search>1</do_search>
+      <enable_admin_only>1</enable_admin_only>
+    </menu>
+  </menus>
   <module_parameters>
     <parameters id="altioo-mcp" _delta="define">
       <secure_mcp_services type="bool">true</secure_mcp_services>
