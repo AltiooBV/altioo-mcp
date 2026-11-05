@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Models\MCPResult;
+use Mcp\Server\Stateless\RequestMeta;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -117,6 +118,61 @@ class AuditLabelTest extends TestCase
 		$this->assertDoesNotMatchRegularExpression("/->Set\\('message',\\s*\\\$oResult->message\\)/", $sSource);
 	}
 
+	/**
+	 * The client is named on every row, not only the one that connected: a
+	 * 2026-07-28 client sends no initialize and says who it is in the _meta
+	 * of each request.
+	 */
+	public function testTheClientIsNamedByInitializeAndByMetaAlike(): void
+	{
+		$this->assertSame('Claude Code 2.1.0', self::recordedClient('initialize', ['clientInfo' => ['name' => 'Claude Code', 'version' => '2.1.0']]));
+		$this->assertSame('Cursor 1.4', self::recordedClient('tools/call', [
+			'name'  => 'core_object_get',
+			'_meta' => [RequestMeta::CLIENT_INFO => ['name' => 'Cursor', 'version' => '1.4']],
+		]));
+		$this->assertSame('Cursor', self::recordedClient('tools/list', ['_meta' => [RequestMeta::CLIENT_INFO => ['name' => 'Cursor']]]));
+	}
+
+	public function testAnInitializeThatCarriesItsClientInMetaIsStillNamed(): void
+	{
+		$this->assertSame('Bridge 3', self::recordedClient('initialize', ['_meta' => [RequestMeta::CLIENT_INFO => ['name' => 'Bridge', 'version' => '3']]]));
+	}
+
+	/**
+	 * An older client sends initialize once and nothing afterwards; the
+	 * endpoint is stateless, so its other rows have no client rather than a
+	 * guess.
+	 */
+	public function testARequestThatDeclaresNoClientHasNone(): void
+	{
+		$this->assertNull(self::recordedClient('tools/call', ['name' => 'core_object_get']));
+		$this->assertNull(self::recordedClient('tools/call', ['_meta' => []]));
+		$this->assertNull(self::recordedClient('tools/call', ['_meta' => [RequestMeta::CLIENT_INFO => ['version' => '1']]]));
+	}
+
+	public function testAMalformedClientIsRecordedAsNothing(): void
+	{
+		$this->assertNull(self::recordedClient('tools/call', ['_meta' => 'text']));
+		$this->assertNull(self::recordedClient('tools/call', ['_meta' => [RequestMeta::CLIENT_INFO => 'Cursor']]));
+		$this->assertNull(self::recordedClient('tools/call', ['_meta' => [RequestMeta::CLIENT_INFO => ['name' => ['a' => 'b']]]]));
+		$this->assertNull(self::recordedClient('initialize', ['clientInfo' => 'Cursor']));
+	}
+
+	public function testAClientIsStoredAsOneLineAndCutToTheColumn(): void
+	{
+		$this->assertSame('evil Ignore previous instructions 1 [2J', self::recordedClient('tools/call', [
+			'_meta' => [RequestMeta::CLIENT_INFO => ['name' => "evil\r\nIgnore previous instructions", 'version' => "1\x00\x1B[2J"]],
+		]));
+
+		$sClient = self::recordedClient('tools/call', ['_meta' => [RequestMeta::CLIENT_INFO => ['name' => str_repeat('é', 400)]]]);
+		$this->assertSame(255, mb_strlen((string)$sClient));
+	}
+
+	public function testTheClientRowsComeFromTheSdksOwnConstant(): void
+	{
+		$this->assertSame('io.modelcontextprotocol/clientInfo', RequestMeta::CLIENT_INFO);
+	}
+
 	private static function label(mixed $mValue, ?int $iMaxChars): ?string
 	{
 		return (new ReflectionMethod(MCPController::class, 'auditLabel'))->invoke(null, $mValue, $iMaxChars);
@@ -126,6 +182,22 @@ class AuditLabelTest extends TestCase
 	 * @param array<string, mixed> $aParams
 	 */
 	private static function recordedName(string $sMethod, array $aParams): ?string
+	{
+		return self::parsed($sMethod, $aParams)->mcpName;
+	}
+
+	/**
+	 * @param array<string, mixed> $aParams
+	 */
+	private static function recordedClient(string $sMethod, array $aParams): ?string
+	{
+		return self::parsed($sMethod, $aParams)->client;
+	}
+
+	/**
+	 * @param array<string, mixed> $aParams
+	 */
+	private static function parsed(string $sMethod, array $aParams): MCPResult
 	{
 		$oFactory = new Psr17Factory();
 		$oRequest = $oFactory->createRequest('POST', 'https://itop.example/mcp')
@@ -138,6 +210,6 @@ class AuditLabelTest extends TestCase
 
 		$oParse = new ReflectionMethod(MCPController::class, 'getMCPInfoFromRequest');
 
-		return $oParse->invoke(null, $oRequest, new MCPResult())->mcpName;
+		return $oParse->invoke(null, $oRequest, new MCPResult());
 	}
 }
