@@ -214,32 +214,31 @@ more than a formality check: for an update, the moment between the check and the
 only one where the pending values are still pending, so the report can tell you that setting
 `status` to `closed` also cleared three other attributes, *before* it does.
 
-**Every write says where it came from, on the change record.** iTop attaches each change to a
-`CMDBChange`, and its `userinfo` is the line that says who. Left alone it is the user's name,
-which through this endpoint says less than it looks: the same name appears whether the person
-made the change themselves, asked an assistant to make it, or issued a token to an agent that
-has been making it nightly for a month. A change made here reads
-`Jane Doe (MCP: core_object_update)`, and the tool is filled in from the request — so a tool
-from a pack that has never heard of any of this is attributed exactly like a core one.
+**Every write says where it came from, and the audit row is where.** iTop attaches each change
+to a `CMDBChange`, and this endpoint leaves its `userinfo` line to iTop: the user's name, exactly
+as the console and iTop's REST write it, and with iTop's own text under impersonation. It used to
+read `Jane Doe (MCP: core_object_update)`. It no longer does, because Combodo's Personal data
+anonymizer finds a person's case-log entries by that line being exactly their name, and an entry
+written through this endpoint then kept the person's name after they were anonymised
+([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)). The change's origin stays
+`custom-extension`, the value iTop reserves for extensions.
 
-**Where you will and will not see it.** `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'`
-returns every change made through the endpoint, which is the query an audit asks. The
-console's **Activity panel does not show it**: since iTop 3.0 a change also carries `user_id`,
-and `CMDBChangeOpFactory::GetUserLoginFromChangeOp()` prefers that over `userinfo`, resolving
-the User and displaying their login — so the panel reads `Jane Doe` and the `(MCP: …)` suffix
-is used only as a fallback, for a change whose user no longer exists. The suffix is recorded
-and queryable, not rendered. What the console *does* show per call, with the tool named, is
-this module's own [audit trail](#audit-trail): one `MCP Service Call` per request, linking
-to both the credential and the change.
+**Where to see which changes came through the endpoint.** In this module's own
+[audit trail](#audit-trail): `SELECT AltiooEventMCPService WHERE change_id != 0` lists every call
+that wrote, each linking to its change, naming the tool (*Tool / resource*), the credential, the
+portal and the dry-run flag. **The object's history line no longer names the tool or the reason**,
+so once those audit rows are purged, or if `log_mcp_service` is off, the tool and the reason are
+gone: the change is left saying only who made it. Changes written by 1.0 to 1.2 keep the old
+suffix, are not migrated, and are not reached by the anonymizer's case-log step. The console's
+Activity panel never showed the suffix in any case: since iTop 3.0 it displays the login of the
+change's `user_id`.
 
 Every writing tool also takes an optional `comment`, iTop's REST/JSON `comment` by another
-route, which adds the *why*: `Jane Doe (MCP: core_object_update) - caller confirmed the laptop
-came back`. It is optional rather than mandatory because a required field is answered by
-whoever is asked, and what a model writes when it has nothing to say is a sentence restating
-the call. The change origin stays `custom-extension`, the value iTop reserves for extensions;
-`SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` is what finds them all. This is the object's
-own history, and it is not the same thing as the endpoint audit trail below — that one records
-the calls, including the ones that read and the ones that failed.
+route, which adds the *why*. It is kept on the audit row (*Reason given*), not on the change. It
+is optional rather than mandatory because a required field is answered by whoever is asked, and
+what a model writes when it has nothing to say is a sentence restating the call. It is free text
+written by the caller and may name people; it is cleared when the account's person is
+anonymised (see [Data flow and privacy](#data-flow-and-privacy)).
 
 **The read tools that return a set** — `core_object_search_by_class`,
 `core_object_search_by_oql`, `core_object_find_by_name` — check `UR_ACTION_BULK_READ` on the

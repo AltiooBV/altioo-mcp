@@ -152,16 +152,14 @@ text that came from outside the organisation — not a permission boundary; the 
 | **Anything more sensitive?** | At `log_mcp_level => debug` only, raw request parameters are written to iTop's log, which may contain object data. `debug` is a troubleshooting setting, never a standing one; the default is `info`, which records that each call happened without recording what it carried |
 | **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant** |
 
-**Change attribution.** Every write this extension makes is attached to an iTop change record
-carrying the tool that made it, not just the user: `Jane Doe (MCP: core_object_update)` in
-`CMDBChange.userinfo`. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` returns every change
-made through the endpoint, which is the query an audit will ask for. It is recorded and
-queryable rather than displayed: since iTop 3.0 the console's Activity panel prefers the
-change's `user_id` over `userinfo` and shows the user's login, keeping the suffix as a fallback
-for a user that no longer exists. The per-call view with the tool named is this module's own
-`MCP Service Call` trail. Left alone, iTop
-would record only the user's name — the same name whether the person made the change themselves
-or a token-driven agent made it nightly for a month.
+**Change attribution.** Every write this extension makes is attached to an iTop change record whose
+`CMDBChange.userinfo` is the user's plain name, exactly as iTop's console and REST write it (ADR 0009):
+a suffix naming the tool made Combodo's personal data anonymizer miss the entry. The tool, the portal
+and the optional reason are on this module's own `MCP Service Call` row, which links the change:
+`SELECT AltiooEventMCPService WHERE change_id != 0` returns every change made through the endpoint,
+which is the query an audit will ask for. **The object's history line no longer names the tool or the
+reason**; if those rows are purged or `log_mcp_service` is off, they are gone. Changes written by 1.0
+to 1.2 keep the old `(MCP: tool)` suffix and are not reached by the anonymizer's case-log step.
 
 ---
 

@@ -20,6 +20,26 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Changed
+
+- **A change made through the endpoint now carries the user's plain name in `CMDBChange.userinfo`,
+  with no `(MCP: tool)` suffix** ([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
+  Combodo's Personal data anonymizer finds a person's case-log entries by that line being exactly
+  their name, so an entry written through this endpoint kept the person's name, author and text
+  after they were anonymised (proved on iTop 3.2.3-3 with anonymizer 1.3.4). The line is now what
+  iTop writes for the console and REST, impersonation text included, and the origin stays
+  `custom-extension`.
+  - **The history line no longer names the tool or the reason.** They are on the audit row: the tool
+    is *Tool / resource*, the optional `comment` of the writing tools is the new *Reason given*
+    (`change_comment`, one line, 255 characters, nullable). Once those rows are purged, or if
+    `log_mcp_service` is off, they are gone.
+  - **The query changes.** `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds only changes
+    written by 1.0 to 1.2. Use `SELECT AltiooEventMCPService WHERE change_id != 0`.
+  - Changes written by 1.0 to 1.2 keep their suffix, are not migrated, and stay out of the
+    anonymizer's case-log step.
+  - `ChangeTracking::Compose()` (`@api`) still returns what it did and is `@deprecated`: nothing
+    writes its line any more.
+
 ### Added
 
 - **The audit row names the client, the objects a read returned, and the account as a link.**
