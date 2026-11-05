@@ -22,6 +22,16 @@ class MCPResult implements \JsonSerializable
 	const UNAUTHORIZED = 1;
 	/** Result: refused on the shape of the request, before any credential was read */
 	const REQUEST_REJECTED = 2;
+	/**
+	 * Result: the call was served and the tool answered it with `isError`.
+	 *
+	 * An audit value only. The protocol answers a tool's own refusal with a
+	 * successful JSON-RPC response (HTTP 200), so the caller never sees this
+	 * code; the audit row does, as `status = error`.
+	 *
+	 * @since 1.3.0
+	 */
+	const TOOL_REFUSED = 3;
 	/** Result: the operation could not be performed */
 	const INTERNAL_ERROR = 100;
 

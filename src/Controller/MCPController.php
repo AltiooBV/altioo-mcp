@@ -808,6 +808,18 @@ final class MCPController
 			return new MCPResult($aDecoded['error']['code'] ?? MCPResult::INTERNAL_ERROR, $aDecoded['error']['message'] ?? 'Unknown MCP error');
 		}
 
+		// A tool that refuses a call - an object the caller may not change, a class
+		// they may not read - answers it with a result flagged isError, which the
+		// protocol sends as HTTP 200 and a JSON-RPC success. The caller is meant to
+		// read it as an answer; the audit trail is not the caller. A row saying
+		// "success" for a call that was refused is the one an operator cannot afford,
+		// so it is recorded as an error. The tool's own text is not copied: it is
+		// written for the caller and may quote what the caller sent or the value that
+		// was refused, and this row does not record what objects contain.
+		if (is_array($aDecoded) && ($aDecoded['result']['isError'] ?? false) === true) {
+			return new MCPResult(MCPResult::TOOL_REFUSED, 'The tool refused the call (answered with isError)');
+		}
+
 		return new MCPResult(MCPResult::OK, 'Response emitted successfully');
 	}
 
