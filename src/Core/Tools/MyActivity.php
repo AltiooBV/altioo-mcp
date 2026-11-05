@@ -400,6 +400,10 @@ class MyActivity extends AbstractMCPTool
 	private static function coverage(): array
 	{
 		$sLevel = (string)MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL);
+		// An unset or unknown level records every call, which is what "info" is.
+		if (!in_array($sLevel, [MCPHelper::LOG_LEVEL_ERROR, MCPHelper::LOG_LEVEL_DEBUG], true)) {
+			$sLevel = 'info';
+		}
 		$iRetention = MCPHelper::GetAuditRetentionDays();
 		$aNotes = [
 			'Rows are found by your account\'s key, never by login. A row written before that key existed (iTop MCP 1.2 and earlier), and a row of an account that was deleted, hold no key and are not listed.',

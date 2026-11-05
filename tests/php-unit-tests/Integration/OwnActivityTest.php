@@ -265,6 +265,14 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		}
 	}
 
+	public function testAnUnsetLevelReadsAsInfo(): void
+	{
+		UserRights::Login($this->sMe);
+		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', 'log_mcp_level', '');
+
+		$this->assertSame('info', $this->mine()['coverage']['level']);
+	}
+
 	public function testCoverageSaysWhatTheRecordCannotShow(): void
 	{
 		UserRights::Login($this->sMe);
