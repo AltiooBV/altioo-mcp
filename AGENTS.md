@@ -75,7 +75,7 @@ Settings agent skills read here.
 - **Guide:** [`doc/itop-extension-guide.md`](doc/itop-extension-guide.md) — §1 above.
 - **Review:** [`review/review-personas.md`](review/review-personas.md) — the guide's passes plus
   the ones this repository adds, for the agent calling the endpoint, the client organisation's
-  end-user behind it, and the people whose data it reads. Findings go beside it and are
+  end-user behind it, the counterpart reading what it wrote, and the people whose data it reads. Findings go beside it and are
   gitignored; only the list is tracked.
 - **Decisions:** [`doc/adr/`](doc/adr/), one numbered file per decision. Read the ones touching
   your change before writing it, and do not reverse one without a new record superseding it.
