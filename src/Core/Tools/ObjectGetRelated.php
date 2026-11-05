@@ -262,12 +262,12 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		/** @var \RelationObjectNode $oNode */
-		foreach ($oGraph->GetNodes() as $sNodeId => $oNode) {
+		foreach ($oGraph->_GetNodes() as $sNodeId => $oNode) {
 			if (!$oNode instanceof \RelationObjectNode) {
 				continue;
 			}
 
-			$oObject = $oNode->GetObject();
+			$oObject = $oNode->GetProperty('object');
 			if ($oObject === null) {
 				continue;
 			}
@@ -307,7 +307,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		/** @var \RelationEdge $oEdge */
-		foreach ($oGraph->GetEdges() as $oEdge) {
+		foreach ($oGraph->_GetEdges() as $oEdge) {
 			$oSource = $oEdge->GetSourceNode();
 			$oSink   = $oEdge->GetSinkNode();
 
@@ -319,8 +319,8 @@ class ObjectGetRelated extends AbstractMCPTool
 				continue;
 			}
 
-			$oSourceObj = $oSource->GetObject();
-			$oSinkObj   = $oSink->GetObject();
+			$oSourceObj = $oSource->GetProperty('object');
+			$oSinkObj   = $oSink->GetProperty('object');
 
 			if ($oSourceObj === null || $oSinkObj === null) {
 				continue;

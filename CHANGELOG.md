@@ -39,6 +39,21 @@ entry itself, not left to be inferred from it.
     these rows and does not rewrite them (`DEL_NONE`: a nullable key would otherwise be reset on
     every row in the request that deletes the user).
 
+### Fixed
+
+- **A portal's requests no longer wait on another portal's.** Every portal compiled its rules under
+  one lock file; each now has its own, `<portal>.compile.lock`. The `compile.lock` a 1.2.0 instance
+  has in its cache is no longer used, is empty, and goes with the cache at the next setup.
+- **A portal id is checked before it becomes a file name.** A portal whose id is not letters, digits,
+  `_` and `-`, up to 64 of them, is refused rather than read, with the reason in the iTop error log.
+  An id with a dot or a space could not be named in `portal_id` already, but could be served as a
+  user's first portal: **check the ids of any custom portal before upgrading.** A `portal_id` ending
+  in a newline no longer passes as well-formed.
+- **`core_object_get_related` answered "Failed to walk" on every call.** It read the relation graph
+  with `RelationGraph::GetNodes()`, `GetEdges()` and `RelationObjectNode::GetObject()`, none of
+  which iTop has (it has `_GetNodes()`, `_GetEdges()` and `GetProperty('object')`). No test had
+  called the tool against a live datamodel; one now does.
+
 ## [1.2.0] - 2026-11-05
 
 **Portal mode is the headline.** A user of iTop's customer portal, with no console, can now

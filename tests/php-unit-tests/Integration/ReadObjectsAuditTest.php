@@ -96,14 +96,6 @@ class ReadObjectsAuditTest extends ItopDataTestCaseAlias
 		ReadSummary::Forget();
 
 		$oResult = $this->call('core_object_get_related', ['class' => 'Server', 'id' => (int)$oServer->GetKey(), 'relation' => 'impacts', 'direction' => 'down']);
-		if (($oResult->isError ?? false) && str_contains((string)($oResult->content[0]->text ?? ''), 'Failed to walk')) {
-			// Not this test's to fix: serializeGraph() calls RelationGraph::GetNodes()
-			// and GetEdges(), which iTop does not have (it has _GetNodes() and
-			// _GetEdges(), on 3.2 and on develop alike), so the tool answers this
-			// failure for every graph. Skipped, with the reason, rather than left
-			// red or deleted; the hook it checks is exercised once that is fixed.
-			$this->markTestSkipped('core_object_get_related fails on every call: RelationGraph::GetNodes() does not exist in iTop (it has _GetNodes()).');
-		}
 		$this->assertFalse($oResult->isError ?? false, json_encode($oResult));
 
 		$sLine = ReadSummary::Compose();

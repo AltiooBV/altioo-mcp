@@ -1053,7 +1053,7 @@ class MCPHelper
 			return null;
 		}
 
-		return is_string($mRaw) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $mRaw) === 1 ? $mRaw : '';
+		return is_string($mRaw) && PortalMode::IsPortalId($mRaw) ? $mRaw : '';
 	}
 
 	/**
