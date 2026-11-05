@@ -22,105 +22,36 @@ entry itself, not left to be inferred from it.
 
 ## [1.2.0] - Unreleased
 
-### Fixed
+**Portal mode is the headline.** A user of iTop's customer portal, with no console, can now
+connect an assistant and be served what their portal offers: its lists, its forms' fields, its
+create actions and state changes, read from that portal's own configuration. The other half of
+the release holds every write to what the console's form would allow, and marks text other
+people wrote as untrusted.
 
-- **Portal mode leaves more of a trail.** A portal-only user refused at login is now a row in the
-  audit table (method `login`, element `portal_admission`, the refusal's code), where it was a
-  line in `error.log` only. The change information of a write made in portal mode names the
-  portal, so history says it without joining to the audit row. `core_portal_list` search takes at
-  most 10 words, since each is a condition on every column the list shows. The first build of a
-  portal's compiled rules is done under a lock, so two requests starting together cannot load a
-  half-written file.
-- **Error and output text no longer tells a portal user more than the portal shows.** A
-  form-hidden attribute code is refused in the same words as one the class lacks, in
-  `core_object_get`, `core_object_history` and the field lists, and a code that is not shaped like
-  one is not quoted back. Portal refusals no longer name tools portal mode does not serve
-  (`core_object_search_by_class`, `core_object_find_by_name`, the audit class) or the console's
-  "rights model", and `core_object_history` leaves the raw iTop `user_id` empty in portal mode. A refused field key is
-  quoted only when it is shaped like an attribute code, since the text is recorded in the audit
-  row.
-- **More of what other people wrote is marked `untrusted_text`.** Linked-set names and document
-  file names are covered by the marker, and `core_object_create`, `core_object_update` and
-  `core_object_apply_stimulus` carry it for the free text in `changes` and for `after.friendlyname`.
-- **A write in portal mode reported attributes the portal's view form hides.** `changes` (and so
-  `defaulted`) of `core_object_create`, `core_object_update` and `core_object_apply_stimulus`
-  listed every attribute the write set or iTop filled in — presets, defaults, computed and
-  lifecycle values — whether or not the portal shows it. They now list the attributes the view
-  form shows and the ones the caller sent.
-- **A portal user could read data the portal hides, one yes or no at a time.** An external key,
-  or a link item's (`contacts_list` on the stock portal), accepted an OQL query or criteria object.
-  It ran under the account's rights, wider than the portal's scope, and which refusal came back
-  said whether it matched: `SELECT Person WHERE id=1 AND email LIKE 'a%'`, in a dry run, read
-  another organisation's data a letter at a time. In portal mode these take an id only, and an id
-  the portal does not show is answered alike whether or not the object exists.
-- **`core_object_history` and `core_object_get_document` returned other people's text unmarked.**
-  History now carries `untrusted_text` when it has entries, and a document is returned after a
-  notice that its contents are data.
-- **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
-  block was worked out again after the token had been dropped, found none, and listed `read`,
-  `write` and `delete` for a read-only token even though `tools/list` served only the read tools.
-  It now reports the policy decided for the request.
-- **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
-  or carries no MCP scope said only `Invalid login`, with the same challenge as a request that
-  sent nothing, so an OAuth client could not tell that it should refresh or connect again. The
-  challenge now carries `error="invalid_token"` (RFC 6750) in that case, and the message says
-  what may be wrong with the token. A wrong password says so, and keeps no error code.
-- **A request with no credential is told so.** Its message spoke of a browser session even when
-  no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
+**Read before upgrading.** Four things change on an instance that does nothing, each described
+below with what to do about it:
 
-- **Every object a tool returns says which class it is, in `class`.** A search on `Ticket`
-  answers across `UserRequest` and `Incident`, and the descriptions of both search tools say
-  each row reports its class — but no release has done it: the field was keyed on what iTop
-  answers for a class with no subclass, which is an empty name, and that key had been dropped.
-  `core_object_search_by_class`, `core_object_search_by_oql`, `core_object_get` and the write
-  tools' results now carry `class` on the object itself, as `core_object_find_by_name` and
-  `core_object_get_related` already did. `class` may also be named in `output_fields`, which
-  used to refuse it as an unknown attribute.
-- **`audit` and `actions` on the search tools are bounded by the page served, not the limit
-  asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
-  refused for every query, four matches included. A page that would hold more than 25 is still
-  refused, and the refusal now says to pass `limit=25` and page.
-- **`core_object_bulk_update` reports an empty `overridden` as an object.** Each row's `changes`
-  and `overridden` were the only write-result maps not built by `WritePlan::Map()`, so a row
-  where nothing was overridden — nearly every row — answered `[]` where its declared output
-  schema promises an object. A client validating `structuredContent` refused the result, and
-  from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
-  the rows have been written.
+1. **Portal mode is on.** To keep it off, set `'mcp_portals' => array()` *before* upgrading
+   (under Changed).
+2. **A write the console's form would not allow is refused**, `status` through
+   `core_object_update` included: move an object with `core_object_apply_stimulus` (under
+   Security).
+3. **A password or encrypted attribute is no longer writable by default**, on any class (under
+   Security).
+4. **A request carrying an `Origin` header must come from an origin in `mcp_allowed_origins`**,
+   or from the endpoint's own (under Packaging).
 
-- **`core_current_user` reports only the capabilities a served tool uses.** Its `capabilities`
-  were the token's grade, so a token graded `MCP-delete` was reported able to delete in portal
-  mode, where no tool deletes, and on an instance whose delete tools are all disabled. They are
-  now the grades of the tools actually served, within what the token grants, as the toolsets
-  beside them already were.
-  The block also names the served `tools`, since the portal's tools share the console's
-  toolset names and `objects` alone does not say which kind a connection has.
+The setup has to run, as for any upgrade: it adds the `portal` column to the audit table. Tool
+packs move their `require-dev` to `mcp/sdk` `^0.9.0` (under Packaging).
+
+**Tested on.** iTop **3.2.3-3** and **3.3.0** (build 21411), each on PHP **8.2** and **8.4** —
+installed with the sample data through iTop's own unattended setup, by the CI install matrix and
+the local CI runner (`tools/ci/local/run.sh matrix`), then exercised by iTop's module validation
+suite, the module's integration suite and by calling the endpoint over HTTP, portal mode
+included. The unit suite ran on 8.2, 8.3 and 8.4. The upgrade workflow upgraded from v1.1.2 and
+from v1.0.0.
 
 ### Added
-
-- **`core_object_get` names the free text other people wrote.** Ticket titles, descriptions and
-  logs came back verbatim with nothing marking them as untrusted; the only protection was the
-  server instruction that object content is data, which a client that ignores instructions never
-  reads. The result now carries `untrusted_text`: the fields holding strings, long text, HTML or
-  case logs, and the names built from them (a ticket's title included), with a note to treat
-  them as data. `core_object_search_by_class`, `core_object_search_by_oql`,
-  `core_object_find_by_name`, `core_object_get_related` and `core_portal_list` carry it too, once per page. It marks and
-  restricts nothing — the write barriers are unchanged.
-- **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
-  The built-in list names what iTop ships and cannot know an extension's class that stores work
-  something else carries out later — a scheduled mass update, a script runner — whose rows were
-  ordinary writes here while the job they stage runs from the cron with nobody's rights checked.
-  Listed classes, and their subclasses, are refused by every write tool unless
-  `mcp_allow_privilege_escalation` is on, and `core_class_schema` says so. It only adds refusals.
-  A value that is not a list of class names is logged and read as every class; a name the
-  datamodel does not have is logged at every request. Empty by default, so nothing changes until
-  it is set.
-- **A connection names its portal, and the audit row records it** (doc/adr/0007). The endpoint
-  URL may carry `portal_id`, as iTop's portal URLs do: a portal-only user is then served that
-  portal, when they may enter it and `mcp_portals` serves it, and refused otherwise — never served
-  another in its place. Without it, the first by rank, as before. With altioo-oauth-server
-  configured with one resource per portal, the `401` points at the resource of the URL called,
-  and a token granted for one portal's URL is refused at another's. `AltiooEventMCPService`
-  gains a `portal` field, empty for a console call; the setup adds the column.
 
 - **Portal mode: a portal-only user is let in by their profiles, and served what their portal
   offers.** A user with no console used to be refused outright. Now they are let in when they
@@ -135,9 +66,8 @@ entry itself, not left to be inferred from it.
   so a tool is served there only when it adds that configuration to its own checks, a pack's
   never. Console logins take exactly the path they took before, because portal mode starts
   only from the refusal iTop already returned for them.
-- **Portal mode, second step: `core_class_list` and `core_class_schema` say what a portal user's
-  portal offers.** (First as `core_portal_describe`, merged into the class tools by doc/adr/0006.)
-  The first element served in portal mode: the classes a brick granted to the
+- **`core_class_list` and `core_class_schema` say what a portal user's portal offers**
+  (doc/adr/0006). They report the classes a brick granted to the
   user reaches, whether the portal's scopes let them read and change objects of each, its create
   actions and stimuli, and the fields its forms show when viewing, editing and creating one. It
   is read with the portal's own code — its brick collection, scope and lifecycle helpers and form
@@ -157,7 +87,7 @@ entry itself, not left to be inferred from it.
   the states it applies in (`from_states`), each browse list the list above it (`parent`), each
   create action the list its starting object is picked from (`from_list`), and a class says
   whether the portal shows its objects' attachments.
-- **Portal mode, third step: the portal's lists, objects and writes.** The portal's lists, and
+- **The portal's lists, objects and writes.** The portal's lists, and
   the console's reads and writes served there with the portal's configuration added
   (doc/adr/0006):
   - `core_portal_list` runs a list by id — a ManageBrick, one of its tabs, a browse level under
@@ -188,10 +118,38 @@ entry itself, not left to be inferred from it.
   `current_organization` and `current_portal` in both modes. The `core_my_open_tickets` prompt is
   offered there too, answered from the portal's ticket lists. A token graded `MCP-read` is served
   the reads only, as everywhere.
+- **What portal mode refuses, and what it records.**
+  - **An external key, or a link item's (`contacts_list` on the stock portal), takes an id only.**
+    A query or criteria object would run under the account's rights, wider than the portal's
+    scope, and which refusal came back would say whether it matched. An id the portal does not
+    show is answered alike whether or not the object exists.
+  - **A write reports what the portal shows.** `changes` (and so `defaulted`) of
+    `core_object_create`, `core_object_update` and `core_object_apply_stimulus` list the
+    attributes the view form shows and the ones the caller sent, not every preset, default,
+    computed or lifecycle value the write set.
+  - **Refusals say no more than the portal shows.** A form-hidden attribute code is refused in
+    the same words as one the class lacks, in `core_object_get`, `core_object_history` and the
+    field lists, and a code not shaped like one is not quoted back. Refusals name no tool portal
+    mode does not serve, nor the console's "rights model", and `core_object_history` leaves the
+    raw iTop `user_id` empty. A refused field key is quoted only when it is shaped like an
+    attribute code, since the text is recorded in the audit row.
+  - **It leaves a trail.** A portal-only user refused at login is a row in the audit table
+    (method `login`, element `portal_admission`, the refusal's code). The change information of
+    a write names the portal, so history says it without joining to the audit row.
+  - **It is bounded.** `core_portal_list` search takes at most 10 words, since each is a
+    condition on every column the list shows. The first build of a portal's compiled rules is
+    done under a lock, so two requests starting together cannot load a half-written file.
 - **The server instructions are served in portal mode** (`core_instructions`,
   `itop://core/instructions`), with portal-mode descriptions. A client on protocol `2026-07-28`
   has no `initialize`, and is told there how to read the portal's lists and write through them,
   narrowed to what its token is served.
+- **A connection names its portal, and the audit row records it** (doc/adr/0007). The endpoint
+  URL may carry `portal_id`, as iTop's portal URLs do: a portal-only user is then served that
+  portal, when they may enter it and `mcp_portals` serves it, and refused otherwise — never served
+  another in its place. Without it, the first by rank. With altioo-oauth-server
+  configured with one resource per portal, the `401` points at the resource of the URL called,
+  and a token granted for one portal's URL is refused at another's. `AltiooEventMCPService`
+  gains a `portal` field, empty for a console call; the setup adds the column.
 - **altioo-oauth-server is an optional dependency** (doc/adr/0003). Declared in
   `module.altioo-mcp.php` in a form that is always satisfied, so it never stops an install and
   only sets that module up first when it is being installed. With it installed and
@@ -204,6 +162,27 @@ entry itself, not left to be inferred from it.
   authent-token's endpoint, bounded here by what portal mode serves. SECURITY.md's hardening
   advice says the same, and `doc/security-summary.md` now names portal mode and the compiled
   portal rules it has iTop write under `data/cache-<env>/`.
+- **`core_object_get` names the free text other people wrote.** Ticket titles, descriptions and
+  logs came back verbatim with nothing marking them as untrusted; the only protection was the
+  server instruction that object content is data, which a client that ignores instructions never
+  reads. The result now carries `untrusted_text`: the fields holding strings, long text, HTML or
+  case logs, and the names built from them (a ticket's title included), with a note to treat
+  them as data. `core_object_search_by_class`, `core_object_search_by_oql`,
+  `core_object_find_by_name`, `core_object_get_related` and `core_portal_list` carry it too, once per page. It marks and
+  Linked-set names and document file names are covered by the marker;
+  `core_object_create`, `core_object_update` and `core_object_apply_stimulus` carry it for the
+  free text in `changes` and for `after.friendlyname`; `core_object_history` carries it when it
+  has entries, and a document is returned after a notice that its contents are data. It marks
+  and restricts nothing — the write barriers are unchanged.
+- **`mcp_privilege_escalation_classes`: classes an operator adds to the escalation barrier.**
+  The built-in list names what iTop ships and cannot know an extension's class that stores work
+  something else carries out later — a scheduled mass update, a script runner — whose rows were
+  ordinary writes here while the job they stage runs from the cron with nobody's rights checked.
+  Listed classes, and their subclasses, are refused by every write tool unless
+  `mcp_allow_privilege_escalation` is on, and `core_class_schema` says so. It only adds refusals.
+  A value that is not a list of class names is logged and read as every class; a name the
+  datamodel does not have is logged at every request. Empty by default, so nothing changes until
+  it is set.
 
 ### Changed
 
@@ -214,7 +193,7 @@ entry itself, not left to be inferred from it.
   upgrading** (or `array('itop-portal')` to serve one portal only); see the README's
   [Granting access](README.md#granting-access).
 - **A refused class is quoted back only when it is shaped like a class name.** Every tool that
-  refuses a class, and `core_portal_describe`, repeated the value it was given, so
+  refuses a class repeated the value it was given, so
   `UserRequest' OR 1=1 --` came back in the error and went into the audit row's message
   verbatim. iTop escapes that row in the console, so nothing rendered it as markup; a value
   that is not letters, digits and underscores is now answered "That is not a class name"
@@ -222,41 +201,6 @@ entry itself, not left to be inferred from it.
   the datamodel, so unknown and unreadable classes still answer alike. The
   `itop://core/class/{class}` resource answered with a plain "Unknown class 'X'." of its own;
   it now gives the same refusal as `core_class_schema`.
-
-### Packaging
-
-- **The archive is signed by a job that runs none of this repository's code.** The release used
-  to install the development dependencies, run the unit suite, build the zip and sign it in one
-  job holding write and signing permissions, so a compromised test dependency could have edited
-  `vendor/` or `src/` and the provenance attestation would have vouched for it. Tests and the
-  build now run in read-only jobs; the job that attests and publishes only downloads the built
-  files and checks them against the digest the build job reported. Verification is unchanged
-  (`gh attestation verify`).
-- **Files inside vendored packages are no longer stripped by the root's exclude list.** Entries
-  such as `tools`, `build` or `.github` matched at every depth, so the same names inside a
-  dependency were silently dropped from the archive. They are now matched at the root only. On
-  this release the visible difference is a few files from the dependencies' own repositories: the
-  `.gitignore` and `.gitattributes` of `mcp/sdk` and `psr/*`, and the `.github/` directory of
-  `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
-  serve `index.php` only.
-- **`mcp/sdk` 0.9.0, up from 0.8.1.** Three things change outside this module:
-  - **A request carrying an `Origin` header must come from an origin listed in
-    `mcp_allowed_origins`**, or from the endpoint's own origin. The SDK used to compare the host of
-    the `Origin` with `mcp_allowed_hosts`; it now compares the whole origin — scheme, host and
-    port — with a list of origins, and that list is `mcp_allowed_origins`, the setting that
-    already decides which browser origins may read a response. **What to do:** if a browser-based
-    client, or a desktop client that sends `Origin`, is answered `403 Forbidden: Invalid Origin
-    header.`, add its origin to `mcp_allowed_origins`. Behind a proxy that terminates TLS without
-    setting `HTTPS` for PHP, the endpoint sees itself as `http://` and a request from its own
-    `https://` origin needs listing too. Clients that send no `Origin` — command-line and
-    server-side ones — are unaffected.
-  - **A tool result that does not match the tool's declared `outputSchema` is answered as an
-    error** (`isError: true`) instead of being sent as it was. Every core tool's results are
-    checked against their schemas by the test suite.
-  - **Tool packs** compile against the SDK this module vendors, so their `require-dev` moves to
-    `^0.9.0`, which is what `MCPHelper::SDK_CONSTRAINT` now says. The SDK classes a pack uses —
-    `ToolAnnotations`, `Annotations`, `ToolCallException`, `ResourceReadException` — have not
-    changed.
 
 ### Security
 
@@ -297,6 +241,79 @@ entry itself, not left to be inferred from it.
   **What a client must do:** a call that set `status` (or any other field above) through
   `core_object_update` or `core_object_create` is now refused. Move the object with
   `core_object_apply_stimulus`, passing the fields the transition asks for in its `fields`.
+
+### Fixed
+
+- **`core_current_user` reported the instance's grades to a narrowed token.** The `access`
+  block was worked out again after the token had been dropped, found none, and listed `read`,
+  `write` and `delete` for a read-only token even though `tools/list` served only the read tools.
+  It now reports the policy decided for the request.
+- **A refused token is now named as one.** A `401` for a token that is unknown, expired, revoked
+  or carries no MCP scope said only `Invalid login`, with the same challenge as a request that
+  sent nothing, so an OAuth client could not tell that it should refresh or connect again. The
+  challenge now carries `error="invalid_token"` (RFC 6750) in that case, and the message says
+  what may be wrong with the token. A wrong password says so, and keeps no error code.
+- **A request with no credential is told so.** Its message spoke of a browser session even when
+  no cookie had been sent; it now says that no credential was sent, and which ones are accepted.
+- **Every object a tool returns says which class it is, in `class`.** A search on `Ticket`
+  answers across `UserRequest` and `Incident`, and the descriptions of both search tools say
+  each row reports its class — but no release has done it: the field was keyed on what iTop
+  answers for a class with no subclass, which is an empty name, and that key had been dropped.
+  `core_object_search_by_class`, `core_object_search_by_oql`, `core_object_get` and the write
+  tools' results now carry `class` on the object itself, as `core_object_find_by_name` and
+  `core_object_get_related` already did. `class` may also be named in `output_fields`, which
+  used to refuse it as an unknown attribute.
+- **`audit` and `actions` on the search tools are bounded by the page served, not the limit
+  asked.** The bound is 25 objects and the default limit 50, so either argument on its own was
+  refused for every query, four matches included. A page that would hold more than 25 is still
+  refused, and the refusal now says to pass `limit=25` and page.
+- **`core_object_bulk_update` reports an empty `overridden` as an object.** Each row's `changes`
+  and `overridden` were the only write-result maps not built by `WritePlan::Map()`, so a row
+  where nothing was overridden — nearly every row — answered `[]` where its declared output
+  schema promises an object. A client validating `structuredContent` refused the result, and
+  from `mcp/sdk` 0.9.0 the server does too: it replaces the result with `isError: true`, after
+  the rows have been written.
+- **`core_current_user` reports only the capabilities a served tool uses.** Its `capabilities`
+  were the token's grade, so a token graded `MCP-delete` was reported able to delete on an
+  instance whose delete tools are all disabled. They are now the grades of the tools actually
+  served, within what the token grants, as the toolsets beside them already were.
+  The block also names the served `tools`, since the portal's tools share the console's
+  toolset names and `objects` alone does not say which kind a connection has.
+
+### Packaging
+
+- **The archive is signed by a job that runs none of this repository's code.** The release used
+  to install the development dependencies, run the unit suite, build the zip and sign it in one
+  job holding write and signing permissions, so a compromised test dependency could have edited
+  `vendor/` or `src/` and the provenance attestation would have vouched for it. Tests and the
+  build now run in read-only jobs; the job that attests and publishes only downloads the built
+  files and checks them against the digest the build job reported. Verification is unchanged
+  (`gh attestation verify`).
+- **Files inside vendored packages are no longer stripped by the root's exclude list.** Entries
+  such as `tools`, `build` or `.github` matched at every depth, so the same names inside a
+  dependency were silently dropped from the archive. They are now matched at the root only. On
+  this release the visible difference is a few files from the dependencies' own repositories: the
+  `.gitignore` and `.gitattributes` of `mcp/sdk` and `psr/*`, and the `.github/` directory of
+  `phpdocumentor/reflection-common`. None is reachable over HTTP: `.htaccess` and `web.config`
+  serve `index.php` only.
+- **`mcp/sdk` 0.9.0, up from 0.8.1.** Three things change outside this module:
+  - **A request carrying an `Origin` header must come from an origin listed in
+    `mcp_allowed_origins`**, or from the endpoint's own origin. The SDK used to compare the host of
+    the `Origin` with `mcp_allowed_hosts`; it now compares the whole origin — scheme, host and
+    port — with a list of origins, and that list is `mcp_allowed_origins`, the setting that
+    already decides which browser origins may read a response. **What to do:** if a browser-based
+    client, or a desktop client that sends `Origin`, is answered `403 Forbidden: Invalid Origin
+    header.`, add its origin to `mcp_allowed_origins`. Behind a proxy that terminates TLS without
+    setting `HTTPS` for PHP, the endpoint sees itself as `http://` and a request from its own
+    `https://` origin needs listing too. Clients that send no `Origin` — command-line and
+    server-side ones — are unaffected.
+  - **A tool result that does not match the tool's declared `outputSchema` is answered as an
+    error** (`isError: true`) instead of being sent as it was. Every core tool's results are
+    checked against their schemas by the test suite.
+  - **Tool packs** compile against the SDK this module vendors, so their `require-dev` moves to
+    `^0.9.0`, which is what `MCPHelper::SDK_CONSTRAINT` now says. The SDK classes a pack uses —
+    `ToolAnnotations`, `Annotations`, `ToolCallException`, `ResourceReadException` — have not
+    changed.
 
 ## [1.1.2] - 2026-11-02
 
