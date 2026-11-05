@@ -305,6 +305,24 @@
         </field>
 
         <!--
+          Why the caller said it was making the change: the optional `comment`
+          of the writing tools, as one line cut to the column. It used to be
+          written into the change's `userinfo` after the user's name; it is
+          here so that line stays the plain name the personal data anonymizer
+          matches (doc/adr/0009). Free text written by the caller, so it may
+          name people; it is cleared with `request_params` when the account's
+          person is anonymised, and goes with the row at retention. Empty for a
+          call that gave no reason.
+        -->
+        <field id="change_comment" xsi:type="AttributeString">
+          <sql>change_comment</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>255</max_size>
+        </field>
+
+        <!--
           What a read returned, as class and id only: `UserRequest: 12, 15
           (+41 more); Person: 7`. Never a value and never a name, so this row
           still does not record what the objects contain. The counterpart of
@@ -434,6 +452,9 @@
                     </item>
                     <item id="changed_objects">
                       <rank>20</rank>
+                    </item>
+                    <item id="change_comment">
+                      <rank>25</rank>
                     </item>
                     <item id="read_objects">
                       <rank>30</rank>
