@@ -372,6 +372,18 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
+	 * A request for one portal does not queue behind the compilation of
+	 * another: each has a lock of its own, beside the files it compiles.
+	 */
+	public function testEachPortalCompilesUnderALockOfItsOwn(): void
+	{
+		$sOne = PortalPolicy::CompileLockPath('/cache/portals/', 'itop-portal');
+
+		$this->assertSame('/cache/portals/itop-portal.compile.lock', $sOne);
+		$this->assertNotSame($sOne, PortalPolicy::CompileLockPath('/cache/portals/', 'partner-portal'));
+	}
+
+	/**
 	 * iTop's own three data bricks are read, by name, so this holds without
 	 * the portal module loaded; a class that is none of them, nor a subclass
 	 * of one, reaches nothing (doc/adr/0002). A subclass read as its parent

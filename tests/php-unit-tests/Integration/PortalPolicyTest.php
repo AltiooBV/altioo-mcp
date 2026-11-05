@@ -198,6 +198,14 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind(PortalTestBrick::class));
 	}
 
+	/** Reading a portal takes that portal's lock, not one every portal shares. */
+	public function testReadingAPortalTakesThatPortalsLock(): void
+	{
+		PortalPolicy::ForCurrentRequest();
+
+		$this->assertFileExists(PortalPolicy::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
+	}
+
 	/** A class the portal never mentions is refused like an unknown one. */
 	public function testAClassThePortalNeverMentionsIsRefused(): void
 	{
