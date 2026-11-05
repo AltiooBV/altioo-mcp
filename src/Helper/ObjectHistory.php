@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
@@ -268,6 +269,10 @@ final class ObjectHistory
 	{
 		$sClass = get_class($oObject);
 		$iKey = (int)$oObject->GetKey();
+
+		// What is read is the object's history, so it is the object that is
+		// noted: its change rows carry old and new values of its attributes.
+		ReadSummary::Note($sClass, $iKey);
 
 		$sQueried = $sAttCode === '' ? self::HISTORY_CLASS : self::ATTRIBUTE_CLASS;
 		$oSearch = new DBObjectSearch($sQueried);
