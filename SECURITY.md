@@ -49,6 +49,7 @@ this endpoint is not.
 
 | Version | Status |
 |---|---|
+| 1.2.x | **Supported.** Released 2026-11-05, security fixes until 2031-11-05 |
 | 1.1.x | **Supported.** Released 2026-09-30, security fixes until 2031-09-30 |
 | 1.0.x | **Supported.** Released 2026-09-20, security fixes until 2031-09-20 |
 
@@ -60,8 +61,9 @@ branch that Combodo has retired is not tested against.
 
 **Five years of security fixes from the release date of a minor version.**
 
-`1.1.x` was released on **2026-09-30**, so its window runs to **2031-09-30**; `1.0.x` was released
-on **2026-09-20** and runs to **2031-09-20**. The date is the day the
+`1.2.x` was released on **2026-11-05**, so its window runs to **2031-11-05**; `1.1.x` was released
+on **2026-09-30** and runs to **2031-09-30**; `1.0.x` was released on **2026-09-20** and runs to
+**2031-09-20**. The date is the day the
 archive actually became installable, not the day the work finished: a commitment dated from
 anything else runs short by however long the release slipped, and the five years is a floor
 rather than a target — not a number to spend on a delay in the repository.
