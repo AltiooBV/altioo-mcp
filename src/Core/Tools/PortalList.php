@@ -132,20 +132,13 @@ class PortalList extends AbstractPortalTool
 			throw new ToolCallException('Invalid offset. Please specify a non-negative offset.');
 		}
 
-		$oPolicy = self::policy();
-
-		$aList = $oPolicy->ListDefinition(trim($list));
-		if ($aList === null || $oPolicy->ReadSet((string)$aList['class']) === null) {
-			// Not quoted back: a list id is the client's text, and an unknown
-			// one and one the scopes empty answer alike.
-			throw new ToolCallException('The portal offers no such list. Call core_class_list for the lists it offers.');
-		}
-
-		$sClass = (string)$aList['class'];
-		self::refuseReserved($sClass);
+		$aResolved = self::Resolve($list, $tab, $parent_id);
+		$oPolicy = $aResolved['policy'];
+		$aList = $aResolved['list'];
+		$sClass = $aResolved['class'];
 
 		try {
-			$oQuery = self::listQuery($oPolicy, $aList, trim($tab), $parent_id);
+			$oQuery = $aResolved['query'];
 			if ($oQuery === null) {
 				return ToolOutput::Json(self::answer($list, $tab, $parent_id, $sClass, 0, $limit, $offset, []));
 			}
@@ -165,6 +158,44 @@ class PortalList extends AbstractPortalTool
 		} catch (\Throwable $oException) {
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
 		}
+	}
+
+	/**
+	 * A list the portal offers this user, and the query that bounds it: what
+	 * {@see execute()} runs, and what a tool that counts or groups the same
+	 * rows runs instead, so that neither can see a row the other would not.
+	 *
+	 * The refusals are the list's own and quote nothing the client sent.
+	 *
+	 * @return array{policy: PortalPolicy, list: array<string, mixed>, class: string, query: ?DBSearch} The query is null when the list can hold nothing for this user.
+	 *
+	 * @throws ToolCallException When the list, the tab or the parent is not one the portal offers.
+	 *
+	 * @since 1.3.0
+	 */
+	public static function Resolve(string $list, string $tab, int $parent_id): array
+	{
+		$oPolicy = self::policy();
+
+		$aList = $oPolicy->ListDefinition(trim($list));
+		if ($aList === null || $oPolicy->ReadSet((string)$aList['class']) === null) {
+			// Not quoted back: a list id is the client's text, and an unknown
+			// one and one the scopes empty answer alike.
+			throw new ToolCallException('The portal offers no such list. Call core_class_list for the lists it offers.');
+		}
+
+		$sClass = (string)$aList['class'];
+		self::refuseReserved($sClass);
+
+		try {
+			$oQuery = self::listQuery($oPolicy, $aList, trim($tab), $parent_id);
+		} catch (ToolCallException $oException) {
+			throw $oException;
+		} catch (\Throwable $oException) {
+			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
+		}
+
+		return ['policy' => $oPolicy, 'list' => $aList, 'class' => $sClass, 'query' => $oQuery];
 	}
 
 	/**
