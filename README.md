@@ -137,7 +137,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
-| `core_my_activity` | What this account's credentials did through this endpoint, newest first, from the audit trail: when, which tool, dry run or failed, the objects changed or read **that you may still see** and the reason given. **Your own calls only, selected by your account's key**: there is no argument to name anyone else, and no login is ever matched. Never returns the raw request parameters or what a tool said. `coverage` says what the record cannot show (calls not recorded, the log level, retention, and rows written before the key existed or by a deleted account). Console users only; whether a portal user is served it is a decision not yet taken ([ADR 0010](doc/adr/0010-portal-mode-may-serve-the-users-own-activity.md)) |
+| `core_my_activity` | What this account's credentials did through this endpoint, newest first, from the audit trail: when, which tool, dry run or failed, the objects changed or read **that you may still see** and the reason given. **Your own calls only, selected by your account's key**: there is no argument to name anyone else, and no login is ever matched. "Own" means *the account*: people who share one login see each other's calls. Never returns the raw request parameters or what a tool said. `coverage` says what the record cannot show. **Served in portal mode too** ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)), the one thing a portal serves that the portal has no screen for: there an object is named only if the portal shows it, an attribute code only if the portal's view form shows it, and `coverage` says only that some earlier calls may not be listed. Every portal user with MCP access has it after the upgrade that brings it; `mcp_disabled_tools` withdraws it |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
@@ -663,6 +663,12 @@ portal is served as customised:
   the object must be one the portal shows the user, the rows those the change log's scope
   holds, and the attributes those the object's view form shows. The portal's lists and reads
   refuse the change log, which would skip those checks, and nothing in portal mode writes it.
+
+- `core_my_activity`, **the one exception** to "what the portal offers" ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)):
+  the portal has no screen for it, and it is served because it is an account's own trail, and not as a precedent. It
+  lists what this account's assistant did, selected by the account's key; an object is named only if the portal shows it
+  now (otherwise only counted), an attribute code only if the portal's view form shows it, and nothing of the instance's
+  setup is told. Every portal user with MCP access has it; `mcp_disabled_tools` withdraws it.
 
 What the portal offers that is not served here — downloading, adding or deleting an
 attachment, and anything a portal extension adds through its own bricks or routes — stays in the

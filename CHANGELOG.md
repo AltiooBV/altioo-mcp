@@ -23,19 +23,26 @@ entry itself, not left to be inferred from it.
 ### Added
 
 - **`core_my_activity`: what did my assistant do in my name?** The audit trail was readable by administrators
-  only; this tool gives any console user their own calls, newest first, with `since`, `limit` and `offset`: when,
-  which tool, dry run or failed, client, the kind of credential, the objects changed or read, and the reason given.
+  only; this tool gives any user their own calls, newest first, with `since`, `limit` and `offset`: when, which tool,
+  dry run or failed, client, the kind of credential, the objects changed or read, and the reason given.
   **Own rows only**: the filter is the real user's key (the account that acted, under impersonation), taken from iTop
   and never from the request; there is no argument to name another user, and no login is ever matched, because a
-  login is rewritten on anonymisation and can be reused. The rows are read past the audit class's rights, so
-  everything shown is narrowed: an object is named only if the account may see it now (the rest is counted in
-  `objects_you_cannot_see`), an attribute code only if the account may read it, and the raw request parameters, what a
-  tool said, the message and the token ids are never returned. The reason is the text this account's own credential sent
-  in that call, and is marked as text to report, not to follow. `coverage` says what the record cannot show: calls not
-  recorded (`log_mcp_service`), only failures recorded (`log_mcp_level`), retention, and rows with no key (written before
-  1.3, or by an account since deleted). Toolset `server`, read grade. **It is not served in portal mode** until
-  [ADR 0010](doc/adr/0010-portal-mode-may-serve-the-users-own-activity.md), which is proposed, is decided. About 750
-  bytes added to what a client is told on a console token.
+  login is rewritten on anonymisation and can be reused. **"Own" means the account**: people who share one login see
+  each other's calls. The rows are read past the audit class's rights, so everything shown is narrowed: an object is
+  named only if the account may see it now (the rest is counted in `objects_you_cannot_see`), an attribute code only if
+  the account may read it, and the raw request parameters, what a tool said, the message and the token ids are never
+  returned. The reason is the text this account's own credential sent in that call, and is marked as text to report, not
+  to follow. `coverage` says what the record cannot show: calls not recorded (`log_mcp_service`), only failures recorded
+  (`log_mcp_level`), retention, and rows with no key (written before 1.3, or by an account since deleted). Toolset
+  `server`, read grade.
+  - **Portal mode serves it too, as one deliberate exception** to "what the portal offers"
+    ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md), decided by the maintainer): an account's
+    own trail, not a precedent for anything else. **Every portal user with MCP access gets it after upgrading**; withdraw
+    it with `mcp_disabled_tools` (`core_my_activity`). In the portal an object is named only if the portal shows it now
+    (otherwise only counted), an attribute code only if the portal's view form shows it and the change it belongs to
+    still exists, an object the call deleted is counted and not named, and `coverage` says only that some earlier calls
+    may not be listed: nothing of the log level, retention or other setup.
+  - About 960 bytes added to what a client is told on a console token, and about 860 on a portal one.
 - **`core_object_count`: how many, and how many per value.** "Open tickets per team" used to mean paging every
   ticket. One call now answers a count, optionally per value of one or two attributes, with up to 100 groups,
   the value and a label for each. Console: `class` and `filters`, or `oql`, `group_by`, `archived`. Portal
