@@ -129,6 +129,9 @@ class AuditLabelTest extends TestCase
 		$this->assertFalse($oResult->isSuccess());
 		$this->assertSame(MCPResult::TOOL_REFUSED, $oResult->code);
 		$this->assertStringNotContainsString('jane.doe', $oResult->message, 'a refusal may quote what was refused');
+		$this->assertSame(MCPController::TOOL_REFUSED_MESSAGE, $oResult->message);
+		$this->assertStringContainsString('jane.doe@example.com', (string)$oResult->toolText, 'kept apart, for the debug level');
+		$this->assertArrayNotHasKey('toolText', $oResult->jsonSerialize(), 'never part of what a caller is sent');
 	}
 
 	public function testAnAnsweredCallIsStillASuccess(): void

@@ -91,6 +91,27 @@ class AuditHousekeepingTest extends TestCase
 		$this->assertStringContainsString('AllowAllData()', $sSource, 'cron runs as nobody; the search must not depend on a user');
 	}
 
+	/**
+	 * Free text a caller wrote or was told can name the person: the refusal a
+	 * tool gave quotes what it refused. Anonymising the person clears all of
+	 * it, and the housekeeping clears whatever this list says.
+	 */
+	public function testAnonymisingClearsEveryFreeTextColumn(): void
+	{
+		$this->assertEqualsCanonicalizing(['request_params', 'change_comment', 'refusal_text'], AuditRetention::CLEARED_ON_ANONYMISATION);
+
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/AuditHousekeeping.php');
+		$this->assertStringContainsString('foreach (AuditRetention::CLEARED_ON_ANONYMISATION as $sColumn)', $sSource);
+	}
+
+	public function testEveryClearedColumnIsOneTheClassHas(): void
+	{
+		$sXml = (string)file_get_contents(dirname(__DIR__, 3).'/datamodel.altioo-mcp.xml');
+		foreach (AuditRetention::CLEARED_ON_ANONYMISATION as $sColumn) {
+			$this->assertMatchesRegularExpression('#<field id="'.$sColumn.'" xsi:type="Attribute(Text|String)">#', $sXml, $sColumn);
+		}
+	}
+
 	public function testRetentionIsOffByDefaultInTheDatamodelAndInTheCode(): void
 	{
 		$sXml = (string)file_get_contents(dirname(__DIR__, 3).'/datamodel.altioo-mcp.xml');
