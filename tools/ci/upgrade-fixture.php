@@ -200,17 +200,17 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 	// the upgrade, and a row written before it holds nothing in them. A row
 	// that came out with a value would be the upgrade inventing an answer, and
 	// a column missing would be the setup not having added it.
-	foreach (['client', 'read_objects', 'user_id', 'change_comment'] as $sNewAtt) {
+	foreach (['client', 'read_objects', 'user_id', 'change_comment', 'refusal_text'] as $sNewAtt) {
 		check(FIXTURE_CLASS.' has the '.$sNewAtt.' column', in_array($sNewAtt, $aNow, true));
 	}
 	foreach ($aState['events'] as $sId => $aExpected) {
 		$oEvent = MetaModel::GetObject(FIXTURE_CLASS, (int)$sId, false, true);
-		if ($oEvent === null || array_diff(['client', 'read_objects', 'user_id', 'change_comment'], $aNow) !== []) {
+		if ($oEvent === null || array_diff(['client', 'read_objects', 'user_id', 'change_comment', 'refusal_text'], $aNow) !== []) {
 			continue;
 		}
 		check(
 			FIXTURE_CLASS." #$sId holds nothing in the columns added since",
-			(string)$oEvent->Get('client') === '' && (string)$oEvent->Get('read_objects') === '' && (string)$oEvent->Get('change_comment') === '' && (int)$oEvent->Get('user_id') === 0
+			(string)$oEvent->Get('client') === '' && (string)$oEvent->Get('read_objects') === '' && (string)$oEvent->Get('change_comment') === '' && (string)$oEvent->Get('refusal_text') === '' && (int)$oEvent->Get('user_id') === 0
 		);
 	}
 
