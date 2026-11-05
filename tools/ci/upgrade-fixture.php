@@ -196,6 +196,24 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 		);
 	}
 
+	// The columns 1.3.0 added to the audit row are additive: they exist after
+	// the upgrade, and a row written before it holds nothing in them. A row
+	// that came out with a value would be the upgrade inventing an answer, and
+	// a column missing would be the setup not having added it.
+	foreach (['client', 'read_objects', 'user_id'] as $sNewAtt) {
+		check(FIXTURE_CLASS.' has the '.$sNewAtt.' column', in_array($sNewAtt, $aNow, true));
+	}
+	foreach ($aState['events'] as $sId => $aExpected) {
+		$oEvent = MetaModel::GetObject(FIXTURE_CLASS, (int)$sId, false, true);
+		if ($oEvent === null || !in_array('client', $aNow, true) || !in_array('read_objects', $aNow, true) || !in_array('user_id', $aNow, true)) {
+			continue;
+		}
+		check(
+			FIXTURE_CLASS." #$sId holds nothing in the columns added since",
+			(string)$oEvent->Get('client') === '' && (string)$oEvent->Get('read_objects') === '' && (int)$oEvent->Get('user_id') === 0
+		);
+	}
+
 	// Rows are added, never removed, by an upgrade.
 	$iCount = (int)(new DBObjectSet(new DBObjectSearch(FIXTURE_CLASS)))->Count();
 	check(
