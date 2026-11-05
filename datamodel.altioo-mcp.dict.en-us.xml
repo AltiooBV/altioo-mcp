@@ -17,6 +17,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+" _delta="force"><![CDATA[Name of the tool or prompt, or URI of the resource, that was invoked]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:portal" _delta="force"><![CDATA[Portal]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:portal+" _delta="force"><![CDATA[The portal that served the call; empty for a console call]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:client" _delta="force"><![CDATA[Client]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:client+" _delta="force"><![CDATA[The client, as it declared itself (name and version). Declared by the caller and checked by nobody: it identifies a client, it does not authenticate it. Empty when the client declared nothing]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status" _delta="force"><![CDATA[Status]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status+" _delta="force"><![CDATA[Outcome of the call]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success" _delta="force"><![CDATA[Success]]></entry>
@@ -31,6 +33,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no+" _delta="force"><![CDATA[The call was asked to proceed, and wrote]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a" _delta="force"><![CDATA[Not applicable]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a+" _delta="force"><![CDATA[The call has no dry run to speak of - a read, a handshake, a tool that takes no such argument]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:read_objects" _delta="force"><![CDATA[Objects read]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:read_objects+" _delta="force"><![CDATA[The objects the call returned, as class and id only, never a value. Not written when the module log level skips successful calls]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Duration (ms)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Response size (bytes)]]></entry>
@@ -39,6 +43,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Reference of the matching entry in log/error.log, for an error answered generically]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Request parameters]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Raw JSON parameters, recorded only when the module log level is set to debug]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_id" _delta="force"><![CDATA[User]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_id+" _delta="force"><![CDATA[The account the call ran as, as a key that survives a rename of the login. Empty on a row from before this field existed]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:user_token_id" _delta="force"><![CDATA[Application token]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:user_token_id+" _delta="force"><![CDATA[The application token this call authenticated with. Set only for an application token; a personal token fills the field below instead]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:personal_token_id" _delta="force"><![CDATA[Personal token]]></entry>

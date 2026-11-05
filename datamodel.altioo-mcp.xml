@@ -147,6 +147,24 @@
           <max_size>64</max_size>
         </field>
 
+        <!--
+          The client that made the call, as it declared itself: the name and
+          version of `clientInfo` on an `initialize` request, or of
+          `_meta["io.modelcontextprotocol/clientInfo"]` on any request of a
+          2026-07-28 client, which never sends `initialize`. Free text written
+          by the caller and verified by nobody: it identifies a well-behaved
+          client, it does not authenticate one. Empty on a row from a client
+          that sends neither, which an older one need not: the endpoint is
+          stateless, so there is no session to remember it from.
+        -->
+        <field id="client" xsi:type="AttributeString">
+          <sql>client</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>255</max_size>
+        </field>
+
         <!-- Execution status: success, error -->
         <field id="status" xsi:type="AttributeEnum">
           <sql>status</sql>
@@ -189,6 +207,31 @@
               <rank>30</rank>
             </value>
           </values>
+        </field>
+
+        <!--
+          The account the call ran as: a stable key where `userinfo` is a login
+          string, which a rename changes and a deletion loses, as
+          CMDBChange.user_id is for a change. Set from the real user under
+          impersonation, as CMDBChange does. Nullable: a row from before this
+          column, and a refusal before any account was known, hold none.
+
+          DEL_AUTO, the same as the token links below: deleting the user is not
+          blocked by these rows, and the rows survive it with `userinfo` intact
+          and this key reset. iTop does that reset one row at a time inside the
+          request that deletes the user - measured at about 2 ms a row on 3.2.3
+          (1000 rows, 2 s) - so deleting an account with a very long history is
+          slow. DEL_MANUAL does exactly the same on a nullable key; DEL_NONE
+          would skip it and leave the key pointing at a user who is gone, which
+          the maintainer chose against.
+        -->
+        <field id="user_id" xsi:type="AttributeExternalKey">
+          <sql>user_id</sql>
+          <dependencies/>
+          <is_null_allowed>true</is_null_allowed>
+          <allow_target_creation>false</allow_target_creation>
+          <target_class>User</target_class>
+          <on_target_delete>DEL_AUTO</on_target_delete>
         </field>
 
         <!--
@@ -261,6 +304,21 @@
           <is_null_allowed>true</is_null_allowed>
         </field>
 
+        <!--
+          What a read returned, as class and id only: `UserRequest: 12, 15
+          (+41 more); Person: 7`. Never a value and never a name, so this row
+          still does not record what the objects contain. The counterpart of
+          `changed_objects` for the calls that write nothing, kept for the
+          question a data owner asks afterwards: was this ticket sent to a
+          model? Not written at all at the `error` log level, which skips
+          successful rows.
+        -->
+        <field id="read_objects" xsi:type="AttributeText">
+          <sql>read_objects</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
         <!-- Wall-clock duration of the whole request, in milliseconds -->
         <field id="duration_ms" xsi:type="AttributeInteger">
           <sql>duration_ms</sql>
@@ -324,6 +382,12 @@
                     <item id="portal">
                       <rank>50</rank>
                     </item>
+                    <item id="user_id">
+                      <rank>60</rank>
+                    </item>
+                    <item id="client">
+                      <rank>70</rank>
+                    </item>
                   </items>
                 </item>
                 <item id="fieldset:AltiooEventMCPService:what">
@@ -370,6 +434,9 @@
                     </item>
                     <item id="changed_objects">
                       <rank>20</rank>
+                    </item>
+                    <item id="read_objects">
+                      <rank>30</rank>
                     </item>
                   </items>
                 </item>

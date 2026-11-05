@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use AttributeBlob;
 use AttributeCaseLog;
 use AttributeDefinition;
@@ -102,6 +103,10 @@ final class ObjectSerializer
 		// two types in it - the caller that pastes the first into the second is
 		// the caller this module has already had refused by its own schema.
 		$aData = [MetaModel::DBGetKey($sClass) => WritePlan::AsId($oObject->GetKey())];
+
+		// The audit row says which objects left, by class and id. Here and not in
+		// each tool, because this is where an object becomes an answer.
+		ReadSummary::Note($sClass, (int)$oObject->GetKey());
 
 		// Every object says what it is, under the key core_object_find_by_name
 		// and core_object_get_related already used. A search on Ticket returns

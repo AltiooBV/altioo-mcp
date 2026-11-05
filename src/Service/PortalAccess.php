@@ -257,6 +257,8 @@ final class PortalAccess extends ObjectAccess
 		$aAttachments = [];
 		while ($oAttachment = $oSet->Fetch()) {
 			$oDocument = $oAttachment->Get('contents');
+			// Listed with its name, type and size, which is what is read of it.
+			ReadSummary::Note('Attachment', (int)$oAttachment->GetKey());
 			$aAttachments[] = [
 				'id'       => (int)$oAttachment->GetKey(),
 				'filename' => $oDocument instanceof \ormDocument ? $oDocument->GetFileName() : null,

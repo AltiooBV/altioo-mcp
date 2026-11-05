@@ -17,6 +17,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:mcp_name+" _delta="force"><![CDATA[Nom de l'outil ou du prompt, ou URI de la ressource, qui a été invoqué]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:portal" _delta="force"><![CDATA[Portail]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:portal+" _delta="force"><![CDATA[Le portail qui a servi l'appel ; vide pour un appel de la console]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:client" _delta="force"><![CDATA[Client]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:client+" _delta="force"><![CDATA[Le client, tel qu'il s'est déclaré (nom et version). Déclaré par l'appelant et vérifié par personne : il identifie un client, il ne l'authentifie pas. Vide quand le client n'a rien déclaré]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status" _delta="force"><![CDATA[Statut]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status+" _delta="force"><![CDATA[Résultat de l'appel]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success" _delta="force"><![CDATA[Succès]]></entry>
@@ -31,6 +33,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:no+" _delta="force"><![CDATA[L'appel devait aboutir, et a écrit]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a" _delta="force"><![CDATA[Sans objet]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a+" _delta="force"><![CDATA[L'appel n'a pas de simulation - une lecture, une poignée de main, un outil sans cet argument]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:read_objects" _delta="force"><![CDATA[Objets lus]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:read_objects+" _delta="force"><![CDATA[Les objets que l'appel a renvoyés, en classe et identifiant seulement, jamais une valeur. Non écrit quand le niveau de journalisation du module ignore les appels réussis]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Durée (ms)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Taille de la réponse (octets)]]></entry>
@@ -39,6 +43,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Paramètres de la requête]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params+" _delta="force"><![CDATA[Paramètres JSON bruts, enregistrés uniquement lorsque le niveau de log du module est debug]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_id" _delta="force"><![CDATA[Utilisateur]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:user_id+" _delta="force"><![CDATA[Le compte sous lequel l'appel s'est exécuté, sous forme de clé qui survit à un changement d'identifiant. Vide sur une ligne antérieure à ce champ]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:user_token_id" _delta="force"><![CDATA[Jeton applicatif]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:user_token_id+" _delta="force"><![CDATA[Le jeton applicatif utilisé pour authentifier cet appel. Renseigné uniquement pour un jeton applicatif ; un jeton personnel renseigne le champ ci-dessous]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:personal_token_id" _delta="force"><![CDATA[Jeton personnel]]></entry>

@@ -64,6 +64,9 @@ class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 			'mcp_name' => ['mcp_name'],
 			'status' => ['status'],
 			'request_params' => ['request_params'],
+			'client' => ['client'],
+			'read_objects' => ['read_objects'],
+			'user_id' => ['user_id'],
 		];
 	}
 
@@ -102,6 +105,67 @@ class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 	public function testMcpNameIsOptional(): void
 	{
 		$this->assertTrue(MetaModel::GetAttributeDef(self::CLASS_NAME, 'mcp_name')->IsNullAllowed());
+	}
+
+	/**
+	 * Nullable, so that an upgrade needs no installer and a row from before
+	 * the column holds nothing.
+	 *
+	 * @dataProvider additiveColumnProvider
+	 */
+	public function testTheAuditColumnsAreNullableSoAnUpgradeIsAdditive(string $sAttCode): void
+	{
+		$this->assertTrue(MetaModel::GetAttributeDef(self::CLASS_NAME, $sAttCode)->IsNullAllowed());
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function additiveColumnProvider(): array
+	{
+		return ['client' => ['client'], 'read_objects' => ['read_objects'], 'user_id' => ['user_id']];
+	}
+
+	public function testReadObjectsIsATextSoTheControllersCutIsTheRightOne(): void
+	{
+		$this->assertInstanceOf(\AttributeText::class, MetaModel::GetAttributeDef(self::CLASS_NAME, 'read_objects'));
+	}
+
+	public function testUserIdPointsAtAUser(): void
+	{
+		$oAttDef = MetaModel::GetAttributeDef(self::CLASS_NAME, 'user_id');
+
+		$this->assertInstanceOf(\AttributeExternalKey::class, $oAttDef);
+		$this->assertSame('User', $oAttDef->GetTargetClass());
+	}
+
+	/**
+	 * The audit trail must outlive the account it records, and deleting an
+	 * account must not be blocked by it. The key is reset (DEL_AUTO, like the
+	 * token links), one row at a time in the deleting request, which is the
+	 * cost the maintainer accepted; `userinfo` stays the record.
+	 */
+	public function testDeletingTheUserKeepsItsRowsClearsTheKeyAndIsNotBlockedByThem(): void
+	{
+		$iOrg = (int)$this->CreateOrganization('AuditUserDelete '.bin2hex(random_bytes(4)))->GetKey();
+		$iContact = (int)$this->CreatePerson(1, $iOrg)->GetKey();
+		$sLogin = 'audit-user-delete-'.bin2hex(random_bytes(4));
+		$iUser = (int)$this->CreateUser($sLogin, 1, 'Audit-User-Delete-1!', $iContact)->GetKey();
+
+		$oRow = new \AltiooEventMCPService();
+		$oRow->Set('userinfo', $sLogin);
+		$oRow->Set('mcp_method', 'tools/call');
+		$oRow->Set('message', 'audit row of a user about to be deleted');
+		$oRow->Set('user_id', $iUser);
+		$iRow = (int)$oRow->DBInsertNoReload();
+
+		$oUser = MetaModel::GetObject('User', $iUser);
+		$oDeletion = new \DeletionPlan();
+		$oUser->DBDelete($oDeletion);
+
+		$this->assertNull(MetaModel::GetObject('User', $iUser, false), 'the user is deleted');
+		$oSurvivor = MetaModel::GetObject(self::CLASS_NAME, $iRow, false);
+		$this->assertNotNull($oSurvivor, 'the audit row survives its user');
+		$this->assertSame($sLogin, $oSurvivor->Get('userinfo'));
+		$this->assertSame(0, (int)$oSurvivor->Get('user_id'), 'the key is reset, not left pointing at a deleted user');
 	}
 
 	/**

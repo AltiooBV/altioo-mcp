@@ -474,7 +474,7 @@ again afterwards:
 
 | | |
 |---|---|
-| **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others |
+| **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others. The setup adds its columns to the table on upgrade (the latest three, `client`, `read_objects` and `user_id`, are nullable: an existing row simply holds nothing there) |
 | **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
 | **Enum values** | The `MCP*` values on the `scope` field of `PersonalToken` and `UserToken` — the four grades and one per toolset, ten in all (`_delta="if_exists"`, so no core class is redefined) |
 | **One file** | `index.php`. Clients are given it as `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file — and the same pair ships under `extensions/`, where it re-grants that directory's `index.php` through iTop's deny. So the file answers at both paths, on identical terms: same code, same authentication, one of the two published |
@@ -950,6 +950,31 @@ Calls are recorded as **MCP Service Call** (`AltiooEventMCPService`) objects, vi
 console. Each entry holds the MCP method, the tool or resource invoked, the outcome, and the
 calling user.
 
+Three more columns say who and what, beyond the login string:
+
+- **Client** (`client`) is the name and version the caller declared for itself: `clientInfo` on
+  an `initialize` request, or the `io.modelcontextprotocol/clientInfo` entry of `_meta` on any
+  request of a client speaking protocol `2026-07-28`, which never sends `initialize`. It is on
+  every row that declares one, not only the connecting one. **It is declared by the caller and
+  checked by nobody**: it identifies a well-behaved client, it does not authenticate one. A client
+  that sends neither leaves it empty on its other rows — the endpoint keeps no session to
+  remember it from — and the `initialize` row still names it in *Tool / resource*, as before.
+- **Objects read** (`read_objects`) says which objects a read returned, as class and id and
+  nothing else: `UserRequest: 12, 15, 99 (+41 more); Person: 7`. It is the counterpart of
+  *Objects changed* for the calls that write nothing, and it is what answers "was this person's
+  ticket sent to the model?" afterwards. It never holds a value or a name, so the row still does
+  not record what the objects contain; it lists up to 50 ids per class and counts the rest. It
+  is written for the objects a search, a get, a related graph, a history, a document or a
+  portal's attachment list returned — and not for `core_current_user`, which returns only the
+  caller's own contact. **At `log_mcp_level => 'error'` successful rows are not written at all, so
+  neither is this column**, and a call that returned nothing leaves it empty.
+- **User** (`user_id`) is the account the call ran as, as a link: the real user under
+  impersonation, as `CMDBChange` records it. `userinfo` stays, and stays the record: deleting the
+  user is not blocked by these rows, and they survive it with `userinfo` intact and the link
+  cleared. iTop clears it one row at a time inside the request that deletes the user, at about
+  2 ms a row, so deleting an account with a very long history is slow. Rows from before this column hold no link, and neither does a refusal made
+  before any account was known.
+
 It also holds three numbers that turn the log into something you can act on. **Duration**
 and **response size** are what separate a slow instance from a client filling its context
 window: a tool answering in 40 ms with 800 KB and one answering in 12 s with 2 KB are
@@ -1171,12 +1196,13 @@ that decision belongs at the profile you grant, before the first connection.
 **What the module stores.** One `AltiooEventMCPService` row per audited call: timestamp, user,
 method, element invoked, outcome, whether it was a dry run, duration, response size, a link to
 the credential it authenticated with, the portal that served it (`portal`, empty for a console
-call), and — when it wrote — a link to the `CMDBChange` plus a readable list of the objects that
-change touched. The change's own information line names the channel, the tool and, in portal mode,
+call), the client as it declared itself, the account as a link (`user_id`), and — when it wrote — a
+link to the `CMDBChange` plus a readable list of the objects that change touched. When it read, the
+row lists the objects it returned (`read_objects`), as class and id. The change's own information line names the channel, the tool and, in portal mode,
 the portal. A portal-only user turned away at login leaves a row too, with the reason's code and
 nothing the request said.
 
-That list names objects as `Class::id` and **does not record what they now contain**: it says
+Those lists name objects as `Class::id` and **do not record what they now contain**: it says
 `UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request
 *parameters* are the only place object data could appear, and they are stored only at
 `log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. Set your own

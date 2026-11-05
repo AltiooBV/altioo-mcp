@@ -20,6 +20,26 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Added
+
+- **The audit row names the client, the objects a read returned, and the account as a link.**
+  `AltiooEventMCPService` gains three nullable columns, so the upgrade needs no step beyond the
+  setup the module always asks for, and a row from before holds nothing in them.
+  - `client`: the name and version the caller declared, from `clientInfo` on `initialize` or from
+    `_meta["io.modelcontextprotocol/clientInfo"]` on any request. A `2026-07-28` client never
+    sends `initialize`, so it was never named; it now is, on every row. It is declared by the
+    caller and verified by nobody. A client that sends neither has none on its other rows: the
+    endpoint is stateless and invents no session to remember it from.
+  - `read_objects`: which objects a read returned, as class and id (`UserRequest: 12, 15 (+41
+    more); Person: 7`), never a value or a name. It covers searches, `core_object_get`, the
+    related graph, history, documents and a portal's attachment list. At `log_mcp_level =>
+    'error'`, which writes no successful rows, it is not written either.
+  - `user_id`: an external key to the account the call ran as, the real user under impersonation
+    as `CMDBChange.user_id` is. `userinfo` stays the record; deleting a user is not blocked by
+    these rows, and the rows survive it with `userinfo` intact and `user_id` reset (`DEL_AUTO`, as
+    the token links). iTop resets them one at a time inside the deleting request, about 2 ms a
+    row, so deleting an account with a very long history is slow.
+
 ### Fixed
 
 - **A portal's requests no longer wait on another portal's.** Every portal compiled its rules under
