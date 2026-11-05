@@ -305,6 +305,24 @@
         </field>
 
         <!--
+          Why the caller said it was making the change: the optional `comment`
+          of the writing tools, as one line cut to the column. It used to be
+          written into the change's `userinfo` after the user's name; it is
+          here so that line stays the plain name the personal data anonymizer
+          matches (doc/adr/0009). Free text written by the caller, so it may
+          name people; it is cleared with `request_params` when the account's
+          person is anonymised, and goes with the row at retention. Empty for a
+          call that gave no reason.
+        -->
+        <field id="change_comment" xsi:type="AttributeString">
+          <sql>change_comment</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>255</max_size>
+        </field>
+
+        <!--
           What a read returned, as class and id only: `UserRequest: 12, 15
           (+41 more); Person: 7`. Never a value and never a name, so this row
           still does not record what the objects contain. The counterpart of
@@ -435,6 +453,9 @@
                     <item id="changed_objects">
                       <rank>20</rank>
                     </item>
+                    <item id="change_comment">
+                      <rank>25</rank>
+                    </item>
                     <item id="read_objects">
                       <rank>30</rank>
                     </item>
@@ -561,6 +582,14 @@
         90 is altioo-oauth-server's own max_grant_days. 0 lifts the bound.
       -->
       <mcp_portal_token_max_days type="integer">90</mcp_portal_token_max_days>
+      <!--
+        Days an audit row (AltiooEventMCPService) is kept before the hourly
+        background process deletes it. iTop has no retention for its event log
+        of its own, so 0, the default, keeps everything, as every earlier
+        version did. A value that is not a non-negative integer reads as 0 and
+        is logged.
+      -->
+      <mcp_audit_retention_days type="integer">0</mcp_audit_retention_days>
       <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",

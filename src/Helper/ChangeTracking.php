@@ -8,48 +8,35 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
-use CMDBChange;
 use CMDBObject;
 use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Psr\Http\Message\MessageInterface;
 use Throwable;
-use UserRights;
 
 /**
- * What the object's own history says about a change this endpoint made.
+ * What this request says about a change it makes: which tool, and why.
  *
- * Every write iTop performs is attached to a CMDBChange, and a CMDBChange
- * carries three things: the user, the origin, and a line of free text. Left
- * alone, that line is the user's name and nothing else - which is what the
- * console writes, and which is right there, because the console also shows who
- * clicked what. A write that arrives through this endpoint has no such context:
- * the same name appears in the history whether the person typed the change,
- * asked an assistant to make it, or granted a token to a scheduled agent that
- * has been making the same change nightly for a month.
+ * A change iTop records carries the user, the origin and a line of free text,
+ * and until 1.2 this class wrote the channel into that line: `Jane Doe (MCP:
+ * core_object_update) - reason`. That put the tool where the object's history
+ * shows it, and it cost something the history was not meant to pay: iTop's own
+ * data-subject tool, Combodo's personal data anonymizer, finds the case-log
+ * entries of a person by `CMDBChange.userinfo = <their name>`, exactly. A line
+ * with a suffix never equals the name, so an entry written through this
+ * endpoint kept the person's name after they were anonymised (doc/adr/0009).
  *
- * iTop's own REST API answers this with a mandatory `comment` on every write,
- * fed to {@see \CMDBObject::SetTrackInfo()}. This is the same idea, with the
- * two differences the two callers make necessary:
- *
- *  - **The channel is recorded whether or not anyone says anything.** A REST
- *    caller is a script whose author writes the comment once; a tool call is
- *    made by a model that may or may not have been told to explain itself, so
- *    the tool that made the change is filled in from the request rather than
- *    asked for. {@see ForRequest()} does that before any tool runs, which also
- *    means a tool from a pack that has never heard of this class is attributed
- *    exactly like a core one.
- *  - **The user survives it.** SetTrackInfo() *replaces* the line, so a caller
- *    that passes only a comment loses the name from the history - REST included
- *    (`user_id` still holds it, the line the console displays does not). The
- *    composed line here starts with the user, except under impersonation, where
- *    {@see \CMDBObject::GetTrackInfo()} prepends it itself.
+ * So the line is left to iTop: the user's name, as the console and REST write
+ * it, and with the impersonation text iTop adds on its own. Nothing is
+ * composed. What the line used to carry is recorded on this endpoint's audit
+ * row instead - the tool is its `mcp_name`, the caller's reason is its
+ * `change_comment` - and the row links to the change. The history no longer
+ * names the tool: once the audit row is purged, or `log_mcp_service` is off,
+ * the tool and the reason are gone.
  *
  * The origin stays `custom-extension`, the value iTop reserves for changes made
  * by an extension. Adding an `mcp` value to that enum would read better in a
  * filter and would cost an ALTER TABLE on `priv_change` at every setup - the
- * one table in an old instance with tens of millions of rows. The channel is in
- * the text instead, which is free, and which is the field the console shows.
+ * one table in an old instance with tens of millions of rows.
  *
  * @api
  * @since 1.0.0
@@ -90,21 +77,19 @@ final class ChangeTracking
 	{
 		return [
 			'type'        => 'string',
-			'description' => 'Why '.$sWhatItDoes.', in one short sentence, recorded in the object\'s history. The reason the user gave, or nothing.',
+			'description' => 'Why '.$sWhatItDoes.', in one short sentence, recorded in the audit trail beside the change. The reason the user gave, or nothing.',
 			'maxLength'   => self::MAX_INFO_CHARS,
 		];
 	}
 
 	/**
-	 * Attributes every change this request makes to the tool that made it.
+	 * Remembers the tool this request runs and sets the change up the way iTop
+	 * does for any other writer.
 	 *
-	 * Called once, before the server runs, so that the attribution does not
-	 * depend on the tool remembering to ask for it. A tool that also takes a
-	 * `comment` adds the why on top through {@see Explain()}.
-	 *
-	 * The body is read defensively and put back: it is the same stream the
-	 * transport is about to parse, and a request whose name cannot be read is
-	 * still a request that must run.
+	 * Called once, before the server runs, so that it does not depend on the
+	 * tool remembering to ask for it. The body is read defensively and put
+	 * back: it is the same stream the transport is about to parse, and a
+	 * request whose name cannot be read is still a request that must run.
 	 *
 	 * @since 1.0.0
 	 */
@@ -117,13 +102,12 @@ final class ChangeTracking
 	}
 
 	/**
-	 * Records why, from a tool that asked its caller.
+	 * Records why, from a tool that asked its caller. The reason goes to the
+	 * audit row ({@see Comment()}), not to the change.
 	 *
-	 * Safe to call on a dry run - nothing writes, so nothing is attributed -
-	 * and safe to call twice: the current change is dropped rather than
-	 * amended, so the next write builds one from what was last said. Two tool
-	 * calls with two different reasons therefore produce two entries in the
-	 * history, which is what they are.
+	 * Safe to call on a dry run and safe to call twice: the last reason said
+	 * is the one kept, and the current change is dropped so that the next write
+	 * builds a fresh one.
 	 *
 	 * @since 1.0.0
 	 */
@@ -132,6 +116,36 @@ final class ChangeTracking
 		self::$sComment = self::oneLine($sComment);
 
 		self::apply();
+	}
+
+	/**
+	 * The tool this request runs, as the client named it, cleaned.
+	 *
+	 * @since 1.3.0
+	 */
+	public static function Tool(): ?string
+	{
+		return self::$sTool;
+	}
+
+	/**
+	 * Why the caller said it was making the change, as one line cut to the audit
+	 * column, or null.
+	 *
+	 * Free text written by the caller, and it may name people.
+	 *
+	 * @since 1.3.0
+	 */
+	public static function Comment(): ?string
+	{
+		return self::$sComment === null ? null : mb_substr(self::$sComment, 0, self::MAX_INFO_CHARS);
+	}
+
+	/** For tests, and for a runner that serves more than one request. @since 1.3.0 */
+	public static function Forget(): void
+	{
+		self::$sTool = null;
+		self::$sComment = null;
 	}
 
 	/**
@@ -153,6 +167,9 @@ final class ChangeTracking
 	 * @param string|null $sPortal       The portal serving the call, in portal mode.
 	 *
 	 * @since 1.0.0
+	 * @deprecated 1.3.0 Nothing writes this line any more: `userinfo` is left to iTop, so that the
+	 *             anonymizer's exact match on the user's name holds (doc/adr/0009). Kept, and
+	 *             unchanged, until a later minor release removes it.
 	 */
 	public static function Compose(string $sUser, bool $bImpersonated, ?string $sTool, ?string $sComment, ?string $sPortal = null): string
 	{
@@ -185,32 +202,26 @@ final class ChangeTracking
 	}
 
 	/**
-	 * Installs what has been said so far, and drops the change built from what
-	 * was said before it.
+	 * Gives the next write a fresh change with iTop's default line and this
+	 * endpoint's origin.
 	 *
 	 * SetTrackInfo() is read when the change is created and SetTrackOrigin()
 	 * documents itself as a no-op once one exists, so setting either without
-	 * this would be setting it for the request after next. Dropping an
-	 * unwritten change costs nothing: iTop persists it in CMDBChangeOp::OnInsert
-	 * and not before, so one that no write ever used leaves no row behind.
+	 * dropping the current change would be setting it for the request after
+	 * next. Dropping an unwritten change costs nothing: iTop persists it in
+	 * CMDBChangeOp::OnInsert and not before.
 	 */
 	private static function apply(): void
 	{
 		try {
-			CMDBObject::SetTrackInfo(self::Compose(
-				CMDBChange::GetCurrentUserName(),
-				UserRights::IsImpersonated(),
-				self::$sTool,
-				self::$sComment,
-				PortalMode::Current()
-			));
+			// null is "the default": iTop writes the user's name, with its own
+			// text under impersonation, as the console and REST do.
+			CMDBObject::SetTrackInfo(null);
 			CMDBObject::SetTrackOrigin(CMDBChangeOrigin::CUSTOM_EXTENSION);
 			CMDBObject::SetCurrentChange(null);
 		} catch (Throwable $e) {
-			// Saying who made a change is never worth failing the change.
-			// Without this the history keeps iTop's own default, which is the
-			// user's name - less than was meant, and not wrong.
-			MCPHelper::LogError('Could not attribute the change to the MCP caller: '.$e->getMessage());
+			// Never worth failing the change over.
+			MCPHelper::LogError('Could not set up the change for the MCP caller: '.$e->getMessage());
 		}
 	}
 

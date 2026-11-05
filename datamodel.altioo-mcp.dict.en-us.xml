@@ -51,6 +51,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:personal_token_id+" _delta="force"><![CDATA[The personal token this call authenticated with. Set only for a personal token; an application token fills the field above instead]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:change_id" _delta="force"><![CDATA[Change]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:change_id+" _delta="force"><![CDATA[iTop's own record of what this call changed, with the old and new value of every attribute. Empty for a read and for a dry run, which wrote nothing]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:change_comment" _delta="force"><![CDATA[Reason given]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:change_comment+" _delta="force"><![CDATA[The reason the caller gave for the change, if it gave one. Free text written by the caller: it may name people. Kept here, not in the change's own line, so that the personal data anonymizer can find the person's entries]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects" _delta="force"><![CDATA[Objects changed]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:changed_objects+" _delta="force"><![CDATA[What the change touched, one line per object, kept here so it survives a retention purge of the change itself]]></entry>
         <entry id="fieldset:AltiooEventMCPService:who" _delta="force"><![CDATA[Who]]></entry>

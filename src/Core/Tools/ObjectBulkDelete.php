@@ -84,7 +84,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 	 * @param string            $class    The class every listed object belongs to
 	 * @param array<int, mixed> $ids      Ids of the objects to delete
 	 * @param bool              $simulate When true (default), nothing is deleted
-	 * @param string|null       $comment  Why the batch is being deleted, recorded in the history of everything the deletions touch
+	 * @param string|null       $comment  Why the batch is being deleted, recorded on the audit row
 	 *
 	 * @return mixed A per-object report, each carrying what its deletion would take with it
 	 *

@@ -116,14 +116,14 @@ boundary is the **`MCP-advisory`** token scope, which forces the rehearsal on ev
 the credential can reach, whatever the caller passes — so an assistant driven by text that came
 from outside your organisation cannot commit a change on the strength of that text at all.
 
-**Every change says where it came from.** iTop attaches each write to a change record, and left
-alone that record carries the user's name and nothing else — the same name whether the person
-made the change themselves, asked an assistant to make it, or issued a token to an agent that
-has been making it nightly for a month. A change made here reads
-`Jane Doe (MCP: core_object_update)`, with an optional comment for the reason.
-`SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds every one of them. The console's
-Activity panel shows the user rather than that line — since iTop 3.0 it prefers the change's
-`user_id` — so the per-call view carrying the tool name is the **MCP Service Call** trail
+**Every change is tied to the call that made it.** iTop attaches each write to a change record,
+which carries the user's name and nothing else — the same name whether the person made the change
+themselves, asked an assistant to make it, or issued a token to an agent that has been making it
+nightly for a month. The record stays exactly that, on purpose: iTop's own personal-data anonymizer
+finds a person's entries by that exact name. The call is the **MCP Service Call** audit row:
+`SELECT AltiooEventMCPService WHERE change_id != 0` lists every call that wrote, each linking to its
+change and naming the tool and the optional reason. The object's history line no longer names the
+tool, so those rows are where it lives.
 below.
 
 **Four gates before any of that.** A dedicated `MCP Services User` profile; a credential iTop
@@ -190,9 +190,8 @@ instance or a release makes one of them wrong.
    picks one. A guardrail shown being *useful* argues better than one shown being safe, and it
    is the same screenshot.
 
-Not the object's Activity panel: the `(MCP: …)` attribution is recorded on the change and is
-queryable, but the panel displays the user, so there is nothing there to photograph. See
-*Change attribution* above.
+Not the object's Activity panel: the tool is not on the change, only on the audit row, so there is
+nothing there to photograph. See *Change attribution* above.
 
 ## Support
 

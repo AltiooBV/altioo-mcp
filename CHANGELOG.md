@@ -39,6 +39,50 @@ entry itself, not left to be inferred from it.
     these rows, and the rows survive it with `userinfo` intact and `user_id` reset (`DEL_AUTO`, as
     the token links). iTop resets them one at a time inside the deleting request, about 2 ms a
     row, so deleting an account with a very long history is slow.
+- **`mcp_audit_retention_days`: a retention for the audit trail, run by iTop's cron.** iTop has no
+  retention for its event log (checked on 3.2.3 and 3.3.0: it purges log files, read notifications
+  and backups, nothing in `priv_event`), and the documentation that told operators to set it "as for
+  iTop's other event classes" pointed at nothing. The default is `0`, which keeps every row, so no
+  instance changes behaviour. A positive number has a new hourly background process,
+  `AuditHousekeeping`, delete rows older than that many days, oldest first, through `DBDelete()` so
+  `priv_event` and the module's table both lose them; it stops at the time cron allows and resumes
+  the next hour. A value that is not a non-negative integer reads as `0` and is logged. Nothing is
+  deleted where iTop's cron does not run. Deleted rows are gone with the tool, the reason and the
+  objects they named.
+- **The same process follows iTop when a person is anonymised.** When the person behind a row's
+  account (`user_id`) is anonymised by Combodo's Personal data anonymizer, the row's *User* line is set
+  to the account's current login and its request parameters and reason are cleared; *Objects changed*
+  and *Objects read* stay, as `Class::id` does in iTop's own history. It runs whether retention is
+  on or not, up to an hour after, and does nothing where the anonymizer is not installed.
+  **Not reached, and documented:** rows of a user deleted before their person was anonymised (their
+  `user_id` was reset, so nothing leads to the person), and rows from before `user_id` (1.2.0 and
+  earlier). They keep the login, which is personal where logins are email addresses, until
+  retention removes them.
+
+### Changed
+
+- **A change made through the endpoint now carries the user's plain name in `CMDBChange.userinfo`,
+  with no `(MCP: tool)` suffix** ([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
+  Combodo's Personal data anonymizer finds a person's case-log entries by that line being exactly
+  their name, so an entry written through this endpoint kept the person's name, author and text
+  after they were anonymised (proved on iTop 3.2.3-3 with anonymizer 1.3.4). The line is now what
+  iTop writes for the console and REST, impersonation text included, and the origin stays
+  `custom-extension`.
+  - **The history line no longer names the tool or the reason.** They are on the audit row: the tool
+    is *Tool / resource*, the optional `comment` of the writing tools is the new *Reason given*
+    (`change_comment`, one line, 255 characters, nullable). Once those rows are purged, or if
+    `log_mcp_service` is off, they are gone.
+  - **The query changes.** `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds only changes
+    written by 1.0 to 1.2. Use `SELECT AltiooEventMCPService WHERE change_id != 0`.
+  - Changes written by 1.0 to 1.2 keep their suffix, are not migrated, and stay out of the
+    anonymizer's case-log step.
+  - `ChangeTracking::Compose()` (`@api`) still returns what it did and is `@deprecated`: nothing
+    writes its line any more.
+  - **Released in a minor, though `ChangeTracking` is `@api`.** Read strictly, the rule above makes
+    this a major. `CommentSchemaProperty()` and `Explain()`, the calls a tool pack is told to use, keep
+    their signatures and their purpose, and `Compose()` stays for at least one minor. What a pack
+    should know: the reason it passes to `Explain()` is now kept on the audit row only, so with
+    `log_mcp_service => false` it is not kept at all.
 
 ### Fixed
 

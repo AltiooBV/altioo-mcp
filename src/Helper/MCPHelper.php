@@ -355,6 +355,19 @@ class MCPHelper
 	 */
 	const MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS = 'mcp_portal_token_max_days';
 
+	/**
+	 * How many days an audit row is kept before the hourly clean-up deletes
+	 * it. 0, the default, keeps everything: nothing is deleted on an instance
+	 * that never set it.
+	 *
+	 * iTop has no retention for its event log of its own, so the table grows
+	 * until an operator does something about it (README, "Data flow and
+	 * privacy").
+	 *
+	 * @since 1.3.0
+	 */
+	const MODULE_SETTING_AUDIT_RETENTION_DAYS = 'mcp_audit_retention_days';
+
 	/** The default bound: altioo-oauth-server's own max_grant_days. */
 	const DEFAULT_PORTAL_TOKEN_MAX_DAYS = 90;
 
@@ -1258,5 +1271,42 @@ class MCPHelper
 		}
 
 		return $iDays;
+	}
+
+	/**
+	 * Days an audit row is kept; 0 keeps everything.
+	 *
+	 * A value that is not a non-negative integer reads as 0, which is "keep",
+	 * and is logged: a purge is the one thing here that cannot be undone, so
+	 * a typo must not become one.
+	 *
+	 * @since 1.3.0
+	 */
+	public static function GetAuditRetentionDays(): int
+	{
+		return self::RetentionDaysFrom(utils::GetConfig()->GetModuleSetting(self::MODULE_NAME, self::MODULE_SETTING_AUDIT_RETENTION_DAYS, 0));
+	}
+
+	/**
+	 * The decision GetAuditRetentionDays() makes, given the value it read.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @internal
+	 * @since 1.3.0
+	 */
+	public static function RetentionDaysFrom(mixed $mValue): int
+	{
+		if (is_int($mValue) && $mValue >= 0) {
+			return $mValue;
+		}
+
+		self::LogError(sprintf(
+			"Itop configuration parameter '%s' should be a non-negative integer of days, not %s. It is read as 0, which keeps every audit row, until it is corrected.",
+			self::MODULE_SETTING_AUDIT_RETENTION_DAYS,
+			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue)
+		));
+
+		return 0;
 	}
 }

@@ -148,20 +148,18 @@ text that came from outside the organisation — not a permission boundary; the 
 | **Does anything leave the instance?** | **Nothing.** No telemetry, no usage statistics, no error reporting, no licence check, no callback. This is a property of the code, not a setting: there is no outbound HTTP client anywhere in `src/` |
 | **What personal data does it store?** | Only in the audit trail it adds. One `AltiooEventMCPService` row per audited call: the calling user (as a login string and as a link to the account), a link to the token they authenticated with, the client as it declared itself (unverified), the JSON-RPC method, the element invoked, the outcome, whether it was a rehearsal, the duration, the response size, and — for a write — the `CMDBChange` and the list of objects it touched, or — for a read — the list of objects it returned. Those lists are `Class::id` and attribute *names*, never attribute values |
 | **Where** | `priv_altioo_event_mcp_service`, inside your own iTop database, in iTop's event log alongside its other event classes |
-| **Retention** | **Yours to set**, as for iTop's other event classes. There is no built-in purge, and the table grows with use — say so in your retention policy rather than discovering it |
+| **Retention** | **Yours to set, with `mcp_audit_retention_days`** (default `0`, keep everything). iTop has no retention of its own for its event log, so without it the table grows with use. An hourly background process run by iTop's cron deletes rows older than the setting. The same process follows iTop on anonymisation: when the person behind a row's account is anonymised, the row's login string is brought up to date and its request parameters and reason are cleared. A user deleted before their person is anonymised, and rows from before 1.3, keep the login until retention removes them |
 | **Anything more sensitive?** | At `log_mcp_level => debug` only, raw request parameters are written to iTop's log, which may contain object data. `debug` is a troubleshooting setting, never a standing one; the default is `info`, which records that each call happened without recording what it carried |
 | **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant** |
 
-**Change attribution.** Every write this extension makes is attached to an iTop change record
-carrying the tool that made it, not just the user: `Jane Doe (MCP: core_object_update)` in
-`CMDBChange.userinfo`. `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` returns every change
-made through the endpoint, which is the query an audit will ask for. It is recorded and
-queryable rather than displayed: since iTop 3.0 the console's Activity panel prefers the
-change's `user_id` over `userinfo` and shows the user's login, keeping the suffix as a fallback
-for a user that no longer exists. The per-call view with the tool named is this module's own
-`MCP Service Call` trail. Left alone, iTop
-would record only the user's name — the same name whether the person made the change themselves
-or a token-driven agent made it nightly for a month.
+**Change attribution.** Every write this extension makes is attached to an iTop change record whose
+`CMDBChange.userinfo` is the user's plain name, exactly as iTop's console and REST write it (ADR 0009):
+a suffix naming the tool made Combodo's personal data anonymizer miss the entry. The tool, the portal
+and the optional reason are on this module's own `MCP Service Call` row, which links the change:
+`SELECT AltiooEventMCPService WHERE change_id != 0` returns every change made through the endpoint,
+which is the query an audit will ask for. **The object's history line no longer names the tool or the
+reason**; if those rows are purged or `log_mcp_service` is off, they are gone. Changes written by 1.0
+to 1.2 keep the old `(MCP: tool)` suffix and are not reached by the anonymizer's case-log step.
 
 ---
 

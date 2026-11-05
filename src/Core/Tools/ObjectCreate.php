@@ -153,7 +153,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	 * @param string $class The class of the object to create, e.g. 'UserRequest'
 	 * @param array $fields A key/value map of attribute codes to values, e.g. ['title' => 'My request', 'description' => 'Details about my request']
 	 * @param bool $simulate When true (default), the object is validated and described but not created
-	 * @param string|null $comment Why the object is being created, recorded in its history
+	 * @param string|null $comment Why the object is being created, recorded on the audit row
 	 * @param string $action In portal mode, the portal's create action that decides the class and presets the object
 	 * @param int $from_id In portal mode, the object the create action starts from
 	 * @return mixed The class and ID of the newly created object, or what creating it would write

@@ -81,3 +81,5 @@ Settings agent skills read here.
   your change before writing it, and do not reverse one without a new record superseding it.
   The one most easily undone: a capability is one tool in both modes, so add no `core_portal_*`
   copy of a console tool — `core_portal_list` is the only portal-only one ([0006](doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md)).
+  Also: write nothing but iTop's own line into `CMDBChange.userinfo` — no `(MCP: …)` suffix, or the
+  anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
