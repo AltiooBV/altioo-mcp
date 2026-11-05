@@ -758,6 +758,12 @@ final class PortalPolicy
 	 */
 	private static function load(string $sPortal): self
 	{
+		// The id comes from the datamodel, unchecked when the URL names no
+		// portal, and everything below makes a file name of it.
+		if (!PortalMode::IsPortalId($sPortal)) {
+			throw self::refusal(sprintf('Portal mode refuses to read a portal whose id cannot be a file name: %s.', json_encode($sPortal)));
+		}
+
 		foreach ([\ModuleDesign::class, BrickCollection::class, ScopeValidatorHelper::class, ObjectFormManager::class, Container::class] as $sNeeded) {
 			if (!class_exists($sNeeded)) {
 				throw self::refusal(sprintf(

@@ -74,6 +74,19 @@ final class PortalMode
 	public const PARAMETER = 'portal_id';
 
 	/**
+	 * Whether a value is shaped like a portal id.
+	 *
+	 * What the URL may name, and what goes into a file name: the id names the
+	 * portal's design file, its lock and the compiled rules iTop then requires.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function IsPortalId(string $sValue): bool
+	{
+		return preg_match('/^[A-Za-z0-9_-]{1,64}\z/', $sValue) === 1;
+	}
+
+	/**
 	 * The portal to serve a user in, or null when there is none.
 	 *
 	 * The one the connection names, when it names one: the user must be
