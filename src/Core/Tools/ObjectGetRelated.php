@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSet;
@@ -297,6 +298,13 @@ class ObjectGetRelated extends AbstractMCPTool
 			$aObjects,
 			static fn(array $aObject): bool => !in_array($aObject['class'], $aWithheld, true)
 		);
+
+		// This graph has its own node builder, so the serializer never sees
+		// these objects. What is returned is what is noted: a withheld class
+		// has already gone.
+		foreach ($aObjects as $aObject) {
+			ReadSummary::Note($aObject['class'], (int)$aObject[MetaModel::DBGetKey($aObject['class'])]);
+		}
 
 		/** @var \RelationEdge $oEdge */
 		foreach ($oGraph->GetEdges() as $oEdge) {

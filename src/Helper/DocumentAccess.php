@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
+use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -313,6 +314,9 @@ final class DocumentAccess
 				self::MODULE_SETTING_MAX_BYTES
 			));
 		}
+
+		// Noted once it is certain to be returned, size limit included.
+		ReadSummary::Note($sClass, $iId);
 
 		return $value;
 	}
