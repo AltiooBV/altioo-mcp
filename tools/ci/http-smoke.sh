@@ -199,6 +199,29 @@ else
   echo "   no DB_HOST/DB_NAME: the change is not read back"
 fi
 
+# A call a tool refuses is answered with isError - HTTP 200 and a JSON-RPC success, as the protocol
+# says - and recorded as an error. A class that does not exist is refused by core_object_get.
+echo "4d. a refusal by a tool is HTTP 200 and an error on the audit row"
+if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+  REFUSED_STATUS=$(curl -s -o "$BODY" -w '%{http_code}' \
+    -X POST "$ENDPOINT" \
+    -H "Authorization: Bearer ${ITOP_TOKEN}" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+    ${SESSION:+-H "Mcp-Session-Id: ${SESSION}"} \
+    -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"core_object_get","arguments":{"class":"NoSuchClassAnywhere","id":1}}}')
+  # shellcheck disable=SC2016
+  IS_ERROR=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo ($a["result"]["isError"] ?? false) ? "yes" : "no";' "$BODY")
+  AUDIT_ROW=$(itop_sql "SELECT e.status FROM \`${AUDIT_TABLE}\` e WHERE e.mcp_name = 'core_object_get' ORDER BY e.id DESC LIMIT 1")
+  echo "   HTTP ${REFUSED_STATUS}, isError=${IS_ERROR}, audit status='${AUDIT_ROW}'"
+  [ "$REFUSED_STATUS" = "200" ] || fail "the tool's refusal was not answered HTTP 200"
+  [ "$IS_ERROR" = "yes" ] || fail "the call that the refusal check makes was not refused by the tool"
+  [ "$AUDIT_ROW" = "error" ] || fail "the audit row for a refused call does not say error"
+else
+  echo "   no DB_HOST/DB_NAME: the refusal is not read back"
+fi
+
 # Portal mode, when the post-setup checks made a portal-only user to try it with. Run last: the
 # portal fixture is the checks' own, and a failure there says nothing about the rest above.
 PORTAL_CHECKS="$MODULE_SRC/tools/ci/checks/portal-smoke.sh"
