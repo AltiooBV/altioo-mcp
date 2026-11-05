@@ -82,21 +82,25 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		AttributeFinalClass::class,
 	];
 
+	#[\Override]
 	public function getNamespace(): string
 	{
 		return 'core';
 	}
 
+	#[\Override]
 	public function getToolset(): string
 	{
 		return 'objects';
 	}
 
+	#[\Override]
 	protected function defaultTitle(): string
 	{
 		return 'Count Objects';
 	}
 
+	#[\Override]
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
@@ -106,6 +110,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		return 'Count the objects of a class that match, and optionally per value of one or two attributes: "open tickets per team" without paging every ticket. Give class and filters, or an OQL query. Only attributes you may read, of simple types, can be grouped by.';
 	}
 
+	#[\Override]
 	public function getInputSchema(): ?array
 	{
 		$aGroupBy = [
@@ -329,6 +334,29 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	}
 
 	/**
+	 * The classes above under the names the running iTop gives its objects.
+	 *
+	 * iTop 3.3 namespaced its attribute classes and kept the old names as
+	 * aliases, so get_class() answers the real name and a comparison with the
+	 * alias never matches; reflection resolves one to the other, on every
+	 * version.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function groupableClasses(): array
+	{
+		static $aResolved = null;
+		if ($aResolved === null) {
+			$aResolved = [];
+			foreach (self::GROUPABLE as $sClass) {
+				$aResolved[] = (new \ReflectionClass($sClass))->getName();
+			}
+		}
+
+		return $aResolved;
+	}
+
+	/**
 	 * Whether an attribute may be counted per value of: it exists, it is a
 	 * simple type, it is not a secret, and the account may read it whatever
 	 * the object (a grade of "depends" cannot be answered for a group).
@@ -336,7 +364,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	private static function mayGroupBy(string $sClass, string $sAttCode): bool
 	{
 		return self::mayRead($sClass, $sAttCode)
-			&& in_array(get_class(MetaModel::GetAttributeDef($sClass, $sAttCode)), self::GROUPABLE, true);
+			&& in_array(get_class(MetaModel::GetAttributeDef($sClass, $sAttCode)), self::groupableClasses(), true);
 	}
 
 	/**
@@ -362,7 +390,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 *
 	 * @return mixed
 	 */
-	private static function answer(string $sClass, DBSearch $oSearch, array $aGroupBy, callable $fLabelOfKey, ?string $sList, array $aWho): mixed
+	private static function answer(string $sClass, DBSearch|DBObjectSearch $oSearch, array $aGroupBy, callable $fLabelOfKey, ?string $sList, array $aWho): mixed
 	{
 		$oSet = new DBObjectSet($oSearch);
 		$iTotal = $oSet->Count();
@@ -420,7 +448,14 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		return $aWho + ['class' => $sClass, 'total' => 0, 'groups' => [], 'truncated' => false, 'note' => 'Nothing to count.'];
 	}
 
-	/** The value as a client reads it: an id as an integer, a flag as a boolean, null as null. */
+	/**
+	 * The value as a client reads it: an id as an integer, a flag as a boolean, null as null.
+	 *
+	 * Psalm runs with no iTop checkout to say what extends what (psalm.xml).
+	 *
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress RedundantCondition
+	 */
 	private static function plain(\AttributeDefinition $oAttDef, mixed $mValue): mixed
 	{
 		if ($mValue === null) {
