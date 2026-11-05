@@ -99,6 +99,14 @@ if mcp_open "$sPortalUrl"; then
 fi
 case "$sBody$sHeaders" in *protocolVersion*) fail "a portal the user cannot enter was answered as a session" ;; esac
 case "$sStatus" in 4??) echo "   ok  an unknown portal is refused (HTTP $sStatus)" ;; *) fail "an unknown portal was answered HTTP $sStatus, expected a 4xx" ;; esac
+# The id becomes a file name that iTop then requires; each of these is its attempt at a different one.
+for sHostile in '..%2F..%2Fconf%2Fproduction%2Fconfig-itop' 'itop-portal%0A' 'itop-portal%00.php' 'itop-portal.php' '%3C%3Fphp%20phpinfo()%3B%3F%3E' 'itop-portal%2F..%2Fitop-portal'; do
+	if mcp_open "$ENDPOINT?portal_id=$sHostile"; then
+		fail "portal_id=$sHostile was served"
+	fi
+	case "$sStatus" in 4??) ;; *) fail "portal_id=$sHostile was answered HTTP $sStatus, expected a 4xx" ;; esac
+done
+echo "   ok  a portal_id that is no plain name is refused, in each of its shapes"
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 mcp_open "$sPortalUrl" || fail "the portal named correctly is no longer served after a refusal"
 echo "   ok  and the next call that names a real one is served"
