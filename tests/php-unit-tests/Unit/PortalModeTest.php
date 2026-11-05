@@ -625,7 +625,9 @@ class PortalModeTest extends TestCase
 			self::bodyOf(PortalPolicy::class, 'WriteSet'),
 			'WriteSet() must refuse the change log before anything else'
 		);
-		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'execute'));
+		// execute() and the count tool both resolve a list through Resolve(), which refuses it.
+		$this->assertStringContainsString('self::Resolve(', self::bodyOf(PortalList::class, 'execute'));
+		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'Resolve'));
 
 		$sHistory = self::bodyOf(ObjectHistoryTool::class, 'execute');
 		foreach (['ShowsHistory()', '->Readable($class, $id)', '->Bounded(', 'HistoryReader::Within('] as $sNeedle) {
@@ -723,7 +725,7 @@ class PortalModeTest extends TestCase
 				$sSource .= (string)file_get_contents((string)$oClass->getFileName());
 			}
 			$this->assertMatchesRegularExpression(
-				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)/',
+				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)|PortalList::Resolve\(/',
 				$sSource,
 				"{$sName} is served in portal mode without asking the portal"
 			);

@@ -96,7 +96,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
 
-		self::checkQuery($oql);
+		self::CheckQuery($oql);
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
@@ -197,7 +197,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 	 *
 	 * @throws ToolCallException When the query does not parse or does not match the datamodel.
 	 */
-	private static function checkQuery(string $oql): void
+	public static function CheckQuery(string $oql): void
 	{
 		require_once(APPROOT.'core/oql/check_oql.php');
 

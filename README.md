@@ -142,6 +142,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
+| `core_object_count` | How many objects match, and optionally how many per value of one or two attributes ("open tickets per team" without paging every ticket): `class` and `filters`, or `oql`, and `group_by`, at most 100 groups, each with the value and, for an enum or an external key whose target the caller may read, its label. Only simple attributes the caller may read can be grouped by or filtered on, and any refusal reads as an attribute or class that does not exist. The count is the database's, taken before object-level rights remove rows, so it can exceed what the caller could list; the answer says so. In portal mode it counts one of the portal's lists (`list`, `tab`, `parent_id`), per column the list shows that its class has |
 | `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts. Served in portal mode too, under the portal's limits: the view form's fields, its attachments, and no attribution |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
 | `core_object_history` | What iTop recorded happening to one object: when, who, which attribute, and the values before and after. Its own `history` toolset, and the only way in — `CMDBChange` and `CMDBChangeOp` are refused by every other tool. Served in portal mode too, under the portal's limits as well |
@@ -241,7 +242,7 @@ written by the caller and may name people; it is cleared when the account's pers
 anonymised (see [Data flow and privacy](#data-flow-and-privacy)).
 
 **The read tools that return a set** — `core_object_search_by_class`,
-`core_object_search_by_oql`, `core_object_find_by_name` — check `UR_ACTION_BULK_READ` on the
+`core_object_search_by_oql`, `core_object_find_by_name`, and `core_object_count`, which returns none — check `UR_ACTION_BULK_READ` on the
 class before returning anything, so a credential issued without the bulk right cannot sweep a
 class. `core_object_get_related` applies the same rule to the graph it walks, per class and
 from the second object onward: one related object of a class is a single read and is served on

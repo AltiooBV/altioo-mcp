@@ -318,6 +318,7 @@ final class ServerInstructions
 			."\n".'you name what you need in output_fields, and long texts, case logs and link sets are'
 			."\n".'cut unless you name them.'
 			."\n".'- OQL has no ORDER BY clause. Sort with the order_by and order_direction arguments.'
+			."\n".'- To count, or count per value, call core_object_count; do not page a search for it.'
 			."\n".'- Values come back as stored. If you turn them into CSV or a spreadsheet, put a single'
 			."\n".'quote before any cell that starts with =, +, -, @, a tab or a carriage return: a'
 			."\n".'spreadsheet would otherwise run it as a formula.'
@@ -403,7 +404,7 @@ Reading
 - core_portal_list runs one of the portal's lists by id, as the portal runs it. Those
 lists are already this user's own: there is no contact id or filter to pass. tab picks
 one of a list's tabs, parent_id the children of a row of its parent list, and search
-finds words in what the list shows.
+finds words in what the list shows. core_object_count counts a list, per value of a column it shows.
 - If the portal offers a list of answers - a FAQ, a knowledge base - search it before
 creating a request, and offer what it holds; create the request only if the user still
 wants one.
