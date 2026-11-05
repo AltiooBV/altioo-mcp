@@ -111,7 +111,7 @@ class AuditHousekeepingTest extends ItopDataTestCaseAlias
 		$this->retention(30);
 		$aIds = [];
 		for ($i = 0; $i < 450; $i++) {
-			$aIds[] = $this->row(date('Y-m-d H:i:s', time() - (40 + $i) * 3600));
+			$aIds[] = $this->row(date('Y-m-d H:i:s', time() - 40 * 86400 - $i * 3600));
 		}
 
 		$sSummary = (new AuditHousekeeping())->Process(time() + 120);
@@ -137,7 +137,7 @@ class AuditHousekeepingTest extends ItopDataTestCaseAlias
 
 	public function testItIsFoundByITopsOwnDiscovery(): void
 	{
-		$aProcesses = \InterfaceDiscovery::GetInstance()->FindItopClasses(\iBackgroundProcess::class);
+		$aProcesses = \Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery::GetInstance()->FindItopClasses(\iBackgroundProcess::class);
 
 		$this->assertContains(AuditHousekeeping::class, $aProcesses, 'cron would never run it');
 	}

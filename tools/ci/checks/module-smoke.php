@@ -37,7 +37,7 @@ check('secure_mcp_services defaults to on', MetaModel::GetModuleSetting($sModule
 // is not listed here is never run, and nothing else says so.
 check(
 	'cron finds the audit clean-up process',
-	in_array(\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class, InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class), true)
+	in_array(\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class, \Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class), true)
 );
 
 // The audit trail. No class, no record of what a model was asked to do.
