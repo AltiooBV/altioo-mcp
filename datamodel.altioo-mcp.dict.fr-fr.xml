@@ -24,7 +24,7 @@
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success" _delta="force"><![CDATA[Succès]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:success+" _delta="force"><![CDATA[La requête s'est terminée sans erreur]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error" _delta="force"><![CDATA[Erreur]]></entry>
-        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+" _delta="force"><![CDATA[La requête a échoué]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:status/Value:error+" _delta="force"><![CDATA[La requête a échoué ou un outil a refusé l'appel (réponse portant un indicateur d'erreur, que le protocole renvoie en HTTP 200)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate" _delta="force"><![CDATA[Simulation]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate+" _delta="force"><![CDATA[Si l'appel a simulé la modification au lieu de l'effectuer]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:yes" _delta="force"><![CDATA[Oui]]></entry>
@@ -64,8 +64,8 @@
         <entry id="MCP:Dashboard:WritesByTool" _delta="force"><![CDATA[Écritures par outil (hors simulations)]]></entry>
         <entry id="MCP:Dashboard:WritesByDay" _delta="force"><![CDATA[Écritures par jour du mois]]></entry>
         <entry id="MCP:Dashboard:WritesByLogin" _delta="force"><![CDATA[Écritures par identifiant enregistré]]></entry>
-        <entry id="MCP:Dashboard:FailedByTool" _delta="force"><![CDATA[Erreurs de protocole par outil]]></entry>
-        <entry id="MCP:Dashboard:FailedByLogin" _delta="force"><![CDATA[Erreurs de protocole par identifiant enregistré]]></entry>
+        <entry id="MCP:Dashboard:FailedByTool" _delta="force"><![CDATA[Erreurs par outil]]></entry>
+        <entry id="MCP:Dashboard:FailedByLogin" _delta="force"><![CDATA[Erreurs par identifiant enregistré]]></entry>
         <entry id="MCP:Dashboard:RefusedLogins" _delta="force"><![CDATA[Utilisateurs du portail refusés à la connexion, par identifiant enregistré]]></entry>
         <entry id="MCP:Dashboard:CallsByClient" _delta="force"><![CDATA[Appels par client, tel qu'il s'est déclaré]]></entry>
         <entry id="MCP:Dashboard:CallsByPortal" _delta="force"><![CDATA[Appels par portail (vide : la console)]]></entry>

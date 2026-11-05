@@ -533,8 +533,9 @@
       Each dashlet looks at the last 7 days. Where one groups on `userinfo` it
       is the account's login as recorded on the row, not a person: the title
       says so. The writes are rows with `simulate = 'no'` and a change. An
-      "error" is the protocol's: a call a tool refuses is answered, and is
-      recorded as a success. The tables by tool look at `tools/call` only,
+      "error" is a call that failed or that a tool refused (answered with
+      isError, which the protocol sends as HTTP 200; the row says error all
+      the same). The tables by tool look at `tools/call` only,
       because the name of an `initialize` row is the client. A refused portal
       login is `login` / `portal_admission`.
     -->

@@ -964,11 +964,13 @@ dashboard as what it is:
 - **"By login as recorded"** is the `userinfo` of the row: the account's login string, which is
   personal where logins are email addresses, and which iTop's anonymisation follow-up rewrites
   (see [Data flow and privacy](#data-flow-and-privacy)). It is not a person.
-- **An "error" is the protocol's.** A call a tool refuses (an object you may not change, a class
-  you may not read) is *answered*, with `isError`, and is recorded as a success. So the dashboard's
-  errors are unknown tools, bad requests and refusals before a call is made; a refusal by a tool is
-  not among them. A refused portal login is a `login` row of element `portal_admission`, and also
-  leaves an `exceptions` row, so it counts twice in *Calls by outcome*.
+- **An "error" is a call that failed or that a tool refused.** A tool that refuses a call (an
+  object you may not change, a class you may not read) answers it with `isError`, which the protocol
+  sends as HTTP 200 and a JSON-RPC success, so a client reads it as an answer. The audit row says
+  *Error* all the same, with the fixed message "The tool refused the call": the tool's own text is not
+  copied, because it can quote what the caller sent or the value refused. A refused portal login is a
+  `login` row of element `portal_admission`, and also leaves an `exceptions` row, so it counts twice in
+  *Calls by outcome*.
 - *Calls by client* is what the client declared, not verified. *By tool* looks at `tools/call` rows
   only: the name of an `initialize` row is the client.
 

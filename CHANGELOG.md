@@ -72,6 +72,13 @@ entry itself, not left to be inferred from it.
 
 ### Changed
 
+- **A call a tool refuses is recorded as an error.** A tool answers a refusal (an object the caller may not
+  change, a class they may not read) with `isError`, which the protocol sends as HTTP 200 and a JSON-RPC
+  success, so the audit row said *Success* for it. It now says *Error*, with the fixed message "The tool
+  refused the call": the tool's own text is not copied, since it can quote what was refused. What the
+  caller receives does not change, nor does the HTTP status. What an operator sees does: *Error* rows
+  appear for refused calls, `status = 'error'` queries return more, and at `log_mcp_level => 'error'`
+  these calls are now written, where they were not.
 - **A change made through the endpoint now carries the user's plain name in `CMDBChange.userinfo`,
   with no `(MCP: tool)` suffix** ([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Combodo's Personal data anonymizer finds a person's case-log entries by that line being exactly
