@@ -20,13 +20,14 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-11-05
 
 **Portal mode is the headline.** A user of iTop's customer portal, with no console, can now
 connect an assistant and be served what their portal offers: its lists, its forms' fields, its
 create actions and state changes, read from that portal's own configuration. The other half of
 the release holds every write to what the console's form would allow, and marks text other
-people wrote as untrusted.
+people wrote as untrusted. Tagged 2026-11-05, which opens this minor's five-year window in
+[SECURITY.md](SECURITY.md#support-period).
 
 **Read before upgrading.** Four things change on an instance that does nothing, each described
 below with what to do about it:
