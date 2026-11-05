@@ -78,7 +78,13 @@ entry itself, not left to be inferred from it.
   refused the call": the tool's own text is not copied, since it can quote what was refused. What the
   caller receives does not change, nor does the HTTP status. What an operator sees does: *Error* rows
   appear for refused calls, `status = 'error'` queries return more, and at `log_mcp_level => 'error'`
-  these calls are now written, where they were not.
+  these calls are now written, where they were not. **Counts of `status = 'error'` rise after upgrading**:
+  they now include every refusal, which used to be counted as a success.
+  - The row's message is fixed, "The tool refused the call", at every level. **Only at
+    `log_mcp_level => 'debug'`** does the row also hold the tool's own text, in a new nullable column,
+    *Refusal text* (`refusal_text`), cleaned to one line like every audit text. It can quote the value
+    that was refused, so it has the standing of `request_params`: debug is a troubleshooting setting, and
+    both columns are cleared, by the hourly process, when the account's person is anonymised.
 - **A change made through the endpoint now carries the user's plain name in `CMDBChange.userinfo`,
   with no `(MCP: tool)` suffix** ([ADR 0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Combodo's Personal data anonymizer finds a person's case-log entries by that line being exactly

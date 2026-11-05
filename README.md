@@ -909,7 +909,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `mcp_audit_retention_days` | `0` | Days an audit row is kept before an hourly background process deletes it, oldest first. `0` keeps everything, as before. **iTop has no retention of its own for its event log**, so without this the table only grows. A value that is not a non-negative integer reads as `0` and is logged to `log/error.log`. The process also brings the rows of an anonymised person in step with iTop's history (see [Data flow and privacy](#data-flow-and-privacy)) whether this is on or not; it needs iTop's cron to be running |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
-| `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and is a troubleshooting setting, not a standing one |
+| `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and, for a call a tool refused, the tool's own text (*Refusal text*), and is a troubleshooting setting, not a standing one |
 
 ### Start read-only
 
@@ -1008,9 +1008,11 @@ different problems, and the row now says which you have. **Log reference** carri
 identifier that an internal error also gives the caller, so the audit row and the entry in
 `log/error.log` can be matched without reading either message.
 
-> `log_mcp_level => 'debug'` stores the **raw JSON request parameters**, which may contain
-> data your users would not expect to find in an audit log. Use it for troubleshooting, not
-> as a standing setting.
+> `log_mcp_level => 'debug'` stores the **raw JSON request parameters** and, for a call a tool
+> refused, **what the tool said** (*Refusal text*), which can quote the value it refused. Both may
+> contain data your users would not expect to find in an audit log. Use it for troubleshooting, not
+> as a standing setting. At every other level a refused call's row says only "The tool refused the
+> call". Both are cleared when the account's person is anonymised.
 
 The two records answer two different questions and neither replaces the other. This one is
 per *call*: it holds the reads, the failures and the calls that changed nothing, and it is
@@ -1057,14 +1059,16 @@ looking is the one that stores what was actually sent:
 ```php
 'altioo-mcp' => array(
     // 'info' (default) records every audited call. 'debug' additionally stores the raw JSON
-    // parameters, which is how you see what the client actually sent - and why it is a
+    // parameters, and what a tool said when it refused a call, which is how you see what the
+    // client actually sent and was told - and why it is a
     // setting to turn back down afterwards. 'error' narrows the trail to failures.
     'log_mcp_level' => 'debug',
 ),
 ```
 
-Put it back to `'error'` afterwards. `'debug'` stores whatever the caller sent, which can
-include data your users would not expect to find in an audit log.
+Put it back to `'error'` afterwards. `'debug'` stores whatever the caller sent and whatever a
+tool answered a refused call with, which can include data your users would not expect to find in
+an audit log.
 
 **Is the call arriving at all?** Look for an `AltiooEventMCPService` row with the method
 `initialize`. That row is written whenever a client connects, at every log level — unless the
@@ -1231,8 +1235,8 @@ nothing the request said.
 Those lists name objects as `Class::id` and **do not record what they now contain**: it says
 `UserRequest::5231 created` and `Server::45 updated (name, status)`, never the values. Request
 *parameters* are the only place object data could appear, and they are stored only at
-`log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one. The object
-list is kept on the row precisely so that purging `CMDBChange` does not leave the audit trail
+`log_mcp_level => 'debug'`, which is a troubleshooting setting, not a standing one; so is a refused
+call's *Refusal text*, which can quote the value refused. The object list is kept on the row precisely so that purging `CMDBChange` does not leave the audit trail
 saying a write happened without saying to what.
 
 **Retention.** iTop has **no retention of its own for its event log** (checked on 3.2.3 and
@@ -1249,8 +1253,8 @@ account's key. This module follows what iTop does: the audit row keeps what hist
 changes the name when history changes the name.
 
 - When the person behind a row's account (`user_id`) is anonymised, the hourly process sets the
-  row's *User* line to the account's current login, and clears the request parameters and the reason
-  (free text, which may name people). The objects named in *Objects changed* and *Objects read* stay:
+  row's *User* line to the account's current login, and clears the request parameters, the reason and
+  the refusal text (free text, which may name people). The objects named in *Objects changed* and *Objects read* stay:
   they are `Class::id`, as iTop keeps change operations on other objects. Up to one run of lag.
 - **A user deleted before their person is anonymised is not reached.** Deleting a user resets
   `user_id` on their rows (to 0, "no link"), so nothing leads from those rows to the person any more,
