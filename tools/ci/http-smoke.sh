@@ -169,6 +169,36 @@ else
   echo "   no DB_HOST/DB_NAME: the audit row is not read back"
 fi
 
+# A real write through the endpoint, and what it leaves. The change's own line is iTop's default - the
+# user's name, exactly as the console and REST write it - because Combodo's anonymizer finds a person's
+# case-log entries by that exact name (doc/adr/0009); the tool is the audit row's mcp_name and the
+# reason is its change_comment. The change is found from the audit row, which is also the query that
+# replaces `userinfo LIKE '%(MCP:%'`.
+echo "4c. a write leaves the plain name on the change and the reason on the audit row"
+if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+  curl -s -o "$BODY" \
+    -X POST "$ENDPOINT" \
+    -H "Authorization: Bearer ${ITOP_TOKEN}" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+    ${SESSION:+-H "Mcp-Session-Id: ${SESSION}"} \
+    -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"core_object_update","arguments":{"class":"Organization","id":1,"fields":{"code":"SMOKE4C"},"comment":"smoke reason","simulate":false}}}'
+  # shellcheck disable=SC2016
+  RPC_ERROR=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo isset($a["error"]) || ($a["result"]["isError"] ?? false) ? json_encode($a) : "";' "$BODY")
+  [ -z "$RPC_ERROR" ] || fail "the write that the change check makes was refused: $RPC_ERROR"
+  AUDIT_WHERE="e.mcp_name = 'core_object_update' AND e.change_id <> 0 ORDER BY e.id DESC LIMIT 1"
+  CHANGE_USERINFO=$(itop_sql "SELECT c.userinfo FROM \`${DB_PREFIX:-}priv_change\` c JOIN \`${AUDIT_TABLE}\` e ON e.change_id = c.id WHERE ${AUDIT_WHERE}")
+  CHANGE_ORIGIN=$(itop_sql "SELECT c.origin FROM \`${DB_PREFIX:-}priv_change\` c JOIN \`${AUDIT_TABLE}\` e ON e.change_id = c.id WHERE ${AUDIT_WHERE}")
+  AUDIT_COMMENT=$(itop_sql "SELECT e.change_comment FROM \`${AUDIT_TABLE}\` e WHERE ${AUDIT_WHERE}")
+  echo "   change userinfo='${CHANGE_USERINFO}' origin='${CHANGE_ORIGIN}' change_comment='${AUDIT_COMMENT}'"
+  case "$CHANGE_USERINFO" in ''|*"MCP"*|*"smoke reason"*) fail "the change's line is not the user's plain name" ;; esac
+  [ "$CHANGE_ORIGIN" = "custom-extension" ] || fail "the change's origin is not custom-extension"
+  [ "$AUDIT_COMMENT" = "smoke reason" ] || fail "the reason did not reach the audit row"
+else
+  echo "   no DB_HOST/DB_NAME: the change is not read back"
+fi
+
 # Portal mode, when the post-setup checks made a portal-only user to try it with. Run last: the
 # portal fixture is the checks' own, and a failure there says nothing about the rest above.
 PORTAL_CHECKS="$MODULE_SRC/tools/ci/checks/portal-smoke.sh"
