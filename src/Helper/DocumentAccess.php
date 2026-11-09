@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use AttributeBlob;
 use DBObject;
@@ -244,7 +246,17 @@ final class DocumentAccess
 		if (ObjectHistory::IsReserved($sClass)) {
 			throw new MCPDocumentException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 		}
-		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
+		try {
+			$oAccess = ObjectAccess::Current();
+		} catch (MCPPortalException $e) {
+			throw new MCPDocumentException($e->getMessage());
+		}
+		// In portal mode a file is not reached as an object of its own: the
+		// portal checks the object it is filed under, and so does this
+		// (doc/adr/0011-portal-mode-reads-and-adds-attachments.md).
+		$bPortalFile = $sClass === 'Attachment' && !$oAccess->AttachmentsAreObjects();
+
+		if (!MetaModel::IsValidClass($sClass) || (!$bPortalFile && !UserRights::IsActionAllowed($sClass, UR_ACTION_READ))) {
 			throw new MCPDocumentException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 		if ($iId < 1) {
@@ -264,8 +276,16 @@ final class DocumentAccess
 		// refused for the whole class is refused here, and no query is spent on
 		// it. UR_ALLOWED_DEPENDS passes - it means the answer varies by object,
 		// which is the question asked again below once there is an object.
-		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+		if (!$bPortalFile && UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
 			throw new MCPDocumentException("Read access denied on attribute '{$sAttCode}'.");
+		}
+
+		if ($bPortalFile) {
+			// Unknown, out of reach and a draft answer alike.
+			$oObject = $oAccess->ShownAttachment($iId)
+				?? throw new MCPDocumentException("Object {$sClass}::{$iId} not found.");
+
+			return self::served($oObject->Get($sAttCode), $sClass, $iId, $sAttCode);
 		}
 
 		// Through a set, because a set is what applies object-level rights -
@@ -294,8 +314,33 @@ final class DocumentAccess
 			throw new MCPDocumentException("Read access denied on attribute '{$sAttCode}'.");
 		}
 
-		$value = $oObject->Get($sAttCode);
+		// A portal serves a document of another class only if its view form
+		// shows the attribute, and only for an object it shows.
+		if (!$oAccess->AttachmentsAreObjects()) {
+			$oShown = $oAccess->Readable($sClass, $iId);
+			if ($oShown === null) {
+				throw new MCPDocumentException("Object {$sClass}::{$iId} not found.");
+			}
+			try {
+				$bShown = $oAccess->ShownOf($oShown)($sAttCode);
+			} catch (MCPPortalException $e) {
+				throw new MCPDocumentException($e->getMessage());
+			}
+			if (!$bShown) {
+				throw new MCPDocumentException("Read access denied on attribute '{$sAttCode}'.");
+			}
+		}
 
+		return self::served($oObject->Get($sAttCode), $sClass, $iId, $sAttCode);
+	}
+
+	/**
+	 * The document, once it is certain it may be read: present, and within the ceiling.
+	 *
+	 * @throws MCPDocumentException
+	 */
+	private static function served(mixed $value, string $sClass, int $iId, string $sAttCode): ormDocument
+	{
 		if (!$value instanceof ormDocument || $value->IsEmpty()) {
 			throw new MCPDocumentException("{$sClass}::{$iId} carries no document in '{$sAttCode}'.");
 		}

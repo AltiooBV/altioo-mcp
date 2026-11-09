@@ -22,6 +22,22 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **Portal mode reads and adds attachments, as the portal does; deleting stays in the portal**
+  ([ADR 0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md), decided by the maintainer).
+  `core_object_get_document` and `core_object_attach` are served in portal mode, and `core_object_get` gives each
+  attachment a `uri` and the object a `may_attach`. A file is readable when the object it is filed under is in the
+  user's scope and its forms show attachments; the class `Attachment` is never read through UserRights, a draft is
+  refused, and unknown, hidden and draft answer in the same words. A file is added only where the portal's upload would
+  be editable (write scope, state not read-only for the portals, an edit form with a settable field), leaves the
+  portal's history line and event, and is a dry run unless asked otherwise. **After upgrading, every portal user with
+  MCP access can have their assistant read and add attachments** on what the portal shows them; withdraw it with
+  `mcp_disabled_tools` or by leaving out the `documents` toolset. The stock `Portal user` profile is not widened.
+  `core_class_list` says per class whether adding is possible (`attach`).
+  **Adding needs no right to create an `Attachment` in portal mode**, matching the portal itself, which the stock `Portal user`
+  profile does not hold either; the console still requires it. What gates it instead: the write scope on the object, the
+  attachment module allowing the class, a state not read-only for the portals, an edit form with a settable field, and a
+  write-grade token.
+
 - **`core_my_activity`: what did my assistant do in my name?** The audit trail was readable by administrators
   only; this tool gives any user their own calls, newest first, with `since`, `limit` and `offset`: when, which tool,
   dry run or failed, client, the kind of credential, the objects changed or read, and the reason given.

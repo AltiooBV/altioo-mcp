@@ -222,10 +222,11 @@ class WriteFailureReportingContractTest extends TestCase
 			(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectAttach'))->getFileName()
 		);
 
-		// Both branches: the attachment object, and the blob attribute.
+		// Both branches: the attachment object, and the blob attribute. The portal's
+		// history line is written between the insert and the answer, inside the same try.
 		$this->assertSame(
 			2,
-			preg_match_all('/try \{\s*(?:\$\w+ = )?\$\w+->(?:DBInsert|DBUpdate)\(\);\s*return ToolOutput::Structured/s', $sSource),
+			preg_match_all('/try \{\s*(?:\$\w+ = )?\$\w+->(?:DBInsert|DBUpdate)\(\);\s*(?:if \(\$bPortal\) \{[^}]*\}\s*)?return ToolOutput::Structured/s', $sSource),
 			'a write is wrapped and the answer describing it is not'
 		);
 

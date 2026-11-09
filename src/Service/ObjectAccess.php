@@ -220,6 +220,37 @@ class ObjectAccess
 		return null;
 	}
 
+	/**
+	 * Whether files are read and added as objects of the class Attachment,
+	 * through UserRights. True on the console. In portal mode a file is never
+	 * reached that way: the portal checks the object it is attached to, and
+	 * so does {@see ShownAttachment()}
+	 * (doc/adr/0011-portal-mode-reads-and-adds-attachments.md).
+	 */
+	public function AttachmentsAreObjects(): bool
+	{
+		return true;
+	}
+
+	/**
+	 * The Attachment the mode shows this caller, or null for one it does not -
+	 * unknown, out of reach, or somebody's unsent draft, all alike. Meaningful
+	 * only where {@see AttachmentsAreObjects()} is false.
+	 */
+	public function ShownAttachment(int $iId): ?DBObject
+	{
+		return null;
+	}
+
+	/**
+	 * Why this mode refuses adding a file to the object, or null. The console's
+	 * checks stay in the tool; on the console nothing is added here.
+	 */
+	public function RefusalToAttach(DBObject $oObject): ?string
+	{
+		return null;
+	}
+
 	/** Why this mode refuses a stimulus UserRights allows on the object now, or null. */
 	public function RefusalToApply(DBObject $oObject, string $sStimulus): ?string
 	{

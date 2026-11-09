@@ -85,3 +85,5 @@ Settings agent skills read here.
   anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Also: `core_my_activity` is the one thing portal mode serves that the portal has no screen for — an account's own trail, not
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).
+  Also: portal attachments are read and add only, gated by the host object and the portal's form, never by UserRights on
+  `Attachment`, and never a delete ([0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md)).

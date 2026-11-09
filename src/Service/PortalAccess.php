@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
+use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use DBObject;
 use DBObjectSearch;
@@ -191,11 +192,14 @@ final class PortalAccess extends ObjectAccess
 	{
 		$sClass = get_class($oObject);
 
+		$aSettable = $this->oPolicy->Writable($sClass, (int)$oObject->GetKey()) === null
+			? []
+			: self::Settable($sClass, $this->oPolicy->Fields($sClass, PortalPolicy::MODE_EDIT, $oObject));
+
 		return [
 			'attachments'     => self::AttachmentsOf($oObject),
-			'settable_fields' => $this->oPolicy->Writable($sClass, (int)$oObject->GetKey()) === null
-				? []
-				: self::Settable($sClass, $this->oPolicy->Fields($sClass, PortalPolicy::MODE_EDIT, $oObject)),
+			'may_attach'      => $this->attachRefusal($oObject, $aSettable) === null,
+			'settable_fields' => $aSettable,
 		];
 	}
 
@@ -264,6 +268,7 @@ final class PortalAccess extends ObjectAccess
 				'filename' => $oDocument instanceof \ormDocument ? $oDocument->GetFileName() : null,
 				'mimetype' => $oDocument instanceof \ormDocument ? $oDocument->GetMimeType() : null,
 				'size'     => $oDocument instanceof \ormDocument ? $oDocument->GetSize() : null,
+				'uri'      => DocumentAccess::Uri('Attachment', (int)$oAttachment->GetKey(), 'contents'),
 			];
 		}
 
@@ -379,6 +384,84 @@ final class PortalAccess extends ObjectAccess
 		return $this->oPolicy->Writable($sClass, $iId) === null
 			? "The portal lets you read {$sClass} {$iId} but not change it."
 			: null;
+	}
+
+	#[\Override]
+	public function AttachmentsAreObjects(): bool
+	{
+		return false;
+	}
+
+	/**
+	 * The attachment, when the portal would show it: filed under an object the
+	 * user may read and whose forms show attachments. Never through UserRights
+	 * on the class, which would be wider than the portal. A draft - an upload
+	 * somebody has not sent yet - is nobody's file to read, and unknown, hidden
+	 * and draft are one answer.
+	 */
+	#[\Override]
+	public function ShownAttachment(int $iId): ?DBObject
+	{
+		if ($iId < 1 || !MetaModel::IsValidClass('Attachment')) {
+			return null;
+		}
+
+		$oSearch = DBObjectSearch::FromOQL('SELECT Attachment WHERE id = :id');
+		$oSearch->AllowAllData();
+		$oAttachment = (new DBObjectSet($oSearch, [], ['id' => $iId]))->Fetch();
+		if ($oAttachment === null || (string)$oAttachment->Get('temp_id') !== '' || (int)$oAttachment->Get('item_id') < 1) {
+			return null;
+		}
+
+		$sHostClass = (string)$oAttachment->Get('item_class');
+		if (!MetaModel::IsValidClass($sHostClass)) {
+			return null;
+		}
+		$oHost = $this->Readable($sHostClass, (int)$oAttachment->Get('item_id'));
+
+		return $oHost !== null && PortalPolicy::ShowsAttachments($oHost) ? $oAttachment : null;
+	}
+
+	#[\Override]
+	public function RefusalToAttach(DBObject $oObject): ?string
+	{
+		$sClass = get_class($oObject);
+		$aSettable = $this->oPolicy->Writable($sClass, (int)$oObject->GetKey()) === null
+			? []
+			: self::Settable($sClass, $this->oPolicy->Fields($sClass, PortalPolicy::MODE_EDIT, $oObject));
+
+		return $this->attachRefusal($oObject, $aSettable);
+	}
+
+	/**
+	 * The three things that leave the portal's upload field editable: the
+	 * attachment module allows attachments on the class, its state is not
+	 * read-only for the portals, and the edit form has a field the user can
+	 * change (a form with none is shown read-only, upload included) - after
+	 * the portal's write scope, which the form is only reached through.
+	 *
+	 * @param array<int, string> $aSettable The edit form's settable fields.
+	 */
+	private function attachRefusal(DBObject $oObject, array $aSettable): ?string
+	{
+		$sClass = get_class($oObject);
+		$iId = (int)$oObject->GetKey();
+
+		$sWhy = $this->RefusalToChange($oObject);
+		if ($sWhy !== null) {
+			return $sWhy;
+		}
+		if (!PortalPolicy::ShowsAttachments($oObject)) {
+			return "The portal does not take attachments on {$sClass}.";
+		}
+		if (\AttachmentPlugIn::IsReadonlyState($oObject, (string)$oObject->GetState(), \AttachmentPlugIn::ENUM_GUI_PORTALS) === true) {
+			return "The portal takes no attachments on {$sClass} {$iId} in its current state.";
+		}
+		if ($aSettable === []) {
+			return "The portal's edit form for {$sClass} {$iId} has nothing the user can change now, so it takes no attachment either.";
+		}
+
+		return null;
 	}
 
 	/** A stimulus the portal's lifecycle does not offer on the object in its state. */

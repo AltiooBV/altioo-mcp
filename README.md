@@ -661,11 +661,22 @@ portal is served as customised:
   the scope of its class, a tab's condition, a parent row checked against its own level, and the
   portal's own search on the columns shown. The client never sends a query.
 - `core_object_get`, the console's own read, reads one object by the scopes, as the portal's
-  object page does: the fields of its view form for the object as it is, its attachments, and
-  what the user may do to it now — its rights narrowed to the portal's (no delete), the stimuli
+  object page does: the fields of its view form for the object as it is, its attachments (each
+  with the `uri` that reads it, and `may_attach`), and what the user may do to it now — its rights narrowed to the portal's (no delete), the stimuli
   the portal offers, and the fields its edit form leaves settable. The creation and last-change
   attribution is left out: it reads the change log, which `core_object_history` serves where the
   portal shows history.
+- `core_object_get_document` reads one attachment, and `core_object_attach` adds one, **as the portal does**
+  ([doc/adr/0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md)): the object the file is filed under is
+  what is checked — readable in the user's scope and one the portal's forms show attachments on — and never the class
+  `Attachment` through UserRights. A draft (somebody's unsent upload), an unknown id and a hidden object answer alike.
+  A file is added only where the portal's upload field would be editable: the object in the user's write scope, its
+  state not read-only for the portals (`readonly_states` of `itop-attachments`), and an edit form with a field the user
+  can change. The stock `Portal user` profile holds no right to create an `Attachment` and none is needed, as the
+  portal needs none; no profile is widened. A portal-added file leaves what the portal's leaves: the history line and
+  the attachment module's event. Dry run by default, the file's type checked against its bytes,
+  `mcp_max_document_bytes` applied, and the file's content and name are marked as text to report, never to follow.
+  **Deleting an attachment stays in the portal**; a document attribute cannot be set from portal mode.
 - `core_object_create`, `core_object_update` and `core_object_apply_stimulus`, the console's
   own writes, write as the portal would, and are dry runs by default. A field must be one the
   portal's form leaves settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
@@ -692,7 +703,7 @@ portal is served as customised:
   now (otherwise only counted), an attribute code only if the portal's view form shows it, and nothing of the instance's
   setup is told. Every portal user with MCP access has it; `mcp_disabled_tools` withdraws it.
 
-What the portal offers that is not served here — downloading, adding or deleting an
+What the portal offers that is not served here — deleting an
 attachment, and anything a portal extension adds through its own bricks or routes — stays in the
 portal. `mcp_disabled_tools`, `mcp_enabled_toolsets` (the class tools are in `datamodel`, history in
 `history`, the others in `objects`) and the token's grade narrow it as they narrow anything else:
@@ -1384,9 +1395,9 @@ Known and deliberate, so that none of them is a discovery made after installing:
 - **No browser-redirect login.** CAS and `combodo-hybridauth` cannot serve a headless client;
   nor can a session cookie, since a request carrying no credential of its own is refused before
   the session is consulted, and one carrying a credential resets the session before logging in.
-- **Portal-only users get what their portal offers, and no attachments.** Portal mode serves
-  the portal's lists, objects and writes — see [Granting access](#granting-access) — but lists
-  an object's attachments without serving their content or taking new ones. It needs iTop 3.2.2
+- **Portal-only users get what their portal offers, and cannot delete attachments.** Portal mode serves
+  the portal's lists, objects and writes, and reads and adds attachments as the portal does — see
+  [Granting access](#granting-access). Deleting one stays in the portal. It needs iTop 3.2.2
   or later, and a user allowed into several portals gets the first served one by rank.
 - **Generic tools, not task-shaped ones.** No "open an incident" tool here — see
   [Extending](#extending) and [Custom work](#custom-work).
