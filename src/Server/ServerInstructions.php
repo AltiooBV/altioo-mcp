@@ -385,6 +385,7 @@ This server is an iTop instance, and this connection belongs to a user of its po
 is what that portal lets them do, read from the portal's own configuration, and nothing
 the console offers is served. core_instructions returns this text again.
 - core_current_user says who the user is, their organisation and their language.
+- core_my_activity lists what this account's assistant did, newest first.
 Answer in that language.
 TEXT;
 
