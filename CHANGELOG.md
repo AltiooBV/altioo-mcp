@@ -22,6 +22,23 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **`mcp_excluded_classes` and `mcp_excluded_attributes`: what this channel never serves**
+  ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), proposed — not yet accepted).
+  Both are empty by default, so nothing changes until an operator sets one. Classes (with their subclasses) and
+  attributes (per class, inherited by subclasses) listed there are **absent** from this endpoint for every caller in
+  both modes, Administrator and Basic authentication included: every tool answers as it would for a class or an attribute
+  the datamodel does not have, in a read, a field list, a filter, a sort, a group, a count, a full-text search, an OQL
+  query (checked by iTop's own checker against the datamodel without them, so the refusal is its words for an unknown
+  name), a history (rows and total), a schema, a write and its dry run, the relations walk, `core_my_activity` and the
+  portal's lists and forms. What points at an excluded class goes with it: fields resolving through it, keys and link
+  sets to it, the files filed under its objects, and what is reachable only through it. **This narrows the channel, not
+  the account**: the same account reads the same data in the console. **A setting that cannot be honoured — not a list,
+  a name the datamodel does not have, an attribute that is not on its class or is part of its class's friendly name —
+  makes the endpoint serve nothing to anyone** until it is corrected, and `log/error.log` says why. A mandatory
+  attribute that is excluded makes creating that class impossible here; a class that has an excluded subclass cannot
+  appear in a join or sub-query of OQL. `ExclusionPolicy` is on the surface a tool pack may build on (`@api`): a pack
+  that reads objects itself should ask it.
+
 - **Portal mode reads and adds attachments, as the portal does; deleting stays in the portal**
   ([ADR 0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md), decided by the maintainer).
   `core_object_get_document` and `core_object_attach` are served in portal mode, and `core_object_get` gives each
