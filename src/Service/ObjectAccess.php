@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
@@ -70,6 +71,9 @@ class ObjectAccess
 		}
 
 		$sFinalClass = get_class($oObject);
+		if (ExclusionPolicy::ExcludesClass($sFinalClass) || ExclusionPolicy::IsFiledUnderExcluded($oObject)) {
+			return null; // an object of an excluded class, or a file filed under one, is not there (doc/adr/0012)
+		}
 		if ($sFinalClass !== $sClass
 			&& (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)
 				|| !UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sFinalClass, $iId))))) {
@@ -97,13 +101,17 @@ class ObjectAccess
 
 	/**
 	 * Whether the caller is shown an attribute of the object, on top of the
-	 * attribute rights every read applies. On the console, every attribute.
+	 * attribute rights every read applies. On the console, every attribute
+	 * that is not excluded.
 	 *
 	 * @return \Closure(string): bool Built once per object, asked once per attribute.
 	 */
 	public function ShownOf(DBObject $oObject): \Closure
 	{
-		return static fn (string $sAttCode): bool => true;
+		$sClass = get_class($oObject);
+
+		// Every attribute, but the ones the operator excluded (doc/adr/0012).
+		return static fn (string $sAttCode): bool => !ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode);
 	}
 
 	/**
@@ -211,7 +219,7 @@ class ObjectAccess
 	 */
 	public function Hides(string $sClass, int $iId): bool
 	{
-		return false;
+		return ExclusionPolicy::ExcludesClass($sClass);
 	}
 
 	/** Why this mode refuses a change to the object UserRights allows, or null. */

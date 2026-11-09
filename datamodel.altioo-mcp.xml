@@ -850,6 +850,20 @@
       -->
       <mcp_privilege_escalation_classes type="array"/>
       <!--
+        What this channel never serves (doc/adr/0012). Classes, with their
+        subclasses: array('Person'). Attributes, per class and inherited by its
+        subclasses: array('Person' => array('phone', 'mobile_phone')). For every
+        caller in both modes, Administrator and Basic authentication included.
+        An excluded class or attribute is absent: it answers as one the
+        datamodel does not have. This narrows the channel, not the account: it
+        is no boundary against the same account in the console.
+        A value that cannot be honoured - not a list, a name the datamodel does
+        not have, an attribute that is part of its class's friendly name -
+        makes the endpoint serve nothing until it is corrected.
+      -->
+      <mcp_excluded_classes type="array"/>
+      <mcp_excluded_attributes type="array"/>
+      <!--
         Elements per tools/list, resources/list or prompts/list page. The MCP
         SDK defaults to 50 and pages the rest behind a cursor, which a client
         that ignores nextCursor never asks for: the 51st tool then exists and

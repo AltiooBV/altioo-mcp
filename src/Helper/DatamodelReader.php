@@ -143,7 +143,7 @@ final class DatamodelReader
 	 */
 	public static function IsReadable(string $sClass): bool
 	{
-		return MetaModel::IsValidClass($sClass) && UserRights::IsActionAllowed($sClass, UR_ACTION_READ);
+		return ExclusionPolicy::Serves($sClass) && UserRights::IsActionAllowed($sClass, UR_ACTION_READ);
 	}
 
 	/**
@@ -225,8 +225,8 @@ final class DatamodelReader
 		$aClasses = [];
 
 		foreach (self::classesInCategory($sCategory) as $sClass) {
-			// Skip classes the current user has no read access to
-			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
+			// Skip classes the current user has no read access to, and those the operator excluded (doc/adr/0012)
+			if (ExclusionPolicy::ExcludesClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 				continue;
 			}
 
@@ -893,7 +893,8 @@ final class DatamodelReader
 		$aAttributes = [];
 
 		foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
-			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO
+				|| ExclusionPolicy::ExcludesAttribute($sClass, (string)$sAttCode)) {
 				continue;
 			}
 
@@ -1124,7 +1125,11 @@ final class DatamodelReader
 			return [];
 		}
 
-		return ['dependsOn' => array_values(array_filter($aPrerequisites, 'is_string'))];
+		// An excluded attribute is not named here either.
+		return ['dependsOn' => array_values(array_filter(
+			$aPrerequisites,
+			static fn ($mCode): bool => is_string($mCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $mCode)
+		))];
 	}
 
 	/**
@@ -1276,6 +1281,9 @@ final class DatamodelReader
 		foreach (MetaModel::EnumRelations() as $sRelation) {
 			$aRelated = [];
 			foreach (MetaModel::EnumRelationQueries($sClass, $sRelation) as $sNeighbour => $aQueryInfo) {
+				if (ExclusionPolicy::ExcludesClass((string)$sNeighbour)) {
+					continue;
+				}
 				$aRelated[] = $sNeighbour;
 			}
 			if (!empty($aRelated)) {
@@ -1296,7 +1304,7 @@ final class DatamodelReader
 			return [];
 		}
 		$sStateAttCode = MetaModel::GetStateAttributeCode($sClass);
-		if ($sStateAttCode === '') {
+		if ($sStateAttCode === '' || ExclusionPolicy::ExcludesAttribute($sClass, $sStateAttCode)) {
 			return [];
 		}
 

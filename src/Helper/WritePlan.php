@@ -79,7 +79,7 @@ final class WritePlan
 		$aValidatedValues = [];
 		foreach ($aFields as $sAttCode => $value) {
 			$sAttCode = (string)$sAttCode;
-			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
 				continue;
 			}
@@ -572,6 +572,11 @@ final class WritePlan
 	 */
 	public static function RefusalForExternalKey(string $sClass, string $sAttCode, mixed $value): ?string
 	{
+		$sExcluded = self::RefusalForExcludedKeys($sClass, $sAttCode, $value);
+		if ($sExcluded !== null) {
+			return $sExcluded;
+		}
+
 		$bNumeric = is_int($value) || (is_string($value) && ctype_digit($value));
 
 		if (!$bNumeric && !is_string($value) && !(is_array($value) && PortalMode::Current() !== null)) {
@@ -614,7 +619,8 @@ final class WritePlan
 				return null;
 			}
 
-			if (MetaModel::GetObject($sTarget, (int) $value, false) !== null) {
+			$oFound = MetaModel::GetObject($sTarget, (int) $value, false);
+			if ($oFound !== null && !ExclusionPolicy::ExcludesClass(get_class($oFound)) && !ExclusionPolicy::IsFiledUnderExcluded($oFound)) {
 				return null;
 			}
 
@@ -812,6 +818,44 @@ final class WritePlan
 	 * is the line RejectedValue() draws, and it is drawn for the reason given
 	 * there - a MySQLException on this path carries the SQL it issued.
 	 */
+	/**
+	 * A criteria object or the items of a link set naming an attribute the
+	 * operator excluded (doc/adr/0012): searched on, or set, it would be an
+	 * oracle for the value or a way to write it. Refused as an unknown attribute.
+	 */
+	private static function RefusalForExcludedKeys(string $sClass, string $sAttCode, mixed $value): ?string
+	{
+		if (!is_array($value) || !ExclusionPolicy::IsActive()) {
+			return null;
+		}
+
+		try {
+			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if ($oAttDef->IsExternalKey()) {
+				$sOn = $oAttDef->GetTargetClass();
+				$aRows = [$value];
+			} elseif ($oAttDef->IsLinkSet()) {
+				$sOn = $oAttDef->GetLinkedClass();
+				$aRows = array_filter($value, 'is_array');
+			} else {
+				return null;
+			}
+
+			foreach ($aRows as $aRow) {
+				foreach (array_keys($aRow) as $sKey) {
+					// An unknown name is refused in the same words as an excluded one: the two must not be told apart.
+					if (is_string($sKey) && (!MetaModel::IsValidAttCode($sOn, $sKey) || ExclusionPolicy::ExcludesAttribute($sOn, $sKey))) {
+						return "Unknown attribute '{$sKey}' on class '{$sOn}'.";
+					}
+				}
+			}
+		} catch (Throwable $e) {
+			return null;
+		}
+
+		return null;
+	}
+
 	private static function RefusalForExternalKeyQuery(string $sTarget, string $sAttCode, string $sValue): ?string
 	{
 		$sHow = sprintf(
@@ -828,6 +872,17 @@ final class WritePlan
 			return sprintf('%s is not an id and not valid OQL. %s', json_encode($sValue), $sHow);
 		}
 
+		// Held to what this channel serves, as a query is anywhere else (doc/adr/0012).
+		try {
+			\Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL::CheckQuery($sValue);
+		} catch (\Mcp\Exception\ToolCallException $e) {
+			return $e->getMessage();
+		}
+		$sUnproved = ExclusionPolicy::OqlRefusal($sValue);
+		if ($sUnproved !== null) {
+			return $sUnproved;
+		}
+
 		$sSelected = (string) $oSearch->GetClass();
 		if ($sSelected !== '' && strcasecmp($sSelected, $sTarget) !== 0 && !is_a($sSelected, $sTarget, true)) {
 			return sprintf(
@@ -840,7 +895,7 @@ final class WritePlan
 		}
 
 		try {
-			$iCount = (new DBObjectSet($oSearch))->Count();
+			$iCount = (new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $sSelected)))->Count();
 		} catch (Throwable $e) {
 			// The query parses and names the right class; whatever running it
 			// hit is the ORM's to report, on its own attempt.
@@ -1201,6 +1256,17 @@ final class WritePlan
 	 */
 	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat): void
 	{
+		// A delete that would reach objects of a class this channel does not serve is not made here, and not
+		// reported with them left out: a plan that shows less than what happens is how a delete goes wrong. It
+		// does not say which class (doc/adr/0012).
+		foreach ([$oPlan->ListDeletes(), $oPlan->ListUpdates()] as $aClasses) {
+			foreach (array_keys($aClasses) as $sReached) {
+				if (ExclusionPolicy::ExcludesClass((string)$sReached)) {
+					throw new ToolCallException("{$sWhat} cannot be deleted here: it reaches related objects this channel does not serve. Do it in the iTop console.");
+				}
+			}
+		}
+
 		$aRefused  = [];
 		$bUnreadable = false;
 
@@ -1569,9 +1635,13 @@ final class WritePlan
 			return;
 		}
 
+		// A validation message names the field it is about, which for an excluded one is a leak: those
+		// are not repeated, and the call says only that it cannot be written as described.
+		$aIssues = ExclusionPolicy::WithoutExcluded(get_class($oObject), array_map('strval', (array)$aIssues));
+
 		throw new ToolCallException(empty($aIssues)
 			? "{$sWhat} cannot be written as described."
-			: "{$sWhat} cannot be written as described: ".implode(' ', array_map('strval', $aIssues)));
+			: "{$sWhat} cannot be written as described: ".implode(' ', $aIssues));
 	}
 
 	/**
@@ -1630,8 +1700,13 @@ final class WritePlan
 			if (!is_string($sAttCode) || $sAttCode === 'finalclass') {
 				continue;
 			}
+			// iTop fills in attributes the caller never named; an excluded one is not reported (doc/adr/0012).
+			if (ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
+				continue;
+			}
 
 			try {
+				/** @psalm-suppress NoValue */
 				$aChanges[$sAttCode] = ObjectSerializer::MayReadAttribute($oObject, $sClass, $sAttCode, $oInstanceSet)
 					? ObjectSerializer::Value($oObject, $sClass, $sAttCode)
 					: ObjectSerializer::MASK;

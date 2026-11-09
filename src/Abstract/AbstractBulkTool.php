@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
@@ -134,7 +135,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 */
 	protected static function checkBulkAllowed(string $sClass, int $iBulkAction, int $iSingleAction, string $sVerb): void
 	{
-		if (!MetaModel::IsValidClass($sClass)) {
+		if (!ExclusionPolicy::Serves($sClass)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
 		}
 
@@ -236,6 +237,9 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		$oSet->Rewind();
 
 		$sFinalClass = get_class($oObject);
+		if (ExclusionPolicy::ExcludesClass($sFinalClass)) {
+			return "Object {$sClass}::{$iId} not found."; // as one that is not there (doc/adr/0012)
+		}
 		if ($sFinalClass !== $sClass) {
 			return "Object {$sClass}::{$iId} is of class '{$sFinalClass}'; call this tool again with that class.";
 		}
@@ -274,7 +278,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		$aRefused = [];
 
 		foreach (array_keys($aFields) as $sAttCode) {
-			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, (string)$sAttCode)) {
 				$aRefused[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
 				continue;
 			}

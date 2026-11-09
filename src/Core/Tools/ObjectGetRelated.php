@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -144,7 +145,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			throw new ToolCallException("Invalid direction '{$direction}'. Use 'down' or 'up'.");
 		}
 
-		if (!MetaModel::IsValidClass($class)) {
+		if (!ExclusionPolicy::Serves($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
@@ -207,6 +208,9 @@ class ObjectGetRelated extends AbstractMCPTool
 		$oSet->Rewind();
 
 		$sFinalClass = get_class($oObject);
+		if (ExclusionPolicy::ExcludesClass($sFinalClass)) {
+			throw new ToolCallException("Object {$class}::{$id} not found."); // as an object that is not there
+		}
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
@@ -288,6 +292,12 @@ class ObjectGetRelated extends AbstractMCPTool
 
 			// Stats per class
 			$aStats[$sClass] = ($aStats[$sClass] ?? 0) + 1;
+		}
+
+		// What the operator excluded is not in the graph, and neither is what is reachable only through it
+		// (doc/adr/0012): a path through an excluded object is a statement about that object.
+		if (ExclusionPolicy::IsActive()) {
+			[$aObjects, $aStats] = self::withoutExcluded($oGraph, $aObjects);
 		}
 
 		$aWithheld = self::classesReadInBulkWithoutTheRight($aStats);
@@ -372,6 +382,69 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		return $aPayload;
+	}
+
+	/**
+	 * The objects reachable from the source without passing through an excluded
+	 * one, and the per-class counts of those.
+	 *
+	 * @param array<string, array<string, mixed>> $aObjects
+	 *
+	 * @return array{0: array<string, array<string, mixed>>, 1: array<string, int>}
+	 */
+	private static function withoutExcluded(\RelationGraph $oGraph, array $aObjects): array
+	{
+		$aClassOf = [];
+		$aRoots   = [];
+		foreach ($oGraph->_GetNodes() as $oNode) {
+			if (!$oNode instanceof \RelationObjectNode || $oNode->GetProperty('object') === null) {
+				continue;
+			}
+			$oObject = $oNode->GetProperty('object');
+			$sKey = get_class($oObject).'::'.$oObject->GetKey();
+			$aClassOf[$sKey] = get_class($oObject);
+			if (!$oNode->GetProperty('is_reached', false)) {
+				$aRoots[] = $sKey;
+			}
+		}
+
+		$aNeighbours = [];
+		foreach ($oGraph->_GetEdges() as $oEdge) {
+			$oSource = $oEdge->GetSourceNode();
+			$oSink   = $oEdge->GetSinkNode();
+			if (!$oSource instanceof \RelationObjectNode || !$oSink instanceof \RelationObjectNode
+				|| $oSource->GetProperty('object') === null || $oSink->GetProperty('object') === null) {
+				continue;
+			}
+			$sFrom = get_class($oSource->GetProperty('object')).'::'.$oSource->GetProperty('object')->GetKey();
+			$sTo   = get_class($oSink->GetProperty('object')).'::'.$oSink->GetProperty('object')->GetKey();
+			$aNeighbours[$sFrom][] = $sTo;
+			$aNeighbours[$sTo][]   = $sFrom;
+		}
+
+		$aSeen  = array_fill_keys($aRoots, true);
+		$aQueue = $aRoots;
+		while ($aQueue !== []) {
+			$sAt = array_shift($aQueue);
+			foreach ($aNeighbours[$sAt] ?? [] as $sNext) {
+				if (isset($aSeen[$sNext]) || ExclusionPolicy::ExcludesClass($aClassOf[$sNext] ?? '')) {
+					continue;
+				}
+				$aSeen[$sNext] = true;
+				$aQueue[] = $sNext;
+			}
+		}
+
+		$aKept  = [];
+		$aStats = [];
+		foreach ($aObjects as $sKey => $aObject) {
+			if (isset($aSeen[$sKey]) && !ExclusionPolicy::ExcludesClass((string)$aObject['class'])) {
+				$aKept[$sKey] = $aObject;
+				$aStats[$aObject['class']] = ($aStats[$aObject['class']] ?? 0) + 1;
+			}
+		}
+
+		return [$aKept, $aStats];
 	}
 
 	/**

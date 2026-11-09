@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -113,7 +114,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
 		}
 
-		if (!MetaModel::IsValidClass($class)) {
+		if (!ExclusionPolicy::Serves($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
@@ -132,7 +133,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		self::applyArchived($oSearch, $class, $archived);
 
 		foreach ($filters as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode)) {
+			if (!MetaModel::IsValidAttCode($class, $sAttCode) || ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)) {
 				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
 			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
@@ -146,7 +147,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 
 		$aResults = [];
-		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
+		// The rows of an excluded subclass are not in the set, so neither the rows nor the total (doc/adr/0012).
+		$oSet = new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'requested_class'  => $class,

@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\ExcludingModelReflection;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -97,6 +99,10 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		}
 
 		self::CheckQuery($oql);
+		$sUnproved = ExclusionPolicy::OqlRefusal($oql);
+		if ($sUnproved !== null) {
+			throw new ToolCallException($sUnproved);
+		}
 
 		$oSearch = DBObjectSearch::FromOQL($oql);
 		$class  = $oSearch->GetClass();
@@ -121,7 +127,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 
 		$aResults = [];
-		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
+		$oSet = new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'class' => $class,
@@ -204,7 +210,10 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		try {
 			$oInterpreter = new \OqlInterpreter($oql);
 			$oQuery = $oInterpreter->ParseQuery();
-			$oQuery->Check(new \ModelReflectionRuntime(), $oql);
+			// Against the datamodel as this channel serves it (doc/adr/0012): a class or an attribute the
+			// operator excluded is unknown to the checker, so the query is refused in its own words, in
+			// a join, a sub-query or a condition alike - and a query it cannot prove is refused.
+			$oQuery->Check(new ExcludingModelReflection(), $oql);
 		} catch (\OQLException $e) {
 			$sReason = method_exists($e, 'GetUserFriendlyDescription')
 				? (string)$e->GetUserFriendlyDescription()
@@ -216,10 +225,27 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 
 			throw new ToolCallException('Invalid OQL query. Reason: '.self::withoutEmptySuggestion($sReason).self::orderByHint($oql));
 		} catch (\Throwable $e) {
+			// An unknown class inside a sub-query reaches iTop's query builder, which refuses it with a
+			// plain exception. It is the same mistake as one the checker names, and is told the same way:
+			// otherwise the class the operator excluded - which the checker names cleanly - would be
+			// told apart from one that does not exist (doc/adr/0012).
+			$sUnknown = self::invalidClassIn($e);
+			if ($sUnknown !== null) {
+				throw new ToolCallException('Invalid OQL query. Reason: Unknown class "'.$sUnknown.'"');
+			}
 			// Not an OQL problem at all - a datamodel that will not reflect, or
 			// something under it. The caller cannot act on that one.
 			throw new ToolCallException(MCPHelper::OpaqueFailure('Could not check the OQL query', $e));
 		}
+	}
+
+	/**
+	 * The class a query builder refused as invalid, when that is why it threw: the class name only, which
+	 * the caller typed, and nothing else of what was thrown.
+	 */
+	private static function invalidClassIn(\Throwable $e): ?string
+	{
+		return preg_match('/called for an invalid class: "([A-Za-z_][A-Za-z0-9_]*)"/', $e->getMessage(), $aMatch) === 1 ? $aMatch[1] : null;
 	}
 
 	/**

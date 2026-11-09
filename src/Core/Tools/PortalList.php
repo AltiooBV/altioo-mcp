@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -247,7 +248,10 @@ class PortalList extends AbstractPortalTool
 			}
 		}
 
-		return $oPolicy->Bounded($oQuery, $sClass);
+		$oBounded = $oPolicy->Bounded($oQuery, $sClass);
+
+		// A list on a parent class holds the rows of its subclasses: the excluded ones are not among them (doc/adr/0012).
+		return $oBounded === null ? null : ExclusionPolicy::Narrowed($oBounded, $sClass);
 	}
 
 	/**

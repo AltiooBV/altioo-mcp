@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use DBObject;
 use DBObjectSearch;
@@ -77,10 +78,12 @@ final class PortalAccess extends ObjectAccess
 	#[\Override]
 	public function ShownOf(DBObject $oObject): \Closure
 	{
-		$aFlags = $this->oPolicy->Fields(get_class($oObject), PortalPolicy::MODE_VIEW, $oObject);
+		$sClass = get_class($oObject);
+		$aFlags = $this->oPolicy->Fields($sClass, PortalPolicy::MODE_VIEW, $oObject);
 
 		return static fn (string $sAttCode): bool => isset($aFlags[$sAttCode])
-			&& ($aFlags[$sAttCode] & OPT_ATT_HIDDEN) !== OPT_ATT_HIDDEN;
+			&& ($aFlags[$sAttCode] & OPT_ATT_HIDDEN) !== OPT_ATT_HIDDEN
+			&& !ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode);
 	}
 
 	/**
@@ -371,7 +374,7 @@ final class PortalAccess extends ObjectAccess
 	#[\Override]
 	public function Hides(string $sClass, int $iId): bool
 	{
-		return ObjectHistory::IsReserved($sClass) || $this->oPolicy->Readable($sClass, $iId) === null;
+		return ObjectHistory::IsReserved($sClass) || ExclusionPolicy::ExcludesClass($sClass) || $this->oPolicy->Readable($sClass, $iId) === null;
 	}
 
 	/** An object outside the portal's write scope, or the change log, which nothing here writes. */

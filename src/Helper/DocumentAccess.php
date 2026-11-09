@@ -256,13 +256,13 @@ final class DocumentAccess
 		// (doc/adr/0011-portal-mode-reads-and-adds-attachments.md).
 		$bPortalFile = $sClass === 'Attachment' && !$oAccess->AttachmentsAreObjects();
 
-		if (!MetaModel::IsValidClass($sClass) || (!$bPortalFile && !UserRights::IsActionAllowed($sClass, UR_ACTION_READ))) {
+		if (!ExclusionPolicy::Serves($sClass) || (!$bPortalFile && !UserRights::IsActionAllowed($sClass, UR_ACTION_READ))) {
 			throw new MCPDocumentException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 		if ($iId < 1) {
 			throw new MCPDocumentException('Invalid ID. Please specify a valid object ID.');
 		}
-		if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+		if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 			throw new MCPDocumentException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 		}
 
@@ -302,6 +302,11 @@ final class DocumentAccess
 		/** @var DBObject $oObject */
 		$oObject = $oSet->Fetch();
 		$oSet->Rewind();
+
+		// A file filed under an object of an excluded class is not there.
+		if (ExclusionPolicy::IsFiledUnderExcluded($oObject)) {
+			throw new MCPDocumentException("Object {$sClass}::{$iId} not found.");
+		}
 
 		// And again with the object in hand. Under the shipped addon this
 		// answers the same as above - it ignores the set for attributes - so

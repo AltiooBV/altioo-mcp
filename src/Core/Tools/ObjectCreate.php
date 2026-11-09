@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -187,12 +188,17 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		}
 		$aAction = $oPrepared === null ? [] : ['action' => trim($action)];
 
-		if (!MetaModel::IsValidClass($class)) {
+		if (!ExclusionPolicy::Serves($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		}
+		// A field iTop requires is excluded: no create could pass, and the setting is said to be why.
+		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
+		if ($sCreateRefusal !== null) {
+			throw new ToolCallException($sCreateRefusal);
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, null, $fields);
 		if ($sAccessRefusal !== null) {
