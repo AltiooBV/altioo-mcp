@@ -25,6 +25,9 @@ Add a toolset scope — `MCP-toolset-objects`, or any of the five the base exten
 keep a token to part of the surface. [Grading a token](../README.md#grading-a-token) in the
 README has the full set and how they combine.
 
+> The token's user needs the profiles described in the README's
+> [Granting access](../README.md#granting-access), or the token is refused at login.
+
 > The token is as strong as the user it belongs to. Grade the token *and* pair the user with a
 > functional profile that has no more rights than the job needs — the profile is the real blast
 > radius.
@@ -98,9 +101,10 @@ a URL and a header will work. Two things to know:
   reads natively. Prefer it if `Authorization` never reaches PHP in your deployment: under
   FastCGI, Apache drops that header unless `CGIPassAuth On` is in effect.
 - **A client with only a "Connect" button** expects OAuth discovery. This extension implements
-  no OAuth — put an OAuth-terminating proxy in front of iTop and set
-  `mcp_protected_resource_metadata` to the URL of the document it serves, so the `401` points
-  the client at it.
+  no OAuth. Either install the optional
+  [altioo-oauth-server](../README.md#endpoint) ("Or install altioo-oauth-server"), or put an
+  OAuth-terminating proxy in front of iTop and set `mcp_protected_resource_metadata` to the URL
+  of the document it serves, so the `401` points the client at it.
 
 ## Checking it works
 

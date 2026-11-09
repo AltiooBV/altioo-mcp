@@ -6,6 +6,7 @@ Context Protocol client) can search, read and update CMDB and ticketing objects.
 [Repository](https://github.com/AltiooBV/altioo-mcp) ·
 [Changelog](CHANGELOG.md) ·
 [Security](SECURITY.md) ·
+[Quick start](#quick-start) ·
 [Client setup](doc/clients.md) ·
 [Extending](doc/extending.md) ·
 [Troubleshooting](#troubleshooting) ·
@@ -20,6 +21,27 @@ Everything runs **inside iTop**, against `MetaModel` and `UserRights` directly. 
 separate service to deploy, no copy of the datamodel to keep in sync, and no REST hop: a
 client can never see or change more than the authenticated user could through the console,
 down to individual attributes and lifecycle stimuli.
+
+## Quick start
+
+Three steps; each links to the section that holds the detail.
+
+1. **Install.** Back up, open a maintenance window, unzip into `extensions/`, run the iTop
+   setup and tick the extension — [Installation](#installation). Optionally install
+   [altioo-oauth-server](https://github.com/AltiooBV/altioo-oauth-server) too, and set it up
+   first — [why and how](#endpoint) ("Or install altioo-oauth-server").
+2. **Give the profiles.** The account needs `MCP Services User` *plus* a functional profile
+   (for example `Support Agent`; never `MCP Services User` alone) *plus* a console profile.
+   Add `MCP Services User` to authent-token's `personal_tokens_allowed_profiles` (default
+   `array('Administrator')`): iTop refuses a personal token whose owner is neither an
+   Administrator nor holds a listed profile, as an invalid login — including a token
+   altioo-oauth-server issues — [Granting access](#granting-access). A portal-only user goes
+   through portal mode instead of the console profile.
+3. **Connect.** With altioo-oauth-server, add the endpoint URL in the client and click
+   **Connect**; there is no token to create. Without it, create a personal token with scope
+   `MCP-read` to start and paste it into the client config — [Client setup](doc/clients.md).
+   For a portal user an administrator creates it under **User management → Personal tokens**,
+   with an expiry within `mcp_portal_token_max_days`.
 
 ## Requirements
 
