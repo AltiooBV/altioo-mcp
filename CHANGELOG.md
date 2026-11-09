@@ -33,6 +33,10 @@ entry itself, not left to be inferred from it.
   MCP access can have their assistant read and add attachments** on what the portal shows them; withdraw it with
   `mcp_disabled_tools` or by leaving out the `documents` toolset. The stock `Portal user` profile is not widened.
   `core_class_list` says per class whether adding is possible (`attach`).
+  **Adding needs no right to create an `Attachment` in portal mode**, matching the portal itself, which the stock `Portal user`
+  profile does not hold either; the console still requires it. What gates it instead: the write scope on the object, the
+  attachment module allowing the class, a state not read-only for the portals, an edit form with a settable field, and a
+  write-grade token.
 
 - **`core_my_activity`: what did my assistant do in my name?** The audit trail was readable by administrators
   only; this tool gives any user their own calls, newest first, with `since`, `limit` and `offset`: when, which tool,

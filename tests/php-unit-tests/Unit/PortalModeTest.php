@@ -736,6 +736,19 @@ class PortalModeTest extends TestCase
 		$this->assertGreaterThan(5, $iChecked, 'the scan found too few portal-aware object tools to be working');
 	}
 
+	/**
+	 * ADR 0011: adding a file is a write, so a read-only token neither sees nor may call it in portal mode.
+	 */
+	public function testAReadOnlyTokenCannotAttachInPortalMode(): void
+	{
+		$oTool = new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach();
+		PortalMode::Remember('itop-portal');
+
+		$this->assertTrue(PortalMode::Serves($oTool));
+		$this->assertFalse($this->isHidden($oTool, 'core_object_attach'), 'core_object_attach to a portal user with a write token');
+		$this->assertTrue($this->isHidden($oTool, 'core_object_attach', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_object_attach writes, and a read-only token may not');
+	}
+
 	private static function bodyOf(string $sClass, string $sMethod): string
 	{
 		$oMethod = new ReflectionMethod($sClass, $sMethod);

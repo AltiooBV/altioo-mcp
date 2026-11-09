@@ -224,6 +224,24 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		ObjectAttach::execute('UserRequest', $this->iOwn, 'x.txt', base64_encode('x'), 'text/plain', 'contents', false);
 	}
 
+	/**
+	 * The portal needs no right on the class Attachment and portal mode asks none (ADR 0011); the console
+	 * does. The same user, with the same profile, is refused there.
+	 */
+	public function testTheConsoleStillRequiresTheRightToCreateAnAttachment(): void
+	{
+		$this->assertFalse((bool)UserRights::IsActionAllowed('Attachment', UR_ACTION_CREATE), 'the stock Portal user profile holds no such right');
+
+		PortalMode::Forget();
+		try {
+			ObjectAttach::execute('UserRequest', $this->iOwn, 'x.txt', base64_encode('x'), 'text/plain', null, false);
+			$this->fail('the console let a user without the right create an attachment');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('cannot create attachments', $e->getMessage());
+		}
+		$this->assertSame(0, $this->filesNamed('x.txt'));
+	}
+
 	private function file(string $sClass, int $iId, string $sName, string $sData): int
 	{
 		$oAttachment = MetaModel::NewObject('Attachment');

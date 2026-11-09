@@ -21,6 +21,10 @@ and the form, and so does portal mode:
   editable field — the three conditions under which the portal's upload field is not read-only. The stock `Portal user`
   profile has no right to create an `Attachment` (the class sits in the `Ticketing` group, which the profile does not hold),
   and the portal does not need one: it inserts the row itself. Portal mode does the same and **widens no profile**.
+  **Decided by Guy Couronne, 2026-11-09 ("Yes, as the portal"): in portal mode adding does not require the `Attachment`
+  create right, matching the portal itself; the console still requires it.** The gates that still apply are: the write scope
+  on the host object, `IsAttachmentAllowedForObject`, a state not read-only for the portals, an edit form with a settable
+  field, and a write-grade token (a read-only token neither sees nor may call `core_object_attach`).
 - **Same trace as the portal.** The attachment event fires, a `CMDBChangeOpAttachmentAdded` is written, and the change line is
   the user's plain name ([0009](0009-the-change-line-is-the-users-plain-name.md)); the reason goes in `change_comment`.
 - **Kept as they are:** dry run by default, MIME verification, `mcp_max_document_bytes`, the untrusted-content notice on what a
@@ -33,4 +37,5 @@ An operator who does not want it withdraws the `documents` toolset or the tools 
 Rejected: serving `Attachment` as a class in portal mode (reads and lists through UserRights, wider than the portal).
 Rejected: deleting (the portal's `allow_delete` is a configuration this module would have to mirror; not asked).
 
-Enforced by: `PortalAttachmentsTest`.
+Enforced by: `PortalAttachmentsTest` (including that the console still refuses a user without the create right) and
+`PortalModeTest` (a read-only token cannot attach).
