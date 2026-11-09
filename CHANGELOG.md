@@ -39,7 +39,8 @@ entry itself, not left to be inferred from it.
   appear in a join or sub-query of OQL. `ExclusionPolicy` is on the surface a tool pack may build on (`@api`): a pack
   that reads objects itself should ask it.
   **Not covered** (listed in the README and the ADR): notification events (`EventNotificationEmail` and the other `Event*`
-  classes are readable and can quote an excluded value; add `Event` to `mcp_excluded_classes` where that matters), objects
+  classes are readable and can quote an excluded value; if you exclude personal fields, also add `EventNotification` — not `Event`,
+  which would hide the audit trail and `core_my_activity`), objects
   named by class and id as text other than attachments, portal tab conditions, and what was written before an exclusion.
   **Before an iTop upgrade, or before removing an extension, check these two settings**: a name the datamodel no longer has
   makes the settings malformed and stops the endpoint for everyone until it is corrected. `log/error.log` says so at every

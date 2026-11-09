@@ -54,9 +54,13 @@ leaves out. None of these is a bug to be found later; each is a known edge of wh
   readable through this channel (checked on iTop 3.2: `Event`, `EventNotification`, `EventNotificationEmail`, `EventIssue`,
   `EventWebService`, `EventRestService`, `EventLoginUsage` and `EventOnObject` all answer a search by an administrator),
   and a notification's `subject` and `body` are text iTop rendered from an object, which may hold an excluded value. They
-  are **not** excluded by default. **Open, for the maintainer to decide:** exclude the `Event` classes by default within
-  this channel, or leave this as a named gap. Until then an operator who excludes an attribute should add `Event` (or the
-  notification classes) to `mcp_excluded_classes` too.
+  are **not** excluded by default. **Decided by Guy Couronne, 2026-11-09 ("Named gap, narrower"):** no Event class is
+  excluded by default; the defaults stay empty. An operator who excludes personal fields should also add
+  **`EventNotification`**, which covers `EventNotificationEmail`'s subject and body. **Not `Event`**: it is the parent of
+  `AltiooEventMCPService` and of iTop's login and web-service logs, so excluding it would hide this module's own audit trail
+  and `core_my_activity` with it. Checked: with `mcp_excluded_classes = array('EventNotification')`, `core_my_activity` still
+  lists the account's own calls, an administrator still reads the audit trail through the channel, and
+  `EventNotificationEmail` answers like an unknown class (`ExclusionRoutesTest`).
 - **Objects named by class and id as text**, other than `Attachment`: a class that stores an object's class and key as
   plain attributes is not followed by the exclusion rules, which follow keys and link sets.
 - **Portal tab conditions.** A portal tab is a condition from the brick's configuration; one on an excluded attribute still

@@ -500,6 +500,46 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		$this->assertStringNotContainsString('phone', $sJson, 'an excluded attribute code is listed');
 	}
 
+	/**
+	 * The advice for notification events (doc/adr/0012, "Not covered"): exclude EventNotification, never Event.
+	 * The audit trail and the account's own calls stay, and the notification classes answer as unknown.
+	 */
+	public function testExcludingEventNotificationLeavesTheAuditTrailAndMyActivity(): void
+	{
+		if (!MetaModel::IsValidClass('EventNotificationEmail')) {
+			$this->markTestSkipped('Needs notifications.');
+		}
+
+		$sLogin = 'excl-evt-'.bin2hex(random_bytes(3));
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Administrator'), 'Excl-Evt-'.bin2hex(random_bytes(3)).'!', $this->iPerson)->GetKey();
+		$oRow = new AltiooEventMCPService();
+		$oRow->Set('userinfo', $sLogin);
+		$oRow->Set('message', 'row');
+		$oRow->Set('mcp_method', 'tools/call');
+		$oRow->Set('mcp_name', 'core_object_get');
+		$oRow->Set('user_id', $iUser);
+		$oRow->DBInsertNoReload();
+
+		$this->exclude(['EventNotification'], []);
+		$this->assertFalse(MCPHelper::AccessSettingsAreMalformed());
+
+		UserRights::Login($sLogin);
+		try {
+			$this->assertNotSame([], ToolOutput::Decode(MyActivity::execute())['activity'], 'my activity lost the account\'s own calls');
+			$this->assertGreaterThan(0, ToolOutput::Decode(ObjectSearchByClass::execute('AltiooEventMCPService'))['total'], 'the audit trail is no longer readable');
+
+			foreach (['search' => fn (string $c) => ObjectSearchByClass::execute($c), 'get' => fn (string $c) => ObjectGet::execute($c, 1)] as $sRoute => $fRoute) {
+				$this->assertSame(
+					$this->outcome(static fn () => $fRoute('EventNotificationEmailz'), ['EventNotificationEmailz', 'EventNotificationEmail']),
+					$this->outcome(static fn () => $fRoute('EventNotificationEmail'), ['EventNotificationEmailz', 'EventNotificationEmail']),
+					"{$sRoute}: a notification class was told apart from one that does not exist"
+				);
+			}
+		} finally {
+			UserRights::Deimpersonate();
+		}
+	}
+
 	private static function profileId(string $sName): int
 	{
 		$oSearch = DBObjectSearch::FromOQL_AllData('SELECT URP_Profiles WHERE name = :name');

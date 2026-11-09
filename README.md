@@ -1280,8 +1280,10 @@ recalled. A setting that cannot be honoured stops the service rather than leavin
 **What the exclusions do not cover** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), "Not covered"):
 
 - **Notification events can quote an excluded value.** `EventNotificationEmail` and the other `Event*` classes are readable through
-  this channel, and a notification's subject and body are text iTop rendered from an object. They are not excluded by default;
-  add `Event` to `mcp_excluded_classes` if you exclude an attribute whose value a notification would carry.
+  this channel, and a notification's subject and body are text iTop rendered from an object. Nothing is excluded by default. **If
+  you exclude personal fields, also add `EventNotification`** to `mcp_excluded_classes`: it covers `EventNotificationEmail`'s subject
+  and body. **Not `Event`**: it is the parent of this module's own audit trail and of iTop's login and web-service logs, so
+  excluding it would hide them, and `core_my_activity` with them.
 - Objects named by class and id as plain text, other than attachments, are not followed.
 - A portal tab whose condition is on an excluded attribute still partitions the rows, so a count by that tab can still be told
   by it.
