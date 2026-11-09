@@ -1261,6 +1261,7 @@ final class WritePlan
 		// does not say which class (doc/adr/0012).
 		foreach ([$oPlan->ListDeletes(), $oPlan->ListUpdates()] as $aClasses) {
 			foreach (array_keys($aClasses) as $sReached) {
+				/** @psalm-suppress InvalidCast */
 				if (ExclusionPolicy::ExcludesClass((string)$sReached)) {
 					throw new ToolCallException("{$sWhat} cannot be deleted here: it reaches related objects this channel does not serve. Do it in the iTop console.");
 				}

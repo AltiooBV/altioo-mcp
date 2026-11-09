@@ -251,6 +251,7 @@ class PortalList extends AbstractPortalTool
 		$oBounded = $oPolicy->Bounded($oQuery, $sClass);
 
 		// A list on a parent class holds the rows of its subclasses: the excluded ones are not among them (doc/adr/0012).
+		/** @psalm-suppress InvalidReturnStatement DBObjectSearch is a DBSearch; Psalm has no iTop checkout to say so. */
 		return $oBounded === null ? null : ExclusionPolicy::Narrowed($oBounded, $sClass);
 	}
 
