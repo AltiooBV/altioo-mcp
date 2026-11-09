@@ -178,6 +178,9 @@ final class PortalDescription
 			'reached_by'  => $oPolicy->ReachedBy($sClass),
 			'read'        => true,
 			'edit'        => $oPolicy->WriteSet($sClass) !== null,
+			// Whether a file can be added at all: the class takes attachments and may be edited. A state or an
+			// edit form can still refuse one object; core_object_get says may_attach for that.
+			'attach'      => $oPolicy->WriteSet($sClass) !== null && PortalPolicy::ShowsAttachments(MetaModel::NewObject($sClass)),
 			'create'      => $aCreate,
 			'create_chosen_by_portal' => $aChosen,
 			'stimuli'     => $aStimuli,

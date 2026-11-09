@@ -17,6 +17,10 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -50,7 +54,7 @@ use UserRights;
  *
  * @since 1.0.0
  */
-class ObjectAttach extends AbstractMCPTool
+class ObjectAttach extends AbstractMCPTool implements PortalAware
 {
 	/** iTop's own attachment class, from the module that may or may not be installed. */
 	private const ATTACHMENT_CLASS = 'Attachment';
@@ -73,6 +77,12 @@ class ObjectAttach extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
+		if (PortalMode::Current() !== null) {
+			return 'Add a file to an object the portal lets this user add attachments to: core_object_get says so with may_attach. '
+				.'The content is passed base64-encoded, and must be content you already hold: nothing is downloaded. '
+				.'The dry run validates the file and reports where it would land. Files cannot be removed from here.';
+		}
+
 		return 'Attach a file to an iTop object, or set one of its document attributes. '
 			.'The content is passed base64-encoded, and must be content you already hold: this tool does not download anything. '
 			.'Leave att_code out to add an Attachment to the object, the way the console does; give it to set a specific blob attribute, e.g. a picture. '
@@ -123,6 +133,24 @@ class ObjectAttach extends AbstractMCPTool
 	}
 
 	public function getInputSchema(): ?array
+	{
+		$aSchema = $this->consoleSchema();
+		if (PortalMode::Current() !== null) {
+			// The portal attaches files as attachments only, and its client reads the
+			// descriptions of every tool each time: said once, short.
+			unset($aSchema['properties']['att_code']);
+			$aSchema['properties']['class']['description'] = 'Class of the object, e.g. UserRequest.';
+			$aSchema['properties']['id']['description'] = 'Its ID.';
+			$aSchema['properties']['filename']['description'] = 'Name the file is stored under, e.g. invoice.pdf.';
+			$aSchema['properties']['content_base64']['description'] = 'The file, base64-encoded; content you already hold.';
+			$aSchema['properties']['mimetype']['description'] = 'Media type, e.g. application/pdf. Checked against the bytes; left out, it is read off the file.';
+		}
+
+		return $aSchema;
+	}
+
+	/** @return array<string, mixed> */
+	private function consoleSchema(): array
 	{
 		return [
 			'type'       => 'object',
@@ -189,6 +217,11 @@ class ObjectAttach extends AbstractMCPTool
 		// every branch and every reported `simulated` below is already right.
 		$simulate = WritePlan::Simulated($simulate);
 
+		$bPortal = PortalMode::Current() !== null;
+		if ($bPortal && $att_code !== null && $att_code !== '') {
+			throw new ToolCallException('The portal attaches files as attachments; setting a document attribute is not offered. Leave att_code out.');
+		}
+
 		$oTarget = self::target($class, $id);
 		[$oDocument, $sMimeTypeNote] = self::document($filename, $content_base64, $mimetype);
 
@@ -231,6 +264,13 @@ class ObjectAttach extends AbstractMCPTool
 		if ($oSet->Count() === 0) {
 			throw new ToolCallException("Object {$sClass}::{$iId} not found."); // hide that the object exists
 		}
+		try {
+			if (ObjectAccess::Current()->Hides($sClass, $iId)) {
+				throw new ToolCallException("Object {$sClass}::{$iId} not found."); // out of the portal's reach: the same answer
+			}
+		} catch (MCPPortalException $e) {
+			throw new ToolCallException($e->getMessage());
+		}
 
 		// Fetched before the rights check and rewound after, not the other way
 		// round: the check is handed this same set, the addon is free to iterate
@@ -253,6 +293,16 @@ class ObjectAttach extends AbstractMCPTool
 
 		if ($oObject->IsReadOnly()) {
 			throw new ToolCallException("Object {$sClass}::{$iId} is read-only, cannot attach to it.");
+		}
+
+		// The portal's gates, on top of the rights above: its write scope, and
+		// the conditions under which its upload field is editable.
+		$oAccess = ObjectAccess::Current();
+		if (!$oAccess->AttachmentsAreObjects()) {
+			$sRefusal = $oAccess->RefusalToAttach($oObject);
+			if ($sRefusal !== null) {
+				throw new ToolCallException($sRefusal);
+			}
 		}
 
 		return $oObject;
@@ -345,7 +395,11 @@ class ObjectAttach extends AbstractMCPTool
 				.'Call core_class_schema on the class and pass att_code, or install the attachments module.'
 			);
 		}
-		if (!UserRights::IsActionAllowed(self::ATTACHMENT_CLASS, UR_ACTION_CREATE)) {
+		// The portal inserts the row itself and asks no right on the class,
+		// which the stock profile does not hold (doc/adr/0011): what gates it
+		// is the host object and the form, checked in target().
+		$bPortal = !ObjectAccess::Current()->AttachmentsAreObjects();
+		if (!$bPortal && !UserRights::IsActionAllowed(self::ATTACHMENT_CLASS, UR_ACTION_CREATE)) {
 			throw new ToolCallException('Access denied: cannot create attachments.');
 		}
 
@@ -381,6 +435,9 @@ class ObjectAttach extends AbstractMCPTool
 		// move on that answer is to attach the file again.
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
+			if ($bPortal) {
+				self::leavePortalTrace($oTarget, $oAttachment);
+			}
 
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
 				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
@@ -418,6 +475,25 @@ class ObjectAttach extends AbstractMCPTool
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
 		}
+	}
+
+	/**
+	 * What the portal leaves when a file is added: the history line, and the
+	 * event the attachment module raises (ObjectFormManager::FinalizeAttachments).
+	 * The line is written once the file is attached, never for a dry run.
+	 */
+	private static function leavePortalTrace(DBObject $oTarget, DBObject $oAttachment): void
+	{
+		$oDocument = $oAttachment->Get('contents');
+		$oChangeOp = new \CMDBChangeOpAttachmentAdded();
+		$oChangeOp->Set('attachment_id', $oAttachment->GetKey());
+		$oChangeOp->Set('filename', $oDocument instanceof ormDocument ? $oDocument->GetFileName() : '');
+		$oChangeOp->Set('objclass', get_class($oTarget));
+		$oChangeOp->Set('objkey', $oTarget->GetKey());
+		$oChangeOp->DBInsertNoReload();
+
+		$aData = ['attachment' => $oAttachment];
+		$oTarget->FireEvent(EVENT_ADD_ATTACHMENT_TO_OBJECT, $aData);
 	}
 
 	/**
