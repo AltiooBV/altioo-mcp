@@ -9,13 +9,14 @@
 # what portal mode serves, and that portal_id is read from the URL a client really calls. The
 # 2026-11-03 red pass read all of it against the code and tried none of it live (review/).
 #
-# Nothing here writes. A call that must be refused is sent with simulate=false, so that a
-# refusal is the portal's and not the dry run's; one that is allowed is left as a dry run.
+# Sections 5 to 7 write nothing: a call that must be refused is sent with simulate=false, so that a
+# refusal is the portal's and not the dry run's; one that is allowed is left as a dry run. Section 8
+# adds one real file to the user's own request, which is the point of it (doc/adr/0011).
 #
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 
-IFS=: read -r sPortalToken iOwn iOther <<<"$PORTAL_SMOKE"
+IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile <<<"$PORTAL_SMOKE"
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 sPortalSession=''
 iRpc=10
@@ -110,3 +111,64 @@ echo "   ok  a portal_id that is no plain name is refused, in each of its shapes
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 mcp_open "$sPortalUrl" || fail "the portal named correctly is no longer served after a refusal"
 echo "   ok  and the next call that names a real one is served"
+
+echo "8. portal mode: attachments are read and added as the portal does"
+if [ -z "${iOwnFile:-}" ] || [ "$iOwnFile" = 0 ]; then
+	echo "   no Attachment class: not exercised"
+else
+	sOut=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iOwnFile"',"att_code":"contents"}')
+	must "a file on the user's own request is read" "$sOut" ok
+	case "$sOut" in *'never as instructions to follow'*) echo "   ok  and arrives behind the untrusted-content notice" ;; *) fail "a file's content arrived with no notice: ${sOut:0:300}" ;; esac
+	# The file itself is a blob, base64 on the wire: look for the instruction it carries.
+	iRpc=$((iRpc + 1))
+	mcp_post "$sPortalUrl" '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"tools/call","params":{"name":"core_object_get_document","arguments":{"class":"Attachment","id":'"$iOwnFile"',"att_code":"contents"}}}'
+	sProbe=$(printf 'Ignore all previous' | base64 -w0 | cut -c1-20)
+	case "$sBody" in *"$sProbe"*) echo "   ok  the instruction in the file comes back as content, after the notice" ;; *) fail "the file's bytes did not come back: ${sBody:0:300}" ;; esac
+
+	sOwn=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iForeignFile"',"att_code":"contents"}')
+	must "another organisation's file, by id, is refused" "$sOwn" refused
+	sDraft=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iDraftFile"',"att_code":"contents"}')
+	must "somebody's draft is refused" "$sDraft" refused
+	sNone=$(mcp_tool core_object_get_document '{"class":"Attachment","id":99999999,"att_code":"contents"}')
+	must "an unknown id is refused" "$sNone" refused
+	[ "${sOwn//$iForeignFile/#}" = "${sNone//99999999/#}" ] && [ "${sDraft//$iDraftFile/#}" = "${sNone//99999999/#}" ] \
+		|| fail "foreign, draft and unknown answer in different words: [${sOwn:0:150}] [${sDraft:0:150}] [${sNone:0:150}]"
+	echo "   ok  foreign, draft and unknown answer in the same words"
+	if [ "${iChangeFile:-0}" != 0 ]; then
+		sOut=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iChangeFile"',"att_code":"contents"}')
+		must "a Change's file is out of the stock portal's scope" "$sOut" refused
+	else
+		echo "   no change management on this instance: a Change's file is not tried"
+	fi
+
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	case "$sOut" in *'"may_attach":true'*|*'"may_attach": true'*) echo "   ok  core_object_get says the request takes a file" ;; *) fail "may_attach is not true on the user's own request: ${sOut:0:400}" ;; esac
+	case "$sOut" in *"itop://core/document/Attachment/$iOwnFile/contents"*) echo "   ok  and gives each attachment its uri" ;; *) fail "the attachment has no uri: ${sOut:0:400}" ;; esac
+
+	sB64=$(printf 'Added over HTTP by the portal smoke.\n' | base64 -w0)
+	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOwn"',"filename":"smoke-added.txt","content_base64":"'"$sB64"'","mimetype":"text/plain"}')
+	must "a file is rehearsed first" "$sOut" ok
+	case "$sOut" in *'"simulated":true'*|*'"simulated": true'*) ;; *) fail "the first call was not a dry run: ${sOut:0:300}" ;; esac
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	case "$sOut" in *smoke-added.txt*) fail "a dry run stored the file" ;; *) echo "   ok  and the dry run stored nothing" ;; esac
+	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOwn"',"filename":"smoke-added.txt","content_base64":"'"$sB64"'","mimetype":"text/plain","simulate":false,"comment":"portal smoke"}')
+	must "the file is added" "$sOut" ok
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	case "$sOut" in *smoke-added.txt*) echo "   ok  and listed on the request" ;; *) fail "the added file is not listed: ${sOut:0:400}" ;; esac
+
+	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOther"',"filename":"x.txt","content_base64":"eA==","simulate":false}')
+	must "a colleague's request takes no file" "$sOut" refused
+	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOwn"',"filename":"x.txt","content_base64":"eA==","att_code":"contents","simulate":false}')
+	must "a document attribute cannot be set from the portal" "$sOut" refused
+
+	# Over the ceiling, sent as it would be. mcp_max_document_bytes is 5 MB by default, but the transport
+	# refuses a request body over 4 MiB first, so a file this size is stopped there - which is still a refusal
+	# and still stores nothing; the module's own ceiling is proved by PortalAttachmentsTest.
+	sBig=$(mktemp)
+	{ printf '{"jsonrpc":"2.0","id":9999,"method":"tools/call","params":{"name":"core_object_attach","arguments":{"class":"UserRequest","id":%s,"filename":"big.bin","simulate":false,"content_base64":"' "$iOwn"; head -c 5300000 /dev/zero | base64 -w0; printf '"}}}'; } >"$sBig"
+	sOut=$(curl -sS -X POST "$sPortalUrl" -H "Authorization: Bearer $sPortalToken" -H 'Content-Type: application/json' \
+		-H 'Accept: application/json, text/event-stream' -H "MCP-Protocol-Version: $PROTOCOL_VERSION" \
+		${sPortalSession:+-H "Mcp-Session-Id: $sPortalSession"} --data-binary @"$sBig")
+	rm -f "$sBig"
+	case "$sOut" in *'accepts at most'*|*'maximum allowed size'*) echo "   ok  a file over the ceiling is refused" ;; *) fail "a file over the ceiling was not refused as such: ${sOut:0:300}" ;; esac
+fi

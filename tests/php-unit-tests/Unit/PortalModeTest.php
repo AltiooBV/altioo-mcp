@@ -703,6 +703,7 @@ class PortalModeTest extends TestCase
 	 * or describes them asks the portal - through the mode-aware access, the
 	 * portal's description, or the portal's policy - and never answers from
 	 * UserRights alone, which grants "Portal user" read on every class.
+	 * DocumentAccess::Fetch() is the one helper that asks it on a tool's behalf.
 	 */
 	public function testEveryPortalAwareObjectToolAsksThePortal(): void
 	{
@@ -725,7 +726,7 @@ class PortalModeTest extends TestCase
 				$sSource .= (string)file_get_contents((string)$oClass->getFileName());
 			}
 			$this->assertMatchesRegularExpression(
-				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)|PortalList::Resolve\(/',
+				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)|PortalList::Resolve\(|DocumentAccess::Fetch\(/',
 				$sSource,
 				"{$sName} is served in portal mode without asking the portal"
 			);

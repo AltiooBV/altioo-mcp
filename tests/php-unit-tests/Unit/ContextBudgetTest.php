@@ -147,7 +147,7 @@ class ContextBudgetTest extends TestCase
 	/**
 	 * What a portal user is told: the tools portal mode serves, in portal mode,
 	 * where descriptions and schemas differ from the console's. Measured with
-	 * core_my_activity served there (doc/adr/0010).
+	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050).
 	 */
 	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
 	{
@@ -169,8 +169,8 @@ class ContextBudgetTest extends TestCase
 			MCPRegistry::Clear();
 		}
 
-		$this->assertLessThanOrEqual(8100, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
-		$this->assertLessThanOrEqual(6800, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
+		$this->assertLessThanOrEqual(8850, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(8050, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
 	public function testTheInstructionsDoNotGrowPastTheirBudget(): void
