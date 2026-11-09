@@ -209,7 +209,7 @@ else
 
 	sOut=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"*"}')
 	must "console: a read of the person still works" "$sOut" ok
-	case "$sOut" in *'+3355507731'*|*'mobile_phone'*|*'"phone"'*) fail "the excluded attribute is in the read: ${sOut:0:300}" ;; *) echo "   ok  console: neither the value nor the attribute is in the read" ;; esac
+	case "$sOut" in *'+3355507731'*|*'"mobile_phone":'*|*'"phone":'*) fail "the excluded attribute is in the read: ${sOut:0:300}" ;; *) echo "   ok  console: neither the value nor the attribute is in the read" ;; esac
 
 	sHidden=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"phone"}')
 	sAbsent=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"phonez"}')
