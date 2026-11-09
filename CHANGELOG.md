@@ -23,7 +23,7 @@ entry itself, not left to be inferred from it.
 ### Added
 
 - **`mcp_excluded_classes` and `mcp_excluded_attributes`: what this channel never serves**
-  ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), proposed — not yet accepted).
+  ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), decided by the maintainer).
   Both are empty by default, so nothing changes until an operator sets one. Classes (with their subclasses) and
   attributes (per class, inherited by subclasses) listed there are **absent** from this endpoint for every caller in
   both modes, Administrator and Basic authentication included: every tool answers as it would for a class or an attribute
@@ -38,6 +38,13 @@ entry itself, not left to be inferred from it.
   attribute that is excluded makes creating that class impossible here; a class that has an excluded subclass cannot
   appear in a join or sub-query of OQL. `ExclusionPolicy` is on the surface a tool pack may build on (`@api`): a pack
   that reads objects itself should ask it.
+  **Not covered** (listed in the README and the ADR): notification events (`EventNotificationEmail` and the other `Event*`
+  classes are readable and can quote an excluded value; add `Event` to `mcp_excluded_classes` where that matters), objects
+  named by class and id as text other than attachments, portal tab conditions, and what was written before an exclusion.
+  **Before an iTop upgrade, or before removing an extension, check these two settings**: a name the datamodel no longer has
+  makes the settings malformed and stops the endpoint for everyone until it is corrected. `log/error.log` says so at every
+  request ("Itop configuration parameter for exclusions: … Nothing is served to anyone until it is corrected"); a client
+  authenticates and is served no tools, resources or prompts, with no error of its own.
 
 - **Portal mode reads and adds attachments, as the portal does; deleting stays in the portal**
   ([ADR 0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md), decided by the maintainer).

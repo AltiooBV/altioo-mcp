@@ -1,8 +1,8 @@
 # 0012 — An operator can exclude classes and attributes from this channel
 
 - Date: 2026-11-09
-- Decided by: proposed, for Guy Couronne to accept or amend
-- Status: proposed
+- Decided by: Guy Couronne, 2026-11-09 ("Accept, amended": the two amendments below)
+- Status: accepted
 
 The only lever an operator has on what leaves through this endpoint is the profile of the account, which also changes
 what that account may do in the console. There is no way to say "`private_log` and phone numbers do not go to a model, and
@@ -45,6 +45,43 @@ put in front of an assistant.
 - **A mandatory excluded attribute makes creating the class impossible through this channel.** The refusal says that this
   setting is why, without naming the field.
 
+## Not covered
+
+Stated plainly, because a security setting that reads as complete when it is not is worse than one that says what it
+leaves out. None of these is a bug to be found later; each is a known edge of what this channel can promise.
+
+- **Notification events can quote an excluded value.** `EventNotificationEmail` and the other `Event*` classes are
+  readable through this channel (checked on iTop 3.2: `Event`, `EventNotification`, `EventNotificationEmail`, `EventIssue`,
+  `EventWebService`, `EventRestService`, `EventLoginUsage` and `EventOnObject` all answer a search by an administrator),
+  and a notification's `subject` and `body` are text iTop rendered from an object, which may hold an excluded value. They
+  are **not** excluded by default. **Open, for the maintainer to decide:** exclude the `Event` classes by default within
+  this channel, or leave this as a named gap. Until then an operator who excludes an attribute should add `Event` (or the
+  notification classes) to `mcp_excluded_classes` too.
+- **Objects named by class and id as text**, other than `Attachment`: a class that stores an object's class and key as
+  plain attributes is not followed by the exclusion rules, which follow keys and link sets.
+- **Portal tab conditions.** A portal tab is a condition from the brick's configuration; one on an excluded attribute still
+  partitions the rows, so a count by that tab can still be told by that condition. The attributes tabs and areas group by
+  are dropped; the conditions are not rewritten.
+- **What was written before an exclusion.** Audit rows (`AltiooEventMCPService`: `Class::id` and attribute codes, never
+  values) and the object history written earlier stay as they are. History **rows about an excluded attribute are** left
+  out of `core_object_history`; the audit rows are the administrator's and are not rewritten.
+- **A class with an excluded subclass in OQL** cannot be joined or sub-queried: refused, without naming the class.
+- **Case logs and free text** are one attribute each: excluding a log excludes all of it, and an excluded value quoted
+  inside another attribute's text (a description that pastes a phone number) is not found and not removed.
+- **iTop 3.2's combined long friendly name** is not consulted, because iTop calls a function it does not define; the short
+  and the complementary names are.
+- **The whole instance stops on a bad setting** (see Amendment 2): for everyone, with nothing served.
+
+## Amendment 2 — a name that goes away stops the endpoint
+
+A class or an attribute listed in a setting that the datamodel no longer has — after an iTop upgrade that renames or
+removes it, or after an extension that declared it is uninstalled — makes the settings **malformed**, and the endpoint
+serves nothing to anyone until the list is corrected. That is the same rule as a typo, and it is deliberate: a setting that
+quietly stops excluding is the failure this one exists to prevent. **Check these two settings before upgrading iTop or
+removing an extension.** The operator sees it in `log/error.log`, once per request, as "Itop configuration parameter for
+exclusions: ... Nothing is served to anyone until it is corrected"; a client authenticates and is then served no tools,
+resources or prompts, so it looks as if the server has nothing, and says nothing more.
+
 ## Consequences
 
 An operator who excludes `Person.phone` loses it from every read, filter, sort and write on this channel, including the
@@ -54,5 +91,7 @@ the cost of a silently ignored one would be a data leak, which is why the first 
 Rejected: a profile-based mechanism (changes the console, which is the point it should not). Rejected: masking an excluded
 value as `***` as sensitive attributes are (it confirms the attribute exists and holds something). Rejected: a warning for an
 unknown entry (a security setting that does nothing is worse than one that stops the service).
+
+Amendment 1 (the "Not covered" section) and Amendment 2 are the maintainer's, 2026-11-09.
 
 Enforced by: `ExclusionPolicyTest`, `ExclusionRoutesTest` (every tool × route, hidden equals absent) and the HTTP smoke.

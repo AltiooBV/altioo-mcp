@@ -526,6 +526,13 @@ unzip the new version over the old directory and re-run the setup, and read
 [CHANGELOG.md](CHANGELOG.md) first — a major version means an identifier or a default that
 clients and tool packs depend on has changed.
 
+**Before an iTop upgrade, or before removing an extension: check `mcp_excluded_classes` and `mcp_excluded_attributes`.** A class or an
+attribute listed there that the datamodel no longer has — renamed or removed by the upgrade, or declared by an extension you
+uninstalled — makes the setting malformed, and **the endpoint then serves nothing to anyone** until the list is corrected: a
+quietly shrinking exclusion is the failure the setting exists to prevent. You will see it in `log/error.log`, at every request:
+"Itop configuration parameter for exclusions: … Nothing is served to anyone until it is corrected", naming what is wrong. A client
+sees no error: it authenticates and is served no tools, resources or prompts, so it looks as if the server has nothing.
+
 **After an iTop core upgrade, recompile.** Upgrading iTop itself does not touch this
 extension's files, but it does rewrite the compiled datamodel — and until the setup is re-run,
 the compiled copy iTop serves has no MCP module in it. The endpoint returns iTop's own
@@ -1269,6 +1276,19 @@ private log do not go through this channel" and change nothing in the console. T
 both modes, and an excluded name is absent rather than refused. **They narrow the channel, not the account:** someone
 holding the same account reads the same data in the console, and what a model has already been given is not
 recalled. A setting that cannot be honoured stops the service rather than leaving the field open.
+
+**What the exclusions do not cover** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), "Not covered"):
+
+- **Notification events can quote an excluded value.** `EventNotificationEmail` and the other `Event*` classes are readable through
+  this channel, and a notification's subject and body are text iTop rendered from an object. They are not excluded by default;
+  add `Event` to `mcp_excluded_classes` if you exclude an attribute whose value a notification would carry.
+- Objects named by class and id as plain text, other than attachments, are not followed.
+- A portal tab whose condition is on an excluded attribute still partitions the rows, so a count by that tab can still be told
+  by it.
+- What was written before an exclusion: audit rows (`Class::id` and attribute codes, never values) stay as they are.
+- A class with an excluded subclass cannot appear in an OQL join or sub-query.
+- Free text is one attribute each: a value quoted inside another attribute's text is neither found nor removed.
+- A name the datamodel no longer has stops the endpoint for everyone (below).
 
 **Personal data.** iTop objects routinely contain personal data — callers, agents, contact
 details, free text in logs. Nothing here filters that beyond iTop's own per-attribute read
