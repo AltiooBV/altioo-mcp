@@ -362,10 +362,21 @@ final class ExclusionPolicy
 	{
 		/** @var array<string, array<string, mixed>> $aQueries */
 		$aQueries = MetaModel::EnumRelationQueries($sClass, $sRelation, $bDown);
-		if (!self::IsActive()) {
-			return $aQueries;
-		}
 
+		return self::IsActive() ? self::FilterRelationQueries($aQueries, $bDown) : $aQueries;
+	}
+
+	/**
+	 * The relation queries that do not lead to an excluded class, from what iTop knows of each.
+	 *
+	 * Public so that it can be tested on queries a datamodel may declare in any form.
+	 *
+	 * @param array<string, array<string, mixed>> $aQueries Query name => what iTop knows of it.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function FilterRelationQueries(array $aQueries, bool $bDown = true): array
+	{
 		$sKey = $bDown ? 'sQueryDown' : 'sQueryUp';
 		foreach ($aQueries as $sName => $aInfo) {
 			$sTarget = '';
