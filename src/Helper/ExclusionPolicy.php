@@ -349,6 +349,38 @@ final class ExclusionPolicy
 	}
 
 	/**
+	 * The relation queries a class has for a relation and a direction, less those that lead to an excluded class.
+	 *
+	 * What iTop calls a relation query is keyed by the class that defines it and the neighbour it leads to
+	 * (`Server_hypervisor`), and selects a target class (`SELECT Hypervisor AS o ...`): the key is no class name, so the
+	 * check is on what the query selects and on the class that defines it. A query whose target cannot be read is left out
+	 * while anything is excluded, rather than served unchecked.
+	 *
+	 * @return array<string, array<string, mixed>> Query name => what iTop knows of it.
+	 */
+	public static function RelationQueries(string $sClass, string $sRelation, bool $bDown = true): array
+	{
+		/** @var array<string, array<string, mixed>> $aQueries */
+		$aQueries = MetaModel::EnumRelationQueries($sClass, $sRelation, $bDown);
+		if (!self::IsActive()) {
+			return $aQueries;
+		}
+
+		$sKey = $bDown ? 'sQueryDown' : 'sQueryUp';
+		foreach ($aQueries as $sName => $aInfo) {
+			$bTargetRead = isset($aInfo[$sKey]) && is_string($aInfo[$sKey])
+				&& preg_match('/^\s*SELECT\s+([A-Za-z_][A-Za-z0-9_]*)/i', $aInfo[$sKey], $aMatch) === 1;
+			$sDefinedIn = isset($aInfo['sDefinedInClass']) && is_string($aInfo['sDefinedInClass']) ? $aInfo['sDefinedInClass'] : '';
+
+			if (!$bTargetRead || self::ExcludesClass($aMatch[1]) || ($sDefinedIn !== '' && self::ExcludesClass($sDefinedIn))) {
+				unset($aQueries[$sName]);
+			}
+		}
+
+		return $aQueries;
+	}
+
+	/**
 	 * Whether the object is a file filed under an object of an excluded class:
 	 * an Attachment names its host by class and id, not by a key that
 	 * {@see ExcludesAttribute()} could follow.
