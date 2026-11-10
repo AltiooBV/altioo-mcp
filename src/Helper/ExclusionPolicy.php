@@ -54,7 +54,10 @@ final class ExclusionPolicy
 	/**
 	 * The settings as the datamodel-free half of the rule reads them.
 	 *
-	 * Public for the unit suite, which has no configuration to read from.
+	 * Public for the unit suite, which has no configuration to read from: no promise to a tool pack, whatever the class's own
+	 * tag says. {@see IsMalformed()} and {@see ExcludesClass()} are what to call.
+	 *
+	 * @internal
 	 *
 	 * @return array{classes: array<string, string>, attributes: array<string, array<string, string>>, problem: ?string}
 	 */
@@ -97,7 +100,10 @@ final class ExclusionPolicy
 	/**
 	 * The exempt profiles as the datamodel-free half of the rule reads them: a list of non-empty names.
 	 *
-	 * Public for the unit suite, which has no configuration to read from.
+	 * Public for the unit suite, which has no configuration to read from: no promise to a tool pack, whatever the class's own
+	 * tag says. {@see IsExempt()} is what to call.
+	 *
+	 * @internal
 	 *
 	 * @return array{profiles: array<int, string>, problem: ?string}
 	 */
@@ -508,7 +514,14 @@ final class ExclusionPolicy
 		return null;
 	}
 
-	/** Forgets what was read, for a suite that changes the configuration between cases. */
+	/**
+	 * Forgets what was read, for a suite that changes the configuration between cases.
+	 *
+	 * Public for the tests: no promise to a tool pack, whatever the class's own tag says. A request reads its settings
+	 * once, so nothing outside a test has a reason to call it.
+	 *
+	 * @internal
+	 */
 	public static function Forget(): void
 	{
 		self::$aCache = null;
