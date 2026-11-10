@@ -21,7 +21,8 @@ put in front of an assistant.
   same column as `Ticket.caller_id`, so excluding it on one and not the other would leave a filter, a sort or a search on
   the parent as an oracle for the child. The parent therefore loses the attribute for all its rows.
 - **For everyone, in both modes.** Administrator, Basic authentication, a token of any grade and portal mode included, as
-  `mcp_read_only` is. No profile or scope lifts it.
+  `mcp_read_only` is. No scope lifts it; the one thing that does is the **exempt profile** an administrator grants
+  ([0013](0013-an-exempt-profile-is-served-what-is-excluded.md), which amends this line).
 - **Excluded is absent.** An excluded class answers exactly as an unknown class does (`MCPHelper::UnreadableClassRefusal`), an
   excluded attribute as an unknown attribute. Not "excluded": that would be an oracle for which classes and attributes exist
   and are sensitive. A listing, a schema, a search, a filter, a sort, a count and its buckets, a history, a document, a write
