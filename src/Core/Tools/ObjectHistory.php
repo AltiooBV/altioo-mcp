@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -159,11 +158,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
-		try {
-			$oAccess = ObjectAccess::Current();
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
 
 		// The portal's refusal first, so that it is phrased as the portal's.
 		if (!$oAccess->ShowsHistory()) {
@@ -178,11 +173,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
 		$sFinalClass = get_class($oObject);
 
-		try {
-			$fShows = $oAccess->ShownOf($oObject);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$fShows = self::portalRefusal(static fn () => $oAccess->ShownOf($oObject));
 
 		// A field the portal hides is answered as a code the class lacks, so
 		// this cannot map out what the portal withholds.

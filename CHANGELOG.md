@@ -198,6 +198,10 @@ entry itself, not left to be inferred from it.
     their signatures and their purpose, and `Compose()` stays for at least one minor. What a pack
     should know: the reason it passes to `Explain()` is now kept on the audit row only, so with
     `log_mcp_service => false` it is not kept at all.
+- **`AbstractMCPTool::portalRefusal()`: one place turns a portal's `MCPPortalException` into the `ToolCallException` a client
+  is answered with** (`protected static`, `@since 1.3.0`, additive). The core tools had seventeen copies of that `try`/`catch`.
+  What a tool returns does not change, and neither does a signature a pack subclasses. A pack's own tool may use it:
+  `self::portalRefusal(static fn () => ObjectAccess::Current())`.
 
 ### Fixed
 

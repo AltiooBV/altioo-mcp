@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -127,9 +126,8 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
 		}
 
-		try {
-			$oAccess = ObjectAccess::Current();
-
+		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
+		[$sFinalClass, $aObject] = self::portalRefusal(static function () use ($oAccess, $class, $id, $output_fields): array {
 			// The object gate before the object is read, so that a refusal
 			// cannot tell that it exists; the leaf's own rights are asked too.
 			$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
@@ -153,9 +151,8 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			$aObject['rights'] = $oAccess->RightsOn($oObject, $oInstanceSet);
 			$aObject['stimuli'] = $oAccess->StimuliOn($oObject, $aObject['rights'], $oInstanceSet);
 			$aObject += $oAccess->Extras($oObject);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+			return [$sFinalClass, $aObject];
+		});
 
 		$aResult = [
 			'requested_class'  => $class,

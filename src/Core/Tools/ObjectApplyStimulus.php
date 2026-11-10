@@ -18,7 +18,6 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -209,11 +208,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		// What this request's mode adds to UserRights: in portal mode, the
 		// portal's scopes, forms and lifecycle (doc/adr/0006).
-		try {
-			$oAccess = ObjectAccess::Current();
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
 		$oSearch = ObjectQuery::ById($class, $id);
@@ -259,13 +254,9 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		// The mode's refusals first: a portal lists only the stimuli it offers,
 		// never the whole lifecycle.
-		try {
-			$sModeRefusal = $oAccess->RefusalToChange($oObject)
-				?? $oAccess->RefusalToApply($oObject, $stimulus)
-				?? $oAccess->RefusalToSet($oObject, $fields, $stimulus);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$sModeRefusal = self::portalRefusal(static fn () => $oAccess->RefusalToChange($oObject)
+			?? $oAccess->RefusalToApply($oObject, $stimulus)
+			?? $oAccess->RefusalToSet($oObject, $fields, $stimulus));
 		if ($sModeRefusal !== null) {
 			throw new ToolCallException($sModeRefusal);
 		}
@@ -377,11 +368,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
-		try {
-			$aChanges = $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues));
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$aChanges = self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues)));
 
 		// The one change a transition is guaranteed to make, which nothing else
 		// here can see.
