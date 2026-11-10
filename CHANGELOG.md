@@ -46,6 +46,10 @@ entry itself, not left to be inferred from it.
   attribute that is excluded makes creating that class impossible here; a class that has an excluded subclass cannot
   appear in a join or sub-query of OQL. `ExclusionPolicy` is on the surface a tool pack may build on (`@api`): a pack
   that reads objects itself should ask it.
+  The relations are covered too: a relation query that selects an excluded class, or whose defining class is excluded, is not listed
+  by `core_class_schema` (the itop://core/class resource included) and a relation that exists only to reach one is not accepted by
+  `core_object_get_related` - the queries are named by the class defining them and the neighbour they lead to, so they are checked on
+  what they select, not by name.
   **Not covered** (listed in the README and the ADR): notification events (`EventNotificationEmail` and the other `Event*`
   classes are readable and can quote an excluded value; if you exclude personal fields, also add `EventNotification` — not `Event`,
   which would hide the audit trail and `core_my_activity`), objects
