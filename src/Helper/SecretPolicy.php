@@ -69,7 +69,7 @@ final class SecretPolicy
 			return null;
 		}
 
-		return self::RefusalGiven($oAttDef, $sAttCode, MCPHelper::AllowsPrivilegeEscalation());
+		return self::RefusalGiven($oAttDef, $sAttCode, Settings::AllowsPrivilegeEscalation());
 	}
 
 	/**

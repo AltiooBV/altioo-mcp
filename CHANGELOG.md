@@ -202,6 +202,15 @@ entry itself, not left to be inferred from it.
   is answered with** (`protected static`, `@since 1.3.0`, additive). The core tools had seventeen copies of that `try`/`catch`.
   What a tool returns does not change, and neither does a signature a pack subclasses. A pack's own tool may use it:
   `self::portalRefusal(static fn () => ObjectAccess::Current())`.
+- **The module settings moved from `MCPHelper` to a new `Settings` class** (`Altioo\iTop\Extension\MCP\Helper\Settings`,
+  `final`, `@api`, `@since 1.3.0`). Every `MODULE_SETTING_*` and `DEFAULT_*` constant and every reader of a setting
+  (`GetPaginationLimit()`, `IsReadOnly()`, `GetCapabilities()`, `GetServedPortals()`, `SwitchFrom()` and the rest) is there now,
+  with the code unchanged. What a setting reads, defaults to and logs when it is mistyped is the same.
+  - **Nothing was removed.** Each public constant and method is still on `MCPHelper`, as an alias or a one-line stub that
+    calls `Settings`, and is `@deprecated 1.3.0 use Settings::X()`. They go no sooner than a minor after this release.
+    A tool pack that names one keeps working; moving to `Settings::` is the whole migration.
+  - `MCPHelper` keeps the version (`VERSION`, `AtLeast()`, `RequireVersion()`), `MODULE_NAME`, `SDK_CONSTRAINT`, `LICENSE`,
+    `SOURCE_URL`, the logging helpers, the error references, the dictionary lookup and the URL derivation.
 
 ### Fixed
 

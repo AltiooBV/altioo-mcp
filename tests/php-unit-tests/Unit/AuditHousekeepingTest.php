@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\AuditRetention;
 use PHPUnit\Framework\TestCase;
 
@@ -27,9 +27,9 @@ class AuditHousekeepingTest extends TestCase
 {
 	public function testZeroKeepsEverythingAndPositiveIntegersAreDays(): void
 	{
-		$this->assertSame(0, MCPHelper::RetentionDaysFrom(0));
-		$this->assertSame(30, MCPHelper::RetentionDaysFrom(30));
-		$this->assertSame(3650, MCPHelper::RetentionDaysFrom(3650));
+		$this->assertSame(0, Settings::RetentionDaysFrom(0));
+		$this->assertSame(30, Settings::RetentionDaysFrom(30));
+		$this->assertSame(3650, Settings::RetentionDaysFrom(3650));
 	}
 
 	/**
@@ -40,7 +40,7 @@ class AuditHousekeepingTest extends TestCase
 	 */
 	public function testAMalformedValueKeepsEverything(mixed $mValue): void
 	{
-		$this->assertSame(0, MCPHelper::RetentionDaysFrom($mValue));
+		$this->assertSame(0, Settings::RetentionDaysFrom($mValue));
 	}
 
 	/** @return array<string, array{0: mixed}> */
@@ -117,6 +117,6 @@ class AuditHousekeepingTest extends TestCase
 		$sXml = (string)file_get_contents(dirname(__DIR__, 3).'/datamodel.altioo-mcp.xml');
 
 		$this->assertMatchesRegularExpression('#<mcp_audit_retention_days type="integer">0</mcp_audit_retention_days>#', $sXml);
-		$this->assertSame('mcp_audit_retention_days', MCPHelper::MODULE_SETTING_AUDIT_RETENTION_DAYS);
+		$this->assertSame('mcp_audit_retention_days', Settings::MODULE_SETTING_AUDIT_RETENTION_DAYS);
 	}
 }

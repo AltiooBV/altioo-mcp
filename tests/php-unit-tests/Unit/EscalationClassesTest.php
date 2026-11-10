@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -142,7 +142,7 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheSettingIsReadSoThatAMistakeRefusesMore(mixed $mValue, ?array $aExpected): void
 	{
-		$this->assertSame($aExpected, MCPHelper::EscalationClassesFrom($mValue));
+		$this->assertSame($aExpected, Settings::EscalationClassesFrom($mValue));
 	}
 
 	/**
@@ -151,9 +151,9 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheWritePathAndTheSchemaBothAskTheSetting(): void
 	{
-		$this->assertStringContainsString('MCPHelper::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
+		$this->assertStringContainsString('Settings::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
 		$this->assertStringContainsString(
-			'AccessGrants::IsOperatorListed($sClass,MCPHelper::GetEscalationClasses())',
+			'AccessGrants::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
 			$this->body(DatamodelReader::class, 'narrowedByTheBarrier')
 		);
 	}

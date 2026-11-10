@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -31,7 +32,7 @@ class AuditedMethodsTest extends TestCase
 	public function testTheDefaultIsNotEmpty(): void
 	{
 		$this->assertNotEmpty(
-			MCPHelper::DEFAULT_LOG_METHODS,
+			Settings::DEFAULT_LOG_METHODS,
 			'An empty default means an instance that was never configured audits nothing at all.'
 		);
 	}
@@ -43,7 +44,7 @@ class AuditedMethodsTest extends TestCase
 	public function testTheDefaultCoversEveryMethodWorthARow(): void
 	{
 		foreach (['initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'] as $sMethod) {
-			$this->assertContains($sMethod, MCPHelper::DEFAULT_LOG_METHODS);
+			$this->assertContains($sMethod, Settings::DEFAULT_LOG_METHODS);
 		}
 	}
 
@@ -55,7 +56,7 @@ class AuditedMethodsTest extends TestCase
 	 */
 	public function testTheExceptionPseudoMethodIsAudited(): void
 	{
-		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, MCPHelper::DEFAULT_LOG_METHODS);
+		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, Settings::DEFAULT_LOG_METHODS);
 	}
 
 	/**
@@ -65,12 +66,12 @@ class AuditedMethodsTest extends TestCase
 	public function testTheConnectionMethodIsAudited(): void
 	{
 		$this->assertSame('initialize', MCPHelper::MCP_METHOD_INITIALIZE);
-		$this->assertContains(MCPHelper::MCP_METHOD_INITIALIZE, MCPHelper::DEFAULT_LOG_METHODS);
+		$this->assertContains(MCPHelper::MCP_METHOD_INITIALIZE, Settings::DEFAULT_LOG_METHODS);
 	}
 
 	public function testEveryDefaultIsANonEmptyString(): void
 	{
-		foreach (MCPHelper::DEFAULT_LOG_METHODS as $mMethod) {
+		foreach (Settings::DEFAULT_LOG_METHODS as $mMethod) {
 			$this->assertIsString($mMethod);
 			$this->assertNotSame('', $mMethod);
 		}
@@ -97,7 +98,7 @@ class AuditedMethodsTest extends TestCase
 		$aDeclared = array_map('strval', $aDeclared);
 		sort($aDeclared);
 
-		$aExpected = MCPHelper::DEFAULT_LOG_METHODS;
+		$aExpected = Settings::DEFAULT_LOG_METHODS;
 		sort($aExpected);
 
 		$this->assertSame(
@@ -123,7 +124,7 @@ class AuditedMethodsTest extends TestCase
 		preg_match_all("/'([^']+)'/", $aMatches[1], $aQuoted);
 		sort($aQuoted[1]);
 
-		$aExpected = MCPHelper::DEFAULT_LOG_METHODS;
+		$aExpected = Settings::DEFAULT_LOG_METHODS;
 		sort($aExpected);
 
 		$this->assertSame($aExpected, $aQuoted[1], 'The README sample and DEFAULT_LOG_METHODS have drifted apart.');

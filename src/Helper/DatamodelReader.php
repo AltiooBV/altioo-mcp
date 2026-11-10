@@ -650,7 +650,7 @@ final class DatamodelReader
 				return $aRights + ['restricted' => sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass)];
 			}
 
-			$bListed = AccessGrants::IsOperatorListed($sClass, MCPHelper::GetEscalationClasses());
+			$bListed = AccessGrants::IsOperatorListed($sClass, Settings::GetEscalationClasses());
 			$bBarred = AccessGrants::IsBarred($sClass);
 			if (!$bBarred && !$bListed) {
 				return $aRights + ['restricted' => null];
@@ -662,8 +662,8 @@ final class DatamodelReader
 			$bRecording             = AccessGrants::IsRecording($sClass);
 			$bDetection             = AccessGrants::IsDetection($sClass);
 			$bPersonal              = AccessGrants::IsPersonal($sClass);
-			$bAdministrationAllowed = MCPHelper::AllowsAccessAdministration();
-			$bEscalationAllowed     = MCPHelper::AllowsPrivilegeEscalation();
+			$bAdministrationAllowed = Settings::AllowsAccessAdministration();
+			$bEscalationAllowed     = Settings::AllowsPrivilegeEscalation();
 		} catch (\Throwable $e) {
 			// A question about the barrier must not cost the block. Reporting
 			// iTop's own answer is what this did before the barrier existed.
@@ -1171,7 +1171,7 @@ final class DatamodelReader
 
 		// Said here rather than only at write time: modify answers for the
 		// caller's profile, which this refusal does not consult.
-		$sSecretRefusal = SecretPolicy::RefusalGiven($oAttDef, $oAttDef->GetCode(), MCPHelper::AllowsPrivilegeEscalation());
+		$sSecretRefusal = SecretPolicy::RefusalGiven($oAttDef, $oAttDef->GetCode(), Settings::AllowsPrivilegeEscalation());
 		if ($sSecretRefusal !== null) {
 			return ['writeHint' => $sSecretRefusal];
 		}

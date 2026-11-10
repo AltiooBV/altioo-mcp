@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
@@ -102,7 +103,7 @@ final class MCPController
 				$iRet = self::admitInPortalMode();
 			}
 
-			if ($iRet === LoginWebPage::EXIT_CODE_OK && MCPHelper::IsAccessRestricted() && !self::userHasMCPProfile()) {
+			if ($iRet === LoginWebPage::EXIT_CODE_OK && Settings::IsAccessRestricted() && !self::userHasMCPProfile()) {
 				$iRet = LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
 			}
 
@@ -250,7 +251,7 @@ final class MCPController
 		$sOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
 		$sHost   = $_SERVER['HTTP_HOST'] ?? null;
 
-		if (MCPHttp::IsAllowedHost($sOrigin, $sHost, MCPHelper::GetAllowedHosts())) {
+		if (MCPHttp::IsAllowedHost($sOrigin, $sHost, Settings::GetAllowedHosts())) {
 			return;
 		}
 
@@ -262,7 +263,7 @@ final class MCPController
 			.'Set that module parameter to the hostname this instance is served under.',
 			is_string($sOrigin) && $sOrigin !== '' ? $sOrigin : '-',
 			is_string($sHost) && $sHost !== '' ? $sHost : '-',
-			MCPHelper::MODULE_SETTING_ALLOWED_HOSTS
+			Settings::MODULE_SETTING_ALLOWED_HOSTS
 		));
 
 		throw new MCPRequestRejectedException(
@@ -412,14 +413,14 @@ final class MCPController
 	 */
 	private static function admitInPortalMode(): int
 	{
-		$aServed = MCPHelper::GetServedPortals();
+		$aServed = Settings::GetServedPortals();
 		if ($aServed === []) {
 			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
 		}
 
 		$sRequested = MCPHelper::RequestedPortal();
 		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed, $sRequested);
-		$iMaxDays = MCPHelper::GetPortalTokenMaxDays();
+		$iMaxDays = Settings::GetPortalTokenMaxDays();
 		$sRefusal = PortalMode::RefusalOf(
 			$sPortal,
 			TokenScopes::LoginWasAToken(Session::Get('login_mode')),
@@ -442,7 +443,7 @@ final class MCPController
 				"Refused an MCP request in portal mode: the URL names %s, which '%s' may not enter or '%s' does not serve (%s).",
 				$sRequested === '' ? 'a malformed '.PortalMode::PARAMETER : "the portal '{$sRequested}'",
 				UserRights::GetUser(),
-				MCPHelper::MODULE_SETTING_PORTALS,
+				Settings::MODULE_SETTING_PORTALS,
 				implode(', ', $aServed)
 			));
 
@@ -453,7 +454,7 @@ final class MCPController
 			MCPHelper::LogError(sprintf(
 				"Refused an MCP request in portal mode: '%s' is allowed into none of the portals in '%s' (%s).",
 				UserRights::GetUser(),
-				MCPHelper::MODULE_SETTING_PORTALS,
+				Settings::MODULE_SETTING_PORTALS,
 				implode(', ', $aServed)
 			));
 
@@ -478,7 +479,7 @@ final class MCPController
 				"Refused an MCP request in portal mode: '%s' presented a token that never expires, or expires more than %d days from now ('%s').",
 				UserRights::GetUser(),
 				$iMaxDays,
-				MCPHelper::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS
+				Settings::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS
 			));
 
 			throw new MCPAuthException(sprintf(
@@ -689,7 +690,7 @@ final class MCPController
 			.'use the MCP services whatever their token scopes or MCP profile are, unless portal mode '
 			."serves one of their portals ('%s').",
 			UserRights::GetUser(),
-			MCPHelper::MODULE_SETTING_PORTALS
+			Settings::MODULE_SETTING_PORTALS
 		));
 
 		return new MCPAuthException(
@@ -967,7 +968,7 @@ final class MCPController
 			return [];
 		}
 
-		if (!in_array($sOrigin, MCPHelper::GetAllowedOrigins(), true)) {
+		if (!in_array($sOrigin, Settings::GetAllowedOrigins(), true)) {
 			return [];
 		}
 
@@ -1167,7 +1168,7 @@ final class MCPController
 
 	private static function logIfConfigured(MCPResult $oResult): void
 	{
-		if (!MCPHelper::LogsCalls()) {
+		if (!Settings::LogsCalls()) {
 			return;
 		}
 
@@ -1178,13 +1179,13 @@ final class MCPController
 			return;
 		}
 
-		if (!in_array($sMethod, MCPHelper::GetAuditedMethods(), true)) {
+		if (!in_array($sMethod, Settings::GetAuditedMethods(), true)) {
 			return;
 		}
 		// If the response is successful and the log level is set to error, skip logging to avoid filling the logs with successful calls
 		if ($oResult->isSuccess()
 			&& !self::isConnection($sMethod)
-			&& MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL) === MCPHelper::LOG_LEVEL_ERROR) {
+			&& MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL) === MCPHelper::LOG_LEVEL_ERROR) {
 			return;
 		}
 
@@ -1237,7 +1238,7 @@ final class MCPController
 			}
 			$oLog->Set('error_ref', self::truncate(implode(' ', array_unique($aReferences)), 255));
 			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
-			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
+			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
 				// And what the tool said when it refused, which can quote the value it
 				// refused: the same standing as the parameters, and cleared with them
@@ -1263,7 +1264,7 @@ final class MCPController
 	 */
 	private static function auditAdmissionRefusal(string $sRefusal): void
 	{
-		if (!MCPHelper::LogsCalls()) {
+		if (!Settings::LogsCalls()) {
 			return;
 		}
 

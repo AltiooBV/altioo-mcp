@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -485,17 +486,17 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 			return ['notes' => ['Some earlier calls may not be listed. Objects you can no longer see are counted in objects_you_cannot_see.']];
 		}
 
-		$sLevel = (string)MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_LOG_LEVEL, MCPHelper::DEFAULT_LOG_LEVEL);
+		$sLevel = (string)MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL);
 		// An unset or unknown level records every call, which is what "info" is.
 		if (!in_array($sLevel, [MCPHelper::LOG_LEVEL_ERROR, MCPHelper::LOG_LEVEL_DEBUG], true)) {
 			$sLevel = 'info';
 		}
-		$iRetention = MCPHelper::GetAuditRetentionDays();
+		$iRetention = Settings::GetAuditRetentionDays();
 		$aNotes = [
 			'Rows are found by your account\'s key, never by login. A row written before that key existed (iTop MCP 1.2 and earlier), and a row of an account that was deleted, hold no key and are not listed.',
 			'A call is listed with the objects it changed or read only up to a cap; the rest is counted, not named. Objects you can no longer see are counted in objects_you_cannot_see.',
 		];
-		if (!MCPHelper::LogsCalls()) {
+		if (!Settings::LogsCalls()) {
 			$aNotes[] = 'This instance does not record calls (log_mcp_service is off): nothing new appears here.';
 		}
 		if ($sLevel === MCPHelper::LOG_LEVEL_ERROR) {
@@ -506,7 +507,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		}
 
 		return [
-			'recorded'       => MCPHelper::LogsCalls(),
+			'recorded'       => Settings::LogsCalls(),
 			'level'          => $sLevel,
 			'retention_days' => $iRetention > 0 ? $iRetention : null,
 			'notes'          => $aNotes,

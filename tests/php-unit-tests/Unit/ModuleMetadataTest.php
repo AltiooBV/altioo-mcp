@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -105,7 +106,7 @@ class ModuleMetadataTest extends TestCase
 	{
 		$sDeclared = (string)self::moduleParameters()->log_mcp_service;
 
-		$this->assertSame(MCPHelper::DEFAULT_LOG_SETTING, $sDeclared === 'true');
+		$this->assertSame(Settings::DEFAULT_LOG_SETTING, $sDeclared === 'true');
 	}
 
 	public function testTheDefaultLogLevelMatchesTheDatamodel(): void
@@ -117,7 +118,7 @@ class ModuleMetadataTest extends TestCase
 			}
 		}
 
-		$this->assertSame(MCPHelper::DEFAULT_LOG_LEVEL, $sDefault);
+		$this->assertSame(Settings::DEFAULT_LOG_LEVEL, $sDefault);
 	}
 
 	/**
@@ -307,11 +308,11 @@ class ModuleMetadataTest extends TestCase
 	private static function enabledToolsetsComment(): string
 	{
 		$sXml = file_get_contents(self::ROOT.'/datamodel.altioo-mcp.xml');
-		$iEnd = strpos($sXml, '<'.MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS);
-		self::assertNotFalse($iEnd, 'the datamodel does not declare '.MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS);
+		$iEnd = strpos($sXml, '<'.Settings::MODULE_SETTING_ENABLED_TOOLSETS);
+		self::assertNotFalse($iEnd, 'the datamodel does not declare '.Settings::MODULE_SETTING_ENABLED_TOOLSETS);
 
 		$iStart = strrpos(substr($sXml, 0, $iEnd), '<!--');
-		self::assertNotFalse($iStart, MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS.' has no comment above it');
+		self::assertNotFalse($iStart, Settings::MODULE_SETTING_ENABLED_TOOLSETS.' has no comment above it');
 
 		return substr($sXml, $iStart, $iEnd - $iStart);
 	}
@@ -322,7 +323,7 @@ class ModuleMetadataTest extends TestCase
 	 */
 	public function testTheKillSwitchIsEmptyByDefault(): void
 	{
-		$oDisabled = self::moduleParameters()->{MCPHelper::MODULE_SETTING_DISABLED};
+		$oDisabled = self::moduleParameters()->{Settings::MODULE_SETTING_DISABLED};
 
 		$this->assertSame('array', (string)$oDisabled->attributes()->type);
 		$this->assertCount(0, $oDisabled->children());
@@ -692,9 +693,9 @@ class ModuleMetadataTest extends TestCase
 	public function testTheSourceUrlOverrideIsDeclaredWhereAnOperatorCanSetIt(): void
 	{
 		$this->assertObjectHasProperty(
-			MCPHelper::MODULE_SETTING_SOURCE_URL,
+			Settings::MODULE_SETTING_SOURCE_URL,
 			self::moduleParameters(),
-			MCPHelper::MODULE_SETTING_SOURCE_URL.' is read by the code but absent from the datamodel'
+			Settings::MODULE_SETTING_SOURCE_URL.' is read by the code but absent from the datamodel'
 		);
 	}
 
