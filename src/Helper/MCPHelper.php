@@ -34,7 +34,7 @@ class MCPHelper
 	 * Helper/. A breaking change to any of those is a major bump; a new
 	 * optional hook with a default implementation is a minor one.
 	 */
-	const VERSION = '1.2.0';
+	const VERSION = '1.3.0';
 
 	/**
 	 * The mcp/sdk release line this module vendors, loads and is tested

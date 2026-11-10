@@ -233,7 +233,7 @@ final class Settings
 	 *
 	 * @return array<int, string>
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetAuditedMethods(): array
 	{
@@ -263,7 +263,7 @@ final class Settings
 	 * MCPService::AccessPolicyOfCurrentRequest().
 	 *
 	 * @return array<int, string> Granted grades, or an empty list for all of them.
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetCapabilities(): array
 	{
@@ -280,7 +280,7 @@ final class Settings
 	/**
 	 * Whether this instance serves reads only.
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function IsReadOnly(): bool
 	{
@@ -298,7 +298,7 @@ final class Settings
 	 * AccessPolicy::Of() already answers with nothing for a list of unknown
 	 * grades. The caller serves nothing on true; the readers above log why.
 	 *
-	 * @since 1.1.1
+	 * @since 1.3.0
 	 */
 	public static function AccessSettingsAreMalformed(): bool
 	{
@@ -316,7 +316,7 @@ final class Settings
 	/**
 	 * Whether callers must hold one of mcp_allowed_profiles.
 	 *
-	 * @since 1.1.1
+	 * @since 1.3.0
 	 */
 	public static function IsAccessRestricted(): bool
 	{
@@ -326,7 +326,7 @@ final class Settings
 	/**
 	 * Whether a call earns an audit row at all.
 	 *
-	 * @since 1.1.1
+	 * @since 1.3.0
 	 */
 	public static function LogsCalls(): bool
 	{
@@ -356,7 +356,7 @@ final class Settings
 	 * Public for the unit suite, which has no configuration to read from.
 	 *
 	 * @internal
-	 * @since 1.1.1
+	 * @since 1.3.0
 	 */
 	public static function SwitchFrom(string $sSetting, mixed $mValue, bool $bSafe): bool
 	{
@@ -388,7 +388,7 @@ final class Settings
 	 * Read through ReadSwitch(), like every other boolean here: a
 	 * configuration holding the string 'false' must not read as permission.
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function AllowsAccessAdministration(): bool
 	{
@@ -403,7 +403,7 @@ final class Settings
 	 * See the constant above for what turning it on actually means, which is
 	 * exactly what the name says.
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function AllowsPrivilegeEscalation(): bool
 	{
@@ -415,7 +415,7 @@ final class Settings
 	 * class.
 	 *
 	 * @return array<int, string>|null
-	 * @since 1.2.0
+	 * @since 1.3.0
 	 */
 	public static function GetEscalationClasses(): ?array
 	{
@@ -436,7 +436,7 @@ final class Settings
 	 *
 	 * @return array<int, string>|null
 	 * @internal
-	 * @since 1.2.0
+	 * @since 1.3.0
 	 */
 	public static function EscalationClassesFrom(mixed $mValue): ?array
 	{
@@ -479,7 +479,7 @@ final class Settings
 	 * otherwise.
 	 *
 	 * @return array<int, string>
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetEnabledToolsets(): array
 	{
@@ -498,7 +498,7 @@ final class Settings
 	 * Browser origins allowed to read this endpoint's responses.
 	 *
 	 * @return array<int, string>
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetAllowedOrigins(): array
 	{
@@ -521,7 +521,7 @@ final class Settings
 	 * unable to express "only this name".
 	 *
 	 * @return array<int, string> Hostnames without port, or [MCPHttp::ANY_HOST] for no check.
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetAllowedHosts(): array
 	{
@@ -587,7 +587,7 @@ final class Settings
 	 * has to lead to the version actually running, and pointing a user at
 	 * upstream while serving them something else satisfies nobody.
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetSourceUrl(): string
 	{
@@ -599,7 +599,7 @@ final class Settings
 	/**
 	 * Elements per listing page, as configured.
 	 *
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetPaginationLimit(): int
 	{
@@ -616,7 +616,7 @@ final class Settings
 	/**
 	 * Distinct objects one call may mention, as configured.
 	 *
-	 * @since 1.1.0
+	 * @since 1.3.0
 	 */
 	public static function GetMaxMentions(): int
 	{
@@ -637,7 +637,7 @@ final class Settings
 	 * ReadSwitch(): a setting that guards data leaving the instance should
 	 * not be turned off by a typo.
 	 *
-	 * @since 1.1.0
+	 * @since 1.3.0
 	 */
 	public static function RefusesFormulaValues(): bool
 	{
@@ -648,7 +648,7 @@ final class Settings
 	 * Identifiers disabled by the operator, normalised to a list of strings.
 	 *
 	 * @return array<int, string>
-	 * @since 1.0.0
+	 * @since 1.3.0
 	 */
 	public static function GetDisabledIdentifiers(): array
 	{
@@ -673,7 +673,7 @@ final class Settings
 	 * nobody, which is also what every earlier version did.
 	 *
 	 * @return array<int, string>
-	 * @since 1.2.0
+	 * @since 1.3.0
 	 */
 	public static function GetServedPortals(): array
 	{
@@ -696,7 +696,7 @@ final class Settings
 	 * rather than to 0: lifting the bound is a decision, and a typo is not
 	 * one.
 	 *
-	 * @since 1.2.0
+	 * @since 1.3.0
 	 */
 	public static function GetPortalTokenMaxDays(): int
 	{

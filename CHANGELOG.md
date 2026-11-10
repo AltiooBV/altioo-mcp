@@ -20,6 +20,8 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [1.3.0] - Unreleased
+
 ### Added
 
 - **`mcp_exclusion_exempt_profiles`: an account that is served what the exclusions keep out**
