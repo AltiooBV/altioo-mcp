@@ -1278,7 +1278,12 @@ final class DatamodelReader
 	{
 		$aRelations = [];
 
-		foreach (MetaModel::EnumRelations() as $sRelation) {
+		// EnumRelationsEx() takes the class and exists on iTop 3.2 and 3.3; EnumRelations() went with 3.3. It
+		// names the relations that have a query for this class in either direction, and the answer here is the
+		// downstream ones, as it always was: a relation with only an upstream query lists nothing, and is left out.
+		/** @var array<string, mixed> $aOfClass Relation code => the directions it has a query for. */
+		$aOfClass = MetaModel::EnumRelationsEx($sClass);
+		foreach (array_keys($aOfClass) as $sRelation) {
 			$aRelated = [];
 			foreach (MetaModel::EnumRelationQueries($sClass, $sRelation) as $sNeighbour => $aQueryInfo) {
 				if (ExclusionPolicy::ExcludesClass((string)$sNeighbour)) {

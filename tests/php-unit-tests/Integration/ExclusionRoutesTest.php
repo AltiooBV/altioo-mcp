@@ -215,7 +215,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 			'search'                   => fn () => ObjectSearchByClass::execute('Person', [], 20, 0, '', 'asc', '*'),
 			'oql'                      => fn () => ObjectSearchByOQL::execute('SELECT Person', 20, 0, '', 'asc', '*'),
 			'find by name'             => fn () => ObjectFindByName::execute('Person', 'Person', 50, '*'),
-			'schema'                   => fn () => ClassSchema::execute('Person', 'attributes,derived,lifecycle'),
+			'schema'                   => fn () => ClassSchema::execute('Person'),
 			'update, dry run'          => fn () => ObjectUpdate::execute('Person', $this->iPerson, ['first_name' => 'Renamed']),
 			'history'                  => fn () => ObjectHistory::execute('Person', $this->iPerson),
 		];
