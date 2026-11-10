@@ -18,4 +18,15 @@ class MCPLog extends LogAPI
 	const CHANNEL_DEFAULT = 'MCPLog';
 
 	protected static $m_oFileLog = null;
+
+	/**
+	 * Opens this module's log, log/error.log under the iTop root, for the
+	 * request or the background task that is starting. Safe to call again.
+	 *
+	 * @since 1.3.0
+	 */
+	public static function EnableForModule(): void
+	{
+		self::Enable(APPROOT.'log/error.log');
+	}
 }

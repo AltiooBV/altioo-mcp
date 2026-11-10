@@ -13,8 +13,9 @@ use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
+use Altioo\iTop\Extension\MCP\Helper\MCPLog;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
@@ -54,7 +55,7 @@ final class MCPController
 
 	public static function handleRequest(): void
 	{
-		new MCPHelper();
+		MCPLog::EnableForModule();
 
 		// Before anything that needs a user: a preflight carries no credential
 		// by definition, so answering it after DoLogin() would answer 401 and

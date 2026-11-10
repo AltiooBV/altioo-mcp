@@ -319,11 +319,12 @@ class MCPHelper
 	}
 
 	/**
+	 * @deprecated 1.3.0 use MCPLog::EnableForModule(); constructing the helper was only ever a way to open the log
 	 * @since 1.0.0
 	 */
 	public function __construct()
 	{
-		MCPLog::Enable(APPROOT.'log/error.log');
+		MCPLog::EnableForModule();
 	}
 
 	/**

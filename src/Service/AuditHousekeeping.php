@@ -63,7 +63,7 @@ final class AuditHousekeeping implements iBackgroundProcess
 	 */
 	public function Process($iUnixTimeLimit)
 	{
-		MCPLog::Enable(APPROOT.'log/error.log');
+		MCPLog::EnableForModule();
 
 		$iLimit = (int)$iUnixTimeLimit;
 		$iDays = Settings::GetAuditRetentionDays();

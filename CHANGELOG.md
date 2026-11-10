@@ -211,6 +211,10 @@ entry itself, not left to be inferred from it.
     A tool pack that names one keeps working; moving to `Settings::` is the whole migration.
   - `MCPHelper` keeps the version (`VERSION`, `AtLeast()`, `RequireVersion()`), `MODULE_NAME`, `SDK_CONSTRAINT`, `LICENSE`,
     `SOURCE_URL`, the logging helpers, the error references, the dictionary lookup and the URL derivation.
+- **`MCPLog::EnableForModule()` opens the module's log, and `new MCPHelper()` no longer has to.** The request entry point built a
+  helper only for its constructor, which opened `log/error.log`; it and the hourly clean-up now call the one method.
+  `MCPHelper::__construct()` is `@deprecated 1.3.0` and still does the same. `MCPLog` keeps its untyped `$m_oFileLog`, as iTop's
+  `LogAPI` declares it.
 
 ### Fixed
 
