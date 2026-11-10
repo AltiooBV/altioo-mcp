@@ -74,14 +74,14 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
-	return new ToolAnnotations(
-		$this->getTitle() ?? 'Update iTop object',
-		false,  // readOnlyHint
-		false,  // destructiveHint — modifies, but not “delete/overwrite world”
-		true,   // idempotentHint
-		false,  // openWorldHint — closed CMDB domain
-	);
-}
+		return new ToolAnnotations(
+			title: $this->getTitle() ?? 'Update iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // modifies, but not “delete/overwrite world”
+			idempotentHint: true,
+			openWorldHint: false, // closed CMDB domain
+		);
+	}
 
 	public function getOutputSchema(): ?array
 	{

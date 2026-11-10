@@ -60,11 +60,11 @@ class ObjectBulkCreate extends AbstractBulkTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Create iTop objects in bulk',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive
-			false,  // idempotentHint — calling twice creates two sets of rows
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Create iTop objects in bulk',
+			readOnlyHint: false,
+			destructiveHint: false, // additive
+			idempotentHint: false, // calling twice creates two sets of rows
+			openWorldHint: false,
 		);
 	}
 

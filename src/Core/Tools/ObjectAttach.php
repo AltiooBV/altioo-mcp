@@ -93,11 +93,11 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Attach a document to an iTop object',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive, except on a blob attribute it replaces
-			false,  // idempotentHint — calling twice attaches twice
-			false,  // openWorldHint — nothing outside iTop is contacted
+			title: $this->getTitle() ?? 'Attach a document to an iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // additive, except on a blob attribute it replaces
+			idempotentHint: false, // calling twice attaches twice
+			openWorldHint: false, // nothing outside iTop is contacted
 		);
 	}
 

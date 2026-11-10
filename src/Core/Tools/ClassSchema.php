@@ -76,11 +76,11 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Get iTop class schema',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Get iTop class schema',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 

@@ -65,11 +65,11 @@ class ObjectDelete extends AbstractMCPTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Delete iTop object',
-			false,  // readOnlyHint
-			true,   // destructiveHint — permanent + cascade
-			false,  // idempotentHint — 2nd call typically errors
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Delete iTop object',
+			readOnlyHint: false,
+			destructiveHint: true, // permanent + cascade
+			idempotentHint: false, // 2nd call typically errors
+			openWorldHint: false,
 		);
 	}
 

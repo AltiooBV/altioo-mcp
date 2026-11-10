@@ -68,11 +68,11 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'List iTop classes',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'List iTop classes',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 

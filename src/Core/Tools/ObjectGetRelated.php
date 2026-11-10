@@ -79,11 +79,11 @@ class ObjectGetRelated extends AbstractMCPTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Get related iTop objects',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Get related iTop objects',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 

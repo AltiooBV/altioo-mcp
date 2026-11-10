@@ -76,11 +76,11 @@ class SetObsoleteData extends AbstractMCPTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Show or hide obsolete data',
-			false,  // readOnlyHint - it stores a preference
-			false,  // destructiveHint - nothing is lost, and the same call undoes it
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Show or hide obsolete data',
+			readOnlyHint: false, // it stores a preference
+			destructiveHint: false, // nothing is lost, and the same call undoes it
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 

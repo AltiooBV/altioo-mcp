@@ -133,11 +133,11 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Apply stimulus to iTop object',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive create
-			false,  // idempotentHint — each call can create another row
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Apply stimulus to iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // additive create
+			idempotentHint: false, // each call can create another row
+			openWorldHint: false,
 		);
 	}
 

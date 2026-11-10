@@ -94,11 +94,11 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'My activity',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'My activity',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 

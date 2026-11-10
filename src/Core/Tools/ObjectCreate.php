@@ -68,11 +68,11 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Create iTop object',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive create
-			false,  // idempotentHint — each call can create another row
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Create iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // additive create
+			idempotentHint: false, // each call can create another row
+			openWorldHint: false,
 		);
 	}
 

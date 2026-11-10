@@ -70,11 +70,11 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Get iTop object',
-			true,  // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Get iTop object',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 
