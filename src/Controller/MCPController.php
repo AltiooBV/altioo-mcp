@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Controller;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
@@ -1212,6 +1213,8 @@ final class MCPController
 			// after the change rows are purged.
 			self::describeCredential($oLog);
 			self::describeUser($oLog);
+			// Whether the exclusions were lifted for this account (doc/adr/0013): every exempt call is listable.
+			$oLog->Set('exempt', ExclusionPolicy::IsExempt() ? 'yes' : 'no');
 			self::describeChange($oLog);
 			self::describeReads($oLog);
 			$oLog->Set('change_comment', ChangeTracking::Comment() ?? '');

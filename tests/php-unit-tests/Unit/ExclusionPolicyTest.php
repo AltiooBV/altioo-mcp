@@ -63,6 +63,29 @@ class ExclusionPolicyTest extends TestCase
 		}
 	}
 
+	public function testTheExemptProfilesAreReadAsNames(): void
+	{
+		$this->assertSame(['profiles' => [], 'problem' => null], ExclusionPolicy::ParseExempt([]));
+		$this->assertSame(['profiles' => ['MCP Exempt'], 'problem' => null], ExclusionPolicy::ParseExempt([' MCP Exempt ', 'MCP Exempt']));
+	}
+
+	/**
+	 * @dataProvider malformedExemptProvider
+	 */
+	public function testExemptProfilesThatCannotBeHonouredAreAProblemAndNeverAnExemption(mixed $mValue): void
+	{
+		$aParsed = ExclusionPolicy::ParseExempt($mValue);
+
+		$this->assertNotNull($aParsed['problem']);
+		$this->assertSame([], $aParsed['profiles']);
+	}
+
+	/** @return array<string, array{0: mixed}> */
+	public static function malformedExemptProvider(): array
+	{
+		return ['a string' => ['MCP Exempt'], 'a number' => [[1]], 'an empty name' => [['']], 'a boolean' => [true], 'nested' => [[['x']]]];
+	}
+
 	/** @return array<string, array{0: mixed, 1: mixed}> */
 	public static function malformedProvider(): array
 	{

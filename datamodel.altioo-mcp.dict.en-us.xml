@@ -41,6 +41,12 @@
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Size of the response body sent back to the client]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Log reference]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Reference of the matching entry in log/error.log, for an error answered generically]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt" _delta="force"><![CDATA[Exempt]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt+" _delta="force"><![CDATA[Whether the account behind the call held an exempt profile and was served what the exclusions keep out of this channel]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:yes" _delta="force"><![CDATA[Yes]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:yes+" _delta="force"><![CDATA[The account holds a profile listed in mcp_exclusion_exempt_profiles: excluded classes and attributes were served]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:no" _delta="force"><![CDATA[No]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:no+" _delta="force"><![CDATA[Not exempt: what is excluded was not served]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:refusal_text" _delta="force"><![CDATA[Refusal text]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:refusal_text+" _delta="force"><![CDATA[What the tool said when it refused the call, recorded only when the module log level is set to debug. It can quote what was refused]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Request parameters]]></entry>

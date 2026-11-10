@@ -14,6 +14,8 @@ use AttributeLinkedSet;
 use AttributeLinkedSetIndirect;
 use MetaModel;
 use Throwable;
+use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use UserRights;
 use utils;
 
 /**
@@ -37,10 +39,13 @@ final class ExclusionPolicy
 
 	public const SETTING_ATTRIBUTES = 'mcp_excluded_attributes';
 
+	/** doc/adr/0013: the profiles whose holders are served what is excluded. Empty by default. */
+	public const SETTING_EXEMPT_PROFILES = 'mcp_exclusion_exempt_profiles';
+
 	/** Never excludable: what an object is, not what it holds. */
 	private const IDENTITY_CODES = ['id', 'finalclass', 'friendlyname'];
 
-	/** @var array{key: string, classes: array<string, string>, attributes: array<string, array<string, string>>, problem: ?string, active: bool, datamodel: ?string}|null */
+	/** @var array{key: string, classes: array<string, string>, attributes: array<string, array<string, string>>, problem: ?string, active: bool, exempt: bool, datamodel: ?string}|null */
 	private static ?array $aCache = null;
 
 	/** @var array<string, bool> Answers of {@see ExcludesAttribute()} and {@see ExcludesClass()}, for the settings in $aCache. */
@@ -87,6 +92,41 @@ final class ExclusionPolicy
 		}
 
 		return ['classes' => $aClasses, 'attributes' => $aAttributes, 'problem' => null];
+	}
+
+	/**
+	 * The exempt profiles as the datamodel-free half of the rule reads them: a list of non-empty names.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @return array{profiles: array<int, string>, problem: ?string}
+	 */
+	public static function ParseExempt(mixed $mProfiles): array
+	{
+		if (!is_array($mProfiles)) {
+			return ['profiles' => [], 'problem' => sprintf("'%s' should be an array of profile names, not %s", self::SETTING_EXEMPT_PROFILES, gettype($mProfiles))];
+		}
+
+		$aProfiles = [];
+		foreach ($mProfiles as $mProfile) {
+			if (!is_string($mProfile) || trim($mProfile) === '' || strlen($mProfile) > 255) {
+				return ['profiles' => [], 'problem' => sprintf("'%s' should be an array of profile names, and holds %s", self::SETTING_EXEMPT_PROFILES, is_scalar($mProfile) ? var_export($mProfile, true) : gettype($mProfile))];
+			}
+			$aProfiles[] = trim($mProfile);
+		}
+
+		return ['profiles' => array_values(array_unique($aProfiles)), 'problem' => null];
+	}
+
+	/**
+	 * Whether this call runs as an account the operator exempted (doc/adr/0013): it holds one of
+	 * `mcp_exclusion_exempt_profiles`, and the call is not in portal mode. Nothing else decides it - not a
+	 * token's scope, not the name the client declared, not an OAuth client - since each of those is the
+	 * caller's to choose. False whenever the settings are malformed.
+	 */
+	public static function IsExempt(): bool
+	{
+		return self::state()['exempt'];
 	}
 
 	/** Whether the settings hold something that cannot be honoured: the endpoint then serves nothing. */
@@ -499,14 +539,17 @@ final class ExclusionPolicy
 	}
 
 	/**
-	 * @return array{key: string, classes: array<string, string>, attributes: array<string, array<string, string>>, problem: ?string, active: bool, datamodel: ?string}
+	 * @return array{key: string, classes: array<string, string>, attributes: array<string, array<string, string>>, problem: ?string, active: bool, exempt: bool, datamodel: ?string}
 	 */
 	private static function state(): array
 	{
 		$oConfig = utils::GetConfig();
 		$mClasses = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_CLASSES, []);
 		$mAttributes = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_ATTRIBUTES, []);
-		$sKey = md5(serialize([$mClasses, $mAttributes]));
+		$mExempt = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_EXEMPT_PROFILES, []);
+		// Who is asking is part of the answer: the real user (the account that authenticated, not the one it
+		// acts as), and whether this is portal mode, which is never exempt.
+		$sKey = md5(serialize([$mClasses, $mAttributes, $mExempt, self::asking()]));
 
 		if (self::$aCache !== null && self::$aCache['key'] === $sKey) {
 			return self::$aCache;
@@ -516,16 +559,101 @@ final class ExclusionPolicy
 		$aParsed = self::Parse($mClasses, $mAttributes);
 		$sProblem = $aParsed['problem'] ?? self::datamodelProblem($aParsed['classes'], $aParsed['attributes']);
 
+		// A profile that does not exist, or a setting that is no list, is a problem for everyone and not an
+		// exemption for anyone: a typo must never exempt everybody.
+		$aExempt = self::ParseExempt($mExempt);
+		$sProblem ??= $aExempt['problem'] ?? self::exemptProfilesProblem($aExempt['profiles']);
+
 		if ($sProblem !== null) {
 			MCPHelper::LogError("Itop configuration parameter for exclusions: {$sProblem}. Nothing is served to anyone until it is corrected.");
-			$aParsed = ['classes' => [], 'attributes' => [], 'problem' => $sProblem];
+
+			return self::$aCache = ['classes' => [], 'attributes' => [], 'problem' => $sProblem, 'key' => $sKey, 'active' => false, 'exempt' => false, 'datamodel' => null];
+		}
+
+		$bExempt = $aExempt['profiles'] !== [] && self::holdsOneOf($aExempt['profiles']);
+		if ($bExempt) {
+			// The whole exemption: what is excluded is served, every class and every attribute.
+			$aParsed = ['classes' => [], 'attributes' => [], 'problem' => null];
 		}
 
 		return self::$aCache = $aParsed + [
 			'key'       => $sKey,
 			'active'    => $aParsed['classes'] !== [] || $aParsed['attributes'] !== [],
+			'exempt'    => $bExempt,
 			'datamodel' => null,
 		];
+	}
+
+	/** Who is asking, as the cache key sees it: the real user's key, and the portal when there is one. */
+	private static function asking(): string
+	{
+		try {
+			$sPortal = class_exists(PortalMode::class) ? (string)PortalMode::Current() : '';
+			// As the audit row and the change log name the actor: the real user under impersonation, the user otherwise.
+			$iUser = class_exists('CMDBChange') ? (int)\CMDBChange::GetCurrentUserId() : 0;
+		} catch (Throwable $e) {
+			return 'unknown';
+		}
+
+		return $iUser.'|'.$sPortal;
+	}
+
+	/**
+	 * Whether the real user holds one of the profiles, outside portal mode. Read past the silos, by the account's
+	 * key; an account that cannot be found holds nothing.
+	 *
+	 * @param array<int, string> $aProfiles
+	 */
+	private static function holdsOneOf(array $aProfiles): bool
+	{
+		try {
+			if (PortalMode::Current() !== null || !class_exists('UserRights') || !class_exists('DBObjectSearch')) {
+				return false;
+			}
+			$iUser = (int)\CMDBChange::GetCurrentUserId();
+			if ($iUser < 1) {
+				return false;
+			}
+
+			$oSearch = \DBObjectSearch::FromOQL('SELECT URP_Profiles AS p JOIN URP_UserProfile AS l ON l.profileid = p.id WHERE l.userid = :user');
+			$oSearch->AllowAllData();
+			$oSet = new \DBObjectSet($oSearch, [], ['user' => $iUser]);
+			while ($oProfile = $oSet->Fetch()) {
+				if (in_array((string)$oProfile->Get('name'), $aProfiles, true)) {
+					return true;
+				}
+			}
+		} catch (Throwable $e) {
+			return false; // fails closed: an account that cannot be read is not exempt
+		}
+
+		return false;
+	}
+
+	/**
+	 * The profile names the datamodel does not have, as a problem; null when every one exists.
+	 *
+	 * @param array<int, string> $aProfiles
+	 */
+	private static function exemptProfilesProblem(array $aProfiles): ?string
+	{
+		if ($aProfiles === [] || !class_exists('MetaModel')) {
+			return null;
+		}
+
+		try {
+			foreach ($aProfiles as $sProfile) {
+				$oSearch = \DBObjectSearch::FromOQL('SELECT URP_Profiles WHERE name = :name');
+				$oSearch->AllowAllData();
+				if ((new \DBObjectSet($oSearch, [], ['name' => $sProfile]))->Count() === 0) {
+					return sprintf("'%s' names the profile '%s', which this instance does not have", self::SETTING_EXEMPT_PROFILES, $sProfile);
+				}
+			}
+		} catch (Throwable $e) {
+			return MCPHelper::OpaqueFailure('The exempt profiles could not be checked against the instance', $e);
+		}
+
+		return null;
 	}
 
 	/**

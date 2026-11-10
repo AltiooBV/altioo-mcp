@@ -16,7 +16,7 @@
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 
-IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile iExclPerson iExclTeam <<<"$PORTAL_SMOKE"
+IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile iExclPerson iExclTeam sExemptToken sExemptProfile <<<"$PORTAL_SMOKE"
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 sPortalSession=''
 iRpc=10
@@ -254,4 +254,64 @@ else
 	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null || fail "could not clear the exclusions"
 	sOut=$(console_tool core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
 	must "and with nothing excluded the team is readable again" "$sOut" ok
+fi
+
+# ---------------------------------------------------------------------------------------------------------------
+# An account holding the exempt profile (doc/adr/0013), over the real endpoint: served what is excluded, while the
+# administrator without the profile and a portal user holding it are not, and the audit row says which calls were
+# exempt. The exemption is the account's alone: both tokens here carry the same scope.
+echo "10. exemption: the profile exempts the account, and nothing else does"
+if [ -z "${iExclPerson:-}" ] || [ "$iExclPerson" = 0 ] || [ -z "${sExemptToken:-}" ] || [ -z "${ITOP_DIR:-}" ]; then
+	echo "   no exempt account on this instance: not exercised"
+else
+	sExemptSession=''
+	exempt_call() { # <name> <arguments json>
+		iRpc=$((iRpc + 1))
+		local sH sRaw
+		if [ -z "$sExemptSession" ]; then
+			sH=$(curl -sS -D - -o /dev/null -X POST "$ENDPOINT" -H "Authorization: Bearer $sExemptToken" -H 'Content-Type: application/json' \
+				-H 'Accept: application/json, text/event-stream' -H "MCP-Protocol-Version: $PROTOCOL_VERSION" \
+				-d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"$PROTOCOL_VERSION"'","capabilities":{},"clientInfo":{"name":"ci-exempt","version":"0"}}}')
+			sExemptSession=$(printf '%s' "$sH" | grep -i '^mcp-session-id:' | tr -d '\r' | cut -d' ' -f2- || true)
+			curl -sS -o /dev/null -X POST "$ENDPOINT" -H "Authorization: Bearer $sExemptToken" -H 'Content-Type: application/json' \
+				-H 'Accept: application/json, text/event-stream' -H "MCP-Protocol-Version: $PROTOCOL_VERSION" \
+				${sExemptSession:+-H "Mcp-Session-Id: $sExemptSession"} -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+		fi
+		sRaw=$(curl -sS -X POST "$ENDPOINT" -H "Authorization: Bearer $sExemptToken" -H 'Content-Type: application/json' \
+			-H 'Accept: application/json, text/event-stream' -H "MCP-Protocol-Version: $PROTOCOL_VERSION" \
+			${sExemptSession:+-H "Mcp-Session-Id: $sExemptSession"} \
+			-d '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"tools/call","params":{"name":"'"$1"'","arguments":'"$2"'}}')
+		# shellcheck disable=SC2016
+		printf '%s' "$sRaw" | php -r '$a = json_decode(stream_get_contents(STDIN), true);
+			if (!is_array($a)) { echo "unreadable"; exit; }
+			if (isset($a["error"])) { echo "refused ".json_encode($a["error"]); exit; }
+			$t = implode(" ", array_column($a["result"]["content"] ?? [], "text"));
+			echo (($a["result"]["isError"] ?? false) ? "refused " : "ok ").$t;'
+	}
+
+	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" on "$sExemptProfile" >/dev/null || fail "could not set the exclusions and the exemption"
+	trap 'php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null 2>&1 || true; kill -TERM -"$SERVER_PID" 2>/dev/null || kill -TERM "$SERVER_PID" 2>/dev/null || true' EXIT INT TERM
+
+	sOut=$(exempt_call core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"*"}')
+	case "$sOut" in *'+3355507731'*) echo "   ok  the exempt account is served the excluded attribute" ;; *) fail "the exempt account was not served the excluded attribute: ${sOut:0:300}" ;; esac
+	sOut=$(exempt_call core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
+	must "and the excluded class" "$sOut" ok
+
+	sOut=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"*"}')
+	case "$sOut" in *'+3355507731'*) fail "the administrator without the profile was served the excluded attribute: ${sOut:0:300}" ;; *) echo "   ok  the administrator without the profile is not, with the same token scope" ;; esac
+	sOut=$(console_tool core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
+	must "nor the excluded class" "$sOut" refused
+
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	case "$sOut" in *'Made by tools/ci/checks/module-smoke.php'*|*'"description":'*) fail "a portal user holding the exempt profile was served the excluded attribute: ${sOut:0:300}" ;; *) echo "   ok  a portal user holding the profile is still excluded" ;; esac
+
+	if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+		iExemptRows=$(itop_sql "SELECT COUNT(*) FROM \`${AUDIT_TABLE}\` WHERE exempt = 'yes'")
+		iPlainRows=$(itop_sql "SELECT COUNT(*) FROM \`${AUDIT_TABLE}\` WHERE exempt = 'no' AND mcp_name = 'core_object_get'")
+		[ "${iExemptRows:-0}" -ge 2 ] && [ "${iPlainRows:-0}" -ge 1 ] \
+			|| fail "the audit rows do not say which calls were exempt: ${iExemptRows:-?} exempt, ${iPlainRows:-?} not"
+		echo "   ok  the audit trail lists the exempt calls ($iExemptRows) and marks the others"
+	fi
+
+	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null || fail "could not clear the exclusions"
 fi

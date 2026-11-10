@@ -45,6 +45,8 @@ const FIXTURE_SETTING_VALUE = 1234567;
 // empty would put an excluded field back into the channel with no error anywhere.
 const FIXTURE_EXCLUDED_CLASSES = ['Team'];
 const FIXTURE_EXCLUDED_ATTRIBUTES = ['Person' => ['phone', 'mobile_phone']];
+// And the exemption (doc/adr/0013): a profile the baseline already has, so that the setting is well-formed.
+const FIXTURE_EXEMPT_PROFILES = ['MCP Services User'];
 
 $sItopDir = rtrim($argv[1] ?? '', '/');
 $sAction = $argv[2] ?? '';
@@ -145,13 +147,14 @@ if ($sAction === 'seed') {
 	$oConfig->SetModuleSetting(module_code(), FIXTURE_SETTING, FIXTURE_SETTING_VALUE);
 	$oConfig->SetModuleSetting(module_code(), 'mcp_excluded_classes', FIXTURE_EXCLUDED_CLASSES);
 	$oConfig->SetModuleSetting(module_code(), 'mcp_excluded_attributes', FIXTURE_EXCLUDED_ATTRIBUTES);
+	$oConfig->SetModuleSetting(module_code(), 'mcp_exclusion_exempt_profiles', FIXTURE_EXEMPT_PROFILES);
 	$oConfig->WriteToFile();
 	// Left owner-writable rather than restored to 0440. What this fixture is
 	// about is the *value* surviving the upgrade, not the permission bits, and
 	// a config the next setup run cannot open would fail this test for a reason
 	// that has nothing to do with the module.
 	@chmod($sConfigFile, 0640);
-	$aState['setting'] = [FIXTURE_SETTING => FIXTURE_SETTING_VALUE, 'mcp_excluded_classes' => FIXTURE_EXCLUDED_CLASSES, 'mcp_excluded_attributes' => FIXTURE_EXCLUDED_ATTRIBUTES];
+	$aState['setting'] = [FIXTURE_SETTING => FIXTURE_SETTING_VALUE, 'mcp_excluded_classes' => FIXTURE_EXCLUDED_CLASSES, 'mcp_excluded_attributes' => FIXTURE_EXCLUDED_ATTRIBUTES, 'mcp_exclusion_exempt_profiles' => FIXTURE_EXEMPT_PROFILES];
 	echo "  set ".module_code()."/".FIXTURE_SETTING." = ".FIXTURE_SETTING_VALUE." in $sConfigFile\n";
 
 	$aState['event_count'] = (int)(new DBObjectSet(new DBObjectSearch(FIXTURE_CLASS)))->Count();
@@ -287,7 +290,7 @@ check(
 	'reads '.var_export($mSetting, true).', was set to '.$aState['setting'][FIXTURE_SETTING]
 );
 
-foreach (['mcp_excluded_classes' => FIXTURE_EXCLUDED_CLASSES, 'mcp_excluded_attributes' => FIXTURE_EXCLUDED_ATTRIBUTES] as $sExclusion => $aWritten) {
+foreach (['mcp_excluded_classes' => FIXTURE_EXCLUDED_CLASSES, 'mcp_excluded_attributes' => FIXTURE_EXCLUDED_ATTRIBUTES, 'mcp_exclusion_exempt_profiles' => FIXTURE_EXEMPT_PROFILES] as $sExclusion => $aWritten) {
 	$mExclusion = MetaModel::GetModuleSetting(module_code(), $sExclusion, null);
 	check(
 		module_code().'/'.$sExclusion.' kept the administrator\'s value',

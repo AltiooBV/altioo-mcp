@@ -219,6 +219,15 @@ if (MetaModel::IsValidClass('Team') && MetaModel::IsValidAttCode('Person', 'phon
 
 $sPortalLogin = 'portal-smoke-'.$sSuffix;
 $oUserProfiles = DBObjectSet::FromScratch('URP_UserProfile');
+// The exempt profile (doc/adr/0013), created here and held by the service account. The portal user holds the stock
+// 'Portal user' profile, which the smoke also lists as exempt: the portal refuses a user holding a custom profile its
+// scopes do not list, and a portal user that holds an exempt profile must still be excluded.
+$sExemptProfile = 'MCP Exempt smoke '.$sSuffix;
+$oExemptProfile = MetaModel::NewObject('URP_Profiles');
+$oExemptProfile->Set('name', $sExemptProfile);
+$oExemptProfile->Set('description', 'CI exemption smoke');
+$oExemptProfile->DBInsert();
+
 foreach (['Portal user', 'MCP Services User'] as $sProfile) {
 	$oProfile = MetaModel::GetObjectFromOQL('SELECT URP_Profiles WHERE name = :name', ['name' => $sProfile]);
 	$oLink = MetaModel::NewObject('URP_UserProfile');
@@ -259,5 +268,29 @@ if ($sPortalSecret === null || $sPortalSecret === '') {
 }
 
 // Prefix-keyed like http-smoke-token, for the same reason: taken by its prefix, never as the last line.
+// The service account the exemption is given to: Administrator, the exempt profile, and its own token.
+$oExemptProfiles = DBObjectSet::FromScratch('URP_UserProfile');
+foreach (['Administrator', 'MCP Services User', $sExemptProfile] as $sProfile) {
+	$oProfile = MetaModel::GetObjectFromOQL('SELECT URP_Profiles WHERE name = :name', ['name' => $sProfile]);
+	$oLink = MetaModel::NewObject('URP_UserProfile');
+	$oLink->Set('profileid', $oProfile->GetKey());
+	$oLink->Set('reason', 'CI exemption smoke');
+	$oExemptProfiles->AddObject($oLink);
+}
+$oExemptUser = MetaModel::NewObject('UserLocal');
+$oExemptUser->Set('login', 'exempt-smoke-'.$sSuffix);
+$oExemptUser->Set('password', 'Exempt-Smoke-'.$sSuffix.'!');
+$oExemptUser->Set('contactid', $aPeople['Portal']);
+$oExemptUser->Set('language', 'EN US');
+$oExemptUser->Set('profile_list', $oExemptProfiles);
+$oExemptUser->DBInsert();
+$oExemptToken = MetaModel::NewObject('PersonalToken');
+$oExemptToken->Set('user_id', $oExemptUser->GetKey());
+$oExemptToken->Set('application', 'ci-exempt-smoke');
+$oExemptToken->Set('scope', 'MCP');
+$oExemptToken->Set('expiration_date', date('Y-m-d H:i:s', strtotime('+30 days')));
+$oExemptToken->DBInsert();
+$sExemptSecret = (string)$oExemptToken->GetToken();
+
 echo 'portal-smoke: '.$sPortalSecret.':'.$aRequests['own'].':'.$aRequests['other']
-	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0).':'.$aExclusion['person'].':'.$aExclusion['team']."\n";
+	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0).':'.$aExclusion['person'].':'.$aExclusion['team'].':'.$sExemptSecret.':'.$sExemptProfile."\n";
