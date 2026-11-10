@@ -1,8 +1,8 @@
 # 0014 — A tool keeps its security checks in its own source; shared code carries plumbing only
 
 - Date: 2026-11-10
-- Decided by: proposed, for Guy Couronne to accept or amend
-- Status: proposed
+- Decided by: Guy Couronne, 2026-11-11 ("Yes, accept it"), as proposed
+- Status: accepted
 
 The 2026-11-10 architecture review found the same guard prelude repeated across the
 single-object writes (`ObjectUpdate`, `ObjectApplyStimulus`, `ObjectDelete`): class valid, not the
