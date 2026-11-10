@@ -176,6 +176,20 @@ class ObjectGetRelated extends AbstractMCPTool
 		// list of codes it never matches, because the values are those inner
 		// arrays rather than the codes.
 		$aValidRelations = MetaModel::EnumRelationsEx($class);
+		// A relation that exists here only to reach an excluded class is not one this class has (doc/adr/0012): the
+		// schema does not list it, and a walk does not accept it. Nothing changes while nothing is excluded.
+		if (ExclusionPolicy::IsActive()) {
+			foreach ($aValidRelations as $sRelationCode => $aDirections) {
+				foreach (['down' => true, 'up' => false] as $sWay => $bDown) {
+					if (isset($aDirections[$sWay]) && ExclusionPolicy::RelationQueries($class, (string)$sRelationCode, $bDown) === []) {
+						unset($aValidRelations[$sRelationCode][$sWay]);
+					}
+				}
+				if ($aValidRelations[$sRelationCode] === []) {
+					unset($aValidRelations[$sRelationCode]);
+				}
+			}
+		}
 		if (!isset($aValidRelations[$relation][$direction])) {
 			$aAvailable = array_keys(array_filter(
 				$aValidRelations,

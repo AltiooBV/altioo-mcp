@@ -349,6 +349,67 @@ final class ExclusionPolicy
 	}
 
 	/**
+	 * The relation queries a class has for a relation and a direction, less those that lead to an excluded class.
+	 *
+	 * What iTop calls a relation query is keyed by the class that defines it and the neighbour it leads to
+	 * (`Server_hypervisor`), and selects a target class (`SELECT Hypervisor AS o ...`): the key is no class name, so the
+	 * check is on what the query selects and on the class that defines it. A query whose target cannot be read is left out
+	 * while anything is excluded, rather than served unchecked.
+	 *
+	 * @return array<string, array<string, mixed>> Query name => what iTop knows of it.
+	 */
+	public static function RelationQueries(string $sClass, string $sRelation, bool $bDown = true): array
+	{
+		/** @var array<string, array<string, mixed>> $aQueries */
+		$aQueries = MetaModel::EnumRelationQueries($sClass, $sRelation, $bDown);
+
+		return self::IsActive() ? self::FilterRelationQueries($aQueries, $bDown) : $aQueries;
+	}
+
+	/**
+	 * The relation queries that do not lead to an excluded class, from what iTop knows of each.
+	 *
+	 * Public for the tests, which feed it queries a datamodel may declare in any form: no promise to a tool pack, whatever
+	 * the class's own tag says. {@see RelationQueries()} is the method to call.
+	 *
+	 * @internal
+	 *
+	 * @param array<string, array<string, mixed>> $aQueries Query name => what iTop knows of it.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function FilterRelationQueries(array $aQueries, bool $bDown = true): array
+	{
+		$sKey = $bDown ? 'sQueryDown' : 'sQueryUp';
+		foreach ($aQueries as $sName => $aInfo) {
+			$sTarget = isset($aInfo[$sKey]) && is_string($aInfo[$sKey]) ? self::targetOf($aInfo[$sKey]) : '';
+			$sDefinedIn = isset($aInfo['sDefinedInClass']) && is_string($aInfo['sDefinedInClass']) ? $aInfo['sDefinedInClass'] : '';
+
+			if ($sTarget === '' || self::ExcludesClass($sTarget) || ($sDefinedIn !== '' && self::ExcludesClass($sDefinedIn))) {
+				unset($aQueries[$sName]);
+			}
+		}
+
+		return $aQueries;
+	}
+
+	/**
+	 * The class a relation query selects, as iTop's own parser reads it: in whatever form the query is written
+	 * (`SELECT X AS x`, `SELECT x FROM X AS x`, a join), with its `:this->id` placeholders left unbound. Empty when the query
+	 * cannot be parsed or selects no class the datamodel has, which the caller treats as unreadable.
+	 */
+	private static function targetOf(string $sOql): string
+	{
+		try {
+			$sClass = (string)\DBObjectSearch::FromOQL($sOql)->GetClass();
+		} catch (Throwable $e) {
+			return '';
+		}
+
+		return MetaModel::IsValidClass($sClass) ? $sClass : '';
+	}
+
+	/**
 	 * Whether the object is a file filed under an object of an excluded class:
 	 * an Attachment names its host by class and id, not by a key that
 	 * {@see ExcludesAttribute()} could follow.

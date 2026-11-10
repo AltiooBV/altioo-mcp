@@ -1285,10 +1285,8 @@ final class DatamodelReader
 		$aOfClass = MetaModel::EnumRelationsEx($sClass);
 		foreach (array_keys($aOfClass) as $sRelation) {
 			$aRelated = [];
-			foreach (MetaModel::EnumRelationQueries($sClass, $sRelation) as $sNeighbour => $aQueryInfo) {
-				if (ExclusionPolicy::ExcludesClass((string)$sNeighbour)) {
-					continue;
-				}
+			// The queries that lead to an excluded class are not listed (doc/adr/0012); their names are no class names.
+			foreach (array_keys(ExclusionPolicy::RelationQueries($sClass, $sRelation)) as $sNeighbour) {
 				$aRelated[] = $sNeighbour;
 			}
 			if (!empty($aRelated)) {
