@@ -379,13 +379,7 @@ final class ExclusionPolicy
 	{
 		$sKey = $bDown ? 'sQueryDown' : 'sQueryUp';
 		foreach ($aQueries as $sName => $aInfo) {
-			$sTarget = '';
-			if (isset($aInfo[$sKey]) && is_string($aInfo[$sKey])) {
-				$aMatch = [];
-				if (preg_match('/^\s*SELECT\s+([A-Za-z_][A-Za-z0-9_]*)/i', $aInfo[$sKey], $aMatch) === 1) {
-					$sTarget = $aMatch[1];
-				}
-			}
+			$sTarget = isset($aInfo[$sKey]) && is_string($aInfo[$sKey]) ? self::targetOf($aInfo[$sKey]) : '';
 			$sDefinedIn = isset($aInfo['sDefinedInClass']) && is_string($aInfo['sDefinedInClass']) ? $aInfo['sDefinedInClass'] : '';
 
 			if ($sTarget === '' || self::ExcludesClass($sTarget) || ($sDefinedIn !== '' && self::ExcludesClass($sDefinedIn))) {
@@ -394,6 +388,22 @@ final class ExclusionPolicy
 		}
 
 		return $aQueries;
+	}
+
+	/**
+	 * The class a relation query selects, as iTop's own parser reads it: in whatever form the query is written
+	 * (`SELECT X AS x`, `SELECT x FROM X AS x`, a join), with its `:this->id` placeholders left unbound. Empty when the query
+	 * cannot be parsed or selects no class the datamodel has, which the caller treats as unreadable.
+	 */
+	private static function targetOf(string $sOql): string
+	{
+		try {
+			$sClass = (string)\DBObjectSearch::FromOQL($sOql)->GetClass();
+		} catch (Throwable $e) {
+			return '';
+		}
+
+		return MetaModel::IsValidClass($sClass) ? $sClass : '';
 	}
 
 	/**
