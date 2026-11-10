@@ -8,10 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
-use \Mcp\Schema\ToolAnnotations;
+use Mcp\Exception\ToolCallException;
+use Mcp\Schema\ToolAnnotations;
 
 /**
  * @api
@@ -201,5 +203,24 @@ abstract class AbstractMCPTool
 	public function requiredProfiles(): array
 	{
 		return [];
+	}
+
+	/**
+	 * Runs $fCall and gives its result back; a portal that cannot be read or a
+	 * refusal it raises (MCPPortalException) reaches the client as the same
+	 * message in a ToolCallException. Plumbing only: the check stays written in
+	 * the closure, in the tool's own source (doc/adr/0014).
+	 *
+	 * @param \Closure():mixed $fCall
+	 * @throws ToolCallException
+	 * @since 1.3.0
+	 */
+	protected static function portalRefusal(\Closure $fCall): mixed
+	{
+		try {
+			return $fCall();
+		} catch (MCPPortalException $oException) {
+			throw new ToolCallException($oException->getMessage());
+		}
 	}
 }

@@ -18,7 +18,6 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -93,11 +92,11 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Attach a document to an iTop object',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive, except on a blob attribute it replaces
-			false,  // idempotentHint — calling twice attaches twice
-			false,  // openWorldHint — nothing outside iTop is contacted
+			title: $this->getTitle() ?? 'Attach a document to an iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // additive, except on a blob attribute it replaces
+			idempotentHint: false, // calling twice attaches twice
+			openWorldHint: false, // nothing outside iTop is contacted
 		);
 	}
 
@@ -265,12 +264,8 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		if ($oSet->Count() === 0) {
 			throw new ToolCallException("Object {$sClass}::{$iId} not found."); // hide that the object exists
 		}
-		try {
-			if (ObjectAccess::Current()->Hides($sClass, $iId)) {
-				throw new ToolCallException("Object {$sClass}::{$iId} not found."); // out of the portal's reach: the same answer
-			}
-		} catch (MCPPortalException $e) {
-			throw new ToolCallException($e->getMessage());
+		if (self::portalRefusal(static fn () => ObjectAccess::Current()->Hides($sClass, $iId))) {
+			throw new ToolCallException("Object {$sClass}::{$iId} not found."); // out of the portal's reach: the same answer
 		}
 
 		// Fetched before the rights check and rewound after, not the other way

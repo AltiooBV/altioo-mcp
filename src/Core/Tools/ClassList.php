@@ -11,7 +11,6 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalDescription;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -68,11 +67,11 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'List iTop classes',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'List iTop classes',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 
@@ -125,11 +124,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 		// In portal mode, the portal's overview: what it offers is the
 		// portal's configuration, not the datamodel (doc/adr/0006).
 		if (PortalMode::Current() !== null) {
-			try {
-				return ToolOutput::Json(PortalDescription::Overview(PortalPolicy::ForCurrentRequest()));
-			} catch (MCPPortalException $oException) {
-				throw new ToolCallException($oException->getMessage());
-			}
+			return self::portalRefusal(static fn () => ToolOutput::Json(PortalDescription::Overview(PortalPolicy::ForCurrentRequest())));
 		}
 
 		$sCategory = trim($category);

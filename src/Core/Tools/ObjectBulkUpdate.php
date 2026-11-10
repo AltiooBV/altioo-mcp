@@ -57,11 +57,11 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Update iTop objects in bulk',
-			false,  // readOnlyHint
-			false,  // destructiveHint — modifies, does not destroy
-			true,   // idempotentHint — the same values set twice land the same way
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Update iTop objects in bulk',
+			readOnlyHint: false,
+			destructiveHint: false, // modifies, does not destroy
+			idempotentHint: true, // the same values set twice land the same way
+			openWorldHint: false,
 		);
 	}
 

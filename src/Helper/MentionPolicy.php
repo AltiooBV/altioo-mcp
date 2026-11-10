@@ -78,7 +78,7 @@ final class MentionPolicy
 			$sAttCode,
 			$aMentioned,
 			self::AllowedClasses(),
-			MCPHelper::GetMaxMentions(),
+			Settings::GetMaxMentions(),
 			// IsParentClass() throws on an unknown class, and a typo in
 			// mentions.allowed_classes is an operator's, not the caller's.
 			static fn (string $sParent, string $sChild): bool => MetaModel::IsValidClass($sParent)

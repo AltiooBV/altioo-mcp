@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -81,7 +82,7 @@ class Version extends AbstractMCPResource
 				'name' => MCPHelper::MODULE_NAME,
 				'version' => MCPHelper::VERSION,
 				'license' => MCPHelper::LICENSE,
-				'source' => MCPHelper::GetSourceUrl(),
+				'source' => Settings::GetSourceUrl(),
 			],
 		]);
 	}

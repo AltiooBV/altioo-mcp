@@ -91,3 +91,5 @@ Settings agent skills read here.
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).
   Also: portal attachments are read and add only, gated by the host object and the portal's form, never by UserRights on
   `Attachment`, and never a delete ([0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md)).
+  Also: a tool's security checks stay in its own source, where the contract tests read them; shared code carries plumbing
+  only, and a core tool's signatures never narrow, since packs subclass them ([0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).

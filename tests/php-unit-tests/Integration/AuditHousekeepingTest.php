@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\AuditHousekeeping;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AltiooEventMCPService;
@@ -48,7 +49,7 @@ class AuditHousekeepingTest extends ItopDataTestCaseAlias
 
 	private function retention(mixed $mValue): void
 	{
-		MetaModel::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_AUDIT_RETENTION_DAYS, $mValue);
+		MetaModel::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_AUDIT_RETENTION_DAYS, $mValue);
 	}
 
 	public function testRowsOlderThanTheSettingAreDeletedAndNewerOnesKept(): void

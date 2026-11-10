@@ -12,7 +12,6 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalDescription;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -76,11 +75,11 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Get iTop class schema',
-			true,   // readOnlyHint
-			false,  // destructiveHint
-			true,   // idempotentHint
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Get iTop class schema',
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
 		);
 	}
 
@@ -149,11 +148,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 		// In portal mode, the class as the portal offers it: its forms,
 		// lifecycle and create actions, not the datamodel (doc/adr/0006).
 		if (PortalMode::Current() !== null) {
-			try {
-				return ToolOutput::Json(PortalDescription::Of(PortalPolicy::ForCurrentRequest(), trim($class)));
-			} catch (MCPPortalException $oException) {
-				throw new ToolCallException($oException->getMessage());
-			}
+			return self::portalRefusal(static fn () => ToolOutput::Json(PortalDescription::Of(PortalPolicy::ForCurrentRequest(), trim($class))));
 		}
 
 		// Unknown and forbidden answer alike, so calling this tool cannot map

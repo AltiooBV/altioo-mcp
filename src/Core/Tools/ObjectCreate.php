@@ -17,7 +17,6 @@ use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalMode;
@@ -68,11 +67,11 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Create iTop object',
-			false,  // readOnlyHint
-			false,  // destructiveHint — additive create
-			false,  // idempotentHint — each call can create another row
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Create iTop object',
+			readOnlyHint: false,
+			destructiveHint: false, // additive create
+			idempotentHint: false, // each call can create another row
+			openWorldHint: false,
 		);
 	}
 
@@ -177,12 +176,8 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// In portal mode the portal's create action decides the class and
 		// presets the object; on the console the class named does
 		// (doc/adr/0006). Every check below applies in both.
-		try {
-			$oAccess = ObjectAccess::Current();
-			$oPrepared = $oAccess->Prepared(trim($action), $from_id);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
+		$oPrepared = self::portalRefusal(static fn () => $oAccess->Prepared(trim($action), $from_id));
 		if ($oPrepared !== null) {
 			$class = get_class($oPrepared);
 		}
@@ -223,11 +218,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 
 		// The form once the rules are in: a portal's layout may read what
 		// they set.
-		try {
-			$sModeRefusal = $oAccess->RefusalToSet($oObject, $fields);
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$sModeRefusal = self::portalRefusal(static fn () => $oAccess->RefusalToSet($oObject, $fields));
 		if ($sModeRefusal !== null) {
 			throw new ToolCallException($sModeRefusal);
 		}
@@ -281,11 +272,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
-		try {
-			$aChanges = $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues));
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		$aChanges = self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues)));
 
 		if ($simulate) {
 			// id is null rather than absent: a dry run has created nothing, and

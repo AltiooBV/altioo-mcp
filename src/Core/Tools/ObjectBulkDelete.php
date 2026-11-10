@@ -58,11 +58,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 	public function getAnnotations(): ?ToolAnnotations
 	{
 		return new ToolAnnotations(
-			$this->getTitle() ?? 'Delete iTop objects in bulk',
-			false,  // readOnlyHint
-			true,   // destructiveHint — permanent, and cascades
-			false,  // idempotentHint — the second call finds nothing to delete
-			false,  // openWorldHint
+			title: $this->getTitle() ?? 'Delete iTop objects in bulk',
+			readOnlyHint: false,
+			destructiveHint: true, // permanent, and cascades
+			idempotentHint: false, // the second call finds nothing to delete
+			openWorldHint: false,
 		);
 	}
 

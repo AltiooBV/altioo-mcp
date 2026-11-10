@@ -9,7 +9,6 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
@@ -59,11 +58,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	 */
 	protected static function policy(): PortalPolicy
 	{
-		try {
-			return PortalPolicy::ForCurrentRequest();
-		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
-		}
+		return self::portalRefusal(static fn () => PortalPolicy::ForCurrentRequest());
 	}
 
 	/**

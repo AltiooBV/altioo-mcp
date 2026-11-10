@@ -56,7 +56,7 @@ final class FormulaPolicy
 	 */
 	public static function RefusalFor(string $sClass, string $sAttCode, mixed $value): ?string
 	{
-		if (!is_string($value) || !MCPHelper::RefusesFormulaValues()) {
+		if (!is_string($value) || !Settings::RefusesFormulaValues()) {
 			return null;
 		}
 

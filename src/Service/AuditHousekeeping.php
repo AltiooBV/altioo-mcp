@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use AltiooEventMCPService;
 use DBObjectSearch;
@@ -62,10 +63,10 @@ final class AuditHousekeeping implements iBackgroundProcess
 	 */
 	public function Process($iUnixTimeLimit)
 	{
-		MCPLog::Enable(APPROOT.'log/error.log');
+		MCPLog::EnableForModule();
 
 		$iLimit = (int)$iUnixTimeLimit;
-		$iDays = MCPHelper::GetAuditRetentionDays();
+		$iDays = Settings::GetAuditRetentionDays();
 		$iDeleted = $iDays > 0 ? $this->Purge(AuditRetention::CutoffFor(time(), $iDays), $iLimit) : 0;
 		$iReconciled = $this->Reconcile($iLimit);
 

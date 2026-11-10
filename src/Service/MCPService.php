@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
@@ -76,7 +77,7 @@ final class MCPService
 	 * CORS handling along with it, and which the SDK logs a warning about for
 	 * exactly that reason.
 	 *
-	 * When the hostname cannot be known - see MCPHelper::GetAllowedHosts() -
+	 * When the hostname cannot be known - see Settings::GetAllowedHosts() -
 	 * the middleware is left out rather than given a list that matches nothing.
 	 * The SDK documents that as the supported answer for a deployment fronted
 	 * by a proxy that validates Host itself.
@@ -103,14 +104,14 @@ final class MCPService
 	 */
 	private static function middleware(Psr17Factory $factory): array
 	{
-		$aAllowedHosts = MCPHelper::GetAllowedHosts();
+		$aAllowedHosts = Settings::GetAllowedHosts();
 
-		$aMiddleware = [new CorsMiddleware(MCPHelper::GetAllowedOrigins())];
+		$aMiddleware = [new CorsMiddleware(Settings::GetAllowedOrigins())];
 
 		if (!in_array(MCPHttp::ANY_HOST, $aAllowedHosts, true)) {
 			$aMiddleware[] = new DnsRebindingProtectionMiddleware(
 				$aAllowedHosts,
-				allowedOrigins: MCPHelper::GetAllowedOrigins(),
+				allowedOrigins: Settings::GetAllowedOrigins(),
 				responseFactory: $factory,
 				streamFactory: $factory,
 			);
@@ -124,11 +125,11 @@ final class MCPService
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
 			->setInstructions(self::InstructionsFor($oPolicy))
-			->setPaginationLimit(MCPHelper::GetPaginationLimit())
+			->setPaginationLimit(Settings::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
 
-		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+		$aDisabled = Settings::GetDisabledIdentifiers();
 
 		$builder = self::registerResources($builder, $aDisabled, $oPolicy);
 		$builder = self::registerResourceTemplates($builder, $aDisabled, $oPolicy);
@@ -153,7 +154,7 @@ final class MCPService
 	 */
 	private static function warnAboutEscalationClassesThatMatchNothing(): void
 	{
-		$aListed = MCPHelper::GetEscalationClasses();
+		$aListed = Settings::GetEscalationClasses();
 		if ($aListed === null || $aListed === []) {
 			return;
 		}
@@ -166,7 +167,7 @@ final class MCPService
 			MCPHelper::LogError(sprintf(
 				"'%s' names %s this instance's datamodel does not have: %s. Nothing is refused by those entries. "
 				.'Check the spelling against the class name core_class_schema reports, or remove an entry for an extension that is no longer installed.',
-				MCPHelper::MODULE_SETTING_ESCALATION_CLASSES,
+				Settings::MODULE_SETTING_ESCALATION_CLASSES,
 				count($aStale) === 1 ? 'a class' : 'classes',
 				implode(', ', $aStale)
 			));
@@ -198,9 +199,9 @@ final class MCPService
 			self::internalFormatOf(\AttributeDateTime::class),
 			self::internalFormatOf(\AttributeDate::class),
 			self::servedPromptNames($oPolicy),
-			MCPHelper::GetMaxMentions(),
+			Settings::GetMaxMentions(),
 			MentionPolicy::AllowedClasses(),
-			MCPHelper::RefusesFormulaValues()
+			Settings::RefusesFormulaValues()
 		);
 	}
 
@@ -277,7 +278,7 @@ final class MCPService
 	 */
 	private static function warnAboutSettingsThatMatchNothing(array $aDisabled): void
 	{
-		$aToolsets = MCPHelper::GetEnabledToolsets();
+		$aToolsets = Settings::GetEnabledToolsets();
 
 		// The overwhelmingly common case is both empty, and walking the whole
 		// registry to confirm that nothing matches nothing is not worth doing
@@ -305,7 +306,7 @@ final class MCPService
 				"'%s' names %s that no registered element answers to: %s. "
 				.'Nothing is being turned off by those entries. An element renamed by an upgrade is the usual cause - '
 				.'check the CHANGELOG of the extension that used to provide it, or list the current names with tools/list.',
-				MCPHelper::MODULE_SETTING_DISABLED,
+				Settings::MODULE_SETTING_DISABLED,
 				count($aStale) === 1 ? 'an identifier or class' : 'identifiers or classes',
 				implode(', ', $aStale)
 			));
@@ -317,7 +318,7 @@ final class MCPService
 				"'%s' names %s that no registered element declares: %s. "
 				.'Those entries serve nothing rather than everything, so the elements they were meant to enable are absent. '
 				.'Known toolsets on this instance: %s.',
-				MCPHelper::MODULE_SETTING_ENABLED_TOOLSETS,
+				Settings::MODULE_SETTING_ENABLED_TOOLSETS,
 				count($aStale) === 1 ? 'a toolset' : 'toolsets',
 				implode(', ', $aStale),
 				$aKnownToolsets === [] ? '(none)' : implode(', ', array_keys($aKnownToolsets))
@@ -354,12 +355,12 @@ final class MCPService
 			MCPHelper::LogError(sprintf(
 				"'%s' turns off %s but not %s, which does the same job %s. List %s as well, "
 				."or leave the grade out of '%s' to stop the operation whichever tool asks for it.",
-				MCPHelper::MODULE_SETTING_DISABLED,
+				Settings::MODULE_SETTING_DISABLED,
 				$sDisabled,
 				$sSibling,
 				$aTools[$sSibling]['bulk'] ? 'for many objects in one call' : 'one object at a time',
 				$sSibling,
-				MCPHelper::MODULE_SETTING_CAPABILITIES
+				Settings::MODULE_SETTING_CAPABILITIES
 			));
 		}
 	}
@@ -483,7 +484,7 @@ final class MCPService
 	 */
 	private static function servedPromptNames(AccessPolicy $oPolicy): array
 	{
-		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+		$aDisabled = Settings::GetDisabledIdentifiers();
 		$aNames = [];
 
 		foreach (MCPRegistry::GetPrompts() as $sName => $oPrompt) {
@@ -656,7 +657,7 @@ final class MCPService
 		// no token, and answers with the instance-wide policy: a read-only
 		// token was told it could write and delete.
 		$oPolicy = AccessPolicy::Current() ?? self::AccessPolicyOfCurrentRequest();
-		$aDisabled = MCPHelper::GetDisabledIdentifiers();
+		$aDisabled = Settings::GetDisabledIdentifiers();
 
 		$aToolsets = [];
 		$aServedGrades = [];
@@ -728,15 +729,15 @@ final class MCPService
 	 */
 	public static function AccessPolicyOfCurrentRequest(): AccessPolicy
 	{
-		$oConfigured = AccessPolicy::Of(MCPHelper::GetCapabilities(), MCPHelper::GetEnabledToolsets());
+		$oConfigured = AccessPolicy::Of(Settings::GetCapabilities(), Settings::GetEnabledToolsets());
 
-		if (MCPHelper::AccessSettingsAreMalformed()) {
+		if (Settings::AccessSettingsAreMalformed()) {
 			// The readers above answered "everything" and logged why. A token
 			// cannot widen nothing, so there is nothing left to narrow.
 			return AccessPolicy::Nothing();
 		}
 
-		if (MCPHelper::IsReadOnly()) {
+		if (Settings::IsReadOnly()) {
 			// mcp_read_only is narrowing, not overriding: an instance that
 			// also names grades gets whichever of the two is smaller, and an
 			// instance that names grades read-only cannot honour - write, say

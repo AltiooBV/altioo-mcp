@@ -979,12 +979,12 @@ final class AccessGrants
 	public static function RefusalFor(string $sClass, ?int $iId = null, array $aFields = []): ?string
 	{
 		return self::RefusalGiven(
-			MCPHelper::AllowsAccessAdministration(),
+			Settings::AllowsAccessAdministration(),
 			$sClass,
 			$iId,
 			$aFields,
-			MCPHelper::AllowsPrivilegeEscalation(),
-			MCPHelper::GetEscalationClasses()
+			Settings::AllowsPrivilegeEscalation(),
+			Settings::GetEscalationClasses()
 		);
 	}
 

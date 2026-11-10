@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -49,7 +50,7 @@ class MiddlewareStackTest extends ItopDataTestCaseAlias
 	{
 		parent::setUp();
 
-		foreach ([MCPHelper::MODULE_SETTING_ALLOWED_HOSTS, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS] as $sSetting) {
+		foreach ([Settings::MODULE_SETTING_ALLOWED_HOSTS, Settings::MODULE_SETTING_ALLOWED_ORIGINS] as $sSetting) {
 			$this->aSaved[$sSetting] = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, null);
 		}
 
@@ -115,8 +116,8 @@ class MiddlewareStackTest extends ItopDataTestCaseAlias
 	 */
 	private function configure(array $aHosts, array $aOrigins): void
 	{
-		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_HOSTS, $aHosts);
-		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, MCPHelper::MODULE_SETTING_ALLOWED_ORIGINS, $aOrigins);
+		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_HOSTS, $aHosts);
+		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_ORIGINS, $aOrigins);
 	}
 
 	/**
