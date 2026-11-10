@@ -369,7 +369,10 @@ final class ExclusionPolicy
 	/**
 	 * The relation queries that do not lead to an excluded class, from what iTop knows of each.
 	 *
-	 * Public so that it can be tested on queries a datamodel may declare in any form.
+	 * Public for the tests, which feed it queries a datamodel may declare in any form: no promise to a tool pack, whatever
+	 * the class's own tag says. {@see RelationQueries()} is the method to call.
+	 *
+	 * @internal
 	 *
 	 * @param array<string, array<string, mixed>> $aQueries Query name => what iTop knows of it.
 	 *
