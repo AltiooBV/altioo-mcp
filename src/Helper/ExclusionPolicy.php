@@ -368,11 +368,13 @@ final class ExclusionPolicy
 
 		$sKey = $bDown ? 'sQueryDown' : 'sQueryUp';
 		foreach ($aQueries as $sName => $aInfo) {
+			$aMatch = [];
 			$bTargetRead = isset($aInfo[$sKey]) && is_string($aInfo[$sKey])
 				&& preg_match('/^\s*SELECT\s+([A-Za-z_][A-Za-z0-9_]*)/i', $aInfo[$sKey], $aMatch) === 1;
+			$sTarget = (string)($aMatch[1] ?? '');
 			$sDefinedIn = isset($aInfo['sDefinedInClass']) && is_string($aInfo['sDefinedInClass']) ? $aInfo['sDefinedInClass'] : '';
 
-			if (!$bTargetRead || self::ExcludesClass($aMatch[1]) || ($sDefinedIn !== '' && self::ExcludesClass($sDefinedIn))) {
+			if (!$bTargetRead || $sTarget === '' || self::ExcludesClass($sTarget) || ($sDefinedIn !== '' && self::ExcludesClass($sDefinedIn))) {
 				unset($aQueries[$sName]);
 			}
 		}
