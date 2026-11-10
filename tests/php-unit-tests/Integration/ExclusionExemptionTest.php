@@ -73,8 +73,9 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 			$iContact = (int)$this->CreatePerson(3, $this->iOrg)->GetKey();
 			$this->iOwn = (int)$this->CreateUserRequest(1, ['org_id' => $this->iOrg, 'caller_id' => $iContact, 'description' => 'Exempt portal description'])->GetKey();
 			$this->sPortalUser = 'portal-exempt-'.$sSuffix;
-			$iPortal = (int)$this->CreateUser($this->sPortalUser, self::profileId('Portal user'), 'Portal-Exempt-'.$sSuffix.'!', $iContact)->GetKey();
-			$this->grant($iPortal, $this->sProfile);
+			// Not the custom profile: the portal refuses a user holding a profile its scopes do not list. The
+			// stock 'Portal user' profile is the one a portal user does hold, so it is the one made exempt for this.
+			$this->CreateUser($this->sPortalUser, self::profileId('Portal user'), 'Portal-Exempt-'.$sSuffix.'!', $iContact);
 		}
 
 		$this->configure(['Team'], ['Person' => ['phone'], 'UserRequest' => ['description']], [$this->sProfile]);
@@ -142,11 +143,12 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 			$this->markTestSkipped('Needs request management and the stock portal.');
 		}
 
+		$this->configure(['Team'], ['Person' => ['phone'], 'UserRequest' => ['description']], ['Portal user']);
 		UserRights::Login($this->sPortalUser);
 		PortalMode::Remember('itop-portal');
 		PortalPolicy::Forget();
 
-		$this->assertFalse(ExclusionPolicy::IsExempt(), 'portal mode is never exempt');
+		$this->assertFalse(ExclusionPolicy::IsExempt(), 'portal mode is never exempt, though the account holds a profile listed as exempt');
 		$this->assertStringNotContainsString('Exempt portal description', json_encode(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn))), 'the excluded attribute reached a portal user');
 	}
 

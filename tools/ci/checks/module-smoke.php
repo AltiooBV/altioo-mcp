@@ -219,15 +219,16 @@ if (MetaModel::IsValidClass('Team') && MetaModel::IsValidAttCode('Person', 'phon
 
 $sPortalLogin = 'portal-smoke-'.$sSuffix;
 $oUserProfiles = DBObjectSet::FromScratch('URP_UserProfile');
-// The exempt profile (doc/adr/0013), created here and held by the portal user as well as by a service account:
-// a portal user holding it must still be excluded, which is tried on the wire.
+// The exempt profile (doc/adr/0013), created here and held by the service account. The portal user holds the stock
+// 'Portal user' profile, which the smoke also lists as exempt: the portal refuses a user holding a custom profile its
+// scopes do not list, and a portal user that holds an exempt profile must still be excluded.
 $sExemptProfile = 'MCP Exempt smoke '.$sSuffix;
 $oExemptProfile = MetaModel::NewObject('URP_Profiles');
 $oExemptProfile->Set('name', $sExemptProfile);
 $oExemptProfile->Set('description', 'CI exemption smoke');
 $oExemptProfile->DBInsert();
 
-foreach (['Portal user', 'MCP Services User', $sExemptProfile] as $sProfile) {
+foreach (['Portal user', 'MCP Services User'] as $sProfile) {
 	$oProfile = MetaModel::GetObjectFromOQL('SELECT URP_Profiles WHERE name = :name', ['name' => $sProfile]);
 	$oLink = MetaModel::NewObject('URP_UserProfile');
 	$oLink->Set('profileid', $oProfile->GetKey());

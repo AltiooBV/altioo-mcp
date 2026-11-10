@@ -30,7 +30,7 @@ $oConfig->SetModuleSetting('altioo-mcp', 'mcp_excluded_classes', $sMode === 'on'
 $oConfig->SetModuleSetting('altioo-mcp', 'mcp_excluded_attributes', $sMode === 'on' ? ['Person' => ['phone', 'mobile_phone'], 'UserRequest' => ['description']] : []);
 // The exempt profile: the second argument names it ('' for none). The smoke's service account and its portal
 // user both hold it, so that "a portal user holding the profile is still excluded" is tried on the wire.
-$oConfig->SetModuleSetting('altioo-mcp', 'mcp_exclusion_exempt_profiles', ($sMode === 'on' && ($argv[3] ?? '') !== '') ? [(string)$argv[3]] : []);
+$oConfig->SetModuleSetting('altioo-mcp', 'mcp_exclusion_exempt_profiles', ($sMode === 'on' && ($argv[3] ?? '') !== '') ? [(string)$argv[3], 'Portal user'] : []);
 $oConfig->WriteToFile();
 @chmod($sFile, 0640);
 echo "exclusions $sMode\n";

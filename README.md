@@ -1285,7 +1285,8 @@ recalled. A setting that cannot be honoured stops the service rather than leavin
 **Exempting an account.** `mcp_exclusion_exempt_profiles` ([ADR 0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md))
 lists profiles whose holders are served what is excluded — the operator checking that the exclusion works, a data-protection
 officer, one trusted integration. It is decided by the account, never by a token scope, a client's declared name or an OAuth
-client, and never in portal mode. Create a dedicated service account that holds the profile for the one client that needs it.
+client, and never in portal mode. Create a dedicated service account that holds the profile for the one client that needs it. **Do not give the profile to a
+portal user**: the portal refuses a user holding a profile its scopes do not list, and portal mode is never exempt anyway.
 The exemption is exactly as safe as that account is held. A profile name that does not exist stops the endpoint for everyone
 (fail closed), and every exempt call carries *Exempt* = Yes on its audit row.
 

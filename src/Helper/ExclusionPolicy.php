@@ -589,7 +589,8 @@ final class ExclusionPolicy
 	{
 		try {
 			$sPortal = class_exists(PortalMode::class) ? (string)PortalMode::Current() : '';
-			$iUser = class_exists('UserRights') ? (int)UserRights::GetRealUserId() : 0;
+			// As the audit row and the change log name the actor: the real user under impersonation, the user otherwise.
+			$iUser = class_exists('CMDBChange') ? (int)\CMDBChange::GetCurrentUserId() : 0;
 		} catch (Throwable $e) {
 			return 'unknown';
 		}
@@ -609,7 +610,7 @@ final class ExclusionPolicy
 			if (PortalMode::Current() !== null || !class_exists('UserRights') || !class_exists('DBObjectSearch')) {
 				return false;
 			}
-			$iUser = (int)UserRights::GetRealUserId();
+			$iUser = (int)\CMDBChange::GetCurrentUserId();
 			if ($iUser < 1) {
 				return false;
 			}
