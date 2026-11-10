@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 use Mcp\Exception\ToolCallException;
-use \Mcp\Schema\ToolAnnotations;
+use Mcp\Schema\ToolAnnotations;
 
 /**
  * @api

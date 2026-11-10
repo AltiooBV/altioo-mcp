@@ -63,4 +63,9 @@
 		</properties>
 	</rule>
 	<rule ref="Generic.Functions.FunctionCallArgumentSpacing"/>
+
+	<!-- Imports. A `use` name is fully qualified already, so a leading backslash
+	     changes nothing and only makes two spellings of one import. iTop's own
+	     source writes none. The one PSR-12 sniff taken here; see the header. -->
+	<rule ref="PSR12.Files.ImportStatement"/>
 </ruleset>
