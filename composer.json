@@ -38,7 +38,8 @@
       "Altioo\\iTop\\Extension\\MCP\\Test\\": "tests/php-unit-tests"
     },
     "exclude-from-classmap": [
-      "/tests/php-unit-tests/Support/log_doubles.php"
+      "/tests/php-unit-tests/Support/log_doubles.php",
+      "/tests/php-unit-tests/Support/InvalidTools.php"
     ]
   },
   "scripts": {
