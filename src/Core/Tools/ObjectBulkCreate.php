@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
@@ -152,6 +153,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// concerned: there is no UR_ACTION_BULK_CREATE, so the bulk gate is
 		// the modify one and the single gate is create.
 		self::checkBulkAllowed($class, UR_ACTION_BULK_MODIFY, UR_ACTION_CREATE, 'create');
+		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
+		if ($sCreateRefusal !== null) {
+			throw new ToolCallException($sCreateRefusal);
+		}
 
 		// Once for the batch, before the loop: the objects created by one call
 		// are one decision, and they share the one change record.

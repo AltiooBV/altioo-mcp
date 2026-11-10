@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -114,7 +115,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException("Invalid ID '{$id}'.");
 		}
 
-		if (!MetaModel::IsValidClass($class)) {
+		if (!ExclusionPolicy::Serves($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 

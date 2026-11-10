@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -292,7 +293,7 @@ class ObjectFindByName extends AbstractMCPTool
 		if ($sClass === '') {
 			$aCandidates = MetaModel::GetClasses('searchable');
 		} else {
-			if (!MetaModel::IsValidClass($sClass)) {
+			if (!ExclusionPolicy::Serves($sClass)) {
 				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
 			}
 
@@ -317,7 +318,7 @@ class ObjectFindByName extends AbstractMCPTool
 			if (ObjectHistory::IsReserved($sCandidate)) {
 				continue;
 			}
-			if (!UserRights::IsActionAllowed($sCandidate, UR_ACTION_READ)) {
+			if (ExclusionPolicy::ExcludesClass($sCandidate) || !UserRights::IsActionAllowed($sCandidate, UR_ACTION_READ)) {
 				continue;
 			}
 			// This reads many objects of the class at once, which is the right
@@ -386,7 +387,7 @@ class ObjectFindByName extends AbstractMCPTool
 		try {
 			$oFilter = new DBObjectSearch($sClass);
 			foreach ($aNeedles as $sNeedle) {
-				$oFilter->AddCondition_FullText(self::literal($sNeedle));
+				ExclusionPolicy::AddFullText($oFilter, self::literal($sNeedle));
 			}
 			$oFilter->SetShowObsoleteData(utils::ShowObsoleteData());
 

@@ -203,6 +203,20 @@ if (MetaModel::IsValidClass('Attachment')) {
 	}
 }
 
+// A person with a phone number and a team, for the exclusion checks (checks/exclusion-smoke.sh):
+// what the operator excludes is read out of them over HTTP, so they hold values nobody would guess.
+$aExclusion = ['person' => 0, 'team' => 0];
+if (MetaModel::IsValidClass('Team') && MetaModel::IsValidAttCode('Person', 'phone')) {
+	$oPhoned = MetaModel::GetObject('Person', $aPeople['Colleague']);
+	$oPhoned->Set('phone', '+3355507731');
+	$oPhoned->DBUpdate();
+	$oTeam = MetaModel::NewObject('Team');
+	$oTeam->Set('name', 'Smoke excluded team '.$sSuffix);
+	$oTeam->Set('org_id', $iOrg);
+	$oTeam->DBInsert();
+	$aExclusion = ['person' => (int)$aPeople['Colleague'], 'team' => (int)$oTeam->GetKey()];
+}
+
 $sPortalLogin = 'portal-smoke-'.$sSuffix;
 $oUserProfiles = DBObjectSet::FromScratch('URP_UserProfile');
 foreach (['Portal user', 'MCP Services User'] as $sProfile) {
@@ -246,4 +260,4 @@ if ($sPortalSecret === null || $sPortalSecret === '') {
 
 // Prefix-keyed like http-smoke-token, for the same reason: taken by its prefix, never as the last line.
 echo 'portal-smoke: '.$sPortalSecret.':'.$aRequests['own'].':'.$aRequests['other']
-	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0)."\n";
+	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0).':'.$aExclusion['person'].':'.$aExclusion['team']."\n";

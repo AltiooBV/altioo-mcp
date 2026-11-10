@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -158,7 +159,8 @@ final class PortalPolicy
 	 */
 	public function ReadSet(string $sClass): ?DBSearch
 	{
-		if (!MetaModel::IsValidClass($sClass) || UserRights::IsActionAllowed($sClass, UR_ACTION_READ) === UR_ALLOWED_NO) {
+		// An excluded class is not one the portal offers through this channel (doc/adr/0012).
+		if (!ExclusionPolicy::Serves($sClass) || UserRights::IsActionAllowed($sClass, UR_ACTION_READ) === UR_ALLOWED_NO) {
 			return null;
 		}
 
@@ -212,7 +214,8 @@ final class PortalPolicy
 	 */
 	public function MayCreate(string $sClass): bool
 	{
-		return MetaModel::IsValidClass($sClass)
+		return ExclusionPolicy::Serves($sClass)
+			&& ExclusionPolicy::RefusalToCreate($sClass) === null
 			&& UserRights::IsActionAllowed($sClass, UR_ACTION_CREATE) !== UR_ALLOWED_NO
 			&& $this->WriteSet($sClass) !== null;
 	}
@@ -564,7 +567,7 @@ final class PortalPolicy
 		// attributes; nothing here knows how to serve those.
 		$aFields = [];
 		foreach ($aFlags as $sAttCode => $iFlags) {
-			if (is_string($sAttCode) && MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			if (is_string($sAttCode) && MetaModel::IsValidAttCode($sClass, $sAttCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 				$aFields[$sAttCode] = (int)$iFlags;
 			}
 		}
@@ -883,6 +886,13 @@ final class PortalPolicy
 				$aBrickSets[$sClass][$sBrick][] = $oSet;
 
 				$aGrouping = $oBrick->GetGrouping();
+				// Tabs and areas group the rows by an attribute; one the operator excluded splits nothing here.
+				foreach (['tabs', 'areas'] as $sGrouping) {
+					$sBy = $aGrouping[$sGrouping]['attribute'] ?? null;
+					if (is_string($sBy) && ExclusionPolicy::ExcludesAttribute($sClass, $sBy)) {
+						unset($aGrouping[$sGrouping]);
+					}
+				}
 				$aTabs = [];
 				$aConditions = [];
 				foreach ($aGrouping['tabs']['groups'] ?? [] as $aGroup) {
@@ -894,7 +904,7 @@ final class PortalPolicy
 					'kind'       => self::BRICK_MANAGE,
 					'class'      => $sClass,
 					'oql'        => (string)$oBrick->GetOql(),
-					'columns'    => array_values(array_map('strval', $oBrick->GetFields())),
+					'columns'    => self::withoutExcluded($sClass, array_map('strval', $oBrick->GetFields())),
 					'tabs'       => $aConditions,
 					'tabs_by'    => $aGrouping['tabs']['attribute'] ?? null,
 					'parent'     => null,
@@ -929,6 +939,18 @@ final class PortalPolicy
 		}
 
 		return [$aReach, $aBrickSets, $aLists, $aListDefs, $aCreates];
+	}
+
+	/**
+	 * The columns of a list, less those the operator excluded (doc/adr/0012): neither shown, searched nor counted by.
+	 *
+	 * @param array<int, string> $aColumns
+	 *
+	 * @return array<int, string>
+	 */
+	private static function withoutExcluded(string $sClass, array $aColumns): array
+	{
+		return array_values(array_filter($aColumns, static fn (string $sCode): bool => !ExclusionPolicy::ExcludesAttribute($sClass, $sCode)));
 	}
 
 	/**
@@ -976,7 +998,7 @@ final class PortalPolicy
 				'kind'       => self::BRICK_BROWSE,
 				'class'      => $sClass,
 				'oql'        => (string)$aLevel['oql'],
-				'columns'    => array_values(array_unique(array_merge($aColumns, array_map('strval', array_keys($aLevel['fields'] ?? []))))),
+				'columns'    => self::withoutExcluded($sClass, array_unique(array_merge($aColumns, array_map('strval', array_keys($aLevel['fields'] ?? []))))),
 				'tabs'       => [],
 				'tabs_by'    => null,
 				'parent'     => $aPath === [] ? null : $sBrick.'/'.implode('/', $aPath),

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -355,7 +356,9 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 
 	private static function classIsReadable(string $sClass): bool
 	{
-		return MetaModel::IsValidClass($sClass)
+		// An excluded class is not named (counted among the unseen), as an object the account cannot see is
+		// (doc/adr/0012).
+		return ExclusionPolicy::Serves($sClass)
 			&& !ObjectHistory::IsReserved($sClass)
 			&& UserRights::IsActionAllowed($sClass, UR_ACTION_READ);
 	}
@@ -459,6 +462,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		$aOut = [];
 		foreach ($aCodes as $sCode) {
 			if (MetaModel::IsValidAttCode($sClass, $sCode)
+				&& !ExclusionPolicy::ExcludesAttribute($sClass, $sCode)
 				&& !ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sCode), $sClass)
 				&& UserRights::IsActionAllowedOnAttribute($sClass, $sCode, UR_ACTION_READ) === UR_ALLOWED_YES) {
 				$aOut[] = $sCode;

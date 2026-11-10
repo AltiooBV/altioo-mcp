@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -245,7 +246,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		if ($iId < 1) {
 			throw new ToolCallException('Invalid ID. Please specify a valid object ID.');
 		}
-		if (!MetaModel::IsValidClass($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
+		if (!ExclusionPolicy::Serves($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
 		}
 
@@ -507,7 +508,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 */
 	private static function asAttribute(DBObject $oTarget, string $sClass, int $iId, string $sAttCode, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
-		if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+		if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 		}
 

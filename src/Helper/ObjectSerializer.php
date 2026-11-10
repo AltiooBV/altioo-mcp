@@ -149,6 +149,10 @@ final class ObjectSerializer
 			if ($aFields !== null && !in_array($sAttCode, $aFields, true)) {
 				continue;
 			}
+			// Absent, not masked: an excluded attribute is not in the answer at all (doc/adr/0012).
+			if (ExclusionPolicy::ExcludesAttribute($sClass, (string)$sAttCode)) {
+				continue;
+			}
 			if (!self::MayReadAttribute($oObject, $sClass, $sAttCode, $oInstanceSet)) {
 				continue;
 			}
@@ -411,8 +415,8 @@ final class ObjectSerializer
 		}
 
 		$sStateAttCode = MetaModel::GetStateAttributeCode($sClass);
-		if ($sStateAttCode === '') {
-			return null;
+		if ($sStateAttCode === '' || ExclusionPolicy::ExcludesAttribute($sClass, $sStateAttCode)) {
+			return null; // no lifecycle on this channel when its state is excluded (doc/adr/0012)
 		}
 
 		$sState = (string)$oObject->Get($sStateAttCode);
@@ -702,8 +706,18 @@ final class ObjectSerializer
 					? $aRow['finalclass']
 					: $sLinkedClass;
 
+			// A row of an excluded class is not in the set at all; an excluded attribute is not in the row.
+			if (ExclusionPolicy::ExcludesClass($sRowClass)) {
+				unset($value[$iRow]);
+				continue;
+			}
+
 			foreach (array_keys($aRow) as $sLnkAttCode) {
 				if (!MetaModel::IsValidAttCode($sRowClass, $sLnkAttCode)) {
+					continue;
+				}
+				if (ExclusionPolicy::ExcludesAttribute($sRowClass, $sLnkAttCode)) {
+					unset($value[$iRow][$sLnkAttCode]);
 					continue;
 				}
 
@@ -827,7 +841,7 @@ final class ObjectSerializer
 				// Always reported anyway, and not attributes of the class.
 				continue;
 			}
-			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 				$aUnknown[] = $sAttCode;
 				continue;
 			}

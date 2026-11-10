@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -247,10 +248,14 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				throw new ToolCallException('Give class and filters, or oql, not both.');
 			}
 			ObjectSearchByOQL::CheckQuery($sOql);
+			$sUnproved = ExclusionPolicy::OqlRefusal($sOql);
+			if ($sUnproved !== null) {
+				throw new ToolCallException($sUnproved);
+			}
 			$oSearch = DBObjectSearch::FromOQL($sOql);
 			$sClass = $oSearch->GetClass();
 		} else {
-			if (!MetaModel::IsValidClass($sClass)) {
+			if (!ExclusionPolicy::Serves($sClass)) {
 				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
 			}
 			$oSearch = DBObjectSearch::FromOQL("SELECT {$sClass}");
@@ -286,7 +291,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		return self::answer(
 			$sClass,
-			$oSearch,
+			ExclusionPolicy::Narrowed($oSearch, $sClass),
 			$aGroupBy,
 			static fn (string $sTarget, int $iId): ?string => self::consoleLabel($sTarget, $iId),
 			null,
@@ -373,7 +378,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 */
 	private static function mayRead(string $sClass, string $sAttCode): bool
 	{
-		if ($sAttCode === '' || !MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+		if ($sAttCode === '' || !MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 			return false;
 		}
 		if (ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sAttCode), $sClass)) {
@@ -511,7 +516,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	/** The console's: a target the account may read, through the same query a read by id runs. */
 	private static function consoleLabel(string $sTarget, int $iId): ?string
 	{
-		if (!MetaModel::IsValidClass($sTarget)
+		if (!ExclusionPolicy::Serves($sTarget)
 			|| ObjectHistory::IsReserved($sTarget)
 			|| !UserRights::IsActionAllowed($sTarget, UR_ACTION_READ)) {
 			return null;
@@ -524,7 +529,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	/** The portal's: a target its scopes show this user, which UserRights does not decide. */
 	private static function portalLabel(PortalPolicy $oPolicy, string $sTarget, int $iId): ?string
 	{
-		if (!MetaModel::IsValidClass($sTarget) || ObjectHistory::IsReserved($sTarget)) {
+		if (!ExclusionPolicy::Serves($sTarget) || ObjectHistory::IsReserved($sTarget)) {
 			return null;
 		}
 		$oQuery = $oPolicy->ReadSet($sTarget);

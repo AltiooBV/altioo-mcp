@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
@@ -149,7 +150,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException('No fields provided for update.');
 		}
 
-		if (!MetaModel::IsValidClass($class)) {
+		if (!ExclusionPolicy::Serves($class)) {
 			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
 		}
 
@@ -202,7 +203,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
-			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
+			if (ExclusionPolicy::ExcludesClass($sFinalClass) || !UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
 				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));

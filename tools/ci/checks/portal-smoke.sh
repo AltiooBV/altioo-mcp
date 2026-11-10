@@ -16,7 +16,7 @@
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 
-IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile <<<"$PORTAL_SMOKE"
+IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile iExclPerson iExclTeam <<<"$PORTAL_SMOKE"
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 sPortalSession=''
 iRpc=10
@@ -171,4 +171,87 @@ else
 		${sPortalSession:+-H "Mcp-Session-Id: $sPortalSession"} --data-binary @"$sBig")
 	rm -f "$sBig"
 	case "$sOut" in *'accepts at most'*|*'maximum allowed size'*) echo "   ok  a file over the ceiling is refused" ;; *) fail "a file over the ceiling was not refused as such: ${sOut:0:300}" ;; esac
+fi
+
+# ---------------------------------------------------------------------------------------------------------------
+# What the operator excluded (doc/adr/0012), over the real endpoint, as the console's administrator and as a
+# portal user: switched on in the configuration file, as an administrator would, and off again.
+echo "9. exclusions: an excluded attribute and an excluded class are absent, not refused"
+if [ -z "${iExclPerson:-}" ] || [ "$iExclPerson" = 0 ] || [ -z "${ITOP_DIR:-}" ]; then
+	echo "   no Person.phone or Team on this instance, or no ITOP_DIR: not exercised"
+else
+	# <name> <arguments json> -> "ok <text>" or "refused <text>", on the console (no portal in the URL)
+	console_tool() {
+		iRpc=$((iRpc + 1))
+		local sRaw
+		sRaw=$(curl -sS -X POST "$ENDPOINT" -H "Authorization: Bearer $ITOP_TOKEN" -H 'Content-Type: application/json' \
+			-H 'Accept: application/json, text/event-stream' -H "MCP-Protocol-Version: $PROTOCOL_VERSION" \
+			${SESSION:+-H "Mcp-Session-Id: $SESSION"} \
+			-d '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"tools/call","params":{"name":"'"$1"'","arguments":'"$2"'}}')
+		# shellcheck disable=SC2016
+		printf '%s' "$sRaw" | php -r '$a = json_decode(stream_get_contents(STDIN), true);
+			if (!is_array($a)) { echo "unreadable"; exit; }
+			if (isset($a["error"])) { echo "refused ".json_encode($a["error"]); exit; }
+			$t = implode(" ", array_column($a["result"]["content"] ?? [], "text"));
+			echo (($a["result"]["isError"] ?? false) ? "refused " : "ok ").$t;'
+	}
+	# The words of a refusal, with the name it was given taken out.
+	words() { printf '%s' "$1" | sed -e "s/$2/#/g" -e 's/ You may try "[^"]*" instead\.//'; }
+
+	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null || fail "could not clear the exclusions"
+	sOut=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"*"}')
+	case "$sOut" in *'+3355507731'*) echo "   ok  the control: the phone number is served while nothing is excluded" ;; *) fail "the control read does not hold the phone number: ${sOut:0:300}" ;; esac
+	sOut=$(console_tool core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
+	must "the control: the team is readable while nothing is excluded" "$sOut" ok
+
+	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" on >/dev/null || fail "could not set the exclusions"
+	trap 'php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null 2>&1 || true; kill -TERM -"$SERVER_PID" 2>/dev/null || kill -TERM "$SERVER_PID" 2>/dev/null || true' EXIT INT TERM
+
+	sOut=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"*"}')
+	must "console: a read of the person still works" "$sOut" ok
+	case "$sOut" in *'+3355507731'*|*'"mobile_phone":'*|*'"phone":'*) fail "the excluded attribute is in the read: ${sOut:0:300}" ;; *) echo "   ok  console: neither the value nor the attribute is in the read" ;; esac
+
+	sHidden=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"phone"}')
+	sAbsent=$(console_tool core_object_get '{"class":"Person","id":'"$iExclPerson"',"output_fields":"phonez"}')
+	[ "$(words "$sHidden" phone)" = "$(words "$sAbsent" phonez)" ] && case "$sHidden" in refused*) true ;; *) false ;; esac \
+		|| fail "console: an excluded attribute is told apart from one that is not there: [${sHidden:0:200}] [${sAbsent:0:200}]"
+	echo "   ok  console: asked for by name, it answers as an attribute that does not exist"
+
+	sHidden=$(console_tool core_object_search_by_class '{"class":"Person","filters":{"phone":"+3355507731"}}')
+	sAbsent=$(console_tool core_object_search_by_class '{"class":"Person","filters":{"phonez":"+3355507731"}}')
+	[ "$(words "$sHidden" phone)" = "$(words "$sAbsent" phonez)" ] && case "$sHidden" in refused*) true ;; *) false ;; esac \
+		|| fail "console: a filter on the excluded attribute is told apart: [${sHidden:0:200}] [${sAbsent:0:200}]"
+	echo "   ok  console: a filter on it is refused as one on an attribute that does not exist"
+
+	sHidden=$(console_tool core_object_search_by_oql '{"oql":"SELECT Person WHERE phone = '"'"'+3355507731'"'"'"}')
+	sAbsent=$(console_tool core_object_search_by_oql '{"oql":"SELECT Person WHERE phonez = '"'"'+3355507731'"'"'"}')
+	[ "$(words "$sHidden" phone)" = "$(words "$sAbsent" phonez)" ] && case "$sHidden" in refused*) true ;; *) false ;; esac \
+		|| fail "console: an OQL query on the excluded attribute is told apart: [${sHidden:0:240}] [${sAbsent:0:240}]"
+	echo "   ok  console: so is an OQL query"
+
+	sOut=$(console_tool core_object_find_by_name '{"name":"+3355507731","class":"Person"}')
+	case "$sOut" in *'"total":0'*) echo "   ok  console: a name search does not match inside the excluded attribute" ;; *) fail "a search matched on the excluded attribute: ${sOut:0:300}" ;; esac
+
+	sHidden=$(console_tool core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
+	sAbsent=$(console_tool core_object_get '{"class":"TeamXyzzy","id":'"$iExclTeam"'}')
+	[ "$(words "$sHidden" Team)" = "$(words "$sAbsent" TeamXyzzy)" ] && case "$sHidden" in refused*) true ;; *) false ;; esac \
+		|| fail "console: the excluded class is told apart from one that does not exist: [${sHidden:0:200}] [${sAbsent:0:200}]"
+	echo "   ok  console: the excluded class answers as a class that does not exist"
+	sOut=$(console_tool core_object_get '{"class":"Contact","id":'"$iExclTeam"'}')
+	must "console: nor is it reached through its parent class" "$sOut" refused
+	sOut=$(console_tool core_object_search_by_class '{"class":"Contact","limit":200}')
+	case "$sOut" in *'"class":"Team"'*) fail "a Team is among the contacts: ${sOut:0:200}" ;; *) echo "   ok  console: a search on its parent leaves its rows out" ;; esac
+
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	must "portal: the user's own request is still read" "$sOut" ok
+	case "$sOut" in *'Made by tools/ci/checks/module-smoke.php'*|*'"description"'*) fail "the excluded attribute is in the portal's read: ${sOut:0:300}" ;; *) echo "   ok  portal: the excluded attribute is not in the read" ;; esac
+	sHidden=$(mcp_tool core_object_update '{"class":"UserRequest","id":'"$iOwn"',"fields":{"description":"x"},"simulate":false}')
+	sAbsent=$(mcp_tool core_object_update '{"class":"UserRequest","id":'"$iOwn"',"fields":{"descriptionz":"x"},"simulate":false}')
+	[ "$(words "$sHidden" description)" = "$(words "$sAbsent" descriptionz)" ] && case "$sHidden" in refused*) true ;; *) false ;; esac \
+		|| fail "portal: writing the excluded attribute is told apart: [${sHidden:0:240}] [${sAbsent:0:240}]"
+	echo "   ok  portal: setting it is refused as setting an attribute that does not exist"
+
+	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null || fail "could not clear the exclusions"
+	sOut=$(console_tool core_object_get '{"class":"Team","id":'"$iExclTeam"'}')
+	must "and with nothing excluded the team is readable again" "$sOut" ok
 fi

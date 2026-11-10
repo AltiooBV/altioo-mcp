@@ -526,6 +526,13 @@ unzip the new version over the old directory and re-run the setup, and read
 [CHANGELOG.md](CHANGELOG.md) first — a major version means an identifier or a default that
 clients and tool packs depend on has changed.
 
+**Before an iTop upgrade, or before removing an extension: check `mcp_excluded_classes` and `mcp_excluded_attributes`.** A class or an
+attribute listed there that the datamodel no longer has — renamed or removed by the upgrade, or declared by an extension you
+uninstalled — makes the setting malformed, and **the endpoint then serves nothing to anyone** until the list is corrected: a
+quietly shrinking exclusion is the failure the setting exists to prevent. You will see it in `log/error.log`, at every request:
+"Itop configuration parameter for exclusions: … Nothing is served to anyone until it is corrected", naming what is wrong. A client
+sees no error: it authenticates and is served no tools, resources or prompts, so it looks as if the server has nothing.
+
 **After an iTop core upgrade, recompile.** Upgrading iTop itself does not touch this
 extension's files, but it does rewrite the compiled datamodel — and until the setup is re-run,
 the compiled copy iTop serves has no MCP module in it. The endpoint returns iTop's own
@@ -906,6 +913,8 @@ $MyModuleSettings = array(
         'mcp_allow_access_administration' => false,
         'mcp_allow_privilege_escalation' => false,
         'mcp_privilege_escalation_classes' => array(),
+        'mcp_excluded_classes' => array(),
+        'mcp_excluded_attributes' => array(),
         'mcp_max_document_bytes' => 5242880,
         'mcp_pagination_limit' => 200,
         'mcp_max_mentions' => 5,
@@ -941,6 +950,8 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allow_access_administration` | `false` | Whether the classes that decide what a caller may do — `PersonalToken`, `UserToken`, `User`, iTop's `URP_*` — may be written here at all. Off, every write tool refuses them whatever the caller's iTop rights say, because a caller able to write them can widen the credential it was handed. On, the caller may administer *other* people's access — onboard a user, retire somebody's token — and still never its own: not the token it authenticated with, not another token of its own, not its own account or profile links. That self-guard is unconditional and this setting does not reach it. Reads are unaffected either way. This setting has nothing to say about iTop's synchronisation classes, which are graded on where the definition points and on your own rights over that class — see [SECURITY.md](SECURITY.md) |
 | `mcp_allow_privilege_escalation` | `false` | **An escalation switch, not a feature switch.** It governs `Trigger`, `Action` (so `ActionEmail`, whose recipients are OQL queries), the links between them, `AsyncTask` (so `AsyncSendEmail`, the mail queue the cron drains), the `RemoteApplicationConnection` a webhook calls through, the `Oauth2Client`/`OAuthClient` tokens the instance authenticates outward with, any `AttributePassword` or `AttributeEncryptedString` value on any other class (a mail-to-ticket mailbox's password, say — the attribute only, the rest of the object stays writable), and iTop's `AuditRule`/`AuditCategory`/`AuditDomain` checks. Those are refused because no tool here sends mail, calls a URL, invokes a static method by name or authenticates outward as this instance — so "could the caller have done this itself" answers **no for every caller, administrator included**, and there is no profile that makes it yes. Turning it on is an operator consenting to the endpoint granting more than the credential it was called with. It is *not* needed to let an assistant do ordinary automation work: a caller that can already write a class directly may arrange the same writes through a synchronisation source (`SynchroDataSource`) without this setting, graded on its own rights. Nor does turning it on reach the other side of that rule: a source pointed at the classes `mcp_allow_access_administration` names is refused whatever either setting says ([SECURITY.md](SECURITY.md#the-rule-the-write-barriers-reduce-to)). Reads are unaffected either way. See [SECURITY.md](SECURITY.md) before turning it on |
 | `mcp_privilege_escalation_classes` | *(empty)* | Classes **you** add to what `mcp_allow_privilege_escalation` governs, matched with their subclasses — e.g. `array('MassUpdateJob')`. The built-in list names what iTop ships; it cannot know an extension that stores work something else carries out later — a scheduled mass update, a script runner — whose rows the endpoint would otherwise write as ordinary data while the job they stage runs outside it with nobody's rights checked. List those here, and writing them (create, update, delete) is refused unless `mcp_allow_privilege_escalation` is on, whatever the caller's profile says; `core_class_schema` reports it. It only adds: nothing listed here opens a class the built-in rules refuse. A value that is not a list of class names is logged and read as **every** class, and a name the datamodel does not have is named in `log/error.log` at every request, since it refuses nothing. Reads are unaffected |
+| `mcp_excluded_classes` | *(empty)* | Classes this channel never serves, with their subclasses — e.g. `array('Person')`. For **everyone**, in both modes, Administrator and Basic authentication included: no profile or token scope lifts it. An excluded class is **absent**, not "excluded": every tool answers as it would for a class the datamodel does not have, and it is missing from listings, schemas, searches, counts, relations, history, documents and writes. What points at it goes with it: a field resolving to one of its attributes, a key or link set whose target it is, the files filed under its objects, and what is reachable only through it in a relation. **This narrows the channel, not the account**: the same account reads the same data in the console, and what already reached a model is not recalled ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)) |
+| `mcp_excluded_attributes` | *(empty)* | Attributes this channel never serves, per class and inherited by its subclasses — e.g. `array('Person' => array('phone', 'mobile_phone'))`. Absent in the same sense: not in a read, a field list, a filter, a sort, a group, a count, an OQL query (which is refused in the checker's own words for an unknown field), a history entry, a schema, a write's `changes` or `after`, or a full-text search. A mandatory attribute excluded makes creating that class impossible here, and the refusal says this setting is why. **A value that cannot be honoured makes the endpoint serve nothing to anyone**, and `log/error.log` says why: not a list, a name the datamodel does not have, an attribute that is not on its class, or one that is part of its class's friendly name (the friendly name would still serve its value) — a typo must not leave a field flowing. A class that has an excluded subclass cannot appear in a join or sub-query of OQL, since the rows of the subclass cannot be told apart there |
 | `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
 | `mcp_max_mentions` | `5` | Distinct objects one call may @mention in the case-log entries it writes. A mention is markup iTop turns into a notification, and here the caller types that markup directly, where the console offers it one autocomplete pick at a time. Mentions are also held to the classes in iTop's `mentions.allowed_classes` and to objects the caller can see; a value breaking any of the three is refused, and says which. `0` turns mentions off for this endpoint |
 | `mcp_refuse_formula_values` | `true` | Refuse a text value that starts — after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — what a spreadsheet runs as a formula (CSV injection) once the data is exported by iTop, returned by REST, or turned into a CSV by an assistant. A value that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone numbers, negative numbers and dates are unaffected. Case logs and secret attributes are not checked. Values that reach iTop some other way are not checked either — see [SECURITY.md](SECURITY.md#hardening-the-deployment) for finding them. Anything but an explicit `false` keeps it on |
@@ -1257,6 +1268,29 @@ provider then processes under that provider's terms — that is a property of th
 point at the endpoint, not of this module. The two levers on your side are the profiles you
 pair with `MCP Services User` (what may be read at all) and the token scopes (what that one
 credential may do).
+
+**Keeping a field or a class out of this channel only.** The profile that decides what may be read also
+decides what the console may do, so it is a blunt lever. `mcp_excluded_classes` and
+`mcp_excluded_attributes` ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)) say "phone numbers and the
+private log do not go through this channel" and change nothing in the console. They apply to every caller and
+both modes, and an excluded name is absent rather than refused. **They narrow the channel, not the account:** someone
+holding the same account reads the same data in the console, and what a model has already been given is not
+recalled. A setting that cannot be honoured stops the service rather than leaving the field open.
+
+**What the exclusions do not cover** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), "Not covered"):
+
+- **Notification events can quote an excluded value.** `EventNotificationEmail` and the other `Event*` classes are readable through
+  this channel, and a notification's subject and body are text iTop rendered from an object. Nothing is excluded by default. **If
+  you exclude personal fields, also add `EventNotification`** to `mcp_excluded_classes`: it covers `EventNotificationEmail`'s subject
+  and body. **Not `Event`**: it is the parent of this module's own audit trail and of iTop's login and web-service logs, so
+  excluding it would hide them, and `core_my_activity` with them.
+- Objects named by class and id as plain text, other than attachments, are not followed.
+- A portal tab whose condition is on an excluded attribute still partitions the rows, so a count by that tab can still be told
+  by it.
+- What was written before an exclusion: audit rows (`Class::id` and attribute codes, never values) stay as they are.
+- A class with an excluded subclass cannot appear in an OQL join or sub-query.
+- Free text is one attribute each: a value quoted inside another attribute's text is neither found nor removed.
+- A name the datamodel no longer has stops the endpoint for everyone (below).
 
 **Personal data.** iTop objects routinely contain personal data — callers, agents, contact
 details, free text in logs. Nothing here filters that beyond iTop's own per-attribute read

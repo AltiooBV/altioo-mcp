@@ -784,7 +784,9 @@ class MCPHelper
 			}
 		}
 
-		return false;
+		// The exclusions (doc/adr/0012): a setting that cannot be honoured is not one to read as empty,
+		// since empty is the spelling of "nothing is excluded".
+		return ExclusionPolicy::IsMalformed();
 	}
 
 	/**

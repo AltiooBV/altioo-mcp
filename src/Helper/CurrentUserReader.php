@@ -53,7 +53,9 @@ final class CurrentUserReader
 			// served is named - see MCPService::ServedAccess().
 			'access' => MCPService::ServedAccess(),
 			'current_contact_friendlyname' => self::ContactFriendlyname(),
-			'current_contact_id' => UserRights::GetContactId(),
+			// The caller's own contact is an object like any other: of an excluded class it is not named
+			// (doc/adr/0012), and neither is its organisation, or its id.
+			'current_contact_id' => self::Contact() === null ? 0 : UserRights::GetContactId(),
 			// The organisation the contact belongs to: in the portal, whose
 			// requests a portal power user sees, and what a new request is
 			// filed under.
@@ -133,7 +135,8 @@ final class CurrentUserReader
 	private static function ContactOrganization(): ?array
 	{
 		$oContact = self::Contact();
-		if ($oContact === null || !MetaModel::IsValidAttCode(get_class($oContact), 'org_id')) {
+		if ($oContact === null || !MetaModel::IsValidAttCode(get_class($oContact), 'org_id')
+			|| ExclusionPolicy::ExcludesAttribute(get_class($oContact), 'org_id')) {
 			return null;
 		}
 
@@ -145,6 +148,7 @@ final class CurrentUserReader
 		return [
 			'id'           => $iOrg,
 			'friendlyname' => MetaModel::IsValidAttCode(get_class($oContact), 'org_id_friendlyname')
+				&& !ExclusionPolicy::ExcludesAttribute(get_class($oContact), 'org_id_friendlyname')
 				? (string) $oContact->Get('org_id_friendlyname')
 				: null,
 		];
@@ -161,6 +165,8 @@ final class CurrentUserReader
 			return null;
 		}
 
-		return MetaModel::GetObject('Contact', $iContactId, false, true);
+		$oContact = MetaModel::GetObject('Contact', $iContactId, false, true);
+
+		return $oContact !== null && ExclusionPolicy::ExcludesClass(get_class($oContact)) ? null : $oContact;
 	}
 }

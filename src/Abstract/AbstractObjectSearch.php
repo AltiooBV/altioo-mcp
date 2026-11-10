@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
+use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
@@ -225,12 +226,16 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		$sOrderBy = trim($sOrderBy);
 
 		if ($sOrderBy === '') {
-			$aOrderBy = MetaModel::GetOrderByDefault($sClass);
-			if ($sDirection === self::SORT_DESC) {
-				$aOrderBy = array_map(static fn (bool $bAsc): bool => !$bAsc, $aOrderBy);
+			// What the datamodel orders by, less what is excluded: an order is a read of the values.
+			$aOrderBy = [];
+			foreach (MetaModel::GetOrderByDefault($sClass) as $sCode => $bAsc) {
+				if (!ExclusionPolicy::ExcludesAttribute($sClass, (string)$sCode)) {
+					$aOrderBy[$sCode] = $sDirection === self::SORT_DESC ? !$bAsc : (bool)$bAsc;
+				}
 			}
 		} else {
-			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE && !MetaModel::IsValidAttCode($sClass, $sOrderBy)) {
+			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
+				&& (!MetaModel::IsValidAttCode($sClass, $sOrderBy) || ExclusionPolicy::ExcludesAttribute($sClass, $sOrderBy))) {
 				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
 			}
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
@@ -296,6 +301,10 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	protected static function finalClassIfReadable(DBObject $oObject, string $sSetClass): ?string
 	{
 		$sFinalClass = get_class($oObject);
+
+		if (ExclusionPolicy::ExcludesClass($sFinalClass)) {
+			return null; // never reached: the searches leave such rows out of the query
+		}
 
 		if ($sFinalClass === $sSetClass) {
 			// Covered by the check already made on the whole set.

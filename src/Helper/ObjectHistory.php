@@ -282,8 +282,23 @@ final class ObjectHistory
 			$oSearch->AddCondition('attcode', $sAttCode, '=');
 		}
 
+		// The rows about an excluded attribute are not in the query, so neither they nor the total
+		// show them (doc/adr/0012). A row names its attribute only on the subclass that records one.
+		$aArgs = [];
+		$aExcluded = ExclusionPolicy::ExcludedAttributes($sClass);
+		if ($aExcluded !== []) {
+			$oSearch = \DBObjectSearch::FromOQL(sprintf(
+				'SELECT %1$s AS o WHERE o.objclass = :class AND o.objkey = :key%2$s AND o.id NOT IN (SELECT %3$s AS a WHERE a.objclass = :class AND a.objkey = :key AND a.attcode IN (%4$s))',
+				$sQueried,
+				$sAttCode !== '' ? ' AND o.attcode = :att' : '',
+				self::ATTRIBUTE_CLASS,
+				implode(', ', array_map(static fn (string $s): string => "'".str_replace("'", '', $s)."'", $aExcluded))
+			));
+			$aArgs = ['class' => $sClass, 'key' => $iKey] + ($sAttCode !== '' ? ['att' => $sAttCode] : []);
+		}
+
 		$oBounded = $fBound === null ? $oSearch : $fBound($oSearch);
-		$oSet = $oBounded === null ? null : new DBObjectSet($oBounded, self::NEWEST_FIRST, [], null, $iLimit, $iOffset);
+		$oSet = $oBounded === null ? null : new DBObjectSet($oBounded, self::NEWEST_FIRST, $aArgs, null, $iLimit, $iOffset);
 		$iTotal = $oSet === null ? 0 : $oSet->Count();
 
 		$aEntries = [];
