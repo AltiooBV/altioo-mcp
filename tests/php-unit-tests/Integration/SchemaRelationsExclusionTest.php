@@ -87,6 +87,51 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		$this->assertNotContains('Server_hypervisor', $this->relationsOfServer()['impacts'] ?? []);
 	}
 
+	/**
+	 * The class a relation query selects is what iTop's parser says it selects, whatever form the query is written in:
+	 * `SELECT x FROM X AS x` selects X, and a regular expression on the first word of it reads the alias.
+	 *
+	 * @dataProvider queryFormProvider
+	 */
+	public function testAQueryThatSelectsAnExcludedClassIsDroppedInAnyForm(string $sQuery): void
+	{
+		$this->exclude(['Hypervisor']);
+		$aQueries = [
+			'Server_hypervisor' => ['sQueryDown' => $sQuery, 'sDefinedInClass' => 'Server'],
+			'FunctionalCI_contact' => ['sQueryDown' => 'SELECT Contact AS o WHERE o.id = :this->id', 'sDefinedInClass' => 'FunctionalCI'],
+		];
+
+		$aKept = ExclusionPolicy::FilterRelationQueries($aQueries, true);
+
+		$this->assertArrayNotHasKey('Server_hypervisor', $aKept, 'a query that selects an excluded class is listed: '.$sQuery);
+		$this->assertArrayHasKey('FunctionalCI_contact', $aKept, 'a query that selects another class was dropped');
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function queryFormProvider(): array
+	{
+		return [
+			'the class first'                     => ['SELECT Hypervisor AS h WHERE h.server_id = :this->id'],
+			'the class alone'                     => ['SELECT Hypervisor WHERE server_id = :this->id'],
+			'an alias, then the class'            => ['SELECT h FROM Hypervisor AS h WHERE h.server_id = :this->id'],
+			'an alias selected from a join'       => ['SELECT o FROM Server AS s JOIN Hypervisor AS o ON o.server_id = s.id WHERE s.id = :this->id'],
+			'lower case'                          => ['select h from Hypervisor as h where h.server_id = :this->id'],
+		];
+	}
+
+	/** A query that cannot be read is dropped while anything is excluded, and kept while nothing is. */
+	public function testAQueryThatCannotBeReadIsDroppedWhileAnythingIsExcluded(): void
+	{
+		$aQueries = [
+			'broken'  => ['sQueryDown' => 'SELEC Hypervisor', 'sDefinedInClass' => 'Server'],
+			'nothing' => ['sQueryDown' => 'SELECT NoSuchClassAnywhere', 'sDefinedInClass' => 'Server'],
+			'missing' => ['sDefinedInClass' => 'Server'],
+		];
+
+		$this->exclude(['Contact']);
+		$this->assertSame([], ExclusionPolicy::FilterRelationQueries($aQueries, true));
+	}
+
 	public function testTheClassResourceAnswersAsTheToolDoes(): void
 	{
 		$this->exclude(['Hypervisor']);
