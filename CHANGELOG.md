@@ -197,6 +197,12 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **`core_class_schema` failed on iTop 3.3 with its default blocks.** The relations block listed a class's relations through
+  `MetaModel::EnumRelations()`, which iTop 3.3 no longer has, so the call ended in `Call to undefined method` for every class whenever
+  the block was asked for - and it is asked for unless `include` says otherwise. Since 1.2.0, which declared iTop 3.3 supported. It now
+  asks `MetaModel::EnumRelationsEx()`, which exists on 3.2 and 3.3, and the block answers the same on both: the relations a class has a
+  downstream query for, each with the queries it reaches. A test runs the default blocks on a class with relations on both branches.
+
 - **A portal's requests no longer wait on another portal's.** Every portal compiled its rules under
   one lock file; each now has its own, `<portal>.compile.lock`. The `compile.lock` a 1.2.0 instance
   has in its cache is no longer used, is empty, and goes with the cache at the next setup.
