@@ -41,6 +41,12 @@
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Référence de log]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref+" _delta="force"><![CDATA[Référence de l'entrée correspondante dans log/error.log, pour une erreur renvoyée de façon générique]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt" _delta="force"><![CDATA[Exempté]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt+" _delta="force"><![CDATA[Si le compte à l'origine de l'appel avait un profil exempté et a reçu ce que les exclusions retirent de ce canal]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:yes" _delta="force"><![CDATA[Oui]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:yes+" _delta="force"><![CDATA[Le compte a un profil listé dans mcp_exclusion_exempt_profiles : les classes et attributs exclus ont été servis]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:no" _delta="force"><![CDATA[Non]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:exempt/Value:no+" _delta="force"><![CDATA[Pas d'exemption : ce qui est exclu n'a pas été servi]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:refusal_text" _delta="force"><![CDATA[Texte du refus]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:refusal_text+" _delta="force"><![CDATA[Ce que l'outil a répondu en refusant l'appel, enregistré seulement quand le niveau de journalisation du module est debug. Il peut citer ce qui a été refusé]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:request_params" _delta="force"><![CDATA[Paramètres de la requête]]></entry>
