@@ -22,6 +22,14 @@ entry itself, not left to be inferred from it.
 
 ### Added
 
+- **`mcp_exclusion_exempt_profiles`: an account that is served what the exclusions keep out**
+  ([ADR 0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md), decided by the maintainer; amends 0012). Empty by
+  default. An account holding a listed profile is served the excluded classes and attributes: a **whole** exemption. It is
+  decided **by the account only** — never by a token scope, a client's declared name or an OAuth client, and **never in portal
+  mode**. A value that is not a list, or a profile this instance does not have, **stops the endpoint for everyone** (a typo
+  must never exempt anybody). **New audit column `exempt`** (yes/no, default no; rows written before read *no*): every exempt call
+  is listable. Give one client the exemption with a dedicated service account holding the profile.
+
 - **`mcp_excluded_classes` and `mcp_excluded_attributes`: what this channel never serves**
   ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), decided by the maintainer).
   Both are empty by default, so nothing changes until an operator sets one. Classes (with their subclasses) and
