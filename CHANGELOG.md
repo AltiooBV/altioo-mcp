@@ -22,6 +22,32 @@ entry itself, not left to be inferred from it.
 
 ## [1.3.0] - Unreleased
 
+**The operator decides what this channel never serves, and can see what it did.** Classes and
+attributes listed in `mcp_excluded_classes` and `mcp_excluded_attributes` are absent on every
+route, in both modes, whatever the caller's rights. The audit trail becomes something to work
+from: a retention run by iTop's cron that follows iTop when a person is anonymised, an *MCP
+activity* dashboard, and `core_my_activity`, which lets anyone ask what their assistant did in
+their name. Portal users can read and add attachments as their portal allows. `core_object_count`
+answers "how many, per value" in one call.
+
+**Read before upgrading.** Five things change on an instance that does nothing, each described
+below:
+
+1. **The setup has to run.** The audit table gains columns (`exempt`, `refusal_text`,
+   `change_comment` and the three under Added); rows written before read empty or *no*.
+2. **Counts of `status = 'error'` rise.** A call a tool refuses is now recorded as an error
+   (under Changed).
+3. **An object's history line no longer names the tool.** `CMDBChange.userinfo` is the user's
+   plain name, so `SELECT CMDBChange WHERE userinfo LIKE '%(MCP:%'` finds only changes written
+   before 1.3; use `SELECT AltiooEventMCPService WHERE change_id != 0` (under Changed).
+4. **An hourly background process runs.** At the default `mcp_audit_retention_days => 0` it
+   deletes nothing; it does bring audit rows up to date when a person is anonymised (under Added).
+5. **Portal users gain two things**: `core_my_activity`, and attachments read and added where
+   their portal's form allows. `mcp_disabled_tools` withdraws the first (under Added).
+
+Tool packs: the settings readers moved from `MCPHelper` to `Settings`, and the old names keep
+working, deprecated (under Changed).
+
 ### Added
 
 - **`mcp_exclusion_exempt_profiles`: an account that is served what the exclusions keep out**
@@ -120,11 +146,11 @@ entry itself, not left to be inferred from it.
   them. *MCP service calls* is `SELECT AltiooEventMCPService`, which until now had no menu: the README
   sent administrators to an "event log" that iTop does not have. *MCP activity* is iTop's own
   dashboard, shipped as data (no dashboard code): the last seven days of calls by outcome, writes by
-  tool and by day (dry runs excluded), writes and protocol errors by login as recorded, portal users
+  tool and by day (dry runs excluded), writes and errors by login as recorded, portal users
   refused at login, calls by client and by portal, and response bytes by tool. An administrator
   customises it with iTop's editor and reverts it from the same menu; the copy is per user. Read it as
-  the README says: a login is not a person, an "error" is the protocol's (a tool's own refusal is
-  recorded as a success), and the client is what it declared. No alerts: the trail is watched, not
+  the README says: a login is not a person, an "error" is a call that failed or that a tool refused
+  (see Changed), and the client is what it declared. No alerts: the trail is watched, not
   pushed.
 - **The audit row names the client, the objects a read returned, and the account as a link.**
   `AltiooEventMCPService` gains three nullable columns, so the upgrade needs no step beyond the
