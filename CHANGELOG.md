@@ -48,6 +48,11 @@ below:
 Tool packs: the settings readers moved from `MCPHelper` to `Settings`, and the old names keep
 working, deprecated (under Changed).
 
+**Tested on.** iTop **3.2.3-3** and **3.3.0-1**, each on PHP **8.2** and **8.4** — installed
+through iTop's own unattended setup by the local CI runner (`tools/ci/local/run.sh matrix`), then
+exercised by iTop's module validation suite, the module's integration suite and by calling the
+endpoint over HTTP, portal mode included. The unit suite ran on 8.2, 8.3 and 8.4.
+
 ### Added
 
 - **`mcp_exclusion_exempt_profiles`: an account that is served what the exclusions keep out**
