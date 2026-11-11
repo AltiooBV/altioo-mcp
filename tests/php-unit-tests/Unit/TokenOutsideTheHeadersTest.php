@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -58,12 +59,12 @@ class TokenOutsideTheHeadersTest extends TestCase
 		$_GET = [];
 		$_POST = [];
 		$_REQUEST = [];
-		MCPHttp::ForgetAuthToken();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		MCPHttp::ForgetAuthToken();
+		RequestScope::Close();
 		$_SERVER = $this->aServerBackup;
 		$_GET = $this->aGetBackup;
 		$_POST = $this->aPostBackup;

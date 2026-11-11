@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use CMDBChange;
 use CMDBObject;
 use MetaModel;
@@ -32,7 +33,7 @@ class ChangeAttributionTest extends ItopDataTestCaseAlias
 {
 	protected function tearDown(): void
 	{
-		ChangeTracking::Forget();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 

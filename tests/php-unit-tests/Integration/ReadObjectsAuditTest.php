@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -50,12 +51,12 @@ class ReadObjectsAuditTest extends ItopDataTestCaseAlias
 			'title'       => self::SECRET,
 			'description' => self::SECRET,
 		])->GetKey();
-		ReadSummary::Forget();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		ReadSummary::Forget();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 

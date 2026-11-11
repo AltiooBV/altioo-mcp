@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Combodo\iTop\AuthentToken\Hook\TokenLoginExtension;
 use PHPUnit\Framework\TestCase;
 
@@ -42,12 +43,12 @@ class TokenScopesTest extends TestCase
 		parent::setUp();
 		$this->aServerBackup = $_SERVER;
 		unset($_SERVER['HTTP_AUTH_TOKEN'], $_SERVER['HTTP_AUTHORIZATION']);
-		MCPHttp::ForgetAuthToken();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		MCPHttp::ForgetAuthToken();
+		RequestScope::Close();
 		$_SERVER = $this->aServerBackup;
 		parent::tearDown();
 	}

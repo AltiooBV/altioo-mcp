@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -34,12 +35,12 @@ class MentionPolicyTest extends TestCase
 
 	protected function setUp(): void
 	{
-		MentionPolicy::ForgetCount();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		MentionPolicy::ForgetCount();
+		RequestScope::Close();
 	}
 
 	public function testAMentionTheConsoleWouldAllowIsAccepted(): void

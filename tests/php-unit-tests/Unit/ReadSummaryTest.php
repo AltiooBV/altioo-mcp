@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -29,12 +30,12 @@ class ReadSummaryTest extends TestCase
 {
 	protected function setUp(): void
 	{
-		ReadSummary::Forget();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		ReadSummary::Forget();
+		RequestScope::Close();
 	}
 
 	public function testNothingReadIsAnEmptyLine(): void

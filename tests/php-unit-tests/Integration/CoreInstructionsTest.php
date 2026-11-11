@@ -13,9 +13,9 @@ use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
-use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -51,8 +51,7 @@ class CoreInstructionsTest extends ItopDataTestCaseAlias
 
 	protected function tearDown(): void
 	{
-		AccessPolicy::Forget();
-		ServedAccess::Forget();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 

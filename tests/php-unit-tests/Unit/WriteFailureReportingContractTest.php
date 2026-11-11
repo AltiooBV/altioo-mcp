@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -411,7 +412,7 @@ class WriteFailureReportingContractTest extends TestCase
 			'narrowing dropped the advisory modifier instead of keeping it'
 		);
 
-		AccessPolicy::Forget();
+		RequestScope::Close();
 	}
 
 	/** Every write tool routes its dry-run argument through the one decision. */

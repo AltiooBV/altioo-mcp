@@ -8,7 +8,6 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
@@ -265,7 +264,7 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		try {
 			$aPayload = CurrentUserReader::Payload();
 		} finally {
-			ServedAccess::Forget();
+			RequestScope::Close();
 			MCPRegistry::Clear();
 		}
 
