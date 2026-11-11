@@ -32,7 +32,7 @@ class EditPolicyTest extends TestCase
 	/** Every tool that turns a caller's fields into attribute values. */
 	private const WRITE_PATHS = [
 		// The create, the update, the stimulus and the portal's writes share one copy.
-		'src/Service/Write/WritePlan.php',
+		'src/Service/Write/WriteValues.php',
 		'src/Api/AbstractBulkTool.php',
 	];
 

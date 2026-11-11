@@ -24,6 +24,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -408,7 +409,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				// recognise without saying so - see WritePlan. A value the
 				// caller sent and the object will not hold is a refusal here,
 				// the way a scalar enum already refuses one.
-				$sDropped = WritePlan::RefusalForDroppedSetValues($sClass, $sAttCode, $value, $aValues[$sAttCode]);
+				$sDropped = WriteValues::RefusalForDroppedSetValues($sClass, $sAttCode, $value, $aValues[$sAttCode]);
 				if ($sDropped !== null) {
 					unset($aValues[$sAttCode]);
 					$aIssues[] = $sDropped;

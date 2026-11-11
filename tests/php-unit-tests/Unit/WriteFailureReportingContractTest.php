@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -590,7 +591,7 @@ class WriteFailureReportingContractTest extends TestCase
 			if (!str_contains($sSource, 'RestUtils::MakeValue(')) {
 				continue;
 			}
-			if (!str_contains($sSource, 'WritePlan::RefusalForDroppedSetValues(')) {
+			if (!str_contains($sSource, 'WriteValues::RefusalForDroppedSetValues(')) {
 				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}
@@ -612,7 +613,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testTheDroppedSetCheckComparesAgainstTheSuppliedValue(): void
 	{
-		$sBody = $this->methodBody(WritePlan::class, 'RefusalForDroppedSetValues');
+		$sBody = $this->methodBody(WriteValues::class, 'RefusalForDroppedSetValues');
 
 		$this->assertStringContainsString('$mSupplied', $sBody,
 			'the check reads the object instead of what the caller sent, which is the blind spot it exists for');

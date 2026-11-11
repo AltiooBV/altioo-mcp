@@ -75,7 +75,7 @@ class OrmFailureRedactionTest extends TestCase
 
 		foreach ([
 			// The create, the update and the stimulus convert through it.
-			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WritePlan',
+			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WriteValues',
 			'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 		] as $sClass) {
 			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());

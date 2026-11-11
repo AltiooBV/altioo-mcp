@@ -23,6 +23,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -287,7 +288,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// Every rule a value has to pass is in one place, shared with the
 		// update and the portal; the stimulus is what lets a transition set
 		// what its target state prompts for.
-		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet, $stimulus);
+		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, $oInstanceSet, $stimulus);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to fields : ".json_encode($aIssues));
 		}

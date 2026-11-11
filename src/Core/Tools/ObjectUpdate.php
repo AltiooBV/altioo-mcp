@@ -23,6 +23,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -235,7 +236,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 		// Validate fields before applying any changes. Every rule a value has
 		// to pass is in one place, shared with the stimulus and the portal.
-		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet);
+		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, $oInstanceSet);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
 		}

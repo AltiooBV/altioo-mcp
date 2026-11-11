@@ -152,6 +152,6 @@ class SecretPolicyTest extends TestCase
 			}
 		}
 
-		$this->assertGreaterThanOrEqual(2, $iFound, 'expected the single-object write paths (WritePlan) and the bulk ones');
+		$this->assertGreaterThanOrEqual(2, $iFound, 'expected the single-object write paths (WriteValues) and the bulk ones');
 	}
 }
