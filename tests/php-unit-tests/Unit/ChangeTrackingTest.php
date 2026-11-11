@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -42,13 +43,12 @@ class ChangeTrackingTest extends TestCase
 
 	public function testNothingWritesTheLine(): void
 	{
-		$sSource = (string)file_get_contents((string)(new \ReflectionClass(ChangeTracking::class))->getFileName());
-		$iApply = (int)strpos($sSource, 'private static function apply()');
-		$sApply = substr($sSource, $iApply, (int)strpos($sSource, 'private static function toolNameOf', $iApply) - $iApply);
+		$oSource = SourceCalls::OfClass(ChangeTracking::class);
 
-		$this->assertStringContainsString('CMDBObject::SetTrackInfo(null)', $sApply, 'the line is left to iTop');
-		$this->assertStringNotContainsString('Compose(', $sApply);
-		$this->assertStringContainsString('CUSTOM_EXTENSION', $sApply, 'the origin stays the extension one');
+		$this->assertTrue($oSource->HasCall('CMDBObject::SetTrackInfo', 'apply'), 'the line is left to iTop');
+		$this->assertStringContainsString('SetTrackInfo(null)', $oSource->Code('apply'), 'the line is left to iTop');
+		$this->assertFalse($oSource->HasCallTo('Compose', 'apply'));
+		$this->assertTrue($oSource->HasConstant('Combodo\\iTop\\Core\\CMDBChange\\CMDBChangeOrigin::CUSTOM_EXTENSION', 'apply'), 'the origin stays the extension one');
 	}
 
 	public function testTheReasonIsKeptForTheAuditRowAsOneLine(): void

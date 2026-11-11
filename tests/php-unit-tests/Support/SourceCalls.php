@@ -229,24 +229,69 @@ final class SourceCalls
 		$aConstants = [];
 		foreach ($this->scopes($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
 			for ($i = $iFrom; $i < $iTo; $i++) {
-				$oToken = $this->aTokens[$i];
-				if (!in_array($oToken->id, self::NAME_TOKENS, true) || $this->precededBy($i, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW, T_CLASS, T_INSTANCEOF, T_NAMESPACE, T_CONST])) {
-					continue;
-				}
-				$oNext = $this->aTokens[$i + 1] ?? null;
-				if ($oNext !== null && $oNext->id === T_DOUBLE_COLON) {
-					$oMember = $this->aTokens[$i + 2] ?? null;
-					$oAfter = $this->aTokens[$i + 3] ?? null;
-					if ($oMember !== null && $oMember->id === T_STRING && strtolower($oMember->text) !== 'class' && ($oAfter === null || $oAfter->text !== '(')) {
-						$aConstants[] = $this->resolveClass($oToken->text, $sClass, $sParent).'::'.$oMember->text;
-					}
-				} elseif ($oToken->id === T_STRING && ($oNext === null || !in_array($oNext->text, ['(', '\\'], true)) && !$this->isDeclarationName($i)) {
-					$aConstants[] = $oToken->text;
+				$sSpec = $this->constantAt($i, $sClass, $sParent);
+				if ($sSpec !== null) {
+					$aConstants[] = $sSpec;
 				}
 			}
 		}
 
 		return $aConstants;
+	}
+
+	/**
+	 * Calls and constants together, in source order: the specs of Calls() and of
+	 * Constants() for the question "does this check come before that value is
+	 * used" when one is a call and the other a constant.
+	 *
+	 * @return array<int, string>
+	 */
+	public function Uses(?string $sMethod = null): array
+	{
+		$aUses = [];
+		foreach ($this->scopes($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				$sSpec = $this->callAt($i, $sClass, $sParent) ?? $this->constantAt($i, $sClass, $sParent);
+				if ($sSpec !== null) {
+					$aUses[] = $sSpec;
+				}
+			}
+		}
+
+		return $aUses;
+	}
+
+	/**
+	 * CallsInOrder() over calls and constants.
+	 *
+	 * @param array<int, string> $aSpecs
+	 */
+	public function UsesInOrder(array $aSpecs, ?string $sMethod = null): bool
+	{
+		return self::InOrder($this->Uses($sMethod), $aSpecs);
+	}
+
+	private function constantAt(int $i, string $sClass, string $sParent): ?string
+	{
+		$oToken = $this->aTokens[$i];
+		if (!in_array($oToken->id, self::NAME_TOKENS, true) || $this->precededBy($i, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW, T_CLASS, T_INSTANCEOF, T_NAMESPACE, T_CONST])) {
+			return null;
+		}
+		$oNext = $this->aTokens[$i + 1] ?? null;
+		if ($oNext !== null && $oNext->id === T_DOUBLE_COLON) {
+			$oMember = $this->aTokens[$i + 2] ?? null;
+			$oAfter = $this->aTokens[$i + 3] ?? null;
+			if ($oMember !== null && $oMember->id === T_STRING && strtolower($oMember->text) !== 'class' && ($oAfter === null || $oAfter->text !== '(')) {
+				return $this->resolveClass($oToken->text, $sClass, $sParent).'::'.$oMember->text;
+			}
+
+			return null;
+		}
+		if ($oToken->id === T_STRING && ($oNext === null || !in_array($oNext->text, ['(', '\\'], true)) && !$this->isDeclarationName($i)) {
+			return $oToken->text;
+		}
+
+		return null;
 	}
 
 	public function HasConstant(string $sSpec, ?string $sMethod = null): bool

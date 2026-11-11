@@ -220,6 +220,29 @@ PHP;
 		$this->assertTrue($oSource->HasString('UR_ACTION_MODIFY', 'Constants'));
 	}
 
+	public function testACallAndAConstantAreOrderedTogether(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertSame(
+			['UR_ACTION_READ', 'Acme\Rights\AccessGrants::SELF_REFUSAL', 'Acme\Rights\Other::MODE'],
+			$oSource->Uses('Constants')
+		);
+		$this->assertTrue($oSource->UsesInOrder(['Acme\Rights\ChangeLogReservation::IsReserved', '->Hides'], 'Guarded'));
+		$this->assertTrue($oSource->UsesInOrder(['UR_ACTION_READ', 'Acme\Rights\Other::MODE'], 'Constants'));
+		$this->assertFalse($oSource->UsesInOrder(['Acme\Rights\Other::MODE', 'UR_ACTION_READ'], 'Constants'));
+	}
+
+	public function testAnyCallToANamedMethodIsFoundWhateverItIsCalledOn(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertTrue($oSource->HasCallTo('Second', 'Ordered'), 'self:: resolves to the class, the name is what is asked');
+		$this->assertTrue($oSource->HasCallTo('fifth', 'Ordered'));
+		$this->assertFalse($oSource->HasCallTo('Hides', 'OnlyInAComment'));
+		$this->assertFalse($oSource->HasCallTo('Hide', 'Guarded'), 'a name is matched whole');
+	}
+
 	public function testAClosureInsideAMethodIsPartOfIt(): void
 	{
 		$this->assertTrue($this->source()->HasCall('Acme\Rights\AccessGrants::RefusalFor', 'WithClosure'));
