@@ -485,7 +485,7 @@ class PortalModeTest extends TestCase
 	{
 		PortalAccess::Enter('partner-portal');
 
-		$sText = MCPService::InstructionsFor(AccessPolicy::Unrestricted());
+		$sText = ServerInstructions::ForCaller(AccessPolicy::Unrestricted());
 
 		$this->assertSame(ServerInstructions::PortalText('partner-portal'), $sText);
 		$this->assertStringContainsString('"partner-portal"', $sText);

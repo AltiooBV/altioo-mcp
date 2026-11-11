@@ -24,6 +24,7 @@ use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server;
@@ -61,12 +62,27 @@ final class MCPService
 		// registered that tool and whether or not its author knew this existed.
 		ChangeTracking::ForRequest($request);
 
+		self::RememberServed();
+
 		$server = self::createServer($oPolicy);
 
 		$transport = new StreamableHttpTransport($request, $factory, middleware: self::middleware($factory));
 		$response = $server->run($transport);
 
 		return ['request' => $request, 'response' => $response];
+	}
+
+	/**
+	 * Tells Service\Rights\ServedAccess how to answer for this request, which
+	 * the identity tool, its resource and the instructions ask.
+	 *
+	 * Before the server is built, because building it asks the instructions,
+	 * which ask what is served. Called by run(); a test that reaches them
+	 * without run() calls it too.
+	 */
+	public static function RememberServed(): void
+	{
+		ServedAccess::Remember(static fn (): array => self::ServedAccess(), static fn (AccessPolicy $oServedPolicy): array => self::servedPromptNames($oServedPolicy));
 	}
 
 	/**
@@ -127,7 +143,7 @@ final class MCPService
 	{
 		$builder = Server::builder()
 			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
-			->setInstructions(self::InstructionsFor($oPolicy))
+			->setInstructions(ServerInstructions::ForCaller($oPolicy))
 			->setPaginationLimit(Settings::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
 			->setSession(new StatelessSessionStore());
@@ -175,84 +191,6 @@ final class MCPService
 				implode(', ', $aStale)
 			));
 		}
-	}
-
-	/**
-	 * The instructions block, rendered for one caller.
-	 *
-	 * Two surfaces serve it now - the `initialize` answer, and the
-	 * core_instructions tool and itop://core/instructions resource for the
-	 * callers that never see one, `2026-07-28` having no `initialize` to put
-	 * it in. The point of the second is that it says what the first says, so
-	 * it is assembled once here rather than twice from the same pieces: two
-	 * renderings of the same guidance is the shape that diverges quietly, and
-	 * the one that diverges is always the one nobody is reading.
-	 *
-	 * @since 1.0.0
-	 */
-	public static function InstructionsFor(AccessPolicy $oPolicy): string
-	{
-		$sPortal = PortalMode::Current();
-		if ($sPortal !== null) {
-			return ServerInstructions::PortalText($sPortal, $oPolicy);
-		}
-
-		return ServerInstructions::Text(
-			$oPolicy,
-			self::internalFormatOf(\AttributeDateTime::class),
-			self::internalFormatOf(\AttributeDate::class),
-			self::servedPromptNames($oPolicy),
-			Settings::GetMaxMentions(),
-			MentionPolicy::AllowedClasses(),
-			Settings::RefusesFormulaValues()
-		);
-	}
-
-	/**
-	 * One attribute class's internal format, for the worked examples in the
-	 * instructions.
-	 *
-	 * Read rather than repeated here. GetInternalFormat() returns a literal
-	 * fixed by the branch ('Y-m-d H:i:s', and 'Y-m-d' for AttributeDate on
-	 * 3.2), not a configuration an operator can move - that is GetFormat(),
-	 * the display format, which never reaches this wire. So what the read buys
-	 * is that the text follows the iTop this module is running on rather than
-	 * the one it was written against, and a format stated wrongly is worse than
-	 * one not stated at all - the model sends a value iTop then refuses.
-	 *
-	 * Taken per class rather than derived. AttributeDate extends
-	 * AttributeDateTime and overrides this, so a date format inferred by
-	 * cutting the time off a date-time would be a guess about an override
-	 * rather than a reading of either class.
-	 *
-	 * Guarded rather than called outright. This runs while the server is being
-	 * built, before any tool has been dispatched, so a class that is not
-	 * loaded or an iTop that renamed the accessor would take down every
-	 * request to the endpoint - which is the shape of the entry-point fatal
-	 * this module has already shipped once. The instructions lose one example
-	 * instead.
-	 *
-	 * @param class-string $sAttributeClass
-	 */
-	private static function internalFormatOf(string $sAttributeClass): ?string
-	{
-		if (!class_exists($sAttributeClass) || !method_exists($sAttributeClass, 'GetInternalFormat')) {
-			return null;
-		}
-
-		try {
-			$sFormat = $sAttributeClass::GetInternalFormat();
-		} catch (\Throwable $oException) {
-			MCPHelper::LogError(sprintf(
-				'Could not read the internal format of %s for the server instructions: %s',
-				$sAttributeClass,
-				$oException->getMessage()
-			));
-
-			return null;
-		}
-
-		return is_string($sFormat) && $sFormat !== '' ? $sFormat : null;
 	}
 
 	/**
@@ -650,7 +588,7 @@ final class MCPService
 	 * whose elements all want a profile this user lacks, is not one the caller
 	 * can reach whatever the policy says.
 	 *
-	 * @return array{toolsets: array<int, string>, capabilities: array<int, string>}
+	 * @return array{toolsets: array<int, string>, tools: array<int, string>, capabilities: array<int, string>, prompts: array<int, string>}
 	 * @since 1.0.0
 	 */
 	public static function ServedAccess(): array

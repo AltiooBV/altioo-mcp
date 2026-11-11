@@ -55,12 +55,12 @@ An iTop developer opening this module should find that shape.
    | `Controller/` | The endpoint. Each gate a request passes is one class under `Controller/Gate/`, run from one ordered list. Also CORS and the response. | `Controller\MCPController`, the response half of `Helper\MCPHttp` |
    | `Hook/` | What iTop calls into: the background process | `Service\AuditHousekeeping` |
    | `Service/Server/` | Building the MCP server from the registry for one request; the session | `Service\MCPService`, `Server\Session\` |
-   | `Core/` | The core tools, resources, templates and prompts. They stay where they are, like mcp/sdk's `Capability/`. It also gets the server instructions, which two of its elements serve. | `Core\`, `Server\ServerInstructions`, `MCPService::InstructionsFor()` |
+   | `Core/` | The core tools, resources, templates and prompts. They stay where they are, like mcp/sdk's `Capability/`. It also gets the server instructions, which two of its elements serve. | `Core\`, `Server\ServerInstructions`, `MCPService::InstructionsFor()` as `ServerInstructions::ForCaller()` |
    | `Service/Access/` | The question every tool asks about an object: may this caller see it, change it, set this field? It answers by the console's rules; the portal's subclass is in `Service/Portal/`. It also holds the rights half of reading a document. | `Service\ObjectAccess`, `DocumentAccess::Fetch()` as `DocumentFetch` |
    | `Service/Write/` | Turning a caller's fields into a checked write: value conversion, the rules a value must pass (`Edit`, `Mention`, `Formula`), the dry run, the deletion plan | `Helper\WritePlan` split, `EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `RestValue` |
    | `Service/Portal/` | The portal: its policy, its object access (which specialises `Access`), its description, the row lookup its lists use | `Service\Portal*` except `PortalMode`, `PortalList::RowOf()` |
    | `Service/Read/` | Reading objects out: queries and the OQL check, serialisation, history, documents, the current user, the datamodel description | `Helper\ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, `DatamodelReader`, `ObjectSearchByOQL::CheckQuery()` |
-   | `Service/Rights/` | The rules everything above asks: the token scopes, the access policy and what the request is served, the barrier on access-granting classes, the exclusions, the secrets, the rights grading. Named after iTop's `UserRights`. | `Service\TokenScopes`, `AccessPolicy`, `ExcludingModelReflection`, `Helper\AccessGrants`, `ExclusionPolicy`, `SecretPolicy`, `MCPService::ServedAccess()`, the grading now in `DatamodelReader` |
+   | `Service/Rights/` | The rules everything above asks: the token scopes, the access policy and what the request is served, the barrier on access-granting classes, the exclusions, the secrets, the rights grading. Named after iTop's `UserRights`. | `Service\TokenScopes`, `AccessPolicy`, `ExcludingModelReflection`, `Helper\AccessGrants`, `ExclusionPolicy`, `SecretPolicy`, `ServedAccess` (the slot the server fills; see "What the measurement changed"), the grading now in `DatamodelReader` |
    | `Service/Audit/` | The audit trail: retention, change and read summaries | `Service\AuditRetention`, `ChangeSummary`, `ReadSummary` |
    | `Helper/` | Small stateless utilities and per-request facts only, as in Combodo's modules: settings, logging, JSON encoding, error references, dictionary lookup, the portal-mode flag, identifiers, the id normaliser, the request's token and host | `Helper\Settings`, `MCPLog`, `LogAPILogger`, `JsonPayload`, `MCPContext`, `Identifier`, `Service\PortalMode`, `WritePlan::AsId()` as `ObjectId::Normalise()`, the request half of `MCPHttp`, the rest of `MCPHelper` |
    | `Model/` | Value objects, written in the singular as Combodo writes it | `Models\MCPResult` |
@@ -138,6 +138,12 @@ An iTop developer opening this module should find that shape.
   `Service\Portal\PortalRows`, and the tool calls `PortalRows::ListQuery()` in its own source.
   `CheckQuery()` moved to `ObjectQuery` with its three private helpers; the advice on a query with
   an ORDER BY reads the sort constants from `Api\AbstractObjectSearch`, which any layer may import.
+- **`ServedAccess()` could not move whole.** What a caller is served is the question registration asks of
+  every element (`isHidden()`, which also asks `PortalAccess::Serves()`), so the answer is the server's
+  and Rights cannot import it. The identity tool and the instructions, both in or below Core, ask for
+  it, so the server remembers how to answer once per request (`MCPService::RememberServed()`, from
+  `run()`) and they ask `Service\Rights\ServedAccess`, as they ask `AccessPolicy`. The answer is
+  computed when asked, as before. Nothing remembered answers with nothing served.
 - **Some "feature" classes are bottom-level facts.** `PortalMode`, `Identifier`, `AsId()` and the
   request's token and host are asked by every layer. They go to `Helper`.
 - **Packs call the registry.** The example pack registers through `MCPRegistry` and

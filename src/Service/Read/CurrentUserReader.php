@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use MetaModel;
 use UserRights;
@@ -27,7 +27,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
  *
  * Two surfaces, one implementation: what the resource reports and what the
  * tool reports cannot drift apart. That is also why the access block is read
- * here rather than in either surface - MCPService is the only place the
+ * here rather than in either surface - ServedAccess is the only place the
  * policy, the registry and the disabled list meet, and asking it once is
  * cheaper than keeping two copies of the answer level with each other.
  *
@@ -51,8 +51,8 @@ final class CurrentUserReader
 		return [
 			// What this caller can reach, so that "the server has no such tool"
 			// and "I am not served it" stop looking the same. Only what is
-			// served is named - see MCPService::ServedAccess().
-			'access' => MCPService::ServedAccess(),
+			// served is named - see ServedAccess::Current().
+			'access' => ServedAccess::Current(),
 			'current_contact_friendlyname' => self::ContactFriendlyname(),
 			// The caller's own contact is an object like any other: of an excluded class it is not named
 			// (doc/adr/0012), and neither is its organisation, or its id.

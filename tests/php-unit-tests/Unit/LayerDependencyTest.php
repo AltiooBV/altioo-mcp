@@ -94,10 +94,7 @@ class LayerDependencyTest extends TestCase
 	 * Shrink it, never grow it.
 	 */
 	private const BASELINE = <<<'TXT'
-Core\Resources\Instructions → Service\Server\MCPService
-Core\Tools\Instructions → Service\Server\MCPService
 Helper\Settings → Service\Rights\ExclusionPolicy
-Service\Read\CurrentUserReader → Service\Server\MCPService
 TXT;
 
 	public function testEveryClassHasALayer(): void

@@ -12,6 +12,8 @@ use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResourc
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 
@@ -44,11 +46,13 @@ class CoreInstructionsTest extends ItopDataTestCaseAlias
 	{
 		parent::setUp();
 		MCPExtensionCollector::CollectAll();
+		MCPService::RememberServed();
 	}
 
 	protected function tearDown(): void
 	{
 		AccessPolicy::Forget();
+		ServedAccess::Forget();
 		parent::tearDown();
 	}
 
@@ -58,7 +62,7 @@ class CoreInstructionsTest extends ItopDataTestCaseAlias
 			AccessPolicy::Forget();
 			AccessPolicy::Remember($oPolicy);
 
-			$sHandshake = MCPService::InstructionsFor($oPolicy);
+			$sHandshake = ServerInstructions::ForCaller($oPolicy);
 
 			$this->assertNotSame('', $sHandshake, $sLabel.': the block is empty, so this would pass on nothing');
 			$this->assertSame($sHandshake, InstructionsTool::execute(), $sLabel.': the tool answers something the handshake does not');

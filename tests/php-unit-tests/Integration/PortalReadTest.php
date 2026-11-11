@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
@@ -259,9 +261,11 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		// Registered per request in production; a test has to do it itself.
 		MCPRegistry::Clear();
 		CoreExtensions::RegisterServiceProvider();
+		MCPService::RememberServed();
 		try {
 			$aPayload = CurrentUserReader::Payload();
 		} finally {
+			ServedAccess::Forget();
 			MCPRegistry::Clear();
 		}
 

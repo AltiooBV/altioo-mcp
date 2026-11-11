@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Exception\ToolCallException;
@@ -39,7 +39,7 @@ use Mcp\Schema\ToolAnnotations;
  *
  * Served in portal mode too, where it is the only way a `2026-07-28` client
  * learns what that mode does not serve yet. It enforces nothing because it
- * reads nothing: the text is MCPService::InstructionsFor()'s, which is the
+ * reads nothing: the text is ServerInstructions::ForCaller()'s, which is the
  * portal's own there. Its description follows, so as not to promise an OQL
  * dialect to a connection that has no OQL.
  *
@@ -117,6 +117,6 @@ class Instructions extends AbstractMCPTool implements PortalAware
 		// Markdown prose, not a payload: returned as a string so the SDK sends
 		// one text block. ToolOutput::Json() would wrap it in quotes and
 		// escapes, and there is no structure here for a schema to describe.
-		return MCPService::InstructionsFor($oPolicy);
+		return ServerInstructions::ForCaller($oPolicy);
 	}
 }
