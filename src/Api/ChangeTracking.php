@@ -51,9 +51,6 @@ final class ChangeTracking
 	/** How long a tool name may be before it is one by name only. */
 	private const MAX_TOOL_CHARS = 64;
 
-	/** What the channel is called in the history, when nothing else is known. */
-	private const CHANNEL = 'MCP';
-
 	/** The tool this request is running, as the client named it. */
 	private static ?string $sTool = null;
 
@@ -148,59 +145,6 @@ final class ChangeTracking
 	{
 		self::$sTool = null;
 		self::$sComment = null;
-	}
-
-	/**
-	 * The line written to `userinfo`, from its parts.
-	 *
-	 * Pure, and separated from everything that touches iTop, because the shape
-	 * of this string is the whole feature: it is what an auditor reads six
-	 * months later, and it is the only part of the mechanism that can be
-	 * asserted without a database.
-	 *
-	 * The comment is what gets cut when the line is too long. The user and the
-	 * tool are what the row would be useless without; a reason that stops mid
-	 * sentence still says more than no reason at all.
-	 *
-	 * @param string      $sUser         The name iTop would have written on its own.
-	 * @param bool        $bImpersonated Whether iTop will prepend that name itself.
-	 * @param string|null $sTool         Qualified tool name, when it is known.
-	 * @param string|null $sComment      The caller's reason, when it gave one.
-	 * @param string|null $sPortal       The portal serving the call, in portal mode.
-	 *
-	 * @since 1.0.0
-	 * @deprecated 1.3.0 Nothing writes this line any more: `userinfo` is left to iTop, so that the
-	 *             anonymizer's exact match on the user's name holds (doc/adr/0009). Kept, and
-	 *             unchanged, until a later minor release removes it.
-	 */
-	public static function Compose(string $sUser, bool $bImpersonated, ?string $sTool, ?string $sComment, ?string $sPortal = null): string
-	{
-		$sChannel = ($sTool === null || $sTool === '')
-			? self::CHANNEL
-			: self::CHANNEL.': '.$sTool;
-
-		// Which portal served the call, so history says it without a join to the audit row.
-		if ($sPortal !== null && $sPortal !== '') {
-			$sChannel .= ', portal '.$sPortal;
-		}
-
-		// Under impersonation GetTrackInfo() writes "A (on behalf of B) (<this>)"
-		// - prefixing the name here as well would say it twice.
-		$sPrefix = $bImpersonated ? '' : trim($sUser).' ';
-		$sHead = $sPrefix.'('.$sChannel.')';
-
-		if ($sComment === null || $sComment === '') {
-			return mb_substr($sHead, 0, self::MAX_INFO_CHARS);
-		}
-
-		$sSeparator = ' - ';
-		$iRoom = self::MAX_INFO_CHARS - mb_strlen($sHead) - mb_strlen($sSeparator);
-
-		if ($iRoom < 1) {
-			return mb_substr($sHead, 0, self::MAX_INFO_CHARS);
-		}
-
-		return $sHead.$sSeparator.mb_substr($sComment, 0, $iRoom);
 	}
 
 	/**
