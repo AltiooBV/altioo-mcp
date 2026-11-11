@@ -27,6 +27,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Audit;
  * {@see \Altioo\iTop\Extension\MCP\Helper\ErrorReport::MintedReferences()},
  * because the places that read are many and the row is written once.
  *
+ * @internal
  * @since 1.3.0
  */
 class ReadSummary

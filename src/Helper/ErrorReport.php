@@ -11,7 +11,7 @@ use Throwable;
 /**
  * How a failure is told to the caller and to the log: the log gets everything, the caller a reference.
  *
- * @api
+ * @internal
  * @since 2.0.0
  */
 class ErrorReport

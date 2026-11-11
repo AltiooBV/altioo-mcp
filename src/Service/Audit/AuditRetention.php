@@ -12,6 +12,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Audit;
  * The decisions {@see AuditHousekeeping} makes, apart from the database it
  * makes them on, so that they can be asserted without iTop.
  *
+ * @internal
  * @since 1.3.0
  */
 final class AuditRetention

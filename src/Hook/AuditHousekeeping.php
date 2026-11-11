@@ -47,6 +47,7 @@ use Throwable;
  * their person was anonymised (the key was reset), and rows from before
  * `user_id` existed. Both keep the login until retention removes them.
  *
+ * @internal
  * @since 1.3.0
  */
 final class AuditHousekeeping implements iBackgroundProcess

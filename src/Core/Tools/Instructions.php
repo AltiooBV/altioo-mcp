@@ -43,6 +43,7 @@ use Mcp\Schema\ToolAnnotations;
  * portal's own there. Its description follows, so as not to promise an OQL
  * dialect to a connection that has no OQL.
  *
+ * @internal
  * @since 1.0.0
  */
 class Instructions extends AbstractMCPTool implements PortalAware

@@ -19,6 +19,7 @@ use MetaModel;
 use RunTimeEnvironment;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class Version extends AbstractMCPResource

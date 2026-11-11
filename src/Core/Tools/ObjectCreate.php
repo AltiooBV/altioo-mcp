@@ -36,6 +36,7 @@ use UserRights;
  * Use the itop://core/class/{classname} resource to discover mandatory attributes
  * and their types before calling this tool.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectCreate extends AbstractMCPTool implements PortalAware

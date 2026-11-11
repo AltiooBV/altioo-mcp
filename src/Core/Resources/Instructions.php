@@ -38,6 +38,7 @@ use Mcp\Schema\Enum\Role;
  * {@see \Altioo\iTop\Extension\MCP\Core\Tools\Instructions}, which also says
  * why both are served in portal mode.
  *
+ * @internal
  * @since 1.0.0
  */
 class Instructions extends AbstractMCPResource implements PortalAware

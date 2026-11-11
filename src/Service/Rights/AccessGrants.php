@@ -84,7 +84,7 @@ use UserRights;
  * before, and it is why the unit suite, which runs without an iTop at all,
  * still holds the barrier to the same classes.
  *
- * @api
+ * @internal
  * @since 1.0.0
  */
 final class AccessGrants

@@ -50,6 +50,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
  * A value object: no iTop, no configuration, no request. Every rule below is
  * decided here and tested without any of them.
  *
+ * @internal
  * @since 1.0.0
  */
 final class AccessPolicy

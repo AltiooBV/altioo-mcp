@@ -47,6 +47,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
  * Kept short on purpose. This text is in the context of every session, whether
  * or not any tool is ever called.
  *
+ * @internal
  * @since 1.0.0
  */
 final class ServerInstructions

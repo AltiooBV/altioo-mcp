@@ -17,8 +17,9 @@ require_once dirname(__DIR__).'/bootstrap.php';
 /**
  * What semver applies to, held in one place that can fail.
  *
- * The surface a tool pack may depend on is defined in the source: a class on
- * the surface carries @api on its class docblock (§4.6, §11.2), and the prose
+ * The surface a tool pack may depend on is src/Api and EXTRA_SURFACE below, and
+ * the source says so: a class on the surface carries @api on its class
+ * docblock (§4.6, §11.2), every other class carries @internal, and the prose
  * - the changelog's header, the README's versioning section, a paragraph
  * inside the extending guide - says "the classes marked @api" rather than
  * naming them.
@@ -28,9 +29,8 @@ require_once dirname(__DIR__).'/bootstrap.php';
  * surface having to be remembered into all three - the drift the guide's §12.1
  * describes for version numbers, applied to a contract.
  *
- * This test is what makes the tag mean something,
- * from both ends - a surface class that lost its tag, and an internal class
- * that gained one.
+ * This test is what makes the tag mean something, from both ends - a surface
+ * class that lost its tag, and an internal class that gained one or has none.
  */
 class PublicSurfaceTest extends TestCase
 {
@@ -38,44 +38,29 @@ class PublicSurfaceTest extends TestCase
 	private const ROOT = __DIR__.'/../../..';
 
 	/**
-	 * The surface, as policy rather than as an inventory: whole directories
-	 * wherever the rule is "everything here is for packs", and named files
-	 * where it is not.
+	 * The surface is everything under src/Api, plus these classes. ADR 0015,
+	 * rule 3: a pack extends or calls what is under Api, and calls these four
+	 * directly because the example pack does and no facade wraps them.
 	 *
-	 * Changing this list is changing what the extension promises. That is a
-	 * decision with a major version attached to it (§11.2), which is the
-	 * reason it is written here and not derived from whatever happens to
-	 * carry a tag.
+	 * Adding a class here is promising to keep it stable across minors, a
+	 * decision with a major version attached to it (§11.2), which is why the
+	 * list is written out and not derived from whatever carries a tag. Each
+	 * entry has a pack that calls it:
+	 *
+	 *  - ObjectQuery: ById() builds the search a pack tool resolves an object
+	 *    from, the same way the core tools do (doc/example-pack).
+	 *  - ObjectSerializer: DEFAULT_LIST_FIELDS is the default a search tool
+	 *    offers for its output_fields parameter.
+	 *  - RestValue: a case-log value reaches a tool decoded by the SDK, and
+	 *    RestUtils::MakeValue() takes it only wrapped by FromDecodedJson().
+	 *  - WritePlan: a write tool offers a dry run (SIMULATE_BY_DEFAULT,
+	 *    SimulateSchemaProperty()) and validates the object it built (Check()).
 	 */
-	private const SURFACE = [
-		'src/Api',
-		'src/Helper',
-		// Moved out of src/Helper by ADR 0015 and still @api; step 5 decides their tag.
-		'src/Service/Rights/AccessGrants.php',
-		'src/Service/Rights/ExclusionPolicy.php',
-		'src/Service/Rights/SecretPolicy.php',
-		'src/Service/Read/CurrentUserReader.php',
-		'src/Service/Read/DatamodelReader.php',
-		'src/Service/Read/DocumentAccess.php',
-		'src/Service/Read/ObjectHistory.php',
+	public const EXTRA_SURFACE = [
 		'src/Service/Read/ObjectQuery.php',
 		'src/Service/Read/ObjectSerializer.php',
-		'src/Service/Write/EditPolicy.php',
-		'src/Service/Write/FormulaPolicy.php',
-		'src/Service/Write/MentionPolicy.php',
 		'src/Service/Write/RestValue.php',
 		'src/Service/Write/WritePlan.php',
-	];
-
-	/**
-	 * Files inside a SURFACE directory that are not on the surface. ADR 0015
-	 * moves classes into src/Helper that were never @api; until its step 5
-	 * narrows the surface and replaces the directory entry, they are named here.
-	 */
-	private const NOT_SURFACE = [
-		'src/Helper/MCPMethod.php',
-		'src/Helper/OAuthResource.php',
-		'src/Helper/PortalMode.php',
 	];
 
 	/**
@@ -98,14 +83,31 @@ class PublicSurfaceTest extends TestCase
 	 *
 	 * @dataProvider internalProvider
 	 */
-	public function testAnInternalClassIsNotMarkedApi(string $sPath): void
+	public function testAnInternalClassIsMarkedInternalAndNotApi(string $sPath): void
 	{
+		$sBlock = self::classDocBlock($sPath);
 		$this->assertStringNotContainsString(
 			'@api',
-			self::classDocBlock($sPath),
-			$sPath.' is marked @api but is not on the surface list in '.self::class
+			$sBlock,
+			$sPath.' is marked @api but is not under src/Api or in EXTRA_SURFACE in '.self::class
 			.'; @api is a commitment to keep it stable across minors'
 		);
+		$this->assertStringContainsString(
+			'@internal',
+			$sBlock,
+			$sPath.' is neither on the surface nor tagged @internal; a class says which it is'
+		);
+	}
+
+	/**
+	 * The list names files that are there, and none that Api already covers.
+	 */
+	public function testTheExtraSurfaceNamesRealFilesOutsideApi(): void
+	{
+		foreach (self::EXTRA_SURFACE as $sEntry) {
+			$this->assertFileExists(self::ROOT.'/'.$sEntry, $sEntry.' is on the extra surface list but does not exist');
+			$this->assertFalse(str_starts_with($sEntry, 'src/Api/'), $sEntry.' is under src/Api, which is on the surface already');
+		}
 	}
 
 	/**
@@ -173,26 +175,19 @@ class PublicSurfaceTest extends TestCase
 	}
 
 	/**
-	 * Repository-relative paths of every PHP file the surface list covers.
+	 * Repository-relative paths of every PHP file on the surface: all of
+	 * src/Api, and the named extras.
 	 *
 	 * @return array<int, string>
 	 */
 	private static function surfaceFiles(): array
 	{
-		$aFiles = [];
-		foreach (self::SURFACE as $sEntry) {
-			if (str_ends_with($sEntry, '.php')) {
-				self::assertFileExists(self::ROOT.'/'.$sEntry, $sEntry.' is on the surface list but does not exist');
-				$aFiles[] = $sEntry;
-				continue;
-			}
-			self::assertDirectoryExists(self::ROOT.'/'.$sEntry, $sEntry.' is on the surface list but does not exist');
-			foreach (self::sourceFiles() as $sPath) {
-				if (str_starts_with($sPath, $sEntry.'/') && !in_array($sPath, self::NOT_SURFACE, true)) {
-					$aFiles[] = $sPath;
-				}
-			}
-		}
+		$aFiles = array_values(array_filter(
+			self::sourceFiles(),
+			static fn (string $s): bool => str_starts_with($s, 'src/Api/')
+		));
+		self::assertNotEmpty($aFiles, 'src/Api holds no PHP files; the scan has stopped working');
+		$aFiles = array_merge($aFiles, self::EXTRA_SURFACE);
 		sort($aFiles);
 
 		return $aFiles;
@@ -235,13 +230,24 @@ class PublicSurfaceTest extends TestCase
 		$sSource = file_get_contents(self::ROOT.'/'.$sPath);
 		self::assertNotFalse($sSource, $sPath.' cannot be read');
 
-		self::assertSame(
-			1,
-			preg_match('#(/\*\*.*?\*/)\s*(?:final\s+|abstract\s+|readonly\s+)*(?:class|interface|trait|enum)\s#s', $sSource, $aMatch),
-			$sPath.' has no docblock immediately above its type declaration'
-		);
+		$aLines = explode("\n", $sSource);
+		foreach ($aLines as $i => $sLine) {
+			if (preg_match('/^(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+\w+/', $sLine) !== 1) {
+				continue;
+			}
+			$j = $i - 1;
+			while ($j >= 0 && str_starts_with(trim($aLines[$j]), '#[')) {
+				$j--;
+			}
+			self::assertTrue($j >= 0 && trim($aLines[$j]) === '*/', $sPath.' has no docblock immediately above its type declaration');
+			$iEnd = $j;
+			while ($j >= 0 && !str_starts_with(trim($aLines[$j]), '/**')) {
+				$j--;
+			}
 
-		return $aMatch[1];
+			return implode("\n", array_slice($aLines, $j, $iEnd - $j + 1));
+		}
+		self::fail($sPath.' declares no class, interface, trait or enum');
 	}
 
 	/**

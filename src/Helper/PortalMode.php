@@ -35,6 +35,7 @@ use utils;
  * The decisions are pure and tested without iTop; the controller gathers
  * their inputs.
  *
+ * @internal
  * @since 1.2.0
  */
 final class PortalMode

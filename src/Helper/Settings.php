@@ -19,7 +19,7 @@ use utils;
  * settings and their defaults are this class's constants; the earlier
  * 1.x spellings that lived elsewhere are gone in 2.0.
  *
- * @api
+ * @internal
  * @since 1.3.0
  */
 final class Settings

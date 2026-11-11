@@ -42,6 +42,7 @@ use utils;
  * the same one the console reads, so a caller that turns it on has changed
  * what its user sees there too until something turns it back.
  *
+ * @internal
  * @since 1.0.0
  */
 class SetObsoleteData extends AbstractMCPTool

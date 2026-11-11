@@ -43,6 +43,7 @@ use DBObjectSet;
  *   fields:   { "agent_id": 3, "team_id": 12 }
  *   comment:  "Assigned via MCP"
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware

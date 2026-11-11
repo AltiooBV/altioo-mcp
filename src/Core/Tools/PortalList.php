@@ -36,6 +36,7 @@ use MetaModel;
  * must itself be one of the parent level's rows: a path is checked level by
  * level, so a parent the user could not have clicked on lists nothing.
  *
+ * @internal
  * @since 1.2.0
  */
 class PortalList extends AbstractPortalTool

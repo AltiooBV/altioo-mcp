@@ -56,6 +56,7 @@ use UserRights;
  * from a page, as {@see AbstractObjectSearch} explains for `total`, so a count
  * can exceed what the account could list. The answer says so.
  *
+ * @internal
  * @since 1.3.0
  */
 class ObjectCount extends AbstractObjectSearch implements PortalAware

@@ -23,6 +23,7 @@ use InvalidArgumentException;
  * client did: {@see \Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector}
  * catches it per provider, logs it and keeps serving everything else.
  *
+ * @internal
  * @since 1.0.0
  */
 class MCPRegistrationException extends InvalidArgumentException

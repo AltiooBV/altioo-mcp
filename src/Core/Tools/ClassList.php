@@ -28,6 +28,7 @@ use Mcp\Schema\ToolAnnotations;
  * stock iTop declares several hundred classes, and the handful a model needs
  * are almost always one category ('bizmodel') or one word ('ticket') away.
  *
+ * @internal
  * @since 1.0.0
  */
 class ClassList extends AbstractMCPTool implements PortalAware

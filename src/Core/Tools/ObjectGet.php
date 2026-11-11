@@ -31,6 +31,7 @@ use UserRights;
  * user reads the objects its scopes hold, the fields its view form shows,
  * and the gates and stimuli it offers.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectGet extends AbstractMCPTool implements PortalAware

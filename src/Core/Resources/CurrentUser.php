@@ -19,6 +19,7 @@ use Mcp\Schema\Enum\Role;
  * Served in portal mode too: an identity is the caller's own, read from
  * their own user record, and asks the portal for nothing.
  *
+ * @internal
  * @since 1.0.0
  */
 class CurrentUser extends AbstractMCPResource implements PortalAware

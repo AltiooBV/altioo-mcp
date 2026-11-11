@@ -53,6 +53,7 @@ use Throwable;
  * without touching this - and putting it there would have committed the shape
  * of this text to a major version for no caller.
  *
+ * @internal
  * @since 1.0.0
  */
 class ChangeSummary

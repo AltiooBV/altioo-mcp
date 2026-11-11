@@ -29,6 +29,7 @@ use Mcp\Schema\ToolAnnotations;
  * retire these thirty servers - and the one a model otherwise does by calling
  * core_object_update twelve times.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectBulkUpdate extends AbstractBulkTool

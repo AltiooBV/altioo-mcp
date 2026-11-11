@@ -36,6 +36,7 @@ use DBObjectSet;
  *
  * Only the provided fields are updated; omitted attributes are left untouched.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectUpdate extends AbstractMCPTool implements PortalAware

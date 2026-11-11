@@ -30,6 +30,7 @@ use Mcp\Schema\ToolAnnotations;
  * Served in portal mode too, where "who am I acting for" is as much the
  * question: the identity is the caller's own and asks the portal for nothing.
  *
+ * @internal
  * @since 1.0.0
  */
 class CurrentUser extends AbstractMCPTool implements PortalAware

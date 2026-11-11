@@ -36,6 +36,7 @@ use DeletionPlan;
  * The response includes the deletion plan summary so the caller
  * knows what related objects were also affected.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectDelete extends AbstractMCPTool

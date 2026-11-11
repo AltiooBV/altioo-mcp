@@ -37,6 +37,7 @@ use MetaModel;
 use UserRights;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 final class MCPService

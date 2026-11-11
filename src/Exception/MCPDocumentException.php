@@ -25,6 +25,7 @@ use Exception;
  * and never why the object could not be found, which is deliberately
  * indistinguishable from not being allowed to see it.
  *
+ * @internal
  * @since 1.0.0
  */
 class MCPDocumentException extends Exception

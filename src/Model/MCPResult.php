@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Model;
 /**
  * Minimal MCP response structure.
  *
+ * @internal
  * @package MCP
  * @since 1.0.0
  */

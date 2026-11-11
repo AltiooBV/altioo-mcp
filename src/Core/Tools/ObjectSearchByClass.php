@@ -34,6 +34,7 @@ use UserRights;
  *   class: "UserRequest"
  *   filters: { "status": "open", "agent_id": 12 }
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectSearchByClass extends AbstractObjectSearch

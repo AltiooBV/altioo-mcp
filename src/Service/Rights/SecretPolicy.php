@@ -41,7 +41,7 @@ use Throwable;
  * the decision it stands for is the same one - this endpoint may arrange for
  * the instance to authenticate outward as somebody the caller chose.
  *
- * @api
+ * @internal
  * @since 1.2.0
  */
 final class SecretPolicy

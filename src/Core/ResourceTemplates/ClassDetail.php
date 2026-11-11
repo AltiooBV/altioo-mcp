@@ -17,6 +17,7 @@ use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class ClassDetail extends AbstractMCPResourceTemplate

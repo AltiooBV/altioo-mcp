@@ -34,7 +34,7 @@ use utils;
  * This narrows the channel, not the account. Nothing here is an access control:
  * the same account reads the same data in the console.
  *
- * @api
+ * @internal
  * @since 1.3.0
  */
 final class ExclusionPolicy

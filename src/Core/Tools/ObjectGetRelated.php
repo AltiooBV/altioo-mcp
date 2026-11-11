@@ -40,6 +40,7 @@ use UserRights;
  *   direction: "down"
  *   depth:     4
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectGetRelated extends AbstractMCPTool

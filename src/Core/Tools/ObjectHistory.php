@@ -46,6 +46,7 @@ use UserRights;
  * the rows those its change-log scope holds, and the attributes those the
  * object's view form shows. Nothing a console read refuses is served.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectHistory extends AbstractMCPTool implements PortalAware

@@ -54,6 +54,7 @@ use UserRights;
  * the model was reading, from inside the network iTop sits in, with iTop's
  * credentials on the wire. The bytes come from the caller or they do not come.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectAttach extends AbstractMCPTool implements PortalAware

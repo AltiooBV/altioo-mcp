@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class CoreExtensions implements iMCPServiceProvider

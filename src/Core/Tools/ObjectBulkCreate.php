@@ -32,6 +32,7 @@ use MetaModel;
  * which here is the only way to find out that the thirtieth row is missing a
  * mandatory attribute before the first twenty-nine exist.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectBulkCreate extends AbstractBulkTool

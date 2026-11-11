@@ -39,6 +39,7 @@ use UserRights;
  * Nothing here is OQL there, and the prompt is offered only when the portal
  * grants the user such a list.
  *
+ * @internal
  * @since 1.0.0
  */
 class MyOpenTickets extends AbstractMCPPrompt implements PortalAware

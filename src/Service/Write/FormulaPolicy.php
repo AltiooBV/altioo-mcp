@@ -41,7 +41,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
  * strings) are not checked either: they are masked on every read, and a
  * password refused for its first character would be absurd.
  *
- * @api
+ * @internal
  * @since 1.1.0
  */
 final class FormulaPolicy

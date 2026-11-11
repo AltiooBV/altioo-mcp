@@ -29,6 +29,7 @@ use Mcp\Schema\ToolAnnotations;
  * an ObjectApplyStimulus call has to get right, and a model that cannot read
  * them invents them.
  *
+ * @internal
  * @since 1.0.0
  */
 class ClassSchema extends AbstractMCPTool implements PortalAware

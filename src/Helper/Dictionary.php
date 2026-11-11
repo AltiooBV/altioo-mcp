@@ -12,7 +12,7 @@ use Throwable;
 /**
  * Dictionary lookup with the English literal as the fallback.
  *
- * @api
+ * @internal
  * @since 2.0.0
  */
 class Dictionary

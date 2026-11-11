@@ -33,6 +33,7 @@ use Mcp\Schema\ToolAnnotations;
  * cannot be taken back once it is in the conversation. Asking for one document
  * by name is the decision, and this is where it is made.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectGetDocument extends AbstractMCPTool implements PortalAware

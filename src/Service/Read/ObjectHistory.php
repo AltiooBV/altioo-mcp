@@ -54,7 +54,7 @@ use UserRights;
  * revocation that left the old value readable would be a revocation in name
  * only.
  *
- * @api
+ * @internal
  * @since 1.0.0
  */
 final class ObjectHistory

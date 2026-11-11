@@ -23,6 +23,7 @@ use Throwable;
  * endpoint which of them matched. Reading them back is therefore a second
  * look at the same credential, done once the login has already succeeded.
  *
+ * @internal
  * @since 1.0.0
  */
 final class TokenScopes

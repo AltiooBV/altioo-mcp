@@ -60,6 +60,7 @@ use UserRights;
  * belongs to still exists, and coverage says nothing of the instance's
  * configuration.
  *
+ * @internal
  * @since 1.3.0
  */
 class MyActivity extends AbstractMCPTool implements PortalAware

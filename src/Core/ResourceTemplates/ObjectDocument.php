@@ -31,6 +31,7 @@ use Mcp\Schema\Enum\Role;
  * templates is thinner still. A model that cannot reach a document through one
  * door reaches it through the other, and both go through the same checks.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectDocument extends AbstractMCPResourceTemplate

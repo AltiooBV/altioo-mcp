@@ -50,6 +50,7 @@ use Symfony\Component\Uid\Uuid;
  * this class covers the older revisions that cannot be served any other way.
  * It goes away when the handshake era does, rather than being improved.
  *
+ * @internal
  * @see https://modelcontextprotocol.io/specification/basic/transports Streamable HTTP without a session
  * @since 1.0.0
  */

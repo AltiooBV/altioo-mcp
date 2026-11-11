@@ -27,6 +27,7 @@ use UserRights;
  *
  * Example OQL: SELECT UserRequest WHERE status = 'open'
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectSearchByOQL extends AbstractObjectSearch

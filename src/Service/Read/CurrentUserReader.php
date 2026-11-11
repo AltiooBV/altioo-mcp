@@ -31,7 +31,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
  * policy, the registry and the disabled list meet, and asking it once is
  * cheaper than keeping two copies of the answer level with each other.
  *
- * @api
+ * @internal
  * @since 1.0.0
  */
 final class CurrentUserReader

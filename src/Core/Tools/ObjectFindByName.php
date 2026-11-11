@@ -47,6 +47,7 @@ use utils;
  * they cannot read is not reported; and neither is distinguishable in the
  * answer from one that does not exist.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectFindByName extends AbstractMCPTool

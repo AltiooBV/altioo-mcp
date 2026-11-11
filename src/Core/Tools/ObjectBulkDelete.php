@@ -28,6 +28,7 @@ use Mcp\Schema\ToolAnnotations;
  * iTop deletion cascades, so forty ids can take a great deal more than forty
  * objects with them.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectBulkDelete extends AbstractBulkTool

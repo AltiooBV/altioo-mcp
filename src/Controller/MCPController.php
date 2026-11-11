@@ -40,6 +40,7 @@ use ContextTag;
  * The checks are the gates' (Controller\Gate), the answer is MCPResponse's and
  * the audit row is CallLog's; this is the one place that says in what order.
  *
+ * @internal
  * @since 1.0.0
  */
 final class MCPController
