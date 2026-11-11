@@ -95,11 +95,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
 		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
-		'Helper\\EditPolicy' => 'Service\\Write', // Service/Write/
-		'Helper\\FormulaPolicy' => 'Service\\Write', // Service/Write/
-		'Helper\\MentionPolicy' => 'Service\\Write', // Service/Write/
-		'Helper\\RestValue' => 'Service\\Write', // Service/Write/
-		'Helper\\WritePlan' => 'Service\\Write', // Service/Write/
 		'Helper\\JsonPayload' => 'Helper', // Helper/
 		'Helper\\LogAPILogger' => 'Helper', // Helper/
 		'Helper\\MCPContext' => 'Helper', // Helper/
@@ -121,14 +116,14 @@ Core\Tools\Instructions → Service\MCPService
 Helper\PortalMode → Service\Portal\PortalAware
 Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
-Helper\WritePlan → Core\Tools\ObjectSearchByOQL
-Helper\WritePlan → Service\ObjectAccess
 Service\Portal\PortalAccess → Core\Tools\PortalList
 Service\Portal\PortalAccess → Service\ObjectAccess
 Service\Read\CurrentUserReader → Service\MCPService
-Service\Read\DocumentAccess → Helper\WritePlan
 Service\Read\DocumentAccess → Service\ObjectAccess
-Service\Read\ObjectSerializer → Helper\WritePlan
+Service\Read\DocumentAccess → Service\Write\WritePlan
+Service\Read\ObjectSerializer → Service\Write\WritePlan
+Service\Write\WritePlan → Core\Tools\ObjectSearchByOQL
+Service\Write\WritePlan → Service\ObjectAccess
 TXT;
 
 	public function testEveryClassHasALayer(): void

@@ -10,9 +10,9 @@ namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;

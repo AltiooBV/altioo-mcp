@@ -96,7 +96,7 @@ class ObjectDeleteContractTest extends TestCase
 	public function testAnObsoleteObjectThisAccountHidesIsRefusedWithAWayOut(): void
 	{
 		$sGuard = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\WritePlan::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class))->getFileName()
 		);
 
 		$this->assertStringContainsString('function RefuseHiddenObsolete', $sGuard);

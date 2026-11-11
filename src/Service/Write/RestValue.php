@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 /**
  * Bridges the MCP SDK's decoding convention to the one RestUtils expects.

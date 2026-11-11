@@ -238,7 +238,7 @@ yourself.
 Writing values back to iTop, from a tool of your own:
 
 ```php
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 
 $realValue = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
 ```

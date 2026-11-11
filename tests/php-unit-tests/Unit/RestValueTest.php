@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 

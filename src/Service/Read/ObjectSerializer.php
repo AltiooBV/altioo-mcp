@@ -29,7 +29,7 @@ use Throwable;
 use UserRights;
 use utils;
 use iAttributeNoGroupBy;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**

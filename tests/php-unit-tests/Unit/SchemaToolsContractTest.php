@@ -260,7 +260,7 @@ class SchemaToolsContractTest extends TestCase
 		$this->assertStringContainsString('return \'\';', $sBody, 'anything else has to answer with nothing');
 
 		// The create, the update and the stimulus convert through WritePlan.
-		foreach (['Helper\\WritePlan'] as $sTool) {
+		foreach (['Service\\Write\\WritePlan'] as $sTool) {
 			$sSource = (string) file_get_contents(
 				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool))->getFileName()
 			);

@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;

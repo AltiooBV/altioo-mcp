@@ -64,6 +64,11 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Read/ObjectHistory.php',
 		'src/Service/Read/ObjectQuery.php',
 		'src/Service/Read/ObjectSerializer.php',
+		'src/Service/Write/EditPolicy.php',
+		'src/Service/Write/FormulaPolicy.php',
+		'src/Service/Write/MentionPolicy.php',
+		'src/Service/Write/RestValue.php',
+		'src/Service/Write/WritePlan.php',
 	];
 
 	/**

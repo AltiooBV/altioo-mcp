@@ -16,7 +16,7 @@ use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
@@ -35,7 +35,7 @@ use UserRights;
  *
  * Its own tool rather than a `fields` entry on core_object_create, although
  * that route technically works - RestUtils understands `{data, mimetype,
- * filename}` and {@see \Altioo\iTop\Extension\MCP\Helper\RestValue} hands it the
+ * filename}` and {@see \Altioo\iTop\Extension\MCP\Service\Write\RestValue} hands it the
  * shape it expects. Two reasons not to leave it there.
  *
  * The first is the ceiling. A base64 payload buried in an open-ended attribute

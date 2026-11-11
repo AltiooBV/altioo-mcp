@@ -21,7 +21,7 @@ use Mcp\Schema\Content\ImageContent;
 use MetaModel;
 use ormDocument;
 use UserRights;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**

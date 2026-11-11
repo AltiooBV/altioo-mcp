@@ -62,7 +62,7 @@ class OrmFailureRedactionTest extends TestCase
 	public function testABadExternalKeyIsAnsweredInItsOwnWords(): void
 	{
 		$sBody = $this->methodBody(
-			\Altioo\iTop\Extension\MCP\Helper\WritePlan::class,
+			\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class,
 			'RefusalForExternalKey'
 		);
 
@@ -73,7 +73,7 @@ class OrmFailureRedactionTest extends TestCase
 
 		foreach ([
 			// The create, the update and the stimulus convert through it.
-			'Altioo\\iTop\\Extension\\MCP\\Helper\\WritePlan',
+			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WritePlan',
 			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
 		] as $sClass) {
 			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());

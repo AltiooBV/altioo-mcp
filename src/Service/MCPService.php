@@ -16,7 +16,7 @@ use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;

@@ -559,7 +559,7 @@
       <code><![CDATA[[]]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/WritePlan.php">
+  <file src="src/Service/Write/WritePlan.php">
     <InvalidArrayOffset>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>

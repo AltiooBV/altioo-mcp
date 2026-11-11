@@ -6,12 +6,13 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use AttributeCaseLog;
 use MetaModel;
 use Throwable;
 use utils;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 
 /**
  * Which @mentions a case-log entry written through this endpoint may carry.

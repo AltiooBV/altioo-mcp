@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -32,7 +32,7 @@ class EditPolicyTest extends TestCase
 	/** Every tool that turns a caller's fields into attribute values. */
 	private const WRITE_PATHS = [
 		// The create, the update, the stimulus and the portal's writes share one copy.
-		'src/Helper/WritePlan.php',
+		'src/Service/Write/WritePlan.php',
 		'src/Abstract/AbstractBulkTool.php',
 	];
 

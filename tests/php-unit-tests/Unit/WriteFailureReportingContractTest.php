@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -513,7 +513,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testCreatingACredentialSaysTheCredentialIsNotInTheAnswer(): void
 	{
-		$sPlan = (string) file_get_contents(self::SRC.'/Helper/WritePlan.php');
+		$sPlan = (string) file_get_contents(self::SRC.'/Service/Write/WritePlan.php');
 
 		$this->assertStringContainsString('AuthentToken', $sPlan,
 			'the token classes are named rather than asked for by interface, so a later one is missed');

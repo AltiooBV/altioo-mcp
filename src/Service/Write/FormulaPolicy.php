@@ -6,13 +6,14 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use AttributeCaseLog;
 use AttributeString;
 use iAttributeNoGroupBy;
 use MetaModel;
 use Throwable;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 
 /**
  * Text that a spreadsheet would run as a formula, refused on the way in.
