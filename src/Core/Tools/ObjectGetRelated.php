@@ -255,7 +255,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
 			}
 
-			return ToolOutput::Json(self::serializeGraph($oGraph));
+			return ToolOutput::Json(self::serializeGraph($oGraph, $sFinalClass.'::'.$id));
 		} catch (ToolCallException $e) {
 			// The withheld-class refusal from serializeGraph is this module's
 			// own answer and keeps its wording.
@@ -268,7 +268,10 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 	}
 
-	private static function serializeGraph(\RelationGraph $oGraph): array
+	/**
+	 * @param string $sRoot The object the walk started from, as `Class::id`, by the class it is.
+	 */
+	private static function serializeGraph(\RelationGraph $oGraph, string $sRoot = ''): array
 	{
 		$aObjects   = [];
 		$aRelations = [];
@@ -311,7 +314,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		// What the operator excluded is not in the graph, and neither is what is reachable only through it
 		// (doc/adr/0012): a path through an excluded object is a statement about that object.
 		if (ExclusionPolicy::IsActive()) {
-			[$aObjects, $aStats] = self::withoutExcluded($oGraph, $aObjects);
+			[$aObjects, $aStats] = self::withoutExcluded($oGraph, $aObjects, $sRoot);
 		}
 
 		$aWithheld = self::classesReadInBulkWithoutTheRight($aStats);
@@ -402,11 +405,15 @@ class ObjectGetRelated extends AbstractMCPTool
 	 * The objects reachable from the source without passing through an excluded
 	 * one, and the per-class counts of those.
 	 *
+	 * The walk starts from the object it was asked about, which is named rather than looked for among the nodes:
+	 * iTop marks every node of a real graph as reached, the starting one included, so no node says "I am the start".
+	 *
 	 * @param array<string, array<string, mixed>> $aObjects
+	 * @param string                              $sRoot    The object the walk started from, as `Class::id`.
 	 *
 	 * @return array{0: array<string, array<string, mixed>>, 1: array<string, int>}
 	 */
-	private static function withoutExcluded(\RelationGraph $oGraph, array $aObjects): array
+	private static function withoutExcluded(\RelationGraph $oGraph, array $aObjects, string $sRoot = ''): array
 	{
 		$aClassOf = [];
 		$aRoots   = [];
@@ -417,7 +424,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			$oObject = $oNode->GetProperty('object');
 			$sKey = get_class($oObject).'::'.$oObject->GetKey();
 			$aClassOf[$sKey] = get_class($oObject);
-			if (!$oNode->GetProperty('is_reached', false)) {
+			if ($sKey === $sRoot || !$oNode->GetProperty('is_reached', false)) {
 				$aRoots[] = $sKey;
 			}
 		}
