@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -134,7 +135,7 @@ class ReadSummaryTest extends TestCase
 			'Service/Read/ObjectHistory.php',
 			'Service/Portal/PortalAccess.php',
 		] as $sFile) {
-			$this->assertStringContainsString('ReadSummary::Note(', (string)file_get_contents($sRoot.$sFile), $sFile.' returns objects and does not tell the audit row');
+			$this->assertTrue(SourceCalls::OfFile($sRoot.$sFile)->HasCall(ReadSummary::class.'::Note'), $sFile.' returns objects and does not tell the audit row');
 		}
 	}
 }

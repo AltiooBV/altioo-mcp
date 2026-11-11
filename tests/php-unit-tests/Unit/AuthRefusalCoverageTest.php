@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\Gate\AuthRefusal;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -68,9 +68,8 @@ class AuthRefusalCoverageTest extends TestCase
 	 */
 	public function testEveryReachableRefusalIsNamed(string $sCode, string $sMeaning): void
 	{
-		$this->assertStringContainsString(
-			$sCode,
-			$this->switchBody(),
+		$this->assertTrue(
+			SourceCalls::OfClass(AuthRefusal::class)->HasConstant('LoginWebPage::'.$sCode, 'CreateAuthException'),
 			"createAuthException() no longer names {$sCode}, so ".$sMeaning
 			.' is answered by the default branch: a retCode the caller cannot act on'
 			.' and no log line for the operator.'
@@ -99,22 +98,6 @@ class AuthRefusalCoverageTest extends TestCase
 	 */
 	private function switchBody(): string
 	{
-		$oMethod = new ReflectionMethod(AuthRefusal::class, 'CreateAuthException');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
+		return SourceCalls::OfClass(AuthRefusal::class)->Code('CreateAuthException');
 	}
 }

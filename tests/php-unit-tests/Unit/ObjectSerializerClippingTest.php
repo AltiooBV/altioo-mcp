@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Read\ValueCeilings;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -134,6 +135,7 @@ class ObjectSerializerClippingTest extends TestCase
 		$sValue = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'Value');
 		$sPredicate = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'IsSensitive');
 
+		$this->assertTrue(SourceCalls::OfClass(ObjectSerializer::class)->HasCall(ObjectSerializer::class.'::IsSensitive', 'Value'), 'a read never asks whether the attribute is sensitive');
 		$iMask = strpos($sValue, 'IsSensitive');
 		$this->assertNotFalse($iMask, 'a read never asks whether the attribute is sensitive');
 		$this->assertLessThan(

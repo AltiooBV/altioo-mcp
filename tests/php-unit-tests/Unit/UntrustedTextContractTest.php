@@ -16,8 +16,8 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
 require_once __DIR__.'/../bootstrap.php';
 
@@ -33,10 +33,10 @@ class UntrustedTextContractTest extends TestCase
 {
 	public function testTheReadReportsTheMarkerBesideTheObject(): void
 	{
-		$sBody = $this->bodyOf(ObjectGet::class);
+		$oSource = SourceCalls::OfClass(ObjectGet::class);
 
-		$this->assertStringContainsString('UntrustedMarker::UntrustedText(', $sBody);
-		$this->assertStringContainsString("'untrusted_text'", $sBody);
+		$this->assertTrue($oSource->HasCall(UntrustedMarker::class.'::UntrustedText', 'execute'));
+		$this->assertTrue($oSource->HasString('untrusted_text', 'execute'));
 	}
 
 	/**
@@ -46,7 +46,7 @@ class UntrustedTextContractTest extends TestCase
 	public function testEveryListingMarksItsRows(): void
 	{
 		foreach ([ObjectSearchByClass::class, ObjectSearchByOQL::class, ObjectFindByName::class, PortalList::class] as $sTool) {
-			$this->assertStringContainsString('UntrustedMarker::MarkRows(', $this->bodyOf($sTool), $sTool);
+			$this->assertTrue(SourceCalls::OfClass($sTool)->HasCall(UntrustedMarker::class.'::MarkRows', 'execute'), $sTool);
 		}
 	}
 
@@ -58,26 +58,15 @@ class UntrustedTextContractTest extends TestCase
 
 	public function testTheRelatedGraphMarksItsNames(): void
 	{
-		$oMethod = new ReflectionMethod(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated::class, 'serializeGraph');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
-
-		$this->assertStringContainsString('UntrustedMarker::MarkRows(', $sBody);
+		$this->assertTrue(SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated::class)->HasCall(UntrustedMarker::class.'::MarkRows', 'serializeGraph'));
 	}
 
 	/** The history holds before and after values and case-log entries; the document is the file itself. */
 	public function testTheHistoryAndTheDocumentCarryTheNotice(): void
 	{
-		$this->assertStringContainsString("'untrusted_text'", $this->bodyOf(ObjectHistory::class));
-		$this->assertStringContainsString('UntrustedMarker::UNTRUSTED_NOTICE', $this->bodyOf(ObjectHistory::class));
-		$this->assertStringContainsString('UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE', $this->bodyOf(ObjectGetDocument::class));
-	}
-
-	private function bodyOf(string $sClass): string
-	{
-		$oMethod = new ReflectionMethod($sClass, 'execute');
-		$aLines = file($oMethod->getFileName());
-
-		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+		$oHistory = SourceCalls::OfClass(ObjectHistory::class);
+		$this->assertTrue($oHistory->HasString('untrusted_text', 'execute'));
+		$this->assertTrue($oHistory->HasConstant(UntrustedMarker::class.'::UNTRUSTED_NOTICE', 'execute'));
+		$this->assertTrue(SourceCalls::OfClass(ObjectGetDocument::class)->HasConstant(UntrustedMarker::class.'::UNTRUSTED_DOCUMENT_NOTICE', 'execute'));
 	}
 }

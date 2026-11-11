@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Core\ResourceTemplates\ClassDetail;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -87,6 +88,7 @@ class ClassNameEchoTest extends TestCase
 	{
 		$sBody = $this->methodBody(PortalDescription::class, 'Of');
 
+		$this->assertTrue(SourceCalls::OfClass(PortalDescription::class)->HasCall(ClassRefusal::class.'::LooksLikeClassName', 'Of'), 'describe quotes the class without checking its shape');
 		$iCheck = strpos($sBody, 'ClassRefusal::LooksLikeClassName($sClass)');
 		$iQuote = strpos($sBody, "offers no class '%s'");
 		$this->assertNotFalse($iCheck, 'describe quotes the class without checking its shape');
@@ -102,6 +104,7 @@ class ClassNameEchoTest extends TestCase
 	{
 		$sBody = $this->methodBody(ClassDetail::class, 'read');
 
+		$this->assertTrue(SourceCalls::OfClass(ClassDetail::class)->HasCall(ClassRefusal::class.'::Unreadable', 'read'));
 		$this->assertStringContainsString('ClassRefusal::Unreadable($sClass)', $sBody);
 		$this->assertStringNotContainsString('Unknown class', $sBody, 'a refusal of its own wording is back');
 	}
