@@ -20,7 +20,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [1.3.0] - Unreleased
+## [1.3.0] - 2026-11-11
 
 **The operator decides what this channel never serves, and can see what it did.** Classes and
 attributes listed in `mcp_excluded_classes` and `mcp_excluded_attributes` are absent on every
@@ -102,6 +102,7 @@ endpoint over HTTP, portal mode included. The unit suite ran on 8.2, 8.3 and 8.4
   portal's history line and event, and is a dry run unless asked otherwise. **After upgrading, every portal user with
   MCP access can have their assistant read and add attachments** on what the portal shows them; withdraw it with
   `mcp_disabled_tools` or by leaving out the `documents` toolset. The stock `Portal user` profile is not widened.
+  A file added is held to `mcp_max_document_bytes`, and PHP's `upload_max_filesize` and `post_max_size` still apply on the way in.
   `core_class_list` says per class whether adding is possible (`attach`).
   **Adding needs no right to create an `Attachment` in portal mode**, matching the portal itself, which the stock `Portal user`
   profile does not hold either; the console still requires it. What gates it instead: the write scope on the object, the
