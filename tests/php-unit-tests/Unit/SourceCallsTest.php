@@ -265,6 +265,15 @@ PHP;
 		$this->assertFalse($oSource->UsesInOrder(['Acme\Rights\Other::MODE', 'UR_ACTION_READ'], 'Constants'));
 	}
 
+	public function testTheMethodsThatMakeACallAreListed(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertSame(['Guarded', 'WithClosure'], $oSource->MethodsCalling('Acme\\Rights\\AccessGrants::RefusalFor'));
+		$this->assertSame([], $oSource->MethodsCalling('Acme\\Rights\\Nothing::Absent'));
+		$this->assertSame(['Ordered'], $oSource->MethodsCalling('Acme\\Tools\\Writer::Second'));
+	}
+
 	public function testAnyCallToANamedMethodIsFoundWhateverItIsCalledOn(): void
 	{
 		$oSource = $this->source();

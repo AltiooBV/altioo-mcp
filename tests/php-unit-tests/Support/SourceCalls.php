@@ -172,6 +172,30 @@ final class SourceCalls
 	}
 
 	/**
+	 * The methods of the file that contain this call, by name, in source order.
+	 * For a rule that binds every place a call is made: each of them must also
+	 * do something else, or do it first.
+	 *
+	 * @return array<int, string>
+	 */
+	public function MethodsCalling(string $sSpec): array
+	{
+		$sWanted = self::normalise($sSpec);
+		$aMethods = [];
+		foreach ($this->aMethods as $aMethod) {
+			for ($i = $aMethod['from']; $i < $aMethod['to']; $i++) {
+				$sCall = $this->callAt($i, $aMethod['class'], $aMethod['parent']);
+				if ($sCall !== null && strtolower($sCall) === $sWanted) {
+					$aMethods[] = $aMethod['name'];
+					break;
+				}
+			}
+		}
+
+		return $aMethods;
+	}
+
+	/**
 	 * Is there a static call, of any method, on this class?
 	 */
 	public function HasCallOn(string $sClass, ?string $sMethod = null): bool

@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -129,25 +130,13 @@ class MentionPolicyTest extends TestCase
 			}
 			// Comments stripped: a docblock that names MakeValue() is not a
 			// write path.
-			$sSource = '';
-			foreach (token_get_all((string) file_get_contents($oFile->getPathname())) as $mToken) {
-				if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-					continue;
-				}
-				$sSource .= is_array($mToken) ? $mToken[1] : $mToken;
-			}
-			$iOffset = 0;
-			while (($iMake = strpos($sSource, 'RestUtils::MakeValue(', $iOffset)) !== false) {
+			$oSource = SourceCalls::OfFile($oFile->getPathname());
+			foreach ($oSource->MethodsCalling('RestUtils::MakeValue') as $sMethod) {
 				$aFound[] = $oFile->getFilename();
-				$sBefore = substr($sSource, 0, $iMake);
-				$iFunction = strrpos($sBefore, 'function ');
-				$this->assertIsInt($iFunction);
-				$this->assertStringContainsString(
-					'MentionPolicy::RefusalFor(',
-					substr($sBefore, $iFunction),
+				$this->assertTrue(
+					$oSource->CallsInOrder([MentionPolicy::class.'::RefusalFor', 'RestUtils::MakeValue'], $sMethod),
 					$oFile->getFilename().' turns a caller value into an attribute value without asking MentionPolicy first'
 				);
-				$iOffset = $iMake + 1;
 			}
 		}
 

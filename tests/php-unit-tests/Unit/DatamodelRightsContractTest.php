@@ -8,8 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -77,29 +81,24 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testTheRightsBlockReflectsTheWriteBarrier(): void
 	{
-		$oMethod = new ReflectionMethod(ClassRights::class, 'narrowedByTheBarrier');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
+		$oSource = SourceCalls::OfClass(ClassRights::class);
+		$sMethod = 'narrowedByTheBarrier';
 
-		$this->assertStringContainsString('AccessGrantFamilies::IsBarred', $sBody, 'the block never asks the barrier');
-		$this->assertStringContainsString('AccessGrantFamilies::IsDelegating', $sBody,
+		$this->assertTrue($oSource->HasCall(AccessGrantFamilies::class.'::IsBarred', $sMethod), 'the block never asks the barrier');
+		$this->assertTrue($oSource->HasCall(AccessGrantFamilies::class.'::IsDelegating', $sMethod),
 			'the block asks one half of the barrier, so a synchronisation class is graded with the wrong sentence');
-		$this->assertStringContainsString('AllowsAccessAdministration', $sBody, 'the setting that decides is not consulted');
-		$this->assertStringContainsString("'restricted'", $sBody, 'a caller is told no without being told why');
-		$this->assertStringContainsString("'no'", $sBody, 'a refused write is graded as something other than final');
-		$this->assertStringContainsString("'depends'", $sBody, 'the per-row half is graded yes rather than depends');
+		$this->assertTrue($oSource->HasCallTo('AllowsAccessAdministration', $sMethod), 'the setting that decides is not consulted');
+		$this->assertTrue($oSource->HasString('restricted', $sMethod), 'a caller is told no without being told why');
+		$this->assertTrue($oSource->HasString('no', $sMethod), 'a refused write is graded as something other than final');
+		$this->assertTrue($oSource->HasString('depends', $sMethod), 'the per-row half is graded yes rather than depends');
 
 		// Reads are deliberately untouched by every barrier here: listing a
 		// token to see when it expires is useful and discloses nothing. The
 		// change-log branch is the one exception and narrows them without
 		// naming them - see testTheChangeLogIsReportedAsRefused() - so neither
 		// gate is spelled anywhere in this method.
-		$this->assertStringNotContainsString("'read'", $sBody);
-		$this->assertStringNotContainsString("'bulkRead'", $sBody);
+		$this->assertFalse($oSource->HasString('read', $sMethod));
+		$this->assertFalse($oSource->HasString('bulkRead', $sMethod));
 
 		$this->assertStringContainsString(
 			'restricted',
@@ -129,15 +128,15 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testTheChangeLogIsReportedAsRefused(): void
 	{
-		$sBody = $this->body('narrowedByTheBarrier');
+		$oSource = SourceCalls::OfClass(ClassRights::class);
 
-		$this->assertStringContainsString('ChangeLogReservation::IsReserved', $sBody,
+		$this->assertTrue($oSource->HasCall(ChangeLogReservation::class.'::IsReserved', 'narrowedByTheBarrier'),
 			'the block never asks whether the class is the change log, so it reports it as unguarded');
-		$this->assertStringContainsString('RESERVED_REFUSAL', $sBody,
+		$this->assertNotSame([], array_filter($oSource->Constants('narrowedByTheBarrier'), static fn (string $sConstant): bool => str_ends_with($sConstant, '::RESERVED_REFUSAL')),
 			'a caller is told no without being told which tool serves it instead');
 
 		// The one place reads are narrowed, and deliberately so.
-		$this->assertStringContainsString('array_keys($aRights)', $sBody,
+		$this->assertStringContainsString('array_keys($aRights)', $oSource->Code('narrowedByTheBarrier'),
 			'only the write gates are graded, so a reserved class still advertises a read that every tool refuses');
 	}
 
@@ -155,11 +154,11 @@ class DatamodelRightsContractTest extends TestCase
 			if (realpath($sPath) === realpath(self::READER)) {
 				continue; // the answer itself, not a question asked of it
 			}
-			foreach ($this->actionsIn(file_get_contents($sPath)) as $sAction) {
+			foreach ($this->actionsIn(SourceCalls::OfFile($sPath)) as $sAction) {
 				$aGated[$sAction] = $sAction;
 			}
 		}
-		$aGraded = $this->actionsIn($this->body('RightsOf'));
+		$aGraded = $this->actionsIn(SourceCalls::OfFile(self::READER), 'RightsOf');
 
 		$this->assertNotEmpty($aGated, 'no UR_ACTION_* gate found in src/ - the scan is looking in the wrong place');
 
@@ -193,22 +192,22 @@ class DatamodelRightsContractTest extends TestCase
 		$aVerbs = [];
 		foreach ($this->sourceFiles() as $sPath) {
 			preg_match_all(
-				"/checkBulkAllowed\([^;]*?,\s*'(\w+)'\s*\)/",
-				file_get_contents($sPath),
+				"/checkBulkAllowed\([^;]*?,'(\w+)'\)/",
+				SourceCalls::OfFile($sPath)->Code(),
 				$aMatches
 			);
 			foreach ($aMatches[1] as $sVerb) {
 				$aVerbs[$sVerb] = $sVerb;
 			}
 		}
-		$sRights = $this->body('RightsOf');
+		$oRights = SourceCalls::OfClass(ClassRights::class);
 
 		$this->assertNotEmpty($aVerbs, 'no checkBulkAllowed() call site found - the scan is looking in the wrong place');
 
 		$aMissing = [];
 		foreach ($aVerbs as $sVerb) {
 			$sKey = 'bulk'.ucfirst($sVerb);
-			if (!str_contains($sRights, "'{$sKey}'")) {
+			if (!$oRights->HasString($sKey, 'RightsOf')) {
 				$aMissing[] = $sKey.' (for the bulk '.$sVerb.' tool)';
 			}
 		}
@@ -232,16 +231,15 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testBulkCreateIsTheConjunctionAndNotAnInventedRight(): void
 	{
-		$sRights = $this->body('RightsOf');
+		$oSource = SourceCalls::OfClass(ClassRights::class);
 
 		$this->assertMatchesRegularExpression(
-			"/'bulkCreate'\s*=>\s*GateGrades::stricter\(/",
-			$sRights,
+			"/'bulkCreate'=>GateGrades::stricter\(/",
+			$oSource->Code('RightsOf'),
 			'bulkCreate is no longer derived from two grades'
 		);
-		$this->assertStringNotContainsString(
-			'UR_ACTION_BULK_CREATE',
-			$sRights,
+		$this->assertFalse(
+			$oSource->HasConstant('UR_ACTION_BULK_CREATE', 'RightsOf') || $oSource->HasString('UR_ACTION_BULK_CREATE', 'RightsOf'),
 			'UR_ACTION_BULK_CREATE does not exist in iTop - see ObjectBulkCreate'
 		);
 	}
@@ -282,13 +280,12 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testTheThirdAnswerSurvivesTheGrading(): void
 	{
-		$sBody = $this->body('grade');
+		$oSource = SourceCalls::OfClass(GateGrades::class);
 
-		$this->assertStringContainsString('UR_ALLOWED_NO', $sBody, 'grade() no longer names the refusal');
-		$this->assertStringContainsString('UR_ALLOWED_YES', $sBody, 'grade() no longer names the grant');
+		$this->assertTrue($oSource->HasConstant('UR_ALLOWED_NO', 'grade'), 'grade() no longer names the refusal');
+		$this->assertTrue($oSource->HasConstant('UR_ALLOWED_YES', 'grade'), 'grade() no longer names the grant');
 
-		preg_match_all("/'([a-z]+)'/", $sBody, $aMatches);
-		$aWords = array_unique($aMatches[1]);
+		$aWords = array_unique(array_filter($oSource->Strings('grade'), static fn (string $s): bool => preg_match('/^[a-z]+$/', $s) === 1));
 		sort($aWords);
 
 		$this->assertSame(
@@ -380,56 +377,30 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testTheAttributeKeepsBothAnswers(): void
 	{
-		$sBody = $this->body('attributes');
+		$oSource = SourceCalls::OfClass(AttributeDescription::class);
 
-		$this->assertStringContainsString("'readOnly'", $sBody, 'the datamodel answer is gone');
-		$this->assertStringContainsString("'modify'", $sBody, 'the rights answer is gone');
+		$this->assertTrue($oSource->HasString('readOnly', 'attributes'), 'the datamodel answer is gone');
+		$this->assertTrue($oSource->HasString('modify', 'attributes'), 'the rights answer is gone');
 	}
 
-	/** @return array<int, string> */
-	private function actionsIn(string $sSource): array
+	/**
+	 * The UR_ACTION_* names in the code: constants, and strings that spell one
+	 * (a map of verbs to the constant's name is a gate too). A comment naming a
+	 * constant is not a gate: ObjectBulkCreate says in as many words that
+	 * UR_ACTION_BULK_CREATE does not exist.
+	 *
+	 * @return array<int, string>
+	 */
+	private function actionsIn(SourceCalls $oSource, ?string $sMethod = null): array
 	{
 		$aActions = [];
-		foreach (explode("\n", $sSource) as $sLine) {
-			// A comment naming a constant is not a gate: ObjectBulkCreate says
-			// in as many words that UR_ACTION_BULK_CREATE does not exist.
-			if (preg_match('/^\s*(\*|\/\/)/', $sLine)) {
-				continue;
-			}
-			if (preg_match_all('/UR_ACTION_[A-Z_]+[A-Z]/', $sLine, $aMatches)) {
-				foreach ($aMatches[0] as $sAction) {
-					$aActions[$sAction] = $sAction;
-				}
+		foreach (array_merge($oSource->Constants($sMethod), $oSource->Strings($sMethod)) as $sName) {
+			if (preg_match('/^UR_ACTION_[A-Z_]+[A-Z]$/', $sName) === 1) {
+				$aActions[$sName] = $sName;
 			}
 		}
 
 		return array_values($aActions);
-	}
-
-	/** The body of one method of the datamodel reader or of the grades it uses, as written. */
-	private function body(string $sMethod): string
-	{
-		$iStart = null;
-		foreach ([self::READER, self::SOURCE_DIR.'/Service/Read/AttributeDescription.php', self::SOURCE_DIR.'/Service/Rights/GateGrades.php'] as $sFile) {
-			$aLines = file($sFile, FILE_IGNORE_NEW_LINES);
-			foreach ($aLines as $iIndex => $sLine) {
-				if (preg_match('/function '.preg_quote($sMethod, '/').'\s*\(/', $sLine)) {
-					$iStart = $iIndex;
-					break 2;
-				}
-			}
-		}
-		$this->assertNotNull($iStart, "{$sMethod}() is gone");
-
-		$aBody = [];
-		for ($i = $iStart; $i < count($aLines); $i++) {
-			$aBody[] = $aLines[$i];
-			if ($i > $iStart && $aLines[$i] === "\t}") {
-				break;
-			}
-		}
-
-		return implode("\n", $aBody);
 	}
 
 	/** @return array<int, string> */
