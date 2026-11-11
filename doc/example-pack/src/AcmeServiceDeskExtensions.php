@@ -32,7 +32,7 @@ class AcmeServiceDeskExtensions implements iMCPServiceProvider
 		// The module dependency in module.acme-servicedesk.php is the real
 		// gate and the setup enforces it. This catches the case that gets past
 		// it: a base extension downgraded under a pack already installed.
-		MCPModule::RequireVersion('1.0.0', 'acme-servicedesk');
+		MCPModule::RequireVersion('2.0.0', 'acme-servicedesk');
 
 		MCPRegistry::RegisterTool(new TicketAddLogEntry());
 		MCPRegistry::RegisterTool(new TicketSearchMine());

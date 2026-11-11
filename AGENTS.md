@@ -85,7 +85,7 @@ Settings agent skills read here.
   anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Also: classes and attributes an operator excludes are **absent** on every route, in both modes, for every grade, never refused
   with a different word, and a setting that cannot be honoured stops the endpoint ([0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)):
-  a new tool or surface that returns object data asks `ExclusionPolicy`. The one lift is an account holding an exempt profile,
+  a new tool or surface that returns object data asks `Service\Rights\ExclusionPolicy`. The one lift is an account holding an exempt profile,
   never a token scope, a client name or a portal user ([0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md)).
   Also: `core_my_activity` is the one thing portal mode serves that the portal has no screen for — an account's own trail, not
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).
@@ -93,3 +93,7 @@ Settings agent skills read here.
   `Attachment`, and never a delete ([0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md)).
   Also: a tool's security checks stay in its own source, where the contract tests read them; shared code carries plumbing
   only, and a core tool's signatures never narrow, since packs subclass them ([0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
+  Also: `src/` follows Combodo's layer folders and `LayerDependencyTest` holds the one-way order, with an empty baseline: a
+  class imports only the layers below it. `@api` is `src/Api/` and the four classes in `PublicSurfaceTest::EXTRA_SURFACE`;
+  every other class says `@internal`, and a pack calls nothing else
+  ([0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md)).

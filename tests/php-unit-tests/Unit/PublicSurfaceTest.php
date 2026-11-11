@@ -24,10 +24,11 @@ require_once dirname(__DIR__).'/bootstrap.php';
  * inside the extending guide - says "the classes marked @api" rather than
  * naming them.
  *
- * Enumerated in prose instead, that would be three lists of the same class
- * names, none of them read by anything, with the first class added to the
- * surface having to be remembered into all three - the drift the guide's §12.1
- * describes for version numbers, applied to a contract.
+ * Enumerated in prose, that would be three lists of the same class names, none
+ * of them read by anything, with the first class added to the surface having to
+ * be remembered into all three - the drift the guide's §12.1 describes for
+ * version numbers, applied to a contract. So there is one table, in
+ * doc/extending.md, and testTheExtendingGuideNamesTheExtraSurface() holds it.
  *
  * This test is what makes the tag mean something, from both ends - a surface
  * class that lost its tag, and an internal class that gained one or has none.
@@ -111,6 +112,44 @@ class PublicSurfaceTest extends TestCase
 	}
 
 	/**
+	 * The example pack is the proof that the surface is enough: whatever it
+	 * names of this namespace is under src/Api or in EXTRA_SURFACE, and
+	 * nothing else. A pack that needs an internal class is a reason to widen
+	 * the list on purpose, not a quiet import.
+	 */
+	public function testTheExamplePackCallsOnlyTheSurface(): void
+	{
+		$aSurface = array_map(
+			static fn (string $s): string => 'Altioo\\iTop\\Extension\\MCP\\'.str_replace('/', '\\', substr($s, strlen('src/'), -strlen('.php'))),
+			self::surfaceFiles()
+		);
+		$sPack = realpath(self::ROOT.'/doc/example-pack');
+		$this->assertNotFalse($sPack);
+
+		$aNamed = [];
+		$oIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($sPack, RecursiveDirectoryIterator::SKIP_DOTS));
+		foreach ($oIt as $oFile) {
+			if ($oFile->getExtension() !== 'php' || str_contains($oFile->getPathname(), '/vendor/')) {
+				continue;
+			}
+			preg_match_all('/^use\s+('.preg_quote('Altioo\\iTop\\Extension\\MCP\\', '/').'[\w\\\\]+);/m', (string)file_get_contents($oFile->getPathname()), $aMatches);
+			foreach ($aMatches[1] as $sName) {
+				$aNamed[$sName] = substr($oFile->getPathname(), strlen($sPack) + 1);
+			}
+		}
+
+		$this->assertNotEmpty($aNamed, 'the example pack imports nothing of this extension; the scan has stopped working');
+		foreach ($aNamed as $sName => $sFile) {
+			$this->assertContains($sName, $aSurface, $sFile.' imports '.$sName.', which is not on the surface (src/Api or EXTRA_SURFACE)');
+		}
+		// And the four extras are not there for nothing: the pack calls each.
+		foreach (self::EXTRA_SURFACE as $sPath) {
+			$sName = 'Altioo\\iTop\\Extension\\MCP\\'.str_replace('/', '\\', substr($sPath, strlen('src/'), -strlen('.php')));
+			$this->assertArrayHasKey($sName, $aNamed, $sName.' is on EXTRA_SURFACE because the example pack calls it, and it no longer does');
+		}
+	}
+
+	/**
 	 * Every @api carries an @since beside it. "This is stable" without "since
 	 * when" is not answerable by a pack deciding whether the base it is
 	 * installed next to has the thing it needs.
@@ -144,6 +183,19 @@ class PublicSurfaceTest extends TestCase
 			file_get_contents(self::ROOT.'/'.$sFile),
 			$sFile.' describes what semver applies to without pointing at the @api tags that define it'
 		);
+	}
+
+	/**
+	 * The one place the prose lists the surface outside src/Api, so it has to
+	 * say the same as EXTRA_SURFACE.
+	 */
+	public function testTheExtendingGuideNamesTheExtraSurface(): void
+	{
+		$sGuide = (string)file_get_contents(self::ROOT.'/doc/extending.md');
+		foreach (self::EXTRA_SURFACE as $sPath) {
+			$sName = basename($sPath, '.php');
+			$this->assertStringContainsString('| `'.str_replace('/', '\\', substr(dirname($sPath), strlen('src/'))).'\\'.$sName.'` |', $sGuide, 'doc/extending.md does not list '.$sName.' in its surface table');
+		}
 	}
 
 	/** @return array<string, array{0: string}> */

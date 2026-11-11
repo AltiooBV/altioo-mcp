@@ -91,3 +91,10 @@ composer package   # back to the production dump before any setup run
 them instead of throwing, so the pack's whole contract suite is one assertion per
 element. It pulls in no dev dependency of the base extension — that is why it
 ships in the production autoload rather than under `tests/`.
+
+## What it calls
+
+Only the `@api` surface: everything under `Api\`, and `ObjectQuery`, `ObjectSerializer`,
+`RestValue` and `WritePlan`. The base extension's unit suite reads this pack's `use` lines
+against that list, so a pack that needs more is a reason to widen the list on purpose. The
+surface is described in [`doc/extending.md`](../extending.md#1-depend-on-the-base-module).

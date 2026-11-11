@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;

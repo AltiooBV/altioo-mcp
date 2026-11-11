@@ -26,14 +26,14 @@ In your own `module.<your-extension>.php`:
 
 ```php
 'dependencies' => array(
-    'altioo-mcp/1.0.0',
+    'altioo-mcp/2.0.0',
 ),
 ```
 
 This is the version check that matters: the setup refuses the install and tells the
 administrator why, which is a better place to find out than a log entry on the first request.
 For the case that gets past it — a base extension downgraded under a pack already installed —
-call `MCPModule::RequireVersion('1.0.0', 'your-pack')` at the top of your provider. It throws,
+call `MCPModule::RequireVersion('2.0.0', 'your-pack')` at the top of your provider. It throws,
 and a provider that throws is logged and skipped on its own, so the failure mode is "this pack
 is missing and the log says why" rather than a fatal error taking the endpoint down for every
 other pack. `MCPModule::AtLeast()` is the same question without the exception, for a pack that
@@ -67,21 +67,38 @@ are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolC
 and `Mcp\Exception\ResourceReadException`.
 
 **Versioning, and what it applies to.** The extension follows semver over the surface a pack
-touches — and that surface is defined in the source rather than in this paragraph. **A class
+touches, and that surface is defined in the source rather than in this paragraph. **A class
 you may depend on carries `@api` on its class docblock**, with an `@since` saying which version
-it first appeared in. Everything else under `src/` is internal and may change in a patch.
+it first appeared in. **Every other class says `@internal`**, and may change in a patch, move
+folder, or disappear.
 
 ```bash
 grep -rl '@api' src/          # the definitive list, in the copy you have
 ```
 
-In shape it is the element base classes you extend, the registry and the collector, the
-provider interface, the helpers, and the contract checker — but read the tags rather than that
-sentence, because the tags are what a test enforces and the sentence is not.
+It is everything under `src/Api/` and four classes outside it, named in
+`PublicSurfaceTest::EXTRA_SURFACE`, which a test holds:
+
+| Class | What a pack calls |
+|---|---|
+| `Api\*` | the element base classes you extend, `iMCPServiceProvider`, `MCPRegistry` and `MCPExtensionCollector`, `MCPModule`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, and `Testing\ElementContract` |
+| `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
+| `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
+| `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to `RestUtils::MakeValue()` |
+| `Service\Write\WritePlan` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()` and `Check()`, for a write tool's dry run |
+
+**A pack must not call anything else of ours**: not the access, rights, portal or audit
+classes, not `Helper\*`, not the core tools. Check access with iTop's `UserRights`, as the
+example pack does. If you find you need an `@internal` class, ask for it to be added to the
+list above; do not reach for it. Read the tags rather than this table, because the tags are
+what a test enforces and the table is not.
 
 A breaking change to a tagged class is a major bump. A new optional hook with a default
-implementation is a minor one. Removal comes at least one minor after a documented
-`@deprecated` naming the replacement, and it appears in [the changelog](../CHANGELOG.md).
+implementation is a minor one. A tagged class or member that is to go is marked `@deprecated`
+naming its replacement for at least one minor first, and the change appears in
+[the changelog](../CHANGELOG.md). 2.0.0 moved most classes and kept no aliases for the old
+names: the changelog's 2.0.0 entry maps each to its new one.
+
 **Tool, resource and prompt identifiers are part of the same surface**: a client
 configuration that allow-lists a tool by name, and any `mcp_disabled_tools` entry, breaks when
 a name changes, so a rename is a major bump too.

@@ -32,7 +32,7 @@ If 90 days pass without a fix or an agreed extension, publish. We will not ask y
 report indefinitely, and a deadline that only one side can move is not coordinated disclosure.
 
 Please do not open a public issue for a suspected vulnerability. Include the iTop version, the
-extension version (`MCPHelper::VERSION`, also sent to clients as `serverInfo`), the PHP version,
+extension version (`MCPModule::VERSION`, also sent to clients as `serverInfo`), the PHP version,
 and the request that reproduces it.
 
 **Out of scope**, because they are decisions rather than defects: iTop's own permissions
@@ -632,7 +632,7 @@ records two). In particular, and specifically relevant here:
   expiry from the posted form (authent-token's `AuthentTokenAjaxController`, iTop 3.2.2): a
   portal user can hold a token graded `MCP-delete`, with no expiry, that no administrator
   issued. What bounds it is on the server, not on the token: in portal mode only what
-  `PortalMode::Serves()` admits is served, whatever the grade; iTop's REST, export, import
+  `PortalAccess::Serves()` admits is served, whatever the grade; iTop's REST, export, import
   and synchro endpoints ask for the console and refuse a portal-only user; and portal mode
   refuses a token that never expires or expires later than `mcp_portal_token_max_days` (90 by
   default), so no token a portal user minted stays usable past that. Every such token is
