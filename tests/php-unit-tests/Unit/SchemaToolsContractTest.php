@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -138,7 +139,7 @@ class SchemaToolsContractTest extends TestCase
 		// between them or land in both.
 		$this->assertSame(
 			1,
-			substr_count($sBody, 'self::attributes('),
+			substr_count($sBody, 'AttributeDescription::attributes('),
 			'the two blocks must be filtered from a single pass, or an attribute can be enumerated into neither'
 		);
 	}
@@ -255,7 +256,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheDateHintIsAdviceAndNotAConversion(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'ValueHint');
+		$sBody = $this->methodBody(AttributeDescription::class, 'ValueHint');
 
 		$this->assertStringContainsString('GetInternalFormat', $sBody, 'the format has to be read off the branch');
 		$this->assertStringContainsString('AttributeDateTime', $sBody, 'only a date attribute gets this hint');
@@ -267,7 +268,7 @@ class SchemaToolsContractTest extends TestCase
 				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool))->getFileName()
 			);
 			$this->assertStringContainsString(
-				'DatamodelReader::ValueHint',
+				'AttributeDescription::ValueHint',
 				$sSource,
 				"{$sTool} refuses a value without saying what would have worked"
 			);
@@ -322,7 +323,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAnAttributeDerivedFromOthersNamesThem(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'dependsOn');
+		$sBody = $this->methodBody(AttributeDescription::class, 'dependsOn');
 
 		$this->assertStringContainsString('GetPrerequisiteAttributes', $sBody, 'the declaration is not read from the attribute');
 		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'a question about the datamodel must not cost the schema');
@@ -640,7 +641,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAllowedValuesKeepTheirCodesThroughTheEncoding(): void
 	{
-		$oCodeKeyed = new ReflectionMethod(DatamodelReader::class, 'codeKeyed');
+		$oCodeKeyed = new ReflectionMethod(AttributeDescription::class, 'codeKeyed');
 
 		$this->assertSame(
 			'{"0":"no","1":"yes"}',

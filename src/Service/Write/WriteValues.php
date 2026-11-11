@@ -9,9 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 
 use DBObject;
 use DBObjectSet;
@@ -146,7 +146,7 @@ final class WriteValues
 				}
 			} catch (Throwable $e) {
 				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
+					.AttributeDescription::ValueHint($sClass, $sAttCode, $value);
 			}
 		}
 

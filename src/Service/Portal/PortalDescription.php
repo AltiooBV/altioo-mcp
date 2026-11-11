@@ -10,8 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
 use UserRights;
@@ -317,8 +317,8 @@ final class PortalDescription
 		} elseif ($oAttDef->IsScalar()) {
 			$aValues = $oAttDef->GetAllowedValues();
 			if (is_array($aValues) && $aValues !== []) {
-				$aField['values'] = (object)array_slice($aValues, 0, DatamodelReader::MAX_ALLOWED_VALUES, true);
-				if (count($aValues) > DatamodelReader::MAX_ALLOWED_VALUES) {
+				$aField['values'] = (object)array_slice($aValues, 0, AttributeDescription::MAX_ALLOWED_VALUES, true);
+				if (count($aValues) > AttributeDescription::MAX_ALLOWED_VALUES) {
 					$aField['values_truncated'] = true;
 				}
 			}

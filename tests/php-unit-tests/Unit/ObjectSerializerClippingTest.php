@@ -117,7 +117,7 @@ class ObjectSerializerClippingTest extends TestCase
 	 * client_secret, refresh_token and access_token are all flagged - and could
 	 * not be answered from outside, since that instance holds no such object.
 	 * It is answerable here: one predicate drives both surfaces.
-	 * DatamodelReader asks IsSensitive() to set isSensible, and Value() asks
+	 * AttributeDescription asks IsSensitive() to set isSensible, and Value() asks
 	 * the same method before it does anything else, returning the mask. iTop's
 	 * AttributePassword, AttributeEncryptedString and AttributeOneWayPassword
 	 * all implement iAttributeNoGroupBy, which is what that predicate matches.
@@ -150,7 +150,7 @@ class ObjectSerializerClippingTest extends TestCase
 
 		$this->assertStringContainsString(
 			'IsSensitive',
-			$this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader::class, 'attributes'),
+			$this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription::class, 'attributes'),
 			'the schema flag and the masking would be two predicates that can disagree'
 		);
 	}

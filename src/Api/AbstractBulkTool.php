@@ -12,7 +12,6 @@ use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
@@ -24,6 +23,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -424,7 +424,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 				}
 			} catch (\Throwable $e) {
 				$aIssues[] = ErrorReport::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
+					.AttributeDescription::ValueHint($sClass, $sAttCode, $value);
 			}
 		}
 

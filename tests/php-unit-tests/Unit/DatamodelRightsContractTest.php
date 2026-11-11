@@ -39,7 +39,7 @@ require_once __DIR__.'/../bootstrap.php';
  *
  * @see AttributeRightsContractTest for the neighbouring rule - that none of
  *      these answers is ever read as a boolean - which covers the call this
- *      change added to DatamodelReader::attributes() by scanning src/ whole.
+ *      change added to AttributeDescription::attributes() by scanning src/ whole.
  */
 class DatamodelRightsContractTest extends TestCase
 {
@@ -410,7 +410,7 @@ class DatamodelRightsContractTest extends TestCase
 	private function body(string $sMethod): string
 	{
 		$iStart = null;
-		foreach ([self::READER, self::SOURCE_DIR.'/Service/Rights/GateGrades.php'] as $sFile) {
+		foreach ([self::READER, self::SOURCE_DIR.'/Service/Read/AttributeDescription.php', self::SOURCE_DIR.'/Service/Rights/GateGrades.php'] as $sFile) {
 			$aLines = file($sFile, FILE_IGNORE_NEW_LINES);
 			foreach ($aLines as $iIndex => $sLine) {
 				if (preg_match('/function '.preg_quote($sMethod, '/').'\s*\(/', $sLine)) {
@@ -419,7 +419,7 @@ class DatamodelRightsContractTest extends TestCase
 				}
 			}
 		}
-		$this->assertNotNull($iStart, "DatamodelReader::{$sMethod}() is gone");
+		$this->assertNotNull($iStart, "{$sMethod}() is gone");
 
 		$aBody = [];
 		for ($i = $iStart; $i < count($aLines); $i++) {

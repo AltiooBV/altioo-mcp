@@ -13,10 +13,10 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -270,7 +270,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		}
 
 		$aValues = $oAttDef->GetAllowedValues();
-		if (!is_array($aValues) || $aValues === [] || count($aValues) > DatamodelReader::MAX_ALLOWED_VALUES) {
+		if (!is_array($aValues) || $aValues === [] || count($aValues) > AttributeDescription::MAX_ALLOWED_VALUES) {
 			return null;
 		}
 

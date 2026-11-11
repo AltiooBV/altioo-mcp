@@ -499,6 +499,11 @@
       <code><![CDATA[(int)$this->getCode()]]></code>
     </RedundantCast>
   </file>
+  <file src="src/Service/Read/AttributeDescription.php">
+    <TypeDoesNotContainType>
+      <code><![CDATA[$oAttDef instanceof AttributeCaseLog]]></code>
+    </TypeDoesNotContainType>
+  </file>
   <file src="src/Service/Read/AttributeFormat.php">
     <RedundantCondition>
       <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
@@ -518,9 +523,6 @@
     <RedundantFunctionCall>
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>
-    <TypeDoesNotContainType>
-      <code><![CDATA[$oAttDef instanceof AttributeCaseLog]]></code>
-    </TypeDoesNotContainType>
   </file>
   <file src="src/Service/Read/DocumentAccess.php">
     <InvalidOperand>
