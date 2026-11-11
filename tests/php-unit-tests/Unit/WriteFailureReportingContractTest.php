@@ -8,11 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
@@ -58,7 +61,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$aOffenders = [];
 
 		foreach ($this->phpFiles() as $sPath) {
-			if (str_contains((string) file_get_contents($sPath), 'catch (\Exception')) {
+			if (in_array('Exception', SourceCalls::OfFile($sPath)->CatchTypes(), true)) {
 				$aOffenders[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}
@@ -75,14 +78,13 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testACommittedCreateIsReportedAsOneDespiteTheFailure(): void
 	{
-		$sBody = $this->methodBody(ObjectCreate::class, 'execute');
-		$iCatch = strpos($sBody, 'catch (\Throwable');
-		$this->assertNotFalse($iCatch, 'The write has to be wrapped to be reported.');
-		$sHandler = substr($sBody, $iCatch);
+		$oSource = SourceCalls::OfClass(ObjectCreate::class);
+		$this->assertContains('Throwable', $oSource->CatchTypes('execute'), 'The write has to be wrapped to be reported.');
+		$aHandler = array_map('strtolower', $oSource->UsesInCatch('execute'));
 
-		$this->assertStringContainsString('CommittedId', $sHandler, 'The handler must ask whether the row exists.');
-		$this->assertStringContainsString('ToolOutput::Structured', $sHandler, 'A committed row is answered as a result.');
-		$this->assertStringContainsString("'warning'", $sHandler, 'The failure is attached, not discarded.');
+		$this->assertContains(strtolower(WriteOutcome::class.'::CommittedId'), $aHandler, 'The handler must ask whether the row exists.');
+		$this->assertContains(strtolower(ToolOutput::class.'::Structured'), $aHandler, 'A committed row is answered as a result.');
+		$this->assertContains('warning', $oSource->StringsInCatch('execute'), 'The failure is attached, not discarded.');
 	}
 
 	/**
@@ -90,14 +92,9 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testAFailedCreateStillFails(): void
 	{
-		$sHandler = substr(
-			$this->methodBody(ObjectCreate::class, 'execute'),
-			(int) strpos($this->methodBody(ObjectCreate::class, 'execute'), 'catch (\Throwable')
-		);
-
 		$this->assertMatchesRegularExpression(
-			'/if\s*\(\$iCommittedId === null\)\s*\{[^}]*throw new ToolCallException/s',
-			$sHandler,
+			'/if\(\$iCommittedId===null\)\{[^}]*thrownewToolCallException/',
+			SourceCalls::OfClass(ObjectCreate::class)->CodeInCatch('execute'),
 			'Nothing written is still an error; only a committed row changes the answer.'
 		);
 	}
@@ -109,13 +106,13 @@ class WriteFailureReportingContractTest extends TestCase
 	public function testATemporaryKeyIsNotMistakenForACommittedOne(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/\(int\)\s*\$mId\s*>\s*0\s*\?/',
-			$this->methodBody(ObjectId::class, 'Normalise'),
+			'/\(int\)\$mId>0\?/',
+			SourceCalls::OfClass(ObjectId::class)->Code('Normalise'),
 			'A temporary key is negative; treating it as an id reports failures as successes.'
 		);
-		$this->assertStringContainsString(
-			'catch (Throwable',
-			$this->methodBody(WriteOutcome::class, 'CommittedId'),
+		$this->assertContains(
+			'Throwable',
+			SourceCalls::OfClass(WriteOutcome::class)->CatchTypes('CommittedId'),
 			'This runs on the failure path and must not replace the failure with one of its own.'
 		);
 	}
@@ -141,18 +138,19 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testACommittedBulkRowIsReportedAsOneDespiteTheFailure(): void
 	{
-		$sBody = $this->methodBody(ObjectBulkCreate::class, 'createOne');
-		$iCatch = strpos($sBody, 'catch (\Throwable');
-		$this->assertNotFalse($iCatch, 'The write has to be wrapped to be reported.');
-		$sHandler = substr($sBody, $iCatch);
+		$oSource = SourceCalls::OfClass(ObjectBulkCreate::class);
+		$this->assertContains('Throwable', $oSource->CatchTypes('createOne'), 'The write has to be wrapped to be reported.');
 
-		$this->assertStringContainsString('WriteOutcome::CommittedId', $sHandler, 'The handler must ask whether the row exists.');
+		$this->assertTrue(
+			$oSource->HasCall(WriteOutcome::class.'::CommittedId') && in_array(strtolower(WriteOutcome::class.'::CommittedId'), array_map('strtolower', $oSource->UsesInCatch('createOne')), true),
+			'The handler must ask whether the row exists.'
+		);
 		$this->assertMatchesRegularExpression(
-			'/if\s*\(\$iCommittedId !== null\)\s*\{.*self::outcome\(\$iCommittedId, \$iRow, true/s',
-			$sHandler,
+			'/if\(\$iCommittedId!==null\)\{.*self::outcome\(\$iCommittedId,\$iRow,true/s',
+			$oSource->CodeInCatch('createOne'),
 			'A committed row is an entry that succeeded, carrying its id.'
 		);
-		$this->assertStringContainsString("'warning'", $sHandler, 'The failure is attached, not discarded.');
+		$this->assertContains('warning', $oSource->StringsInCatch('createOne'), 'The failure is attached, not discarded.');
 	}
 
 	/**
@@ -177,17 +175,17 @@ class WriteFailureReportingContractTest extends TestCase
 	{
 		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
 			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
-			$sSource = (string) file_get_contents((new ReflectionClass($sClass))->getFileName());
+			$oSource = SourceCalls::OfClass($sClass);
 
-			$this->assertStringContainsString('WriteOutcome::AfterSchemaProperty()', $sSource, "{$sTool} does not declare it");
-			$this->assertStringContainsString('WriteOutcome::After(', $sSource, "{$sTool} does not report it");
+			$this->assertTrue($oSource->HasCall(WriteOutcome::class.'::AfterSchemaProperty'), "{$sTool} does not declare it");
+			$this->assertTrue($oSource->HasCall(WriteOutcome::class.'::After'), "{$sTool} does not report it");
 		}
 
-		$sAfter = $this->methodBody(WriteOutcome::class, 'After');
+		$oAfter = SourceCalls::OfClass(WriteOutcome::class);
 
-		$this->assertStringContainsString('MetaModel::GetObject', $sAfter, 'nothing is re-read, so a trigger stays invisible');
-		$this->assertStringContainsString('!$bSimulated', $sAfter, 'a dry run reads a row it has not written');
-		$this->assertStringContainsString('ObjectSerializer::Serialize', $sAfter, 'values bypass the read rights and the masking');
+		$this->assertTrue($oAfter->HasCall('MetaModel::GetObject', 'After'), 'nothing is re-read, so a trigger stays invisible');
+		$this->assertStringContainsString('!$bSimulated', $oAfter->Code('After'), 'a dry run reads a row it has not written');
+		$this->assertTrue($oAfter->HasCall(ObjectSerializer::class.'::Serialize', 'After'), 'values bypass the read rights and the masking');
 
 		// The codes re-read are the caller's, not the write's. On a create
 		// `changes` is every attribute of the new object, so handing that list
@@ -195,17 +193,15 @@ class WriteFailureReportingContractTest extends TestCase
 		// the block that answers "what became of what you sent" answered
 		// "here is everything".
 		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus'] as $sTool) {
-			$sSource = (string) file_get_contents(
-				(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
-			);
+			$oSource = SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool);
 			$this->assertStringContainsString(
-				'WriteOutcome::After($oObject, $class, array_keys($aValidatedValues)',
-				$sSource,
+				'WriteOutcome::After($oObject,$class,array_keys($aValidatedValues)',
+				$oSource->Code(),
 				"{$sTool} echoes back the whole object instead of what the caller supplied"
 			);
 		}
-		$this->assertStringContainsString('hidden_from_searches', $sAfter, 'the one consequence a caller cannot see for itself');
-		$this->assertStringContainsString('catch (Throwable', $sAfter, 'describing a write that succeeded must not fail it');
+		$this->assertTrue($oAfter->HasString('hidden_from_searches', 'After'), 'the one consequence a caller cannot see for itself');
+		$this->assertContains('Throwable', $oAfter->CatchTypes('After'), 'describing a write that succeeded must not fail it');
 	}
 
 	/**
@@ -223,24 +219,23 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testTheAnswerIsBuiltInsideTheCatchThatCoversTheWrite(): void
 	{
-		$sSource = (string) file_get_contents(
-			(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectAttach'))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectAttach');
+		$sSource = $oSource->Code();
 
 		// Both branches: the attachment object, and the blob attribute. The portal's
 		// history line is written between the insert and the answer, inside the same try.
 		$this->assertSame(
 			2,
-			preg_match_all('/try \{\s*(?:\$\w+ = )?\$\w+->(?:DBInsert|DBUpdate)\(\);\s*(?:if \(\$bPortal\) \{[^}]*\}\s*)?return ToolOutput::Structured/s', $sSource),
+			preg_match_all('/try\{(?:\$\w+=)?\$\w+->(?:DBInsert|DBUpdate)\(\);(?:if\(\$bPortal\)\{[^}]*\})?returnToolOutput::Structured/', $sSource),
 			'a write is wrapped and the answer describing it is not'
 		);
 
-		$this->assertStringContainsString(
-			'WriteOutcome::CommittedId($oAttachment)',
-			$sSource,
+		$this->assertTrue(
+			$oSource->HasCall(WriteOutcome::class.'::CommittedId'),
 			'a committed attachment can still be reported as a failure'
 		);
-		$this->assertStringContainsString("'warning'", $sSource, 'the failure replaces the success rather than riding with it');
+		$this->assertStringContainsString('WriteOutcome::CommittedId($oAttachment)', $sSource, 'a committed attachment can still be reported as a failure');
+		$this->assertTrue($oSource->HasString('warning'), 'the failure replaces the success rather than riding with it');
 	}
 
 	/**
@@ -264,9 +259,8 @@ class WriteFailureReportingContractTest extends TestCase
 			'DBInsert() returns the key as a string, so a %s parameter throws once the row is already written.',
 			$sType
 		));
-		$this->assertStringContainsString(
-			'ObjectId::Normalise',
-			$this->methodBody('Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DocumentAccess', 'Describe'),
+		$this->assertTrue(
+			SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DocumentAccess')->HasCall(ObjectId::class.'::Normalise', 'Describe'),
 			'the id is used without going through the one normaliser'
 		);
 	}
@@ -310,12 +304,8 @@ class WriteFailureReportingContractTest extends TestCase
 			'a bulk create hands this DBInsert()\'s return value, so a %s parameter throws a TypeError once the row is already written.',
 			$sType
 		));
-		$this->assertStringContainsString(
-			'ObjectId::Normalise',
-			$this->methodBody(
-				'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
-				'outcome'
-			),
+		$this->assertTrue(
+			SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool')->HasCall(ObjectId::class.'::Normalise', 'outcome'),
 			'the widened parameter has to be normalised, or the schema\'s integer id becomes a string'
 		);
 	}
@@ -328,9 +318,9 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testTheBulkCreateRowDoesNotCastTheIdItself(): void
 	{
-		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectBulkCreate.php');
+		$sSource = SourceCalls::OfFile(self::SRC.'/Core/Tools/ObjectBulkCreate.php')->Code();
 
-		$this->assertSame(0, preg_match('/outcome\(\s*\(int\)/', $sSource),
+		$this->assertSame(0, preg_match('/outcome\(\(int\)/', $sSource),
 			'a cast at the call site is the fix the next bulk tool would be written without');
 	}
 
@@ -355,19 +345,20 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testACommittedDeletionIsReportedAsOneDespiteTheFailure(): void
 	{
-		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectDelete.php');
+		$oSource = SourceCalls::OfFile(self::SRC.'/Core/Tools/ObjectDelete.php');
 
-		$this->assertStringContainsString('WriteOutcome::IsGone(', $sSource,
+		$this->assertTrue($oSource->HasCall(WriteOutcome::class.'::IsGone'),
 			'the delete tool reports a failure without asking whether the row is still there');
-		$this->assertStringContainsString("'warning'", $sSource,
+		$this->assertTrue($oSource->HasString('warning'),
 			'a deletion that happened has nowhere to report the failure that followed it');
 
-		$sGone = $this->methodBody(WriteOutcome::class, 'IsGone');
+		$oGone = SourceCalls::OfClass(WriteOutcome::class);
+		$sGone = $oGone->Code('IsGone');
 
-		$this->assertStringContainsString('=== null', $sGone, 'absence is inferred rather than established');
-		$this->assertStringContainsString('catch (Throwable', $sGone,
+		$this->assertStringContainsString('===null', $sGone, 'absence is inferred rather than established');
+		$this->assertContains('Throwable', $oGone->CatchTypes('IsGone'),
 			'a question asked while an exception is being reported may not raise one of its own');
-		$this->assertStringContainsString('return false;', $sGone,
+		$this->assertStringContainsString('returnfalse;', $sGone,
 			'a question it cannot answer has to read as "still there", or a failure becomes a deletion report');
 	}
 
@@ -421,15 +412,15 @@ class WriteFailureReportingContractTest extends TestCase
 		$aMissing = [];
 
 		foreach ($this->phpFiles() as $sPath) {
-			$sSource = (string) file_get_contents($sPath);
-			if (!str_contains($sSource, 'bool    $simulate') && !str_contains($sSource, 'bool $simulate')) {
+			$oSource = SourceCalls::OfFile($sPath);
+			if (!str_contains($oSource->Code(), 'bool$simulate')) {
 				continue;
 			}
 			// The helper that defines it, not a caller of it.
-			if (str_contains($sSource, 'public static function Simulated(')) {
+			if ($oSource->HasMethod('Simulated')) {
 				continue;
 			}
-			if (!str_contains($sSource, 'DryRun::Simulated($simulate)')) {
+			if (!$oSource->HasCall(DryRun::class.'::Simulated') || !str_contains($oSource->Code(), 'DryRun::Simulated($simulate)')) {
 				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}
@@ -518,20 +509,20 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testCreatingACredentialSaysTheCredentialIsNotInTheAnswer(): void
 	{
-		$sPlan = (string) file_get_contents(self::SRC.'/Service/Write/WriteOutcome.php');
+		$oPlan = SourceCalls::OfClass(WriteOutcome::class);
 
-		$this->assertStringContainsString('AuthentToken', $sPlan,
+		$this->assertNotSame([], array_filter($oPlan->Strings(), static fn (string $sString): bool => str_contains($sString, 'AuthentToken')),
 			'the token classes are named rather than asked for by interface, so a later one is missed');
-		$this->assertStringContainsString(
-			'auth_token',
-			$this->methodBody(WriteOutcome::class, 'CredentialNote'),
+		$this->assertNotSame(
+			[],
+			array_filter($oPlan->Strings('CredentialNote'), static fn (string $sString): bool => str_contains($sString, 'auth_token')),
 			'the note does not mention the attribute the caller will go looking at'
 		);
 
-		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectCreate.php');
+		$oCreate = SourceCalls::OfClass(ObjectCreate::class);
 		$this->assertSame(
 			2,
-			substr_count($sSource, 'credentialNote($class)'),
+			count(array_filter($oCreate->Calls(), static fn (string $sCall): bool => strcasecmp($sCall, ObjectCreate::class.'::credentialNote') === 0)),
 			'the note is not on both the dry run and the real create - a caller should learn this before it makes one'
 		);
 
@@ -580,20 +571,14 @@ class WriteFailureReportingContractTest extends TestCase
 		$aMissing = [];
 
 		foreach ($this->phpFiles() as $sPath) {
-			// Comments out first: three helpers name MakeValue() in a docblock
-			// while converting nothing, and a docblock is not a call site.
-			$sSource = '';
-			foreach (token_get_all((string) file_get_contents($sPath)) as $mToken) {
-				if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-					continue;
-				}
-				$sSource .= is_array($mToken) ? $mToken[1] : $mToken;
-			}
+			// Three helpers name MakeValue() in a docblock while converting
+			// nothing, and a docblock is not a call site.
+			$oSource = SourceCalls::OfFile($sPath);
 
-			if (!str_contains($sSource, 'RestUtils::MakeValue(')) {
+			if (!$oSource->HasCall('RestUtils::MakeValue')) {
 				continue;
 			}
-			if (!str_contains($sSource, 'WriteValues::RefusalForDroppedSetValues(')) {
+			if (!$oSource->HasCall(WriteValues::class.'::RefusalForDroppedSetValues')) {
 				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}
@@ -615,7 +600,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testTheDroppedSetCheckComparesAgainstTheSuppliedValue(): void
 	{
-		$sBody = $this->methodBody(WriteValues::class, 'RefusalForDroppedSetValues');
+		$sBody = SourceCalls::OfClass(WriteValues::class)->Code('RefusalForDroppedSetValues');
 
 		$this->assertStringContainsString('$mSupplied', $sBody,
 			'the check reads the object instead of what the caller sent, which is the blind spot it exists for');
@@ -630,8 +615,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$aOffenders = [];
 
 		foreach ($this->phpFiles() as $sPath) {
-			$sSource = (string) file_get_contents($sPath);
-			if (preg_match('/Identity\([^,]+,\s*\(int\)/', $sSource) === 1) {
+			if (preg_match('/Identity\([^,]+,\(int\)/', SourceCalls::OfFile($sPath)->Code()) === 1) {
 				$aOffenders[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}
@@ -657,17 +641,5 @@ class WriteFailureReportingContractTest extends TestCase
 		sort($aFiles);
 
 		return $aFiles;
-	}
-
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-
-		return implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
 	}
 }

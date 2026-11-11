@@ -98,6 +98,16 @@ abstract class Writer extends Base
 		Renamed::After();
 	}
 
+	public function Catching(): void
+	{
+		try {
+			Renamed::Work();
+		} catch (\LogicException | RuntimeException $e) {
+			Renamed::Strings('warning');
+		} catch (Exception $e) {
+		}
+	}
+
 	public function WithClosure(): callable
 	{
 		return function () {
@@ -275,9 +285,30 @@ PHP;
 		$this->assertFalse($oSource->HasCallOn('Acme\Rights\Another', 'Failing'));
 	}
 
+	public function testTheClassesCaughtAreResolvedLikeAnyOther(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertSame(['Throwable'], $oSource->CatchTypes('Failing'));
+		$this->assertSame(
+			['LogicException', 'Acme\\Tools\\RuntimeException', 'Acme\\Tools\\Exception'],
+			$oSource->CatchTypes('Catching'),
+			'a name with no import and no leading backslash is the namespace\'s own, which is not what a catch of the global class means'
+		);
+		$this->assertSame(['warning'], $oSource->StringsInCatch('Catching'));
+		$this->assertStringContainsString('Renamed::Strings(', $oSource->CodeInCatch('Catching'));
+		$this->assertStringNotContainsString('Work', $oSource->CodeInCatch('Catching'));
+	}
+
 	public function testAClosureInsideAMethodIsPartOfIt(): void
 	{
 		$this->assertTrue($this->source()->HasCall('Acme\Rights\AccessGrants::RefusalFor', 'WithClosure'));
+	}
+
+	public function testSelfIsResolvedWhenTheWholeFileIsAsked(): void
+	{
+		$this->assertContains('Acme\\Tools\\Writer::Second', $this->source()->Calls());
+		$this->assertContains('Acme\\Tools\\Base::Fourth', $this->source()->Calls());
 	}
 
 	public function testTheWholeFileCanBeAsked(): void

@@ -46,6 +46,8 @@ final class SourceCalls
 	private array $aImports = [];
 	/** @var array<int, array{class: string, parent: string, name: string, from: int, to: int}> */
 	private array $aMethods = [];
+	/** @var array<int, array{0: string, 1: string, 2: int, 3: int}> class, parent, first and last token of each class body */
+	private array $aClassRanges = [];
 	/** @var array<int, PhpToken> */
 	private array $aTokens;
 
@@ -308,6 +310,85 @@ final class SourceCalls
 	public function UsesInCatch(?string $sMethod = null): array
 	{
 		$aUses = [];
+		foreach ($this->catchBlocks($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				$sSpec = $this->callAt($i, $sClass, $sParent) ?? $this->constantAt($i, $sClass, $sParent);
+				if ($sSpec !== null) {
+					$aUses[] = $sSpec;
+				}
+			}
+		}
+
+		return $aUses;
+	}
+
+	/**
+	 * The string literals inside the `catch` blocks of the method.
+	 *
+	 * @return array<int, string>
+	 */
+	public function StringsInCatch(?string $sMethod = null): array
+	{
+		$aStrings = [];
+		foreach ($this->catchBlocks($sMethod) as [$iFrom, $iTo]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				if ($this->aTokens[$i]->id === T_CONSTANT_ENCAPSED_STRING) {
+					$aStrings[] = substr($this->aTokens[$i]->text, 1, -1);
+				}
+			}
+		}
+
+		return $aStrings;
+	}
+
+	/**
+	 * The code of the `catch` blocks of the method, as Code() writes it.
+	 */
+	public function CodeInCatch(?string $sMethod = null): string
+	{
+		$sCode = '';
+		foreach ($this->catchBlocks($sMethod) as [$iFrom, $iTo]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				$sCode .= $this->aTokens[$i]->text;
+			}
+		}
+
+		return $sCode;
+	}
+
+	/**
+	 * The classes the method (or file) catches, resolved: `catch (\Throwable $e)`
+	 * and `catch (Throwable $e)` with `use Throwable;` are both `Throwable`;
+	 * without the import the second is `Namespace\Throwable`, which is what PHP
+	 * would catch too. Several types in one catch are each listed.
+	 *
+	 * @return array<int, string>
+	 */
+	public function CatchTypes(?string $sMethod = null): array
+	{
+		$aTypes = [];
+		foreach ($this->scopes($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				if ($this->aTokens[$i]->id !== T_CATCH) {
+					continue;
+				}
+				for ($j = $i + 2; $j < $iTo && $this->aTokens[$j]->id !== T_VARIABLE && $this->aTokens[$j]->text !== ')'; $j++) {
+					if (in_array($this->aTokens[$j]->id, self::NAME_TOKENS, true)) {
+						$aTypes[] = $this->resolveClass($this->aTokens[$j]->text, $sClass, $sParent);
+					}
+				}
+			}
+		}
+
+		return $aTypes;
+	}
+
+	/**
+	 * @return array<int, array{0: int, 1: int, 2: string, 3: string}> the token ranges of the catch bodies
+	 */
+	private function catchBlocks(?string $sMethod): array
+	{
+		$aBlocks = [];
 		foreach ($this->scopes($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
 			for ($i = $iFrom; $i < $iTo; $i++) {
 				if ($this->aTokens[$i]->id !== T_CATCH) {
@@ -316,6 +397,7 @@ final class SourceCalls
 				while ($i < $iTo && $this->aTokens[$i]->text !== '{') {
 					$i++;
 				}
+				$iStart = $i;
 				$iBraces = 0;
 				for (; $i < $iTo; $i++) {
 					if ($this->aTokens[$i]->text === '{' || $this->aTokens[$i]->id === T_CURLY_OPEN) {
@@ -323,15 +405,12 @@ final class SourceCalls
 					} elseif ($this->aTokens[$i]->text === '}' && --$iBraces === 0) {
 						break;
 					}
-					$sSpec = $this->callAt($i, $sClass, $sParent) ?? $this->constantAt($i, $sClass, $sParent);
-					if ($sSpec !== null) {
-						$aUses[] = $sSpec;
-					}
 				}
+				$aBlocks[] = [$iStart, $i, $sClass, $sParent];
 			}
 		}
 
-		return $aUses;
+		return $aBlocks;
 	}
 
 	/**
@@ -346,6 +425,9 @@ final class SourceCalls
 
 	private function constantAt(int $i, string $sClass, string $sParent): ?string
 	{
+		if ($sClass === '') {
+			[$sClass, $sParent] = $this->classAt($i);
+		}
 		$oToken = $this->aTokens[$i];
 		if (!in_array($oToken->id, self::NAME_TOKENS, true) || $this->precededBy($i, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW, T_CLASS, T_INSTANCEOF, T_NAMESPACE, T_CONST])) {
 			return null;
@@ -470,7 +552,7 @@ final class SourceCalls
 			if ($oToken->text === '{' || $oToken->id === T_CURLY_OPEN || $oToken->id === T_DOLLAR_OPEN_CURLY_BRACES) {
 				$iDepth++;
 				if ($bPendingClass !== null) {
-					$aClassStack[] = [$bPendingClass[0], $bPendingClass[1], $iDepth];
+					$aClassStack[] = [$bPendingClass[0], $bPendingClass[1], $iDepth, $i];
 					$bPendingClass = null;
 				}
 				continue;
@@ -478,7 +560,8 @@ final class SourceCalls
 
 			if ($oToken->text === '}') {
 				if ($aClassStack !== [] && end($aClassStack)[2] === $iDepth) {
-					array_pop($aClassStack);
+					$aClosed = array_pop($aClassStack);
+					$this->aClassRanges[] = [$aClosed[0], $aClosed[1], $aClosed[3], $i];
 				}
 				$iDepth--;
 				continue;
@@ -624,6 +707,9 @@ final class SourceCalls
 
 	private function callAt(int $i, string $sClass, string $sParent): ?string
 	{
+		if ($sClass === '') {
+			[$sClass, $sParent] = $this->classAt($i);
+		}
 		$oToken = $this->aTokens[$i];
 		$oNext = $this->aTokens[$i + 1] ?? null;
 		if ($oNext === null) {
@@ -662,6 +748,22 @@ final class SourceCalls
 		}
 
 		return null;
+	}
+
+	/**
+	 * The class whose body holds this token, for a question asked of the whole file.
+	 *
+	 * @return array{0: string, 1: string}
+	 */
+	private function classAt(int $i): array
+	{
+		foreach ($this->aClassRanges as [$sClass, $sParent, $iFrom, $iTo]) {
+			if ($i >= $iFrom && $i <= $iTo) {
+				return [$sClass, $sParent];
+			}
+		}
+
+		return ['', ''];
 	}
 
 	private function resolveClass(string $sName, string $sClass, string $sParent): string
