@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
@@ -334,8 +334,8 @@ class ObjectHistoryContractTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'IsReserved',
-			$this->bodyOf(DocumentAccess::class, 'Fetch'),
-			'DocumentAccess::Fetch() reads a blob without asking whether its class is the change log'
+			$this->bodyOf(DocumentFetch::class, 'Fetch'),
+			'DocumentFetch::Fetch() reads a blob without asking whether its class is the change log'
 		);
 	}
 

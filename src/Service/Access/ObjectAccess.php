@@ -13,7 +13,6 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Exception\ToolCallException;
 use DBObject;
 use DBObjectSearch;
@@ -21,8 +20,6 @@ use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 
 /**
  * What the caller may read of objects, in the mode this request is served in.
@@ -42,16 +39,42 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 class ObjectAccess
 {
 	/**
-	 * The access of this request: the portal's in portal mode, the console's
-	 * otherwise.
+	 * How this request builds its access, when something above set one.
+	 *
+	 * Set by whoever puts the request in portal mode ({@see PortalAccess::Enter()}),
+	 * because choosing the portal's subclass is a decision about the portal, and
+	 * this base class sits below it. A factory and not an instance: the portal
+	 * cannot always be read, and the refusal belongs to the first tool that asks,
+	 * as it did when this class chose for itself. Static for the reason
+	 * AccessPolicy::Current() is: one request per process.
+	 */
+	private static ?\Closure $fCurrent = null;
+
+	/**
+	 * The access of this request: the one a caller above set for it (the
+	 * portal's, in portal mode), the console's when none did.
 	 *
 	 * @throws MCPPortalException When the portal cannot be read; portal mode then serves nothing.
 	 */
 	public static function Current(): self
 	{
-		return PortalMode::Current() === null
-			? new self()
-			: new PortalAccess(PortalPolicy::ForCurrentRequest());
+		return self::$fCurrent === null ? new self() : (self::$fCurrent)();
+	}
+
+	/**
+	 * Sets how this request builds its access.
+	 *
+	 * @param \Closure(): self $fFactory
+	 */
+	public static function Remember(\Closure $fFactory): void
+	{
+		self::$fCurrent = $fFactory;
+	}
+
+	/** For tests, and for a runner that serves more than one request. */
+	public static function Forget(): void
+	{
+		self::$fCurrent = null;
 	}
 
 	/**

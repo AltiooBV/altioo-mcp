@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
@@ -62,14 +63,14 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$sLogin = 'excl-portal-'.$sSuffix;
 		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Excl-Portal-'.$sSuffix.'-1!', $iContact);
 		UserRights::Login($sLogin);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 		$this->exclude([], []);
 	}
 
 	protected function tearDown(): void
 	{
 		$this->exclude([], []);
-		PortalMode::Forget();
+		PortalAccess::Leave();
 		parent::tearDown();
 	}
 

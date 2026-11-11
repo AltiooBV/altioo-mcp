@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
@@ -68,12 +69,12 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Policy-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		PortalAccess::Leave();
 
 		parent::tearDown();
 	}
@@ -212,7 +213,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	{
 		$sId = '../../altioo-mcp-escaped';
 		$sCompiled = rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/';
-		PortalMode::Remember($sId);
+		PortalAccess::Enter($sId);
 
 		try {
 			PortalPolicy::ForCurrentRequest();

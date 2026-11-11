@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -85,7 +86,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	protected function tearDown(): void
 	{
 		UserRights::Deimpersonate();
-		PortalMode::Forget();
+		PortalAccess::Leave();
 		$this->configure([], [], []);
 		parent::tearDown();
 	}
@@ -146,7 +147,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 
 		$this->configure(['Team'], ['Person' => ['phone'], 'UserRequest' => ['description']], ['Portal user']);
 		UserRights::Login($this->sPortalUser);
-		PortalMode::Remember('itop-portal');
+		PortalAccess::Enter('itop-portal');
 		PortalPolicy::Forget();
 
 		$this->assertFalse(ExclusionPolicy::IsExempt(), 'portal mode is never exempt, though the account holds a profile listed as exempt');

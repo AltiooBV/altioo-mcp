@@ -21,6 +21,7 @@ use MetaModel;
 use Mcp\Exception\ToolCallException;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 /**
  * {@see ObjectAccess} in portal mode: the console's answer, narrowed by the
@@ -34,6 +35,29 @@ final class PortalAccess extends ObjectAccess
 {
 	public function __construct(private readonly PortalPolicy $oPolicy)
 	{
+	}
+
+	/**
+	 * Puts this request in portal mode: remembers the portal, and tells
+	 * ObjectAccess to answer with this class from now on.
+	 *
+	 * The one place the request is set up for a portal, called by the
+	 * controller once the admission checks pass. The access is built on each
+	 * call to ObjectAccess::Current(), not here, so a portal that cannot be
+	 * read refuses the tool that needs it and not the connection.
+	 */
+	public static function Enter(string $sPortal): void
+	{
+		PortalMode::Remember($sPortal);
+		ObjectAccess::Remember(static fn (): ObjectAccess => new self(PortalPolicy::ForCurrentRequest()));
+	}
+
+	/** Leaves portal mode: for tests, and for a runner that serves more than one request. */
+	public static function Leave(): void
+	{
+		PortalMode::Forget();
+		PortalPolicy::Forget();
+		ObjectAccess::Forget();
 	}
 
 	/**

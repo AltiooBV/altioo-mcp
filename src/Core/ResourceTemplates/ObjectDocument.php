@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Mcp\Exception\ResourceReadException;
@@ -102,7 +103,7 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 		}
 
 		try {
-			$oDocument = DocumentAccess::Fetch($class, (int)$id, $att_code);
+			$oDocument = DocumentFetch::Fetch($class, (int)$id, $att_code);
 		} catch (MCPDocumentException $e) {
 			throw new ResourceReadException($e->getMessage());
 		}

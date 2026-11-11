@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
@@ -111,12 +112,12 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Write-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		PortalAccess::Leave();
 
 		parent::tearDown();
 	}

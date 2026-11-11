@@ -129,7 +129,7 @@ class ReadSummaryTest extends TestCase
 		foreach ([
 			'Service/Read/ObjectSerializer.php',
 			'Core/Tools/ObjectGetRelated.php',
-			'Service/Read/DocumentAccess.php',
+			'Service/Access/DocumentFetch.php',
 			'Service/Read/ObjectHistory.php',
 			'Service/Portal/PortalAccess.php',
 		] as $sFile) {

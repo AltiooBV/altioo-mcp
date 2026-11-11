@@ -56,9 +56,9 @@ class LayerDependencyTest extends TestCase
 		'Hook' => 10,
 		'Service\\Server' => 20,
 		'Core' => 30,
-		'Service\\Access' => 40,
+		'Service\\Portal' => 40,
 		'Service\\Write' => 50,
-		'Service\\Portal' => 60,
+		'Service\\Access' => 60,
 		'Service\\Read' => 70,
 		'Service\\Rights' => 80,
 		'Service\\Audit' => 90,
@@ -70,7 +70,7 @@ class LayerDependencyTest extends TestCase
 
 	private const BOTTOM_RANK = 100;
 
-	/** Api imports these ranks and below (Write, Portal, Read, Rights, Audit, the bottom). */
+	/** Api imports these ranks and below (Write, Access, Read, Rights, Audit, the bottom). */
 	private const API_MAY_IMPORT_FROM_RANK = 50;
 
 	/**
@@ -100,13 +100,10 @@ Helper\PortalMode → Service\Portal\PortalAware
 Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
 Service\Portal\PortalAccess → Core\Tools\PortalList
-Service\Portal\PortalAccess → Service\Access\ObjectAccess
 Service\Read\CurrentUserReader → Service\Server\MCPService
-Service\Read\DocumentAccess → Service\Access\ObjectAccess
 Service\Read\DocumentAccess → Service\Write\WritePlan
 Service\Read\ObjectSerializer → Service\Write\WritePlan
 Service\Write\WritePlan → Core\Tools\ObjectSearchByOQL
-Service\Write\WritePlan → Service\Access\ObjectAccess
 TXT;
 
 	public function testEveryClassHasALayer(): void

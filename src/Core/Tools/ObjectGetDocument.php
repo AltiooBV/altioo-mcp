@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
@@ -137,7 +138,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		}
 
 		try {
-			$oDocument = DocumentAccess::Fetch($class, $id, $att_code);
+			$oDocument = DocumentFetch::Fetch($class, $id, $att_code);
 		} catch (MCPDocumentException $e) {
 			throw new ToolCallException($e->getMessage());
 		}

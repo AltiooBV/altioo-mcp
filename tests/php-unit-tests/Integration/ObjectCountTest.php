@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
@@ -66,7 +67,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		PortalAccess::Leave();
 		parent::tearDown();
 	}
 
@@ -250,7 +251,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 		$this->requirePortal();
 		$aPortal = $this->portalUser();
 		UserRights::Login($aPortal['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		$aList = ToolOutput::Decode(PortalList::execute(self::ONGOING));
 		$aCount = $this->runCount(['list' => self::ONGOING]);
@@ -265,7 +266,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 		$this->requirePortal();
 		$aPortal = $this->portalUser();
 		UserRights::Login($aPortal['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		// The stock list is of the abstract Ticket, so what it can be counted per is what the list
 		// shows and Ticket has: its caller, its dates, its title. A column of one subclass (status,
@@ -291,7 +292,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 		$this->requirePortal();
 		$aPortal = $this->portalUser();
 		UserRights::Login($aPortal['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		try {
 			$this->runCount(['list' => "ongoing' OR 1=1 --"]);

@@ -56,9 +56,9 @@ An iTop developer opening this module should find that shape.
    | `Hook/` | What iTop calls into: the background process | `Service\AuditHousekeeping` |
    | `Service/Server/` | Building the MCP server from the registry for one request; the session | `Service\MCPService`, `Server\Session\` |
    | `Core/` | The core tools, resources, templates and prompts. They stay where they are, like mcp/sdk's `Capability/`. It also gets the server instructions, which two of its elements serve. | `Core\`, `Server\ServerInstructions`, `MCPService::InstructionsFor()` |
-   | `Service/Access/` | The question every tool asks about an object: may this caller see it, change it, set this field? It answers by the console's rules or the portal's. | `Service\ObjectAccess` |
+   | `Service/Access/` | The question every tool asks about an object: may this caller see it, change it, set this field? It answers by the console's rules; the portal's subclass is in `Service/Portal/`. It also holds the rights half of reading a document. | `Service\ObjectAccess`, `DocumentAccess::Fetch()` as `DocumentFetch` |
    | `Service/Write/` | Turning a caller's fields into a checked write: value conversion, the rules a value must pass (`Edit`, `Mention`, `Formula`), the dry run, the deletion plan | `Helper\WritePlan` split, `EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `RestValue` |
-   | `Service/Portal/` | The portal: its policy, its object access, its description, the row lookup its lists use | `Service\Portal*` except `PortalMode`, `PortalList::RowOf()` |
+   | `Service/Portal/` | The portal: its policy, its object access (which specialises `Access`), its description, the row lookup its lists use | `Service\Portal*` except `PortalMode`, `PortalList::RowOf()` |
    | `Service/Read/` | Reading objects out: queries and the OQL check, serialisation, history, documents, the current user, the datamodel description | `Helper\ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, `DatamodelReader`, `ObjectSearchByOQL::CheckQuery()` |
    | `Service/Rights/` | The rules everything above asks: the token scopes, the access policy and what the request is served, the barrier on access-granting classes, the exclusions, the secrets, the rights grading. Named after iTop's `UserRights`. | `Service\TokenScopes`, `AccessPolicy`, `ExcludingModelReflection`, `Helper\AccessGrants`, `ExclusionPolicy`, `SecretPolicy`, `MCPService::ServedAccess()`, the grading now in `DatamodelReader` |
    | `Service/Audit/` | The audit trail: retention, change and read summaries | `Service\AuditRetention`, `ChangeSummary`, `ReadSummary` |
@@ -71,9 +71,9 @@ An iTop developer opening this module should find that shape.
    1. `Controller`, `Hook`
    2. `Service\Server`
    3. `Core`
-   4. `Service\Access`
+   4. `Service\Portal`
    5. `Service\Write`
-   6. `Service\Portal`
+   6. `Service\Access`
    7. `Service\Read`
    8. `Service\Rights`
    9. `Service\Audit`
@@ -118,9 +118,21 @@ An iTop developer opening this module should find that shape.
 - **Portal and Read are not independent.** The portal reads objects through `ObjectHistory`,
   `DocumentAccess` and `DatamodelReader`, as it should. So the order is one chain, with Portal
   above Read.
-- **"Access" was two levels.** `ObjectAccess` is what every tool asks, and it chooses between the
-  console's rules and the portal's, so it sits above both. The scopes, policy, barrier and
-  exclusions sit below Read, which asks them. They are now `Service\Rights`.
+- **"Access" was two levels.** The scopes, policy, barrier and exclusions sit below Read, which asks
+  them. They are now `Service\Rights`.
+- **Access is not above Portal.** The second version put `ObjectAccess` above Portal because it
+  chose between the console's rules and the portal's. It is the other way round. `ObjectAccess` is
+  the console's rules and a base class; `PortalAccess` extends it, so Portal is above Access. The
+  choice moved up with it: `ObjectAccess::Current()` answers with a factory that the request's
+  setup sets (`PortalAccess::Enter()`, called by the controller when it admits a portal user),
+  and with the console's access when none was set. `WritePlan` asks `ObjectAccess` whether a
+  referenced object is readable, so Write is above Access, and `ObjectAccess` reads through
+  `ObjectQuery`, `ObjectSerializer` and `ObjectHistory`, so Access is above Read. Portal imports
+  nothing from Write. So the order is Portal, Write, Access, Read.
+- **A document is read in two halves.** `DocumentAccess` asks `ObjectAccess` for rights, and
+  `ObjectSerializer` (Read) describes a blob through `DocumentAccess`. Kept whole it would make
+  Read import Access. So `Fetch()` and the rights it checks moved to `Service\Access\DocumentFetch`,
+  and the URI, the ceiling, the type check and the content stay in `Service\Read\DocumentAccess`.
 - **Some "feature" classes are bottom-level facts.** `PortalMode`, `Identifier`, `AsId()` and the
   request's token and host are asked by every layer. They go to `Helper`.
 - **Packs call the registry.** The example pack registers through `MCPRegistry` and

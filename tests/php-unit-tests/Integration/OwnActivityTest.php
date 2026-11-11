@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\MyActivity;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -65,7 +66,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 	protected function tearDown(): void
 	{
 		UserRights::Deimpersonate();
-		PortalMode::Forget();
+		PortalAccess::Leave();
 		parent::tearDown();
 	}
 
@@ -324,7 +325,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->row($aMe['user'], ['mcp_name' => 'portal-mine']);
 		$this->row($iSecond, ['mcp_name' => 'portal-second']);
 		UserRights::Login($aMe['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		$this->assertSame(['portal-mine'], array_column($this->mine()['activity'], 'name'));
 	}
@@ -339,7 +340,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 			'change_id'       => $this->aChangeId(),
 		]);
 		UserRights::Login($aMe['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		$aRow = $this->mine()['activity'][0];
 
@@ -359,7 +360,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->row($aMe['user'], ['changed_objects' => $sChanged, 'change_id' => $this->aChangeId(), 'mcp_name' => 'with-change']);
 		$this->row($aMe['user'], ['changed_objects' => $sChanged, 'mcp_name' => 'change-gone']);
 		UserRights::Login($aMe['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		$aByName = [];
 		foreach ($this->mine()['activity'] as $aRow) {
@@ -377,7 +378,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 	{
 		$aMe = $this->portalUser();
 		UserRights::Login($aMe['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', 'log_mcp_level', 'error');
 		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', 'mcp_audit_retention_days', 30);
 
@@ -398,7 +399,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->row($aMe['user'], ['mcp_method' => 'resources/read', 'mcp_name' => 'itop://core/object-document/UserRequest/'.$aMe['hidden'].'/screenshot']);
 		$this->row($aMe['user'], ['mcp_method' => 'login', 'mcp_name' => 'portal_admission', 'status' => 'error']);
 		UserRights::Login($aMe['login']);
-		PortalMode::Remember(self::PORTAL);
+		PortalAccess::Enter(self::PORTAL);
 
 		$aNames = array_column($this->mine()['activity'], 'name');
 

@@ -20,6 +20,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
@@ -431,7 +432,7 @@ final class MCPController
 		);
 
 		if ($sRefusal === null) {
-			PortalMode::Remember($sPortal);
+			PortalAccess::Enter($sPortal);
 
 			return LoginWebPage::EXIT_CODE_OK;
 		}
