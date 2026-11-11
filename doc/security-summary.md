@@ -116,8 +116,8 @@ the [README](../README.md#what-the-install-changes):
 | **Does it require an administrator?** | No. It creates its own profile and expects to be paired with a functional profile chosen for the purpose. An Administrator-scoped credential is possible and is the configuration to review hardest |
 | **Outbound network** | **None.** No call to a model provider, to Altioo, or anywhere else. Traffic is inbound only |
 | **Filesystem writes** | **None** outside what iTop itself writes (its own logs, and `env-<env>/` during setup) — with one exception when portal mode serves a portal: iTop's own portal helpers compile that portal's scope and lifecycle rules into PHP files under `data/cache-<env>/altioo-mcp/portals/`, a directory this module names and creates. Generated from the portal's configuration, the same for every user, and cleared by setup with the rest of iTop's cache |
-| **Cron or background jobs** | **None.** The module declares no background process and no scheduled task |
-| **Console UI** | None. Configuration is module parameters in `config-itop.php` |
+| **Cron or background jobs** | **One**, run by iTop's own cron: `AuditHousekeeping`, an `iBackgroundProcess`, hourly. It deletes audit rows older than `mcp_audit_retention_days` (with the default `0` it deletes nothing) and brings a row up to date when the person behind its account is anonymised. It touches this module's audit class only. No scheduled task of its own |
+| **Console UI** | Two entries under *Administration*, for administrators only: the *MCP activity* dashboard and the *MCP service calls* list, both over this module's audit class. Neither is a settings screen: configuration is module parameters in `config-itop.php` |
 | **New HTTP surface** | Exactly one file. The shipped `.htaccess` / `web.config` re-grant web access to `index.php` and leave iTop's blanket deny over the rest of `extensions/` in place, so `src/`, `vendor/`, `tests/` and `composer.json` stay unreachable. The release build refuses an archive missing either file |
 
 **The gates a call passes**, all of which must pass: the profile gate
@@ -125,14 +125,20 @@ the [README](../README.md#what-the-install-changes):
 scope can only ever make a credential *narrower* than its owner, never wider; the instance
 capability grading (`mcp_capabilities` / `mcp_read_only`) and the toolset filter; and iTop's own
 `UserRights`, checked per class, per object, per attribute and per stimulus inside every tool.
+On top of all of these, the classes and attributes an operator lists in `mcp_excluded_classes` and
+`mcp_excluded_attributes` are absent on every route, in both modes, whatever the caller's rights,
+and a setting that cannot be honoured stops the endpoint rather than serving around it (ADR 0012). The only
+account served what they exclude is one holding a profile named in
+`mcp_exclusion_exempt_profiles`, and every such call is marked on its audit row (ADR 0013).
 
 **Portal-only users are a different case**, let in by the MCP profile, with a token that expires
 within `mcp_portal_token_max_days`, unless `mcp_portals` is emptied. For them `UserRights` is not the boundary — iTop's `Portal user` profile reads every
 class — so portal mode serves only the elements of this module that add that portal's own
 configuration (its granted bricks, scopes and forms) to the console's checks, and nothing by a
 tool pack: the class tools describing the portal, its lists, object reads and history, writes
-held to the portal's forms and the console's together, the caller's own identity, and the
-server instructions. See
+held to the portal's forms and the console's together, attachments read and added where the
+portal's form allows and never deleted (ADR 0011), the caller's own identity and own activity
+(ADR 0010), and the server instructions. See
 the README, "Portal-only users: portal mode", and SECURITY.md for how their tokens are issued.
 
 **Writes are dry runs by default.** Create, update, delete, attach, apply-stimulus and the bulk
@@ -150,7 +156,7 @@ text that came from outside the organisation — not a permission boundary; the 
 | **Where** | `priv_altioo_event_mcp_service`, inside your own iTop database, with iTop's other event classes. Reached in the console, by administrators only, under *Administration → MCP service calls*; *MCP activity* beside it is a dashboard of the last seven days. There are no alerts: the trail is watched, not pushed |
 | **Retention** | **Yours to set, with `mcp_audit_retention_days`** (default `0`, keep everything). iTop has no retention of its own for its event log, so without it the table grows with use. An hourly background process run by iTop's cron deletes rows older than the setting. The same process follows iTop on anonymisation: when the person behind a row's account is anonymised, the row's login string is brought up to date and its request parameters and reason are cleared. A user deleted before their person is anonymised, and rows from before 1.3, keep the login until retention removes them |
 | **Anything more sensitive?** | At `log_mcp_level => debug` only, raw request parameters, and what a tool said when it refused a call, are written to the audit row, which may contain object data (a refusal can quote the value it refused). At every other level a refused call's row says only "The tool refused the call". `debug` is a troubleshooting setting, never a standing one; the default is `info`, which records that each call happened without recording what it carried |
-| **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant** |
+| **Object data read by a client** | is handed to the MCP client, which is what talks to a model. Which model, and what that vendor retains, is a property of the client and its provider — **out of this extension's control and the thing to review alongside the profiles you grant**. What you can control here is what is never handed over: `mcp_excluded_classes` and `mcp_excluded_attributes` keep a class or a field out of this channel for everyone (README, [Data flow and privacy](../README.md#data-flow-and-privacy)) |
 
 **Change attribution.** Every write this extension makes is attached to an iTop change record whose
 `CMDBChange.userinfo` is the user's plain name, exactly as iTop's console and REST write it (ADR 0009):

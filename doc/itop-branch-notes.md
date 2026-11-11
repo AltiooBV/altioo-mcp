@@ -7,7 +7,11 @@ a verification date.
 ```
 VERIFIED    iTop 3.2.2 source, paths cited inline
 AS OF       August 2026
-RE-VERIFIED 2026-11-04, against the packaged 3.2.3-3 and 3.3.0: branch status (§1),
+RE-VERIFIED 2026-11-11, against the source tags 3.2.3-3 and 3.3.0-1: branch status (§1),
+            PHP constants (§2), the extension.xml elements read (§5), the harness pin (§8),
+            and every path cited here. 3.3.0-1 changes seven files from 3.3.0, all in setup
+            (the extension map, the wizard's audit step) and their tests: none cited here.
+            2026-11-04, against the packaged 3.2.3-3 and 3.3.0: branch status (§1),
             PHP constants (§2), the two interfaces removed at 3.3.0 (§6), harness pins (§8),
             the portal constructors of §12 that changed once, and every path cited here.
             2026-10-05, against the packaged 3.2.3-2 and 3.3.0: branch status (§1),
@@ -41,7 +45,7 @@ copy a branch or PHP value from here into a claim about this extension.
 | Branch | Track | Upstream status |
 |---|---|---|
 | **3.2.x** | **LTS** | current LTS, latest 3.2.3-3 (Oct 2026) |
-| 3.3.x | STS | released, 3.3.0 (archive `iTop-3.3.0-21411.zip`, tag `3.3.0`) |
+| 3.3.x | STS | released, latest 3.3.0-1 (tag `3.3.0-1`, Oct 2026); 3.3.0 was archive `iTop-3.3.0-21411.zip` |
 | 3.1.x | — | unmaintained (last 3.1.3, Apr 2025) |
 | 3.0.x | — | unmaintained (last 3.0.4, Jan 2024) |
 | 2.7.x | — | unmaintained (last 2.7.13, Sep 2025) |

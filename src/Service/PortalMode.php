@@ -79,7 +79,7 @@ final class PortalMode
 	 * What the URL may name, and what goes into a file name: the id names the
 	 * portal's design file, its lock and the compiled rules iTop then requires.
 	 *
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static function IsPortalId(string $sValue): bool
 	{
