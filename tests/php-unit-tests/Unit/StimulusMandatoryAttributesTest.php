@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -52,17 +53,15 @@ class StimulusMandatoryAttributesTest extends TestCase
 	 */
 	public function testTheDryRunReportsTheStateItWouldMoveTo(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class))->getFileName()
-		);
+		$sBody = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class)->Code();
 
 		$this->assertMatchesRegularExpression(
-			'/if \\(\$simulate\\) \\{\s*\$sStateAttCode = MetaModel::GetStateAttributeCode/s',
+			'/if\(\$simulate\)\{\$sStateAttCode=MetaModel::GetStateAttributeCode/',
 			$sBody,
 			'the state move is added on the real path too, or not at all'
 		);
 		$this->assertStringContainsString(
-			'!array_key_exists($sStateAttCode, $aChanges)',
+			'!array_key_exists($sStateAttCode,$aChanges)',
 			$sBody,
 			'a transition that already reported the state would report it twice'
 		);
@@ -83,10 +82,8 @@ class StimulusMandatoryAttributesTest extends TestCase
 		$this->assertSame('{"status":"assigned"}', json_encode(\Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome::Map(['status' => 'assigned'])));
 
 		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus', 'ObjectBulkCreate', 'ObjectBulkUpdate'] as $sTool) {
-			$sSource = (string) file_get_contents(
-				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
-			);
-			$this->assertStringContainsString('WriteOutcome::Map(', $sSource, "{$sTool} can answer with a list where a map belongs");
+			$oSource = SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool);
+			$this->assertTrue($oSource->HasCall(\Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome::class.'::Map'), "{$sTool} can answer with a list where a map belongs");
 		}
 	}
 
@@ -180,15 +177,9 @@ class StimulusMandatoryAttributesTest extends TestCase
 	 */
 	public function testTheDatamodelReadOnlyCaseIsCheckedAtAll(): void
 	{
-		$oMethod = new ReflectionMethod(ObjectApplyStimulus::class, 'whyItCannotBeSet');
-		$aLines  = file($oMethod->getFileName());
-		$sBody   = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
+		$oSource = SourceCalls::OfClass(ObjectApplyStimulus::class);
 
-		$this->assertStringContainsString('IsActionAllowedOnAttribute', $sBody, 'the write right is no longer checked');
-		$this->assertStringContainsString('IsWritable', $sBody, 'a mandatory attribute that is read-only on the class is reported as one the caller should fill in');
+		$this->assertTrue($oSource->HasCallTo('IsActionAllowedOnAttribute', 'whyItCannotBeSet'), 'the write right is no longer checked');
+		$this->assertTrue($oSource->HasCallTo('IsWritable', 'whyItCannotBeSet'), 'a mandatory attribute that is read-only on the class is reported as one the caller should fill in');
 	}
 }
