@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Controller\CallLog;
+use Altioo\iTop\Extension\MCP\Controller\Gate\PortalAdmission;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
@@ -135,7 +136,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertStringContainsString('OAuthResource::CalledEndpointUrl()', self::bodyOf(MCPController::class, 'rejectATokenGrantedForAnotherUrl'));
 		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(CallLog::class, 'LogIfConfigured'));
-		$this->assertStringContainsString('PortalMode::Requested()', self::bodyOf(MCPController::class, 'admitInPortalMode'));
+		$this->assertStringContainsString('PortalMode::Requested()', self::bodyOf(PortalAdmission::class, 'Admit'));
 	}
 
 	/**
@@ -531,14 +532,14 @@ class PortalModeTest extends TestCase
 		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 
 		$this->assertMatchesRegularExpression(
-			'/if \(\$iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED\) \{\s*\$iRet = self::admitInPortalMode\(\);\s*\}/',
+			'/if \(\$iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED\) \{\s*\$iRet = PortalAdmission::Admit\(\);\s*\}/',
 			$sBody,
-			'admitInPortalMode() must run only on EXIT_CODE_PORTALUSERNOTAUTHORIZED'
+			'PortalAdmission::Admit() must run only on EXIT_CODE_PORTALUSERNOTAUTHORIZED'
 		);
-		$this->assertSame(1, substr_count($sBody, 'admitInPortalMode'), 'admitInPortalMode() is called from one place');
+		$this->assertSame(1, substr_count($sBody, 'PortalAdmission::Admit'), 'PortalAdmission::Admit() is called from one place');
 
 		$iLogin = strpos($sBody, 'DoLogin(');
-		$iAdmit = strpos($sBody, 'admitInPortalMode');
+		$iAdmit = strpos($sBody, 'PortalAdmission::Admit');
 		$iPolicy = strpos($sBody, 'AccessPolicyOfCurrentRequest');
 		$this->assertLessThan($iAdmit, $iLogin);
 		$this->assertLessThan($iPolicy, $iAdmit);

@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\Gate\AllowedProfiles;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
@@ -137,12 +137,12 @@ class ModuleMetadataTest extends TestCase
 			$aShipped[] = (string)$oItem;
 		}
 
-		$oConstant = new ReflectionClassConstant(MCPController::class, 'DEFAULT_ALLOWED_PROFILES');
+		$oConstant = new ReflectionClassConstant(AllowedProfiles::class, 'DEFAULT_ALLOWED_PROFILES');
 
 		$this->assertSame(
 			$aShipped,
 			$oConstant->getValue(),
-			'MCPController::DEFAULT_ALLOWED_PROFILES no longer matches mcp_allowed_profiles in the datamodel'
+			'AllowedProfiles::DEFAULT_ALLOWED_PROFILES no longer matches mcp_allowed_profiles in the datamodel'
 		);
 	}
 

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\Gate\AuthRefusal;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -94,12 +94,12 @@ class AuthRefusalCoverageTest extends TestCase
 	}
 
 	/**
-	 * The body of createAuthException(), comments stripped - otherwise a case
+	 * The body of AuthRefusal::CreateAuthException(), comments stripped - otherwise a case
 	 * mentioned only in a comment would satisfy the search.
 	 */
 	private function switchBody(): string
 	{
-		$oMethod = new ReflectionMethod(MCPController::class, 'createAuthException');
+		$oMethod = new ReflectionMethod(AuthRefusal::class, 'CreateAuthException');
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice(
 			$aLines,
