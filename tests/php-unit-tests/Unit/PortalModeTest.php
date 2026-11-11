@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
@@ -757,5 +759,21 @@ class PortalModeTest extends TestCase
 		$aLines = file($oMethod->getFileName());
 
 		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+	}
+
+	/**
+	 * Portal mode remembered without its access entered is refused, never served
+	 * the console's rules: ObjectAccess::Current() fails closed (ADR 0015).
+	 */
+	public function testPortalModeWithoutItsAccessIsRefused(): void
+	{
+		PortalAccess::Leave();
+		PortalMode::Remember('itop-portal');
+		try {
+			$this->expectException(MCPPortalException::class);
+			ObjectAccess::Current();
+		} finally {
+			PortalAccess::Leave();
+		}
 	}
 }

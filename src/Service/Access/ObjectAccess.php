@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Access;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
@@ -54,11 +55,23 @@ class ObjectAccess
 	 * The access of this request: the one a caller above set for it (the
 	 * portal's, in portal mode), the console's when none did.
 	 *
-	 * @throws MCPPortalException When the portal cannot be read; portal mode then serves nothing.
+	 * Portal mode with nothing set is refused, not served the console's rules:
+	 * a path that remembered the portal without entering it would otherwise
+	 * give a portal user the console's reach. It fails closed, as the choice
+	 * made here before 2.0 did.
+	 *
+	 * @throws MCPPortalException When the portal cannot be read, or portal mode was not entered; portal mode then serves nothing.
 	 */
 	public static function Current(): self
 	{
-		return self::$fCurrent === null ? new self() : (self::$fCurrent)();
+		if (self::$fCurrent !== null) {
+			return (self::$fCurrent)();
+		}
+		if (PortalMode::Current() !== null) {
+			throw new MCPPortalException('This request is in portal mode, but its portal access was never set: nothing is served.');
+		}
+
+		return new self();
 	}
 
 	/**
