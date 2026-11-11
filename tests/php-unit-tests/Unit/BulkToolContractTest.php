@@ -58,7 +58,7 @@ class BulkToolContractTest extends TestCase
 		);
 		$this->assertStringContainsString('suppliedValues(', $sSource);
 		$this->assertStringNotContainsString(
-			'WritePlan::After(',
+			'WriteOutcome::After(',
 			$sSource,
 			'the bulk path re-reads a row per object, which is a hundred queries'
 		);

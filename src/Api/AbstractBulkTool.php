@@ -22,7 +22,6 @@ use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObject;
@@ -580,7 +579,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * strict_types - after the row was committed - so every successful bulk
 	 * create answered "Created, but the call failed after the write", which is
 	 * the one answer that makes a caller retry and create a duplicate. The
-	 * normaliser is the same one WritePlan::Identity() and
+	 * normaliser is the same one WriteOutcome::Identity() and
 	 * DocumentAccess::Describe() were corrected to use, for the same reason:
 	 * this is the third boundary an ORM id crossed, and widening it here is
 	 * what keeps the next bulk tool from being the fourth.

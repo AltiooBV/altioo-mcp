@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -81,7 +82,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 	{
 		$this->assertSame(
 			['role_code'],
-			WritePlan::Defaulted(
+			WriteOutcome::Defaulted(
 				['contact_id' => 1, 'ticket_id' => 3, 'role_code' => 'manual'],
 				['contact_id', 'ticket_id']
 			),
@@ -90,7 +91,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 
 		$this->assertSame(
 			[],
-			WritePlan::Defaulted(['title' => 'x'], ['title']),
+			WriteOutcome::Defaulted(['title' => 'x'], ['title']),
 			'a write whose every change was asked for reports none'
 		);
 
@@ -187,14 +188,14 @@ class DerivedAttributeReportingContractTest extends TestCase
 			$this->assertContains(
 				'overridden',
 				$aRequired,
-				"{$sName} may omit `overridden`, which makes it two response shapes wearing one schema - the thing WritePlan::OutcomeSchema() exists to prevent"
+				"{$sName} may omit `overridden`, which makes it two response shapes wearing one schema - the thing WriteOutcome::OutcomeSchema() exists to prevent"
 			);
 		}
 	}
 
 	public function testTheDeclarationNamesTheCauseAndTheWayOut(): void
 	{
-		$sDescription = WritePlan::OverriddenSchemaProperty()['description'];
+		$sDescription = WriteOutcome::OverriddenSchemaProperty()['description'];
 
 		// A caller that reads only this one string still has to be able to act
 		// on it, because on a bare tools/list it is the only string it gets.
@@ -268,7 +269,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 	}
 
 	/**
-	 * Same rule as WritePlan::Changes(): writing an attribute and reading it
+	 * Same rule as WriteOutcome::Changes(): writing an attribute and reading it
 	 * are separate rights, so a plan may name an attribute whose value the
 	 * caller may not see.
 	 */

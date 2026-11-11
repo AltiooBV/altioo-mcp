@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -74,7 +75,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				'additionalProperties' => true,
 				'description'          => 'Attribute code => the value this write set, or would set.',
 			],
-			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'overridden' => WriteOutcome::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -189,8 +190,8 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");
 
 				$aOutcome = self::outcome($iId, $iRow, true, $simulate ? 'Would be updated.' : 'Updated.');
-				$aOutcome['changes']    = WritePlan::Map(WritePlan::Changes($mObject, $class));
-				$aOutcome['overridden'] = WritePlan::Map($aOverridden);
+				$aOutcome['changes']    = WriteOutcome::Map(WriteOutcome::Changes($mObject, $class));
+				$aOutcome['overridden'] = WriteOutcome::Map($aOverridden);
 
 				if (!$simulate) {
 					$mObject->DBUpdate();
@@ -208,6 +209,6 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		// An entry that failed before anything was set still reports changes,
 		// empty: the schema promises it on every entry.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([])]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WriteOutcome::Map([]), 'overridden' => WriteOutcome::Map([])]));
 	}
 }

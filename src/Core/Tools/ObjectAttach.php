@@ -22,6 +22,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -115,7 +116,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
+		return WriteOutcome::OutcomeSchema([
 			'attached_to' => [
 				'type'        => 'object',
 				'description' => 'The object the document lands on: its class and id.',
@@ -409,7 +410,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, null)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, null)
 				+ [
 					'simulated'   => true,
 					'valid'       => true,
@@ -437,7 +438,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			}
 
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,
@@ -449,7 +450,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// Committed or not, asked the same way core_object_create asks: an
 			// unsaved object carries a negative temporary key, so a positive
 			// one means the row reached the database.
-			$iCommittedId = WritePlan::CommittedId($oAttachment);
+			$iCommittedId = WriteOutcome::CommittedId($oAttachment);
 			if ($iCommittedId === null) {
 				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to attach the document', $e));
 			}
@@ -459,7 +460,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// for it - the file is not attached twice because the answer was
 			// hard to build.
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,
@@ -529,7 +530,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => $sClass]
-				+ WritePlan::Identity($sClass, $iId)
+				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => true,
 					'valid'       => true,
@@ -550,7 +551,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			$oTarget->DBUpdate();
 
 			return ToolOutput::Structured(['class' => $sClass]
-				+ WritePlan::Identity($sClass, $iId)
+				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,

@@ -36,7 +36,7 @@ class PortalWriteOutcomeContractTest extends TestCase
 			$sBody = $this->bodyOf($sTool, 'execute');
 			$this->assertStringContainsString('$oAccess->Disclosed(', $sBody, $sTool);
 			$this->assertLessThan(
-				strpos($sBody, 'WritePlan::Defaulted('),
+				strpos($sBody, 'WriteOutcome::Defaulted('),
 				strpos($sBody, '$oAccess->Disclosed('),
 				"{$sTool} must filter before `defaulted` is derived from the changes"
 			);

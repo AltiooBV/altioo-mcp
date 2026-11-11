@@ -81,7 +81,7 @@ final class JsonPayload
 	 * for a better one for the call that is made by accident.
 	 *
 	 * Input only. Output maps stay objects and stay correct, because they are
-	 * built by WritePlan::Map(), which casts to stdClass for this same reason
+	 * built by WriteOutcome::Map(), which casts to stdClass for this same reason
 	 * on the way out.
 	 *
 	 * @since 1.0.0

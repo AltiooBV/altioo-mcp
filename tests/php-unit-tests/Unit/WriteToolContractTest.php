@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
@@ -233,13 +234,13 @@ class WriteToolContractTest extends TestCase
 	 */
 	public function testTheWritePlanAppliesTheReadRightBeforeRenderingAValue(): void
 	{
-		$sBody = $this->methodBody(WritePlan::class, 'Changes');
+		$sBody = $this->methodBody(WriteOutcome::class, 'Changes');
 
 		$iGate = strpos($sBody, 'MayReadAttribute');
 		$iValue = strpos($sBody, 'ObjectSerializer::Value');
 
-		$this->assertIsInt($iGate, 'WritePlan::Changes() no longer checks the read right, so a dry run can render an attribute the caller may write but not read');
-		$this->assertIsInt($iValue, 'WritePlan::Changes() no longer renders values');
+		$this->assertIsInt($iGate, 'WriteOutcome::Changes() no longer checks the read right, so a dry run can render an attribute the caller may write but not read');
+		$this->assertIsInt($iValue, 'WriteOutcome::Changes() no longer renders values');
 		$this->assertLessThan($iValue, $iGate, 'the read right must be checked before the value is rendered');
 		$this->assertStringContainsString(
 			'ObjectSerializer::MASK',

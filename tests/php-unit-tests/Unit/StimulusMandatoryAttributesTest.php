@@ -79,14 +79,14 @@ class StimulusMandatoryAttributesTest extends TestCase
 	 */
 	public function testAnEmptyChangeMapStaysAMap(): void
 	{
-		$this->assertSame('{}', json_encode(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::Map([])));
-		$this->assertSame('{"status":"assigned"}', json_encode(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::Map(['status' => 'assigned'])));
+		$this->assertSame('{}', json_encode(\Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome::Map([])));
+		$this->assertSame('{"status":"assigned"}', json_encode(\Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome::Map(['status' => 'assigned'])));
 
 		foreach (['ObjectCreate', 'ObjectUpdate', 'ObjectApplyStimulus', 'ObjectBulkCreate', 'ObjectBulkUpdate'] as $sTool) {
 			$sSource = (string) file_get_contents(
 				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
 			);
-			$this->assertStringContainsString('WritePlan::Map(', $sSource, "{$sTool} can answer with a list where a map belongs");
+			$this->assertStringContainsString('WriteOutcome::Map(', $sSource, "{$sTool} can answer with a list where a map belongs");
 		}
 	}
 

@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;

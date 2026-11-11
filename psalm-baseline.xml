@@ -151,21 +151,21 @@
   <file src="src/Core/Tools/ObjectApplyStimulus.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
 					'simulated'     => true,
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
-					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,
 				'simulated'     => false,
@@ -176,11 +176,11 @@
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-				'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -261,7 +261,7 @@
   <file src="src/Core/Tools/ObjectDelete.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-					+ WritePlan::Identity($class, $id)
+					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
@@ -272,7 +272,7 @@
 						),
 					])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
@@ -440,26 +440,26 @@
   <file src="src/Core/Tools/ObjectUpdate.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -559,7 +559,7 @@
       <code><![CDATA[[]]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Service/Write/WritePlan.php">
+  <file src="src/Service/Write/WriteOutcome.php">
     <InvalidArrayOffset>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>

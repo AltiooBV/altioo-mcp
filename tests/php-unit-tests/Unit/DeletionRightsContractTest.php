@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
-use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;

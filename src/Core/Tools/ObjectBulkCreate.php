@@ -18,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -79,13 +80,13 @@ class ObjectBulkCreate extends AbstractBulkTool
 					.'Read before the write, because the write clears it - so an attribute the write itself fills is empty here rather than wrong: a ticket answers "" for ref and friendlyname, which are assigned as the row is inserted. '
 					.'These tools report no `after` block per row - a hundred rows would be a hundred reads - so take the id this entry reports and call core_object_get for what the object ended up with.',
 			],
-			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'overridden' => WriteOutcome::OverriddenSchemaProperty(),
 			'applied'    => [
 				'type'                 => 'object',
 				'additionalProperties' => true,
 				'description'          => 'The attributes this row supplied, as the object holds them after the write - so a value a computed attribute changed is the value you see. Unlike the single-object tools, this is not re-read from the database: a hundred rows would be a hundred queries.',
 			],
-			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
+			'defaulted'  => WriteOutcome::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -171,7 +172,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// Through report() like the other two, rather than a hand-rolled copy
 		// of it: the defaults it applies are what make every entry carry the
 		// keys the schema promises.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([]), 'applied' => WritePlan::Map([]), 'defaulted' => []]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WriteOutcome::Map([]), 'overridden' => WriteOutcome::Map([]), 'applied' => WriteOutcome::Map([]), 'defaulted' => []]));
 	}
 
 	/**
@@ -241,27 +242,27 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// pending changes, so asking afterwards reports nothing and the
 			// real call would answer with an empty `changes` where the dry run
 			// answered with the object.
-			$aChanges = WritePlan::Changes($oObject, $sClass);
+			$aChanges = WriteOutcome::Changes($oObject, $sClass);
 
 			if ($bSimulate) {
 				return self::outcome(null, $iRow, true, 'Would be created.')
 					+ [
-						'changes'    => WritePlan::Map($aChanges),
-						'overridden' => WritePlan::Map($aOverridden),
-						'applied'    => WritePlan::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
-						'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValues)),
+						'changes'    => WriteOutcome::Map($aChanges),
+						'overridden' => WriteOutcome::Map($aOverridden),
+						'applied'    => WriteOutcome::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
+						'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValues)),
 					];
 			}
 
 			$iId = $oObject->DBInsert();
 
 			return self::outcome($iId, $iRow, true, 'Created.')
-				+ WritePlan::Identity($sClass, $iId)
+				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
-					'changes'    => WritePlan::Map($aChanges),
-					'overridden' => WritePlan::Map($aOverridden),
-					'applied'    => WritePlan::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValues)),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'applied'    => WriteOutcome::Map(self::suppliedValues($oObject, $sClass, array_keys($aValues))),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValues)),
 				];
 		} catch (ToolCallException $e) {
 			// One row that cannot be created does not cancel the others.
@@ -285,13 +286,13 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// "succeeded: 0" for a row that exists is the answer a caller
 			// either retries, creating a second object, or passes on to a user
 			// as a change that did not happen.
-			$iCommittedId = WritePlan::CommittedId($oObject);
+			$iCommittedId = WriteOutcome::CommittedId($oObject);
 			if ($iCommittedId !== null) {
 				return self::outcome($iCommittedId, $iRow, true, "Created, but the call failed after the write.")
-					+ WritePlan::Identity($sClass, $iCommittedId)
+					+ WriteOutcome::Identity($sClass, $iCommittedId)
 					+ [
-						'changes'    => WritePlan::Map($aChanges),
-						'overridden' => WritePlan::Map($aOverridden),
+						'changes'    => WriteOutcome::Map($aChanges),
+						'overridden' => WriteOutcome::Map($aOverridden),
 						'warning'    => ErrorReport::OpaqueFailure(
 							"Row {$iRow} was created with id {$iCommittedId}, but the call failed after the write",
 							$e

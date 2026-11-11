@@ -24,6 +24,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -77,7 +78,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
+		return WriteOutcome::OutcomeSchema([
 			'stimulus'      => [
 				'type'        => 'string',
 				'description' => 'The stimulus that was applied.',
@@ -90,10 +91,10 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'type'        => 'string',
 				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
 			],
-			'after'         => WritePlan::AfterSchemaProperty(),
-			'changes'       => WritePlan::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
-			'overridden'    => WritePlan::OverriddenSchemaProperty(),
-			'defaulted'     => WritePlan::DefaultedSchemaProperty(),
+			'after'         => WriteOutcome::AfterSchemaProperty(),
+			'changes'       => WriteOutcome::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
+			'overridden'    => WriteOutcome::OverriddenSchemaProperty(),
+			'defaulted'     => WriteOutcome::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -367,7 +368,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
 		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "{$class}::{$id}");
 
-		$aChanges = WritePlan::Changes($oObject, $class);
+		$aChanges = WriteOutcome::Changes($oObject, $class);
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
@@ -394,18 +395,18 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			}
 
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
 					'simulated'     => true,
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
-					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
@@ -426,7 +427,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		}
 
 		return ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,
 				'simulated'     => false,
@@ -437,11 +438,11 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-				'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]);
 	}
 	/**

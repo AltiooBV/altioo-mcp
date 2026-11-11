@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -113,7 +114,7 @@ class WriteFailureReportingContractTest extends TestCase
 		);
 		$this->assertStringContainsString(
 			'catch (Throwable',
-			$this->methodBody(WritePlan::class, 'CommittedId'),
+			$this->methodBody(WriteOutcome::class, 'CommittedId'),
 			'This runs on the failure path and must not replace the failure with one of its own.'
 		);
 	}
@@ -144,7 +145,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$this->assertNotFalse($iCatch, 'The write has to be wrapped to be reported.');
 		$sHandler = substr($sBody, $iCatch);
 
-		$this->assertStringContainsString('WritePlan::CommittedId', $sHandler, 'The handler must ask whether the row exists.');
+		$this->assertStringContainsString('WriteOutcome::CommittedId', $sHandler, 'The handler must ask whether the row exists.');
 		$this->assertMatchesRegularExpression(
 			'/if\s*\(\$iCommittedId !== null\)\s*\{.*self::outcome\(\$iCommittedId, \$iRow, true/s',
 			$sHandler,
@@ -177,11 +178,11 @@ class WriteFailureReportingContractTest extends TestCase
 			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
 			$sSource = (string) file_get_contents((new ReflectionClass($sClass))->getFileName());
 
-			$this->assertStringContainsString('WritePlan::AfterSchemaProperty()', $sSource, "{$sTool} does not declare it");
-			$this->assertStringContainsString('WritePlan::After(', $sSource, "{$sTool} does not report it");
+			$this->assertStringContainsString('WriteOutcome::AfterSchemaProperty()', $sSource, "{$sTool} does not declare it");
+			$this->assertStringContainsString('WriteOutcome::After(', $sSource, "{$sTool} does not report it");
 		}
 
-		$sAfter = $this->methodBody(WritePlan::class, 'After');
+		$sAfter = $this->methodBody(WriteOutcome::class, 'After');
 
 		$this->assertStringContainsString('MetaModel::GetObject', $sAfter, 'nothing is re-read, so a trigger stays invisible');
 		$this->assertStringContainsString('!$bSimulated', $sAfter, 'a dry run reads a row it has not written');
@@ -197,7 +198,7 @@ class WriteFailureReportingContractTest extends TestCase
 				(new ReflectionClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool))->getFileName()
 			);
 			$this->assertStringContainsString(
-				'WritePlan::After($oObject, $class, array_keys($aValidatedValues)',
+				'WriteOutcome::After($oObject, $class, array_keys($aValidatedValues)',
 				$sSource,
 				"{$sTool} echoes back the whole object instead of what the caller supplied"
 			);
@@ -234,7 +235,7 @@ class WriteFailureReportingContractTest extends TestCase
 		);
 
 		$this->assertStringContainsString(
-			'WritePlan::CommittedId($oAttachment)',
+			'WriteOutcome::CommittedId($oAttachment)',
 			$sSource,
 			'a committed attachment can still be reported as a failure'
 		);
@@ -246,7 +247,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 *
 	 * DBInsert() answers with the key as a string, so an int parameter on
 	 * anything a write path hands it throws under strict_types - after the
-	 * commit, which is what makes it expensive. WritePlan::Identity() was
+	 * commit, which is what makes it expensive. WriteOutcome::Identity() was
 	 * corrected for this once; DocumentAccess::Describe() had the same
 	 * signature and was reached by the same call.
 	 */
@@ -276,7 +277,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testTheIdentityHelperTakesTheIdAsITopReportsIt(): void
 	{
-		$oMethod = new ReflectionMethod(WritePlan::class, 'Identity');
+		$oMethod = new ReflectionMethod(WriteOutcome::class, 'Identity');
 		$aParams = $oMethod->getParameters();
 		$sType = (string) $aParams[1]->getType();
 
@@ -355,12 +356,12 @@ class WriteFailureReportingContractTest extends TestCase
 	{
 		$sSource = (string) file_get_contents(self::SRC.'/Core/Tools/ObjectDelete.php');
 
-		$this->assertStringContainsString('WritePlan::IsGone(', $sSource,
+		$this->assertStringContainsString('WriteOutcome::IsGone(', $sSource,
 			'the delete tool reports a failure without asking whether the row is still there');
 		$this->assertStringContainsString("'warning'", $sSource,
 			'a deletion that happened has nowhere to report the failure that followed it');
 
-		$sGone = $this->methodBody(WritePlan::class, 'IsGone');
+		$sGone = $this->methodBody(WriteOutcome::class, 'IsGone');
 
 		$this->assertStringContainsString('=== null', $sGone, 'absence is inferred rather than established');
 		$this->assertStringContainsString('catch (Throwable', $sGone,
@@ -516,13 +517,13 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testCreatingACredentialSaysTheCredentialIsNotInTheAnswer(): void
 	{
-		$sPlan = (string) file_get_contents(self::SRC.'/Service/Write/WritePlan.php');
+		$sPlan = (string) file_get_contents(self::SRC.'/Service/Write/WriteOutcome.php');
 
 		$this->assertStringContainsString('AuthentToken', $sPlan,
 			'the token classes are named rather than asked for by interface, so a later one is missed');
 		$this->assertStringContainsString(
 			'auth_token',
-			$this->methodBody(WritePlan::class, 'CredentialNote'),
+			$this->methodBody(WriteOutcome::class, 'CredentialNote'),
 			'the note does not mention the attribute the caller will go looking at'
 		);
 
@@ -534,7 +535,7 @@ class WriteFailureReportingContractTest extends TestCase
 		);
 
 		// Nothing is returned for an ordinary class, on any instance.
-		$this->assertNull(WritePlan::CredentialNote('UserRequest'));
+		$this->assertNull(WriteOutcome::CredentialNote('UserRequest'));
 	}
 
 	/**

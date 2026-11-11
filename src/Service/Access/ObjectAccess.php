@@ -159,7 +159,7 @@ class ObjectAccess
 	 * and on the console the attribute rights already decided what each shows.
 	 * On the console, all of them.
 	 *
-	 * @param array<string, mixed> $aChanges  As WritePlan::Changes() reports them.
+	 * @param array<string, mixed> $aChanges  As WriteOutcome::Changes() reports them.
 	 * @param array<int, string>   $aSupplied The attribute codes the caller sent.
 	 *
 	 * @return array<string, mixed>

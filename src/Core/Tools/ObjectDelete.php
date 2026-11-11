@@ -20,6 +20,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -77,7 +78,7 @@ class ObjectDelete extends AbstractMCPTool
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
+		return WriteOutcome::OutcomeSchema([
 			'deletionPlan' => DeletionCascade::DeletionPlanSchema(),
 		]);
 	}
@@ -96,7 +97,7 @@ class ObjectDelete extends AbstractMCPTool
 					'description' => 'The ID of the object to delete.',
 					'minimum'     => 1,
 				],
-				'obsolete_ok' => WritePlan::ObsoleteOkSchemaProperty('delete'),
+				'obsolete_ok' => WriteOutcome::ObsoleteOkSchemaProperty('delete'),
 				'simulate' => [
 					'type'        => 'boolean',
 					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Show the plan to the user, then call again with simulate=false to delete.',
@@ -247,12 +248,12 @@ class ObjectDelete extends AbstractMCPTool
 				// deletion that happened is reported as one with the failure
 				// attached - and only ever on positive evidence, since the
 				// opposite mistake says a thing is gone when it is not.
-				if (!WritePlan::IsGone($class, $id)) {
+				if (!WriteOutcome::IsGone($class, $id)) {
 					throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
 				}
 
 				return ToolOutput::Structured(['class' => $class]
-					+ WritePlan::Identity($class, $id)
+					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
@@ -266,7 +267,7 @@ class ObjectDelete extends AbstractMCPTool
 		}
 
 		return ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,

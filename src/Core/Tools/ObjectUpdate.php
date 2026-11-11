@@ -24,6 +24,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -87,11 +88,11 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
-			'after' => WritePlan::AfterSchemaProperty(),
-			'changes'    => WritePlan::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
-			'overridden' => WritePlan::OverriddenSchemaProperty(),
-			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
+		return WriteOutcome::OutcomeSchema([
+			'after' => WriteOutcome::AfterSchemaProperty(),
+			'changes'    => WriteOutcome::ChangesSchemaProperty('Only the attributes this update actually modifies.'),
+			'overridden' => WriteOutcome::OverriddenSchemaProperty(),
+			'defaulted'  => WriteOutcome::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -114,7 +115,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'additionalProperties' => true,
 				],
 				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),
-				'obsolete_ok' => WritePlan::ObsoleteOkSchemaProperty('update'),
+				'obsolete_ok' => WriteOutcome::ObsoleteOkSchemaProperty('update'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the change is being made'),
 			],
 			'required' => ['class', 'id', 'fields'],
@@ -280,7 +281,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		// After the check and before the write: this is the only point where
 		// the pending values are still pending, and it is what tells the user
 		// that "set status to closed" also cleared three other attributes.
-		$aChanges = WritePlan::Changes($oObject, $class);
+		$aChanges = WriteOutcome::Changes($oObject, $class);
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
@@ -288,15 +289,15 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 		if ($simulate) {
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
@@ -308,15 +309,15 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			$oObject->DBUpdate();
 
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		} catch (\Throwable $e) {
 			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to update {$class}::{$id}", $e));

@@ -288,7 +288,7 @@ final class DocumentAccess
 		// an unhandled error, and told the caller the attachment had failed
 		// after storing it.
 		//
-		// Same lesson as WritePlan::Identity(), which was corrected for the
+		// Same lesson as WriteOutcome::Identity(), which was corrected for the
 		// same reason: a declared type is a claim about the source, and ?int
 		// for an identifier is what an id ought to be rather than what the ORM
 		// hands over. Normalised in one place instead.

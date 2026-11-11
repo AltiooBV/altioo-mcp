@@ -303,13 +303,13 @@ final class DeletionCascade
 
 		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
 			foreach (array_keys($aEntries) as $iId) {
-				$aDeleted[] = WritePlan::Identity($sClass, $iId);
+				$aDeleted[] = WriteOutcome::Identity($sClass, $iId);
 			}
 		}
 
 		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
 			foreach (array_keys($aEntries) as $iId) {
-				$aUpdated[] = WritePlan::Identity($sClass, $iId);
+				$aUpdated[] = WriteOutcome::Identity($sClass, $iId);
 			}
 		}
 
