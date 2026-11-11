@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -77,7 +78,7 @@ class ObjectDelete extends AbstractMCPTool
 	public function getOutputSchema(): ?array
 	{
 		return WritePlan::OutcomeSchema([
-			'deletionPlan' => WritePlan::DeletionPlanSchema(),
+			'deletionPlan' => DeletionCascade::DeletionPlanSchema(),
 		]);
 	}
 
@@ -221,8 +222,8 @@ class ObjectDelete extends AbstractMCPTool
 		// iTop builds the plan with rights off, so what it came back with may
 		// reach classes this caller was never granted. Refused rather than
 		// filtered, and refused on a dry run as well as on the real call - see
-		// WritePlan::CheckDeletionRights().
-		WritePlan::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
+		// DeletionCascade::CheckDeletionRights().
+		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
 
 		if (!$simulate) {
 			// Said before the write: a deletion also updates the objects that
@@ -255,7 +256,7 @@ class ObjectDelete extends AbstractMCPTool
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
@@ -269,7 +270,7 @@ class ObjectDelete extends AbstractMCPTool
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 			]);
 	}
 

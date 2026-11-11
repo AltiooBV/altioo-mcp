@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
@@ -68,7 +69,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 	public function getOutputSchema(): ?array
 	{
-		return self::reportSchema(['deletionPlan' => WritePlan::DeletionPlanSchema()]);
+		return self::reportSchema(['deletionPlan' => DeletionCascade::DeletionPlanSchema()]);
 	}
 
 	public function getInputSchema(): ?array
@@ -123,7 +124,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// An entry that never got as far as a plan still reports one, empty:
 		// the schema promises deletionPlan on every entry.
 		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, [
-			'deletionPlan' => WritePlan::SerializeDeletionPlan(null),
+			'deletionPlan' => DeletionCascade::SerializeDeletionPlan(null),
 		]));
 	}
 
@@ -152,9 +153,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 		// Per object rather than for the batch: the cascade of one id can reach
 		// classes the cascade of the next one does not, and a bulk call reports
-		// each object on its own. See WritePlan::CheckDeletionRights().
+		// each object on its own. See DeletionCascade::CheckDeletionRights().
 		try {
-			WritePlan::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
+			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
 		} catch (ToolCallException $e) {
 			return self::outcome($iId, $iRow, false, $e->getMessage());
 		}
@@ -171,7 +172,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		}
 
 		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
-		$aOutcome['deletionPlan'] = WritePlan::SerializeDeletionPlan($oPlan);
+		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan);
 
 		return $aOutcome;
 	}

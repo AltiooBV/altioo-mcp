@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -91,7 +92,7 @@ class DeletionRightsContractTest extends TestCase
 	public function testTheCascadeIsChecked(string $sClass, string $sMethod): void
 	{
 		$this->assertStringContainsString(
-			'WritePlan::CheckDeletionRights',
+			'DeletionCascade::CheckDeletionRights',
 			$this->body($sClass, $sMethod),
 			'this tool deletes without checking the rights on what the cascade reaches, which iTop does not check either'
 		);
@@ -106,7 +107,7 @@ class DeletionRightsContractTest extends TestCase
 	{
 		$sCode = $this->body($sClass, $sMethod);
 
-		$iCheck  = strpos($sCode, 'WritePlan::CheckDeletionRights');
+		$iCheck  = strpos($sCode, 'DeletionCascade::CheckDeletionRights');
 		$iDelete = strpos($sCode, 'DBDelete');
 
 		$this->assertIsInt($iCheck, 'the cascade check is gone');
@@ -131,7 +132,7 @@ class DeletionRightsContractTest extends TestCase
 	{
 		$sCode = $this->body($sClass, $sMethod);
 
-		$iCheck    = strpos($sCode, 'WritePlan::CheckDeletionRights');
+		$iCheck    = strpos($sCode, 'DeletionCascade::CheckDeletionRights');
 		$iSimulate = strpos($sCode, 'if(!$simulate)');
 		if ($iSimulate === false) {
 			$iSimulate = strpos($sCode, 'if(!$bSimulate)');

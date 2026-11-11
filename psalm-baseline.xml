@@ -265,7 +265,7 @@
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
@@ -276,7 +276,7 @@
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 			])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
