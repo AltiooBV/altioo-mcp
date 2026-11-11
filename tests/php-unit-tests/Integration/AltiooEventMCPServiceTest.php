@@ -181,7 +181,7 @@ class AltiooEventMCPServiceTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * Mirrors what MCPController::logIfConfigured() writes, including the
+	 * Mirrors what CallLog::LogIfConfigured() writes, including the
 	 * DBInsertNoReload() it uses.
 	 */
 	public function testAnAuditEntryCanBeWrittenAndReadBack(): void

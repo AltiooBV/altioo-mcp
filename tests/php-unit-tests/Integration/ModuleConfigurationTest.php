@@ -117,7 +117,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * MCPController::logIfConfigured() only writes an audit row when the method
+	 * CallLog::LogIfConfigured() only writes an audit row when the method
 	 * appears in this list, so the methods it extracts must be in it.
 	 */
 	public function testLoggedMethodsCoverTheMethodsTheControllerExtracts(): void

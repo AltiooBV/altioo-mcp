@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
@@ -133,7 +134,7 @@ class PortalModeTest extends TestCase
 		$this->assertLessThan($iForget, $iAudience, 'the audience is asked after the token is dropped');
 
 		$this->assertStringContainsString('OAuthResource::CalledEndpointUrl()', self::bodyOf(MCPController::class, 'rejectATokenGrantedForAnotherUrl'));
-		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(MCPController::class, 'logIfConfigured'));
+		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(CallLog::class, 'LogIfConfigured'));
 		$this->assertStringContainsString('PortalMode::Requested()', self::bodyOf(MCPController::class, 'admitInPortalMode'));
 	}
 

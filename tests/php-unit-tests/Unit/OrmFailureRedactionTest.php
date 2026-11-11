@@ -124,7 +124,7 @@ class OrmFailureRedactionTest extends TestCase
 		// And the reference has to reach that row, which is the half that was
 		// missing: minted in the helper, written by the controller.
 		$sController = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Controller\MCPController::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Controller\CallLog::class))->getFileName()
 		);
 		$this->assertStringContainsString('ErrorReport::MintedReferences()', $sController,
 			'the audit row records only the controller\'s own reference, so a tool-level one resolves to nothing');

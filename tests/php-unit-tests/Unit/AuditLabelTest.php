@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Mcp\Server\Stateless\RequestMeta;
@@ -164,9 +165,9 @@ class AuditLabelTest extends TestCase
 
 	public function testTheAuditRowsMessageGoesThroughTheSameNormaliser(): void
 	{
-		$sSource = (string) file_get_contents((string) (new \ReflectionClass(MCPController::class))->getFileName());
+		$sSource = (string) file_get_contents((string) (new \ReflectionClass(CallLog::class))->getFileName());
 
-		$this->assertMatchesRegularExpression("/->Set\\('message',\\s*self::auditLabel\\(/", $sSource);
+		$this->assertMatchesRegularExpression("/->Set\\('message',\\s*self::AuditLabel\\(/", $sSource);
 		$this->assertDoesNotMatchRegularExpression("/->Set\\('message',\\s*\\\$oResult->message\\)/", $sSource);
 	}
 
@@ -227,7 +228,7 @@ class AuditLabelTest extends TestCase
 
 	private static function label(mixed $mValue, ?int $iMaxChars): ?string
 	{
-		return (new ReflectionMethod(MCPController::class, 'auditLabel'))->invoke(null, $mValue, $iMaxChars);
+		return (new ReflectionMethod(CallLog::class, 'AuditLabel'))->invoke(null, $mValue, $iMaxChars);
 	}
 
 	/**

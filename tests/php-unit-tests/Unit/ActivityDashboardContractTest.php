@@ -137,7 +137,7 @@ class ActivityDashboardContractTest extends TestCase
 	 */
 	public function testTheRefusedLoginDashletMatchesWhatTheControllerWrites(): void
 	{
-		$sController = (string)file_get_contents(self::ROOT.'/src/Controller/MCPController.php');
+		$sController = (string)file_get_contents(self::ROOT.'/src/Controller/CallLog.php');
 		$this->assertStringContainsString("->Set('mcp_method', 'login')", $sController);
 		$this->assertStringContainsString("->Set('mcp_name', 'portal_admission')", $sController);
 

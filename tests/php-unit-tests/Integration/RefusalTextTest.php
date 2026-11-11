@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
@@ -45,7 +46,7 @@ class RefusalTextTest extends ItopDataTestCaseAlias
 		$oResult->mcpName = $sName;
 		$oResult->toolText = "Value '".self::QUOTED."' is not allowed for 'email'.";
 		$oResult->requestParams = '{"name":"'.$sName.'"}';
-		(new ReflectionMethod(MCPController::class, 'logIfConfigured'))->invoke(null, $oResult);
+		(new ReflectionMethod(CallLog::class, 'LogIfConfigured'))->invoke(null, $oResult);
 
 		$oSearch = new DBObjectSearch('AltiooEventMCPService');
 		$oSearch->AddCondition('mcp_name', $sName, '=');
