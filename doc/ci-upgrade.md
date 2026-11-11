@@ -99,6 +99,9 @@ ITOP_ZIP_URL=$(php tools/ci/resolve-itop-versions.php --zip=3.2) \
 ITOP_DIR=/tmp/itop DB_PWD=root php tools/ci/upgrade-fixture.php /tmp/itop seed
 ITOP_DIR=/tmp/itop DB_PWD=root tools/ci/upgrade-module.sh
 ITOP_DIR=/tmp/itop DB_PWD=root php tools/ci/upgrade-fixture.php /tmp/itop verify
+
+# the seeded exclusions are for verify; the integration suite expects none
+ITOP_DIR=/tmp/itop DB_PWD=root php tools/ci/upgrade-fixture.php /tmp/itop reset
 ```
 
 `upgrade-module.sh` refuses to run against a tree that is not an installed iTop, and against an
