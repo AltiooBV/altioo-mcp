@@ -30,6 +30,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -109,8 +110,8 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	private function exclude(mixed $aClasses, mixed $aAttributes): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
 		ExclusionPolicy::Forget();
 	}
 
@@ -288,10 +289,10 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 			ObjectCreate::execute('Person', ['name' => 'N', 'first_name' => 'F'], false);
 			$this->fail('created');
 		} catch (ToolCallException $e) {
-			$this->assertStringContainsString(ExclusionPolicy::SETTING_ATTRIBUTES, $e->getMessage());
+			$this->assertStringContainsString(ExclusionSettings::SETTING_ATTRIBUTES, $e->getMessage());
 			$this->assertStringNotContainsString('org_id', $e->getMessage());
 		}
-		$this->assertStringContainsString(ExclusionPolicy::SETTING_ATTRIBUTES, (string)ExclusionPolicy::RefusalToCreate('Person'));
+		$this->assertStringContainsString(ExclusionSettings::SETTING_ATTRIBUTES, (string)ExclusionPolicy::RefusalToCreate('Person'));
 	}
 
 	// ------------------------------------------------------------------ the class

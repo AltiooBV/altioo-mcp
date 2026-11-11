@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;
@@ -47,9 +48,9 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 	private function exclude(array $aClasses): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, []);
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_EXEMPT_PROFILES, []);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, []);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_EXEMPT_PROFILES, []);
 		ExclusionPolicy::Forget();
 	}
 

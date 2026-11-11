@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,7 +19,7 @@ class ExclusionPolicyTest extends TestCase
 {
 	public function testNothingIsExcludedByDefault(): void
 	{
-		$aParsed = ExclusionPolicy::Parse([], []);
+		$aParsed = ExclusionSettings::Parse([], []);
 
 		$this->assertNull($aParsed['problem']);
 		$this->assertSame([], $aParsed['classes']);
@@ -28,7 +28,7 @@ class ExclusionPolicyTest extends TestCase
 
 	public function testAListIsReadByName(): void
 	{
-		$aParsed = ExclusionPolicy::Parse(['Person', ' Team '], ['Person' => ['phone', 'mobile_phone']]);
+		$aParsed = ExclusionSettings::Parse(['Person', ' Team '], ['Person' => ['phone', 'mobile_phone']]);
 
 		$this->assertNull($aParsed['problem']);
 		$this->assertSame(['person' => 'Person', 'team' => 'Team'], $aParsed['classes']);
@@ -40,7 +40,7 @@ class ExclusionPolicyTest extends TestCase
 	 */
 	public function testAValueThatCannotBeHonouredIsAProblemAndNeverEmpty(mixed $mClasses, mixed $mAttributes): void
 	{
-		$aParsed = ExclusionPolicy::Parse($mClasses, $mAttributes);
+		$aParsed = ExclusionSettings::Parse($mClasses, $mAttributes);
 
 		$this->assertNotNull($aParsed['problem'], 'a setting that cannot be honoured read as empty, which is the spelling of "nothing is excluded"');
 		$this->assertSame([], $aParsed['classes']);
@@ -65,8 +65,8 @@ class ExclusionPolicyTest extends TestCase
 
 	public function testTheExemptProfilesAreReadAsNames(): void
 	{
-		$this->assertSame(['profiles' => [], 'problem' => null], ExclusionPolicy::ParseExempt([]));
-		$this->assertSame(['profiles' => ['MCP Exempt'], 'problem' => null], ExclusionPolicy::ParseExempt([' MCP Exempt ', 'MCP Exempt']));
+		$this->assertSame(['profiles' => [], 'problem' => null], ExclusionSettings::ParseExempt([]));
+		$this->assertSame(['profiles' => ['MCP Exempt'], 'problem' => null], ExclusionSettings::ParseExempt([' MCP Exempt ', 'MCP Exempt']));
 	}
 
 	/**
@@ -74,7 +74,7 @@ class ExclusionPolicyTest extends TestCase
 	 */
 	public function testExemptProfilesThatCannotBeHonouredAreAProblemAndNeverAnExemption(mixed $mValue): void
 	{
-		$aParsed = ExclusionPolicy::ParseExempt($mValue);
+		$aParsed = ExclusionSettings::ParseExempt($mValue);
 
 		$this->assertNotNull($aParsed['problem']);
 		$this->assertSame([], $aParsed['profiles']);

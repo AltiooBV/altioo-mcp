@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -99,9 +100,9 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	private function configure(mixed $aClasses, mixed $aAttributes, mixed $aExempt): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
-		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionPolicy::SETTING_EXEMPT_PROFILES, $aExempt);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_EXEMPT_PROFILES, $aExempt);
 		ExclusionPolicy::Forget();
 		PortalPolicy::Forget();
 	}
