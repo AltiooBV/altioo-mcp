@@ -95,7 +95,7 @@ final class ObjectHistory
 	 * held, and a long text attribute puts its whole previous body in one. The
 	 * ceiling is ObjectSerializer's, for the same reason it has one.
 	 */
-	public const MAX_VALUE_CHARS = ObjectSerializer::MAX_TEXT_CHARS;
+	public const MAX_VALUE_CHARS = ValueCeilings::MAX_TEXT_CHARS;
 
 	/**
 	 * How the console orders the same rows, and why.

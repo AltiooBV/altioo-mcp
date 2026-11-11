@@ -66,16 +66,6 @@ final class ObjectSerializer
 	public const MASK = '*****';
 
 	/**
-	 * Ceilings on the three attribute kinds that have no natural size.
-	 *
-	 * None of them is a limit on what the caller may read: each one says how it
-	 * was cut, and naming the attribute in output_fields returns it whole.
-	 */
-	public const MAX_TEXT_CHARS = 4000;
-	public const MAX_CASELOG_ENTRIES = 10;
-	public const MAX_LINKS = 50;
-
-	/**
 	 * What a list of objects reports when the caller says nothing, the same
 	 * default ObjectResult::FromDBObject() applies on the REST side.
 	 */
@@ -333,43 +323,14 @@ final class ObjectSerializer
 		}
 
 		if ($oAttDef instanceof AttributeCaseLog) {
-			return self::clip(self::recentEntries($value));
+			return ValueCeilings::clip(ValueCeilings::recentEntries($value));
 		}
 
 		if ($oAttDef instanceof AttributeLinkedSet) {
-			return self::clip(self::firstLinks($value));
+			return ValueCeilings::clip(ValueCeilings::firstLinks($value));
 		}
 
-		return self::clip($value);
-	}
-
-	/**
-	 * The tail of a case log, which is the part anyone asks about.
-	 *
-	 * A five-year-old incident carries hundreds of entries and reaches the
-	 * caller in full. GetForJSON() returns them oldest first, so the recent
-	 * ones - the state of the conversation now - are at the end.
-	 *
-	 * @param mixed $value As AttributeCaseLog::GetForJSON() returns it.
-	 *
-	 * @return mixed
-	 */
-	private static function recentEntries($value)
-	{
-		if (!is_array($value) || !isset($value['entries']) || !is_array($value['entries'])) {
-			return $value;
-		}
-
-		$iTotal = count($value['entries']);
-		if ($iTotal <= self::MAX_CASELOG_ENTRIES) {
-			return $value;
-		}
-
-		$value['entries'] = array_values(array_slice($value['entries'], -self::MAX_CASELOG_ENTRIES));
-		$value['entries_omitted'] = $iTotal - self::MAX_CASELOG_ENTRIES;
-		$value['entries_total'] = $iTotal;
-
-		return $value;
+		return ValueCeilings::clip($value);
 	}
 
 	/**
@@ -435,57 +396,6 @@ final class ObjectSerializer
 		}
 
 		return $value;
-	}
-
-	/**
-	 * The head of a link set, with a count of what was left out.
-	 *
-	 * A rack with four hundred devices, expanded attribute by attribute, is
-	 * larger than everything else in the response put together.
-	 *
-	 * @param mixed $value As AttributeLinkedSet::GetForJSON() returns it.
-	 *
-	 * @return mixed
-	 */
-	private static function firstLinks($value)
-	{
-		if (!is_array($value) || count($value) <= self::MAX_LINKS) {
-			return $value;
-		}
-
-		return [
-			'links'         => array_values(array_slice($value, 0, self::MAX_LINKS)),
-			'links_omitted' => count($value) - self::MAX_LINKS,
-			'links_total'   => count($value),
-		];
-	}
-
-	/**
-	 * Cuts long strings, wherever they sit in a value.
-	 *
-	 * One description can hold an entire email thread, quoted signatures and
-	 * all. The cut says so in the value itself rather than in a flag beside
-	 * it, so a model reading the text knows it is reading part of it - and is
-	 * told, in the text, how to read the rest.
-	 *
-	 * @param mixed $value
-	 *
-	 * @return mixed
-	 */
-	private static function clip($value)
-	{
-		if (is_array($value)) {
-			return array_map(static fn ($mItem) => self::clip($mItem), $value);
-		}
-
-		if (!is_string($value) || mb_strlen($value) <= self::MAX_TEXT_CHARS) {
-			return $value;
-		}
-
-		$iOmitted = mb_strlen($value) - self::MAX_TEXT_CHARS;
-
-		return mb_substr($value, 0, self::MAX_TEXT_CHARS)
-			.sprintf(' […truncated, %d more characters. Name this attribute in output_fields to read it in full]', $iOmitted);
 	}
 
 	/**

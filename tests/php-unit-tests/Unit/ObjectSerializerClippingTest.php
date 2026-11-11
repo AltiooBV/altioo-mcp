@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Service\Read\ValueCeilings;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -43,11 +44,11 @@ class ObjectSerializerClippingTest extends TestCase
 
 	public function testALongTextIsCutAndSaysSo(): void
 	{
-		$sText = str_repeat('x', ObjectSerializer::MAX_TEXT_CHARS + 500);
+		$sText = str_repeat('x', ValueCeilings::MAX_TEXT_CHARS + 500);
 
 		$sClipped = $this->clip($sText);
 
-		$this->assertStringStartsWith(str_repeat('x', ObjectSerializer::MAX_TEXT_CHARS), $sClipped);
+		$this->assertStringStartsWith(str_repeat('x', ValueCeilings::MAX_TEXT_CHARS), $sClipped);
 		$this->assertStringContainsString('500 more characters', $sClipped);
 		// The way out has to travel with the value: a model that only ever
 		// sees the truncated text is the one that needs to know.
@@ -59,7 +60,7 @@ class ObjectSerializerClippingTest extends TestCase
 		// 'é' is two bytes; cutting on bytes would both cut early and risk
 		// splitting the last character in half, which is not valid UTF-8 and
 		// would take the whole json_encode down with it.
-		$sText = str_repeat('é', ObjectSerializer::MAX_TEXT_CHARS + 10);
+		$sText = str_repeat('é', ValueCeilings::MAX_TEXT_CHARS + 10);
 
 		$sClipped = $this->clip($sText);
 
@@ -69,7 +70,7 @@ class ObjectSerializerClippingTest extends TestCase
 
 	public function testLongTextIsCutWhereverItSits(): void
 	{
-		$aValue = ['entries' => [['message' => str_repeat('x', ObjectSerializer::MAX_TEXT_CHARS + 1)]]];
+		$aValue = ['entries' => [['message' => str_repeat('x', ValueCeilings::MAX_TEXT_CHARS + 1)]]];
 
 		$aClipped = $this->clip($aValue);
 
@@ -80,16 +81,16 @@ class ObjectSerializerClippingTest extends TestCase
 	{
 		// GetForJSON() returns them oldest first, so "recent" is the tail.
 		$aEntries = [];
-		for ($i = 1; $i <= ObjectSerializer::MAX_CASELOG_ENTRIES + 5; $i++) {
+		for ($i = 1; $i <= ValueCeilings::MAX_CASELOG_ENTRIES + 5; $i++) {
 			$aEntries[] = ['message' => "entry {$i}"];
 		}
 
 		$aClipped = $this->recentEntries(['entries' => $aEntries]);
 
-		$this->assertCount(ObjectSerializer::MAX_CASELOG_ENTRIES, $aClipped['entries']);
-		$this->assertSame('entry '.(ObjectSerializer::MAX_CASELOG_ENTRIES + 5), end($aClipped['entries'])['message']);
+		$this->assertCount(ValueCeilings::MAX_CASELOG_ENTRIES, $aClipped['entries']);
+		$this->assertSame('entry '.(ValueCeilings::MAX_CASELOG_ENTRIES + 5), end($aClipped['entries'])['message']);
 		$this->assertSame(5, $aClipped['entries_omitted']);
-		$this->assertSame(ObjectSerializer::MAX_CASELOG_ENTRIES + 5, $aClipped['entries_total']);
+		$this->assertSame(ValueCeilings::MAX_CASELOG_ENTRIES + 5, $aClipped['entries_total']);
 	}
 
 	public function testAShortCaseLogIsUntouched(): void
@@ -101,13 +102,13 @@ class ObjectSerializerClippingTest extends TestCase
 
 	public function testALinkSetIsCappedAndCounted(): void
 	{
-		$aLinks = array_fill(0, ObjectSerializer::MAX_LINKS + 3, ['id' => 1]);
+		$aLinks = array_fill(0, ValueCeilings::MAX_LINKS + 3, ['id' => 1]);
 
 		$aClipped = $this->firstLinks($aLinks);
 
-		$this->assertCount(ObjectSerializer::MAX_LINKS, $aClipped['links']);
+		$this->assertCount(ValueCeilings::MAX_LINKS, $aClipped['links']);
 		$this->assertSame(3, $aClipped['links_omitted']);
-		$this->assertSame(ObjectSerializer::MAX_LINKS + 3, $aClipped['links_total']);
+		$this->assertSame(ValueCeilings::MAX_LINKS + 3, $aClipped['links_total']);
 	}
 
 	/**
@@ -214,19 +215,19 @@ class ObjectSerializerClippingTest extends TestCase
 	/** @return mixed */
 	private function clip($value)
 	{
-		return (new ReflectionMethod(ObjectSerializer::class, 'clip'))->invoke(null, $value);
+		return (new ReflectionMethod(ValueCeilings::class, 'clip'))->invoke(null, $value);
 	}
 
 	/** @return mixed */
 	private function recentEntries($value)
 	{
-		return (new ReflectionMethod(ObjectSerializer::class, 'recentEntries'))->invoke(null, $value);
+		return (new ReflectionMethod(ValueCeilings::class, 'recentEntries'))->invoke(null, $value);
 	}
 
 	/** @return mixed */
 	private function firstLinks($value)
 	{
-		return (new ReflectionMethod(ObjectSerializer::class, 'firstLinks'))->invoke(null, $value);
+		return (new ReflectionMethod(ValueCeilings::class, 'firstLinks'))->invoke(null, $value);
 	}
 
 	private function methodBody(string $sClass, string $sMethod): string
