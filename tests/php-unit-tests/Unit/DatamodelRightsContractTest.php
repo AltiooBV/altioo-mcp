@@ -84,8 +84,8 @@ class DatamodelRightsContractTest extends TestCase
 			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
 		));
 
-		$this->assertStringContainsString('AccessGrants::IsBarred', $sBody, 'the block never asks the barrier');
-		$this->assertStringContainsString('AccessGrants::IsDelegating', $sBody,
+		$this->assertStringContainsString('AccessGrantFamilies::IsBarred', $sBody, 'the block never asks the barrier');
+		$this->assertStringContainsString('AccessGrantFamilies::IsDelegating', $sBody,
 			'the block asks one half of the barrier, so a synchronisation class is graded with the wrong sentence');
 		$this->assertStringContainsString('AllowsAccessAdministration', $sBody, 'the setting that decides is not consulted');
 		$this->assertStringContainsString("'restricted'", $sBody, 'a caller is told no without being told why');

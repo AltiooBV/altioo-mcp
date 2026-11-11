@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
@@ -656,18 +656,18 @@ final class DatamodelReader
 				return $aRights + ['restricted' => sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass)];
 			}
 
-			$bListed = AccessGrants::IsOperatorListed($sClass, Settings::GetEscalationClasses());
-			$bBarred = AccessGrants::IsBarred($sClass);
+			$bListed = AccessGrantFamilies::IsOperatorListed($sClass, Settings::GetEscalationClasses());
+			$bBarred = AccessGrantFamilies::IsBarred($sClass);
 			if (!$bBarred && !$bListed) {
 				return $aRights + ['restricted' => null];
 			}
 
-			$bGranting              = AccessGrants::IsGranting($sClass);
-			$bDelegating            = AccessGrants::IsDelegating($sClass);
-			$bAutomation            = AccessGrants::IsAutomation($sClass);
-			$bRecording             = AccessGrants::IsRecording($sClass);
-			$bDetection             = AccessGrants::IsDetection($sClass);
-			$bPersonal              = AccessGrants::IsPersonal($sClass);
+			$bGranting              = AccessGrantFamilies::IsGranting($sClass);
+			$bDelegating            = AccessGrantFamilies::IsDelegating($sClass);
+			$bAutomation            = AccessGrantFamilies::IsAutomation($sClass);
+			$bRecording             = AccessGrantFamilies::IsRecording($sClass);
+			$bDetection             = AccessGrantFamilies::IsDetection($sClass);
+			$bPersonal              = AccessGrantFamilies::IsPersonal($sClass);
 			$bAdministrationAllowed = Settings::AllowsAccessAdministration();
 			$bEscalationAllowed     = Settings::AllowsPrivilegeEscalation();
 		} catch (\Throwable $e) {

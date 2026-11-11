@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
@@ -51,7 +52,7 @@ class EscalationClassesTest extends TestCase
 	public function testTheNameIsMatchedWhateverItsCase(): void
 	{
 		$this->assertNotNull(AccessGrants::RefusalGiven(false, 'MASSUPDATEJOB', null, [], false, ['MassUpdateJob']));
-		$this->assertTrue(AccessGrants::IsOperatorListed('massupdatejob', ['MassUpdateJob']));
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('massupdatejob', ['MassUpdateJob']));
 	}
 
 	/**
@@ -60,14 +61,14 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testASubclassOfAListedClassIsRefused(): void
 	{
-		$this->assertTrue(AccessGrants::IsOperatorListed('RuntimeException', ['Exception']));
-		$this->assertFalse(AccessGrants::IsOperatorListed('Exception', ['RuntimeException']), 'a parent is not covered by listing its child');
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('RuntimeException', ['Exception']));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Exception', ['RuntimeException']), 'a parent is not covered by listing its child');
 	}
 
 	public function testAClassNotListedIsLeftAlone(): void
 	{
-		$this->assertFalse(AccessGrants::IsOperatorListed('Organization', ['MassUpdateJob']));
-		$this->assertFalse(AccessGrants::IsOperatorListed('Organization', []));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Organization', ['MassUpdateJob']));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Organization', []));
 		$this->assertNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], false, ['MassUpdateJob']));
 	}
 
@@ -82,7 +83,7 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testAMalformedListRefusesEveryClass(): void
 	{
-		$this->assertTrue(AccessGrants::IsOperatorListed('Organization', null));
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('Organization', null));
 		$this->assertNotNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], false, null));
 		$this->assertNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], true, null));
 	}
@@ -154,7 +155,7 @@ class EscalationClassesTest extends TestCase
 	{
 		$this->assertStringContainsString('Settings::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
 		$this->assertStringContainsString(
-			'AccessGrants::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
+			'AccessGrantFamilies::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
 			$this->body(DatamodelReader::class, 'narrowedByTheBarrier')
 		);
 	}

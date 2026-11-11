@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Read;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBlob;
 use AttributeCaseLog;
@@ -934,9 +934,9 @@ final class ObjectSerializer
 		// AttributeEncryptedPassword, which is caught above, while OAuthClient
 		// keeps refresh_token and token in AttributeText - so a live token
 		// this instance authenticates to a mail provider with was reported in
-		// clear. AccessGrants names the classes and the attributes; see
+		// clear. AccessGrantRoots names the classes and the attributes; see
 		// OUTBOUND_SECRET_ATTRIBUTES for why that is a list and not a pattern.
-		if ($sClass !== null && AccessGrants::IsOutboundSecret($sClass, $oAttDef->GetCode())) {
+		if ($sClass !== null && AccessGrantFamilies::IsOutboundSecret($sClass, $oAttDef->GetCode())) {
 			return true;
 		}
 
