@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRoots;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
@@ -262,7 +263,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheRecoverableSecretTypesAreDeliberatelyNotMatched(): void
 	{
-		$sSource = (string)file_get_contents((new ReflectionClass(AccessGrants::class))->getFileName());
+		$sSource = (string)file_get_contents((new ReflectionClass(AccessGrants::class))->getFileName())
+			.(string)file_get_contents((new ReflectionClass(AccessGrantRoots::class))->getFileName());
 		$sCode = $this->stripComments($sSource);
 
 		foreach (['AttributePassword', 'AttributeEncryptedString', 'AttributeEncryptedPassword'] as $sType) {
