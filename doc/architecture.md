@@ -137,8 +137,10 @@ sequenceDiagram
   this module adds is the `401` that starts it and, with
   [ADR 0007](adr/0007-the-connection-names-its-portal.md), the check that a granted token is
   used only at the URL it was granted for.
-- **Every call passes the same gates whichever way the token came**; the list and their order
-  are in [doc/security-summary.md](security-summary.md), "The gates a call passes".
+- **Every call passes the same gates whichever way the token came**; the list and its order are
+  `Controller\MCPController::GATES`, and "How one request flows" below says what each answers.
+  [doc/security-summary.md](security-summary.md), "The gates a call passes", is the operator's view
+  of what the gates and the tools together enforce.
 
 ## Inside the module — the folders and their order
 
@@ -185,7 +187,7 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 | `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy` (with `ExclusionSettings` and `ExclusionSearches`), `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
 | `Service\Audit` | The audit trail: `AuditRetention`, `ChangeSummary`, `ReadSummary` |
 | `Helper`, `Model`, `Exception` | Small stateless utilities and per-request facts (`Settings`, `MCPLog`, `PortalMode`, `ObjectId`, `MCPHttp`), the value object `MCPResult`, and the exceptions |
-| `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`. iTop has no equivalent folder |
+| `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`; the classes beside it that a pack may call are on the `@api` surface below. iTop has no equivalent folder |
 
 ### How one request flows
 
@@ -196,8 +198,10 @@ succeeds.
    order of its `GATES` list: `PreflightGate`, `HostIsServedGate`, `BodyIsJsonGate`,
    `CredentialPresentedGate`, `TokenNotAParameterGate`, `LoginGate`, `McpProfileGate`,
    `TokenLoginAccountedForGate`, `TokenAudienceGate`. Each lets the request go on or answers
-   it. The list and why it is in that order are in
-   [doc/security-summary.md](security-summary.md), "The gates a call passes". `PortalAdmission`,
+   it. The list is the code's (`MCPController::GATES`), the order is the security property, and
+   the reason is on `Controller\Gate\iGate`: each gate stands where it does because of a side effect
+   it must come before. What each one answers is the R1–R13 rows of the table under
+   [Troubleshooting](#1-the-request-path). `PortalAdmission`,
    which `LoginGate` uses, calls `Service\Server\RequestScope::EnterPortal()` for a portal-only
    user, which sets the portal and the access that answers for it together.
 2. The controller decides the caller's `Service\Rights\AccessPolicy`, opens the request with it
@@ -232,9 +236,11 @@ succeeds.
   imports and same-namespace references from the PHP tokens and fails on a class importing a
   layer above its own. Its baseline of accepted violations is empty, and an entry is removed
   in the commit that fixes it.
-- **The `@api` surface** is `PublicSurfaceTest`: a class carries `@api` only under `src/Api/`
-  or in its `EXTRA_SURFACE`, and every other class says `@internal`.
-  [doc/extending.md](extending.md) names the four classes outside `Api`.
+- **The `@api` surface** ([ADR 0016](adr/0016-what-the-core-tools-use-is-public.md)) is
+  `PublicSurfaceTest`: a class carries `@api` under `src/Api/`, when an element under `src/Core/`
+  depends on it, or when a public signature of one of those names it as a type; every other class
+  says `@internal`. The test fails when the surface and the elements' dependencies disagree, and
+  [doc/extending.md](extending.md) lists what a pack may call.
 - **A tool's security checks** (ADR 0014: the barrier, the change-log reservation, the gate order of the
   controller, the policies before every value conversion) are contract tests that read PHP tokens through
   `Support\SourceCalls`, resolving `X::m(` through the file's `use` lines, so a comment or a string that
@@ -246,8 +252,8 @@ succeeds.
 Four flowcharts for whoever has a client reporting an error and has to find which step said it.
 Each stop is a red box with a number; the table under the diagram gives, for that number, what the
 client sees, the class and method that produced it, and what the operator finds in `log/error.log`.
-The order of the gates and the reason for it are in
-[doc/security-summary.md](security-summary.md), "The gates a call passes", and the folders the
+The order of the gates is `Controller\MCPController::GATES` and the reason for it is on
+`Controller\Gate\iGate`; the folders the
 classes live in are in [Inside the module](#inside-the-module--the-folders-and-their-order); this
 section does not repeat either. The texts are copied from the source of this branch, and
 the source wins where they differ. Names carry no namespace: `Controller\Gate\LoginGate` is written

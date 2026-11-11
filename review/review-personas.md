@@ -31,7 +31,12 @@ release archive.
   (`src/Service/Rights/TokenScopes.php`), `mcp_read_only` and `mcp_capabilities`, the write barriers in
   `SECURITY.md` ("The rule the write barriers reduce to"), and whether "dry run by default" is
   enforced by the server or only asked of the client. A control that works only if the model
-  obeys a tool description is not a control.
+  obeys a tool description is not a control. Then the exclusions (`mcp_excluded_classes`,
+  `mcp_excluded_attributes`, ADR 0012): probe them as an oracle, never only as a read — an
+  excluded attribute named in a search filter, an OQL condition or `order_by`, a count, a
+  related-objects walk, a history or attachment read, an error text that differs from the one for
+  an unknown name. The class or attribute must be absent, with the same answer as one that does
+  not exist.
 - **Blocks:** release.
 
 ### Agent client and the person behind it — purple, after the guide's installing client / operator
@@ -50,11 +55,28 @@ release archive.
 - **Blocks:** release when a refused action succeeds another way or a partial result reads as
   success; otherwise backlog.
 
-### Company end-user — purple, after the agent client above
+### Pack author — purple, after the agent client above
+
+- **Question:** a developer who built a tool pack against 1.x, or who opens
+  [`doc/extending.md`](../doc/extending.md) cold: can they port it, can they tell from the
+  changelog what changed and what replaces what they lost, and does the `@api` surface they are
+  left with let them stay correct — honour the operator's exclusions, log, read settings,
+  check access — without reimplementing a core tool's checks and missing one?
+- **Open:** the changelog's name table against the pack's own imports; `doc/extending.md` read as
+  the only documentation, for every class it tells a pack to call and every one it forbids;
+  the surface itself, which is `src/Api/` plus whatever `src/Core` depends on, as
+  [ADR 0016](../doc/adr/0016-what-the-core-tools-use-is-public.md) defines it
+  (`PublicSurfaceTest`), for a check a core tool asks that a pack cannot; the rule that a tool
+  returning object data asks `Service\Rights\ExclusionPolicy`; and `doc/example-pack` and its suite,
+  built and run as a pack author would, for whether it still shows the way.
+- **Blocks:** backlog; release when a pack that follows the documentation returns data an
+  operator excluded.
+
+### Company end-user — purple, after the pack author above
 
 - **Question:** someone at a client organisation holding the narrowest access the instance hands
   out — a console account with a profile or two, filtered to its own organisation, or a portal
-  user once the endpoint serves one — whose assistant asks on their behalf. Does it get exactly
+  user — whose assistant asks on their behalf. Does it get exactly
   what that person's own screens give them, no more, and no less without saying why? Can they
   get from no token to a working client without an administrator at every step? Do refusals and
   tool descriptions make sense to someone who has never seen the console? Can they see, and
@@ -97,12 +119,33 @@ release archive.
   its model provider, which README "Data flow and privacy" tells the instance owner — check it is
   still true; logs and audit rows (`AltiooEventMCPService`) for personal data they carry; and the
   settings that switch a route off (`mcp_disabled_tools`, `mcp_enabled_toolsets`,
-  `mcp_allowed_profiles`, `mcp_portals`). In portal mode, iTop's visibility is the wrong
+  `mcp_allowed_profiles`, `mcp_portals`) and the levers that narrow what any route returns:
+  `mcp_excluded_classes`, `mcp_excluded_attributes`, `mcp_exclusion_exempt_profiles` (the only
+  lift: a profile, never a token scope, a client name or a portal user) and
+  `mcp_audit_retention_days` (how long the audit rows, which name people, are kept). Every route
+  that returns object data must ask `Service\Rights\ExclusionPolicy` (ADR 0012, 0013): list the
+  routes, tool by tool and resource by resource, and find where each asks, because a new route
+  that does not is silent. In portal mode, iTop's visibility is the wrong
   yardstick — `Portal user` reads every bizmodel class — so check instead every element
   `PortalAccess::Serves()` admits against the portal it is served in: what it returns must come
   from `PortalPolicy` (`src/Service/Portal/PortalPolicy.php`'s granted bricks, scopes and forms), never
   from a UserRights check alone, and never be more than that portal shows the same user.
 - **Blocks:** release when personal data leaves the instance by a route the operator cannot see or
   switch off; otherwise backlog.
+
+### Architecture — blue, after the guide's maintainer
+
+- **Question:** does `src/` still keep the rules the decision records set, so that the next
+  change cannot quietly undo one? A rule nothing re-checks is a rule that lapses.
+- **Open:** the layer order of [ADR 0015](../doc/adr/0015-2-0-lays-out-src-as-itop-does.md) and its
+  empty baseline; the `@api` surface of [ADR 0016](../doc/adr/0016-what-the-core-tools-use-is-public.md),
+  against what `src/Core` depends on; each tool's security checks in its own source, with
+  signatures that never narrow ([ADR 0014](../doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md));
+  and every route that returns object data asking `Service\Rights\ExclusionPolicy` (ADR 0012, 0013).
+  The mechanical half is `LayerDependencyTest`, `PublicSurfaceTest`, `RequestStateTest` and the
+  three contract tests ADR 0014 names, run first and trusted for what they read; the rest is
+  what they cannot read: a new tool or surface, a class that outgrew its folder's description,
+  and a doc that names a rule the code no longer keeps.
+- **Blocks:** backlog; release when a rule is broken and its test was edited or baselined to pass.
 
 The guide's blue team reviews the findings of these passes like any other's.
