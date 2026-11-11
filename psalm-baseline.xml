@@ -515,14 +515,16 @@
       <code><![CDATA[$oAttDef instanceof AttributeURL]]></code>
     </TypeDoesNotContainType>
   </file>
+  <file src="src/Service/Read/ClassCatalog.php">
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+  </file>
   <file src="src/Service/Read/DatamodelReader.php">
     <RedundantCondition>
       <code><![CDATA[!empty($aRelated)]]></code>
       <code><![CDATA[empty($aRelated)]]></code>
     </RedundantCondition>
-    <RedundantFunctionCall>
-      <code><![CDATA[array_values]]></code>
-    </RedundantFunctionCall>
   </file>
   <file src="src/Service/Read/DocumentAccess.php">
     <InvalidOperand>

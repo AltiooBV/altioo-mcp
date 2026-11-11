@@ -9,13 +9,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -132,12 +132,12 @@ class ClassList extends AbstractMCPTool implements PortalAware
 		$sFilter = trim($filter);
 		$sMay = trim($may);
 
-		if ($sCategory !== '' && !in_array($sCategory, DatamodelReader::Categories(), true)) {
+		if ($sCategory !== '' && !in_array($sCategory, ClassCatalog::Categories(), true)) {
 			// Naming the valid ones costs one line and saves the model a round of guessing.
 			throw new ToolCallException(sprintf(
 				"Unknown category '%s'. Valid categories: %s.",
 				$sCategory,
-				implode(', ', DatamodelReader::Categories())
+				implode(', ', ClassCatalog::Categories())
 			));
 		}
 
@@ -151,8 +151,8 @@ class ClassList extends AbstractMCPTool implements PortalAware
 			));
 		}
 
-		// The envelope itself is DatamodelReader's, so that itop://core/classes
+		// The envelope itself is ClassCatalog's, so that itop://core/classes
 		// answers with the same shape for the same data.
-		return ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter, $sMay));
+		return ToolOutput::Json(ClassCatalog::ClassListPayload($sCategory, $sFilter, $sMay));
 	}
 }

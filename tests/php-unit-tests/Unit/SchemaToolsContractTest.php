@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -100,12 +101,12 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertCount(
 			1,
-			DatamodelReader::FilterByRight($aClasses, 'create'),
+			ClassCatalog::FilterByRight($aClasses, 'create'),
 			'a named gate must still drop the classes it refuses'
 		);
 		$this->assertCount(
 			2,
-			DatamodelReader::FilterByRight($aClasses, GateGrades::RIGHTS_ALL),
+			ClassCatalog::FilterByRight($aClasses, GateGrades::RIGHTS_ALL),
 			'the sentinel must narrow on nothing: it reports what the caller may do, it does not decide it'
 		);
 	}
@@ -357,12 +358,12 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testACategoryIsListedOnceAndFindsSpacedDeclarations(): void
 	{
-		$sCategories = $this->methodBody(DatamodelReader::class, 'Categories');
+		$sCategories = $this->methodBody(ClassCatalog::class, 'Categories');
 
 		$this->assertStringContainsString("array_map('trim'", $sCategories, 'a spaced key is listed as its own category');
 		$this->assertStringContainsString('array_unique', $sCategories, 'the same category can be listed twice');
 
-		$sLookup = $this->methodBody(DatamodelReader::class, 'classesInCategory');
+		$sLookup = $this->methodBody(ClassCatalog::class, 'classesInCategory');
 
 		$this->assertStringContainsString('HasCategory', $sLookup, 'the classes that declared it spaced stay unreachable');
 		$this->assertStringContainsString('str_contains', $sLookup, '"core" would drag in "core/cmdb"');
@@ -420,17 +421,17 @@ class SchemaToolsContractTest extends TestCase
 		];
 
 		// The class name says nothing about tickets; the description does.
-		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'ticket')));
-		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByText($aClasses, 'Serv')));
-		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'User Req')));
+		$this->assertSame(['UserRequest'], $this->names(ClassCatalog::FilterByText($aClasses, 'ticket')));
+		$this->assertSame(['Server'], $this->names(ClassCatalog::FilterByText($aClasses, 'Serv')));
+		$this->assertSame(['UserRequest'], $this->names(ClassCatalog::FilterByText($aClasses, 'User Req')));
 	}
 
 	public function testFilterIsCaseInsensitive(): void
 	{
 		$aClasses = [['class' => 'UserRequest', 'label' => 'User Request', 'description' => '']];
 
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'USERREQUEST'));
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'userrequest'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'USERREQUEST'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'userrequest'));
 	}
 
 	/**
@@ -440,7 +441,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server', 'label' => 'Server', 'description' => '']];
 
-		$this->assertSame($aClasses, DatamodelReader::FilterByText($aClasses, ''));
+		$this->assertSame($aClasses, ClassCatalog::FilterByText($aClasses, ''));
 	}
 
 	/**
@@ -454,7 +455,7 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'label' => 'Server', 'description' => ''],
 		];
 
-		$aFiltered = DatamodelReader::FilterByText($aClasses, 'Server');
+		$aFiltered = ClassCatalog::FilterByText($aClasses, 'Server');
 
 		$this->assertSame([0], array_keys($aFiltered));
 		$this->assertStringStartsWith('[', json_encode($aFiltered));
@@ -478,7 +479,7 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertSame(
 			['UserRequest', 'Contact'],
-			$this->names(DatamodelReader::FilterByRight($aClasses, 'create'))
+			$this->names(ClassCatalog::FilterByRight($aClasses, 'create'))
 		);
 	}
 
@@ -492,8 +493,8 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'rights' => ['create' => 'yes', 'delete' => 'no']],
 		];
 
-		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByRight($aClasses, 'create')));
-		$this->assertSame([], $this->names(DatamodelReader::FilterByRight($aClasses, 'delete')));
+		$this->assertSame(['Server'], $this->names(ClassCatalog::FilterByRight($aClasses, 'create')));
+		$this->assertSame([], $this->names(ClassCatalog::FilterByRight($aClasses, 'delete')));
 	}
 
 	/**
@@ -504,7 +505,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server', 'rights' => ['create' => 'no']]];
 
-		$this->assertSame($aClasses, DatamodelReader::FilterByRight($aClasses, ''));
+		$this->assertSame($aClasses, ClassCatalog::FilterByRight($aClasses, ''));
 	}
 
 	/**
@@ -515,7 +516,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server']];
 
-		$this->assertCount(1, DatamodelReader::FilterByRight($aClasses, 'create'));
+		$this->assertCount(1, ClassCatalog::FilterByRight($aClasses, 'create'));
 	}
 
 	/**
@@ -529,7 +530,7 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'rights' => ['create' => 'yes']],
 		];
 
-		$aFiltered = DatamodelReader::FilterByRight($aClasses, 'create');
+		$aFiltered = ClassCatalog::FilterByRight($aClasses, 'create');
 
 		$this->assertSame([0], array_keys($aFiltered));
 		$this->assertStringStartsWith('[', json_encode($aFiltered));
@@ -567,8 +568,8 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server']];
 
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'Server'));
-		$this->assertCount(0, DatamodelReader::FilterByText($aClasses, 'ticket'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'Server'));
+		$this->assertCount(0, ClassCatalog::FilterByText($aClasses, 'ticket'));
 	}
 
 	/**
