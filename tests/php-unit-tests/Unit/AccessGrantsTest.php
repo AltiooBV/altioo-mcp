@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\RecipientQueries;
 use Altioo\iTop\Extension\MCP\Service\Rights\DelegatedWrites;
 use Altioo\iTop\Extension\MCP\Service\Rights\CallersOwnAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
@@ -1232,7 +1233,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnEmailActionsRecipientsAreGradedAsAReadOfThatClass(): void
 	{
-		$sRule = $this->body(AccessGrants::class, 'ReadRefusalForRecipients');
+		$sRule = $this->body(RecipientQueries::class, 'ReadRefusalForRecipients');
 
 		$this->assertStringContainsString('IsBarred', $sRule,
 			'a recipient query can select a class the barrier refuses outright');
