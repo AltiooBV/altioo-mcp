@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -545,7 +546,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheGateListMatchesTheBlockItDescribes(): void
 	{
-		$oMethod = new ReflectionMethod(DatamodelReader::class, 'RightsOf');
+		$oMethod = new ReflectionMethod(ClassRights::class, 'RightsOf');
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice(
 			$aLines,

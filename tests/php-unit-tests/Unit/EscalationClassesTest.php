@@ -11,8 +11,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -156,7 +156,7 @@ class EscalationClassesTest extends TestCase
 		$this->assertStringContainsString('Settings::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
 		$this->assertStringContainsString(
 			'AccessGrantFamilies::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
-			$this->body(DatamodelReader::class, 'narrowedByTheBarrier')
+			$this->body(ClassRights::class, 'narrowedByTheBarrier')
 		);
 	}
 

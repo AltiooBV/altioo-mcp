@@ -341,7 +341,7 @@ final class ObjectSerializer
 	 * own DoCheckToWrite(), a read-only database, or another user getting
 	 * there first can each still refuse the write this reports as available.
 	 *
-	 * @param array<string, string>|null $aClassGrades DatamodelReader::RightsOf() for the class, read once per class per page.
+	 * @param array<string, string>|null $aClassGrades ClassRights::RightsOf() for the class, read once per class per page.
 	 * @param DBObjectSet|null           $oInstanceSet Reused across gates of one object; created here on first need.
 	 *
 	 * @return array<string, string>
@@ -349,7 +349,7 @@ final class ObjectSerializer
 	 */
 	public static function RightsOn(DBObject $oObject, string $sClass, ?array $aClassGrades, ?DBObjectSet &$oInstanceSet): array
 	{
-		$aClassGrades ??= DatamodelReader::RightsOf($sClass);
+		$aClassGrades ??= ClassRights::RightsOf($sClass);
 		$aActions = [
 			'modify'     => UR_ACTION_MODIFY,
 			'bulkModify' => UR_ACTION_BULK_MODIFY,

@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -45,7 +45,7 @@ class DatamodelRightsContractTest extends TestCase
 {
 	private const SOURCE_DIR = __DIR__.'/../../../src';
 
-	private const READER = self::SOURCE_DIR.'/Service/Read/DatamodelReader.php';
+	private const READER = self::SOURCE_DIR.'/Service/Read/ClassRights.php';
 
 	/**
 	 * The rights block answers for this endpoint, not only for iTop.
@@ -77,7 +77,7 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testTheRightsBlockReflectsTheWriteBarrier(): void
 	{
-		$oMethod = new ReflectionMethod(DatamodelReader::class, 'narrowedByTheBarrier');
+		$oMethod = new ReflectionMethod(ClassRights::class, 'narrowedByTheBarrier');
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice(
 			$aLines,
@@ -168,7 +168,7 @@ class DatamodelRightsContractTest extends TestCase
 		$this->assertSame(
 			[],
 			$aUngraded,
-			'DatamodelReader::RightsOf() does not grade '.implode(', ', $aUngraded)
+			'ClassRights::RightsOf() does not grade '.implode(', ', $aUngraded)
 			.', which the tools refuse on. A model reading the schema cannot see that refusal coming.'
 		);
 	}
@@ -217,7 +217,7 @@ class DatamodelRightsContractTest extends TestCase
 		$this->assertSame(
 			[],
 			$aMissing,
-			'DatamodelReader::RightsOf() has no key for '.implode(', ', $aMissing)
+			'ClassRights::RightsOf() has no key for '.implode(', ', $aMissing)
 			.'. A model cannot work the gate out from the raw rights: it calls the tool, not the action.'
 		);
 	}
