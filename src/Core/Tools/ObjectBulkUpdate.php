@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use DBObject;
@@ -117,7 +118,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		if (empty($fields)) {
 			throw new ToolCallException('No fields provided for update.');
@@ -185,7 +186,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// forbids the transition, a DoCheckToWrite() that reads other
 				// attributes - and without this the answer arrives as an
 				// exception from the ORM half way through the batch.
-				WritePlan::Check($mObject, "{$class}::{$iId}");
+				DryRun::Check($mObject, "{$class}::{$iId}");
 
 				$aOverridden = WritePlan::Overridden($mObject, $class, $aRequested);
 				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");

@@ -22,6 +22,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
@@ -115,7 +116,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'description'          => 'Key/value pairs to update. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('apply the change'),
+				'simulate' => DryRun::SimulateSchemaProperty('apply the change'),
 				'obsolete_ok' => WriteOutcome::ObsoleteOkSchemaProperty('update'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the change is being made'),
 			],
@@ -137,7 +138,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		string  $class,
 		int     $id,
 		array   $fields,
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 		bool    $obsolete_ok = false,
 	): mixed
@@ -145,7 +146,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
@@ -271,7 +272,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 		// iTop's own pre-write check, run before anything is written rather
 		// than discovered by DBUpdate() throwing from inside the ORM.
-		WritePlan::Check($oObject, "{$class}::{$id}");
+		DryRun::Check($oObject, "{$class}::{$id}");
 
 		// What the check threw away, and - for those attributes only - whether
 		// what the caller sent was even a legal value. DoCheckToWrite() never

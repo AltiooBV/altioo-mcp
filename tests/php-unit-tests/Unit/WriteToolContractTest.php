@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
@@ -113,7 +113,7 @@ class WriteToolContractTest extends TestCase
 			$this->assertCount(1, $aSimulate, "{$sName}::execute() takes no simulate");
 			$this->assertTrue($aSimulate[0]->isDefaultValueAvailable(), "{$sName}: simulate is mandatory in PHP");
 			$this->assertSame(
-				WritePlan::SIMULATE_BY_DEFAULT,
+				DryRun::SIMULATE_BY_DEFAULT,
 				$aSimulate[0]->getDefaultValue(),
 				"{$sName} advertises a dry run and applies something else"
 			);

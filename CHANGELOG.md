@@ -58,20 +58,20 @@ the 2.0 names. `register.php` of a pack imports `Api\MCPExtensionCollector`, not
 implements `Api\iMCPServiceProvider`.
 
 **`@api` is `src/Api/` and four named classes.** Everything else says `@internal` and may change
-in a patch release. Of the 35 classes marked `@api` in 1.3, 13 are now under `Api/` and the four below stay; the
-other 18 are `@internal`: `AccessGrants`, `CurrentUserReader`, `DatamodelReader`,
+in a patch release. Of the 35 classes marked `@api` in 1.3, 13 are now under `Api/` and three stay (`ObjectQuery`,
+`ObjectSerializer`, `RestValue`); the other 19 are `@internal`: `AccessGrants`, `CurrentUserReader`, `DatamodelReader`,
 `DocumentAccess`, `EditPolicy`, `ExclusionPolicy`, `FormulaPolicy`, `Identifier`, `JsonPayload`,
 `LogAPILogger`, `MCPContext`, `MCPHelper` (gone), `MCPHttp`, `MCPLog`, `MentionPolicy`,
-`ObjectHistory`, `SecretPolicy` and `Settings`. The four outside `Api/`, named in
+`ObjectHistory`, `SecretPolicy`, `Settings` and `WritePlan`, whose dry-run half is the new `DryRun`. The four outside `Api/`, named in
 `PublicSurfaceTest::EXTRA_SURFACE` and in [doc/extending.md](doc/extending.md), are the ones
 the example pack calls:
 
 | Class | Why a pack uses it |
 |---|---|
+| `Service\Write\DryRun` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()`, `Simulated()` and `Check()`, for a write tool's dry run |
 | `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
 | `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
 | `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to iTop's `RestUtils::MakeValue()` |
-| `Service\Write\WritePlan` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()` and `Check()`, for a write tool's dry run |
 
 A pack that called anything else of ours should ask for it to be added to that list, or use
 iTop's own API: check access with `UserRights`, as the example pack does. The example pack
@@ -190,6 +190,7 @@ Not in the table because they did not move: `Controller\MCPController`; `Core\Co
 | `Helper\WritePlan`: `RefusalForDroppedSetValues()` | `Service\Write\WriteValues`, same names |
 | `Helper\WritePlan`: `DeletionPlanSchema()`, `CheckDeletionRights()`, `SerializeDeletionPlan()` | `Service\Write\DeletionCascade`, same names |
 | `Helper\WritePlan`: `CredentialNote()`, `OutcomeSchema()`, `ObsoleteOkSchemaProperty()`, `AfterSchemaProperty()`, `After()`, `Map()`, `ChangesSchemaProperty()`, `DefaultedSchemaProperty()`, `Defaulted()`, `OverriddenSchemaProperty()`, `Identity()`, `CommittedId()`, `IsGone()`, `Untrusted()`, `Changes()` | `Service\Write\WriteOutcome`, same names |
+| `Helper\WritePlan`: `SIMULATE_BY_DEFAULT`, `Simulated()`, `SimulateSchemaProperty()`, `Check()` | `Service\Write\DryRun`, same names; `WritePlan` keeps `Requested()`, `Overridden()`, `CheckRequested()` and `RefuseHiddenObsolete()` and is `@internal` |
 | `Helper\WritePlan::AsId()` | `Helper\ObjectId::Normalise()`, **renamed** |
 | `Helper\AccessGrants`: `AUTOMATION_REFUSAL`, `DELEGATED_RIGHTS_REFUSAL`, `DELEGATED_TARGET_REFUSAL`, `DELEGATION_REFUSAL`, `DETECTION_REFUSAL`, `DETECTION_TAMPER_REFUSAL`, `GRANT_REFUSAL`, `NOT_YOURS_REFUSAL`, `OPERATOR_ESCALATION_REFUSAL`, `RECIPIENT_REFUSAL`, `RECORDING_REFUSAL`, `SELF_REFUSAL` | `Service\Rights\AccessGrantRefusals`, same names |
 | `Helper\AccessGrants`: `IsGranting()`, `IsDelegating()`, `IsAutomation()`, `IsOperatorListed()`, `IsOutboundSecret()`, `IsRecording()`, `IsDetection()`, `IsPersonal()`, `IsBarred()`, `Forget()` | `Service\Rights\AccessGrantFamilies`, same names |

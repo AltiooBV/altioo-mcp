@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use appUserPreferences;
@@ -94,7 +94,7 @@ class SetObsoleteData extends AbstractMCPTool
 					'type'        => 'boolean',
 					'description' => 'true to include obsolete objects in search results, false to leave them out.',
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('store the preference'),
+				'simulate' => DryRun::SimulateSchemaProperty('store the preference'),
 			],
 			'required' => ['visible'],
 		];
@@ -134,12 +134,12 @@ class SetObsoleteData extends AbstractMCPTool
 	 * @return mixed The preference as it now stands, what it was, and whether the call moved it
 	 * @throws ToolCallException if the preference cannot be stored.
 	 */
-	public static function execute(bool $visible, bool $simulate = WritePlan::SIMULATE_BY_DEFAULT): mixed
+	public static function execute(bool $visible, bool $simulate = DryRun::SIMULATE_BY_DEFAULT): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		// The barrier every write on this endpoint passes, asked about the
 		// class this one writes. appUserPreferences is not a class that grades

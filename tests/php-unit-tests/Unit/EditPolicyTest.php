@@ -124,7 +124,7 @@ class EditPolicyTest extends TestCase
 			$this->assertIsInt($iKeys, "{$sPath} never judges its external keys against their filter");
 
 			$iSet = strpos($sSource, '->Set($sAttCode,');
-			$iCheck = strpos($sSource, 'WritePlan::Check(');
+			$iCheck = strpos($sSource, 'DryRun::Check(');
 			$this->assertIsInt($iSet);
 			$this->assertIsInt($iCheck);
 			$this->assertGreaterThan($iSet, $iKeys, "{$sPath} judges the keys before the values are Set()");

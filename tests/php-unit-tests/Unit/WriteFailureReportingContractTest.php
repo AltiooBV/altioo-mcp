@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use PHPUnit\Framework\TestCase;
@@ -391,19 +391,19 @@ class WriteFailureReportingContractTest extends TestCase
 
 		// No policy remembered: the caller's own answer stands, which is the
 		// state this suite runs in and the only safe direction to fail in.
-		$this->assertTrue(WritePlan::Simulated(true));
-		$this->assertFalse(WritePlan::Simulated(false));
+		$this->assertTrue(DryRun::Simulated(true));
+		$this->assertFalse(DryRun::Simulated(false));
 
 		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write']));
-		$this->assertFalse(WritePlan::Simulated(false), 'an ordinary write token was forced to rehearse');
+		$this->assertFalse(DryRun::Simulated(false), 'an ordinary write token was forced to rehearse');
 
 		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']));
-		$this->assertTrue(WritePlan::Simulated(false), 'an advisory token was allowed to write');
-		$this->assertTrue(WritePlan::Simulated(true));
+		$this->assertTrue(DryRun::Simulated(false), 'an advisory token was allowed to write');
+		$this->assertTrue(DryRun::Simulated(true));
 
 		// The modifier survives "everything", and narrowing only ever adds it.
 		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP', 'MCP-advisory']));
-		$this->assertTrue(WritePlan::Simulated(false), 'a full-scope token shook the modifier off');
+		$this->assertTrue(DryRun::Simulated(false), 'a full-scope token shook the modifier off');
 
 		$oOpen = AccessPolicy::FromScopes(['MCP']);
 		$this->assertTrue(
@@ -428,7 +428,7 @@ class WriteFailureReportingContractTest extends TestCase
 			if (str_contains($sSource, 'public static function Simulated(')) {
 				continue;
 			}
-			if (!str_contains($sSource, 'WritePlan::Simulated($simulate)')) {
+			if (!str_contains($sSource, 'DryRun::Simulated($simulate)')) {
 				$aMissing[] = substr($sPath, strlen(self::SRC) + 1);
 			}
 		}

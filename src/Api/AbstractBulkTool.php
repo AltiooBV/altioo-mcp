@@ -317,7 +317,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * contract allows better, and because treating DEPENDS as a yes is the one
 	 * reading that is wrong under every addon. The per-object rule that does
 	 * hold on a stock install is DoCheckToWrite(), reached through
-	 * WritePlan::Check().
+	 * DryRun::Check().
 	 *
 	 * What the console's form would offer is judged on the object in the set,
 	 * or without one on a new object, which is what a creation is held to: its

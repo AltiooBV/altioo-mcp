@@ -21,6 +21,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
@@ -128,7 +129,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 						'description'          => 'Attribute code => value for the settable fields of the portal\'s create form for the class.',
 						'additionalProperties' => true,
 					],
-					'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+					'simulate' => DryRun::SimulateSchemaProperty('create the object'),
 					'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
 				],
 				'required'   => ['action', 'fields'],
@@ -147,7 +148,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+				'simulate' => DryRun::SimulateSchemaProperty('create the object'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
 			],
 			'required' => ['class'],
@@ -167,7 +168,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	public static function execute(
 		string  $class = '',
 		array   $fields = [],
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 		string  $action = '',
 		int     $from_id = 0,
@@ -176,7 +177,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		// In portal mode the portal's create action decides the class and
 		// presets the object; on the console the class named does
@@ -264,7 +265,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// iTop's own pre-write check: mandatory attributes, DoCheckToWrite() on
 		// the class and on every extension hooked into it. Without it the
 		// first thing that fails is DBInsert(), from inside the ORM.
-		WritePlan::Check($oObject, "A {$class}");
+		DryRun::Check($oObject, "A {$class}");
 
 		// What the check threw away. On a creation every attribute is in
 		// `changes`, so an overridden one is reported there too - with the
@@ -332,7 +333,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			// is, with the failure attached rather than substituted for it.
 			$iCommittedId = WriteOutcome::CommittedId($oObject);
 			if ($iCommittedId === null) {
-				// WritePlan::Check() ran first and refused everything the
+				// DryRun::Check() ran first and refused everything the
 				// caller could have corrected, so what reaches here is the
 				// instance's problem, described in the instance's vocabulary.
 				// ErrorReport explains the split.

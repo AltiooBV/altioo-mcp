@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use DBObject;
@@ -138,7 +139,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		if (empty($objects)) {
 			throw new ToolCallException('No objects given.');
@@ -234,7 +235,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// The check that catches a missing mandatory attribute before the
 			// row is inserted, and so the whole reason a dry run here is worth
 			// running.
-			WritePlan::Check($oObject, "Row {$iRow}");
+			DryRun::Check($oObject, "Row {$iRow}");
 
 			$aOverridden = WritePlan::Overridden($oObject, $sClass, $aRequested);
 			WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "Row {$iRow}");

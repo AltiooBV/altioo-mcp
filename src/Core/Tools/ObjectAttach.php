@@ -21,7 +21,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use AttributeBlob;
 use DBObject;
@@ -183,7 +183,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'type'        => 'string',
 					'description' => 'Blob attribute to set on the object itself, replacing what it holds. Leave it out to add an Attachment instead, which is what the console\'s Attachments tab does and what a ticket usually wants.',
 				],
-				'simulate'       => WritePlan::SimulateSchemaProperty('store the file'),
+				'simulate'       => DryRun::SimulateSchemaProperty('store the file'),
 				'comment'        => ChangeTracking::CommentSchemaProperty('the file is being attached'),
 			],
 			'required' => ['class', 'id', 'filename', 'content_base64'],
@@ -211,14 +211,14 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		string  $content_base64,
 		?string $mimetype = null,
 		?string $att_code = null,
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		$bPortal = PortalMode::Current() !== null;
 		if ($bPortal && $att_code !== null && $att_code !== '') {
@@ -407,7 +407,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		$oAttachment->Set('temp_id', '');
 		$oAttachment->Set('contents', $oDocument);
 
-		WritePlan::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
+		DryRun::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
@@ -527,7 +527,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$oTarget->Set($sAttCode, $oDocument);
 
-		WritePlan::Check($oTarget, "{$sClass}::{$iId}");
+		DryRun::Check($oTarget, "{$sClass}::{$iId}");
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => $sClass]

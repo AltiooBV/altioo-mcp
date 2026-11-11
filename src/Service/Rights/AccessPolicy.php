@@ -134,7 +134,7 @@ final class AccessPolicy
 	 * endpoint serves one request per process and holds nothing between them.
 	 *
 	 * Null before the controller has decided, which is the state a unit suite
-	 * runs in - and {@see \Altioo\iTop\Extension\MCP\Service\Write\WritePlan::Simulated()}
+	 * runs in - and {@see \Altioo\iTop\Extension\MCP\Service\Write\DryRun::Simulated()}
 	 * treats null as "no opinion" rather than "not advisory", so nothing here
 	 * quietly turns a rehearsal into a write.
 	 */

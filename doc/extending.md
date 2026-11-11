@@ -82,10 +82,10 @@ It is everything under `src/Api/` and four classes outside it, named in
 | Class | What a pack calls |
 |---|---|
 | `Api\*` | the element base classes you extend, `iMCPServiceProvider`, `MCPRegistry` and `MCPExtensionCollector`, `MCPModule`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, and `Testing\ElementContract` |
+| `Service\Write\DryRun` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()`, `Simulated()` and `Check()`, for a write tool's dry run |
 | `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
 | `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
 | `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to `RestUtils::MakeValue()` |
-| `Service\Write\WritePlan` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()` and `Check()`, for a write tool's dry run |
 
 **A pack must not call anything else of ours**: not the access, rights, portal or audit
 classes, not `Helper\*`, not the core tools. Check access with iTop's `UserRights`, as the

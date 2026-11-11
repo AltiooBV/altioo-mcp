@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -112,7 +112,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 					'minLength'   => 1,
 					'description' => 'The text to append. It is written as the authenticated user, and the caller of the ticket can read it.',
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('append the entry for real'),
+				'simulate' => DryRun::SimulateSchemaProperty('append the entry for real'),
 			],
 			// Every parameter of execute() without a default must be listed
 			// here, and every property must match a parameter by name. The
@@ -146,7 +146,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 	public static function execute(
 		int    $id,
 		string $message,
-		bool   $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool   $simulate = DryRun::SIMULATE_BY_DEFAULT,
 	): mixed
 	{
 		if (trim($message) === '') {
@@ -193,7 +193,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 
 		// Runs iTop's own consistency checks and throws with the reasons, so
 		// that a dry run reports what a real call would refuse.
-		WritePlan::Check($oTicket, "Ticket {$id}");
+		DryRun::Check($oTicket, "Ticket {$id}");
 
 		if (!$simulate) {
 			$oTicket->DBUpdate();

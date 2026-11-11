@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
@@ -217,7 +218,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 			$sBody = $this->methodBody($sClass, $sMethod);
 
 			$iRequested  = strpos($sBody, 'WritePlan::Requested');
-			$iCheck      = strpos($sBody, 'WritePlan::Check(');
+			$iCheck      = strpos($sBody, 'DryRun::Check(');
 			$iOverridden = strpos($sBody, 'WritePlan::Overridden');
 
 			$this->assertIsInt($iRequested, "{$sName} no longer records what the caller asked for");

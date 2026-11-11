@@ -54,14 +54,14 @@ class PublicSurfaceTest extends TestCase
 	 *    offers for its output_fields parameter.
 	 *  - RestValue: a case-log value reaches a tool decoded by the SDK, and
 	 *    RestUtils::MakeValue() takes it only wrapped by FromDecodedJson().
-	 *  - WritePlan: a write tool offers a dry run (SIMULATE_BY_DEFAULT,
-	 *    SimulateSchemaProperty()) and validates the object it built (Check()).
+	 *  - DryRun: a write tool offers a dry run (SIMULATE_BY_DEFAULT,
+	 *    SimulateSchemaProperty(), Simulated()) and validates the object it built (Check()).
 	 */
 	public const EXTRA_SURFACE = [
 		'src/Service/Read/ObjectQuery.php',
 		'src/Service/Read/ObjectSerializer.php',
+		'src/Service/Write/DryRun.php',
 		'src/Service/Write/RestValue.php',
-		'src/Service/Write/WritePlan.php',
 	];
 
 	/**

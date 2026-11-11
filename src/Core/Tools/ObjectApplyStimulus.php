@@ -22,6 +22,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
@@ -121,7 +122,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 					'description'          => 'Optional attribute values to set before applying the stimulus (e.g. agent_id, team_id for ev_assign).',
 					'additionalProperties' => true,
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('apply the stimulus'),
+				'simulate' => DryRun::SimulateSchemaProperty('apply the stimulus'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the transition is being applied'),
 			],
 			'required' => ['class', 'id', 'stimulus'],
@@ -162,14 +163,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		int     $id,
 		string  $stimulus,
 		array   $fields = [],
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		// Validate input parameters
 		if ($id < 1) {
@@ -361,7 +362,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// iTop's own pre-write check, on top of the target-state check above:
 		// that one knows what the transition requires, this one knows what the
 		// class and its extensions require of any write.
-		WritePlan::Check($oObject, "{$class}::{$id}");
+		DryRun::Check($oObject, "{$class}::{$id}");
 
 		// What the check threw away, and whether it was legal in the first
 		// place. DoCheckToWrite() never asked - by the time it looked, the

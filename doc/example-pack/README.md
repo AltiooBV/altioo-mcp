@@ -95,6 +95,6 @@ ships in the production autoload rather than under `tests/`.
 ## What it calls
 
 Only the `@api` surface: everything under `Api\`, and `ObjectQuery`, `ObjectSerializer`,
-`RestValue` and `WritePlan`. The base extension's unit suite reads this pack's `use` lines
+`RestValue` and `DryRun`. The base extension's unit suite reads this pack's `use` lines
 against that list, so a pack that needs more is a reason to widen the list on purpose. The
 surface is described in [`doc/extending.md`](../extending.md#1-depend-on-the-base-module).

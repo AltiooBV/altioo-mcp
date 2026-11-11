@@ -59,7 +59,7 @@ final class ChangeTracking
 
 	/**
 	 * The `comment` property, spelled once so that every writing tool spells it
-	 * the same way - the counterpart of {@see WritePlan::SimulateSchemaProperty()}.
+	 * the same way - the counterpart of {@see DryRun::SimulateSchemaProperty()}.
 	 *
 	 * Optional, where REST makes it mandatory. A mandatory field is answered by
 	 * whoever is asked, and what a model would put there when it has nothing to
