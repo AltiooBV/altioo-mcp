@@ -41,14 +41,12 @@ class LayerDependencyTest extends TestCase
 	private const ROOT = 'Altioo\\iTop\\Extension\\MCP\\';
 
 	/**
-	 * Layers from top to bottom; a class may import its own layer and any layer
-	 * with a larger rank. Same rank, different layer, is not allowed: the two
-	 * chains Write > Read > Access and Portal > Access are independent, and
-	 * Portal imports nothing of Read or Write (see mayImport()).
+	 * Layers from top to bottom, the one chain of ADR 0015 rule 2: a class may
+	 * import its own layer and any layer with a larger rank. Helper, Model and
+	 * Exception share the bottom rank and may import each other.
 	 *
 	 * Api is not in the order: anything may import it, and it imports only
-	 * from API_MAY_IMPORT_FROM_RANK downward. Hook and Registry import downward
-	 * only; Hook sits with Controller, Registry directly below Core.
+	 * from API_MAY_IMPORT_FROM_RANK downward (Service\Write and below).
 	 * Nothing below Core may import Core\Tools\*, since all of Core is above it.
 	 *
 	 * @var array<string, int>
@@ -58,22 +56,22 @@ class LayerDependencyTest extends TestCase
 		'Hook' => 10,
 		'Service\\Server' => 20,
 		'Core' => 30,
-		'Registry' => 35,
-		'Service\\Write' => 40,
-		'Service\\Portal' => 40,
-		'Service\\Read' => 50,
-		'Service\\Access' => 60,
-		'Service\\Audit' => 70,
-		'Helper' => 80,
-		'Model' => 80,
-		'Exception' => 80,
+		'Service\\Access' => 40,
+		'Service\\Write' => 50,
+		'Service\\Portal' => 60,
+		'Service\\Read' => 70,
+		'Service\\Rights' => 80,
+		'Service\\Audit' => 90,
+		'Helper' => 100,
+		'Model' => 100,
+		'Exception' => 100,
 		'Api' => 0,
 	];
 
-	private const BOTTOM_RANK = 80;
+	private const BOTTOM_RANK = 100;
 
-	/** Api imports these ranks and below (Write, Portal, Read, Access, Audit, the bottom). */
-	private const API_MAY_IMPORT_FROM_RANK = 40;
+	/** Api imports these ranks and below (Write, Portal, Read, Rights, Audit, the bottom). */
+	private const API_MAY_IMPORT_FROM_RANK = 50;
 
 	/**
 	 * Class (relative to the root namespace) => the layer ADR 0015 gives it.
@@ -91,15 +89,17 @@ class LayerDependencyTest extends TestCase
 		'Contract\\iMCPServiceProvider' => 'Api', // Api/
 		'Testing\\ElementContract' => 'Api', // Api/
 		'Helper\\ToolOutput' => 'Api', // Api/
+		'Registry\\MCPRegistry' => 'Api', // Api/
+		'Registry\\MCPExtensionCollector' => 'Api', // Api/
 		'Helper\\ResourceOutput' => 'Api', // Api/
 		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
-		'Helper\\MCPHttp' => 'Controller', // Controller/
-		'Helper\\Identifier' => 'Registry', // Registry/
-		'Helper\\AccessGrants' => 'Service\\Access', // Service/Access/
-		'Helper\\ExclusionPolicy' => 'Service\\Access', // Service/Access/
+		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
+		'Helper\\Identifier' => 'Helper', // Helper/
+		'Helper\\AccessGrants' => 'Service\\Rights', // Service/Rights/
+		'Helper\\ExclusionPolicy' => 'Service\\Rights', // Service/Rights/
 		'Helper\\CurrentUserReader' => 'Service\\Read', // Service/Read/
-		'Helper\\DatamodelReader' => 'Service\\Read', // Service/Read/ (its rights grading goes to Service/Access/)
+		'Helper\\DatamodelReader' => 'Service\\Read', // Service/Read/ (its rights grading goes to Service/Rights/)
 		'Helper\\DocumentAccess' => 'Service\\Read', // Service/Read/
 		'Helper\\ObjectHistory' => 'Service\\Read', // Service/Read/
 		'Helper\\ObjectQuery' => 'Service\\Read', // Service/Read/
@@ -107,7 +107,7 @@ class LayerDependencyTest extends TestCase
 		'Helper\\EditPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\FormulaPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\MentionPolicy' => 'Service\\Write', // Service/Write/
-		'Helper\\SecretPolicy' => 'Service\\Write', // Service/Write/
+		'Helper\\SecretPolicy' => 'Service\\Rights', // Service/Rights/
 		'Helper\\RestValue' => 'Service\\Write', // Service/Write/
 		'Helper\\WritePlan' => 'Service\\Write', // Service/Write/
 		'Helper\\JsonPayload' => 'Helper', // Helper/
@@ -116,18 +116,18 @@ class LayerDependencyTest extends TestCase
 		'Helper\\MCPLog' => 'Helper', // Helper/
 		'Helper\\Settings' => 'Helper', // Helper/
 		'Models\\MCPResult' => 'Model', // Model/
-		'Server\\ServerInstructions' => 'Service\\Server', // Service/Server/
+		'Server\\ServerInstructions' => 'Core', // Core/
 		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
 		'Service\\MCPService' => 'Service\\Server', // Service/Server/
-		'Service\\AccessPolicy' => 'Service\\Access', // Service/Access/
-		'Service\\ExcludingModelReflection' => 'Service\\Access', // Service/Access/
+		'Service\\AccessPolicy' => 'Service\\Rights', // Service/Rights/
+		'Service\\ExcludingModelReflection' => 'Service\\Rights', // Service/Rights/
 		'Service\\ObjectAccess' => 'Service\\Access', // Service/Access/
-		'Service\\TokenScopes' => 'Service\\Access', // Service/Access/
+		'Service\\TokenScopes' => 'Service\\Rights', // Service/Rights/
 		'Service\\PortalAccess' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalAware' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalBrickTemplates' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalDescription' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalMode' => 'Service\\Portal', // Service/Portal/
+		'Service\\PortalMode' => 'Helper', // Helper/
 		'Service\\PortalPolicy' => 'Service\\Portal', // Service/Portal/
 		'Service\\AuditRetention' => 'Service\\Audit', // Service/Audit/
 		'Service\\ChangeSummary' => 'Service\\Audit', // Service/Audit/
@@ -140,39 +140,19 @@ class LayerDependencyTest extends TestCase
 	 * Shrink it, never grow it.
 	 */
 	private const BASELINE = <<<'TXT'
-Abstract\AbstractMCPPrompt → Helper\Identifier
-Abstract\AbstractMCPResource → Helper\Identifier
-Abstract\AbstractMCPResourceTemplate → Helper\Identifier
-Abstract\AbstractMCPTool → Helper\Identifier
 Core\Resources\Instructions → Service\MCPService
 Core\Tools\Instructions → Service\MCPService
 Helper\CurrentUserReader → Service\MCPService
-Helper\CurrentUserReader → Service\PortalMode
-Helper\DatamodelReader → Helper\SecretPolicy
 Helper\DocumentAccess → Helper\WritePlan
-Helper\ExclusionPolicy → Service\PortalMode
-Helper\MCPHelper → Service\PortalMode
-Helper\ObjectHistory → Service\PortalMode
+Helper\DocumentAccess → Service\ObjectAccess
 Helper\ObjectSerializer → Helper\WritePlan
 Helper\Settings → Helper\ExclusionPolicy
-Helper\Settings → Helper\MCPHttp
 Helper\WritePlan → Core\Tools\ObjectSearchByOQL
-Helper\WritePlan → Service\PortalMode
-Service\MCPService → Helper\MCPHttp
-Service\ObjectAccess → Helper\ObjectHistory
-Service\ObjectAccess → Helper\ObjectQuery
-Service\ObjectAccess → Helper\ObjectSerializer
-Service\ObjectAccess → Service\PortalAccess
-Service\ObjectAccess → Service\PortalMode
-Service\ObjectAccess → Service\PortalPolicy
+Helper\WritePlan → Service\ObjectAccess
 Service\PortalAccess → Core\Tools\PortalList
-Service\PortalAccess → Helper\DocumentAccess
-Service\PortalAccess → Helper\ObjectHistory
-Service\PortalDescription → Helper\DatamodelReader
-Service\PortalDescription → Helper\ObjectHistory
-Service\PortalPolicy → Helper\ObjectHistory
-Service\TokenScopes → Helper\MCPHttp
-Testing\ElementContract → Registry\MCPRegistry
+Service\PortalAccess → Service\ObjectAccess
+Service\PortalMode → Service\PortalAware
+Service\PortalMode → Service\PortalPolicy
 TXT;
 
 	public function testEveryClassHasALayer(): void
@@ -255,11 +235,6 @@ TXT;
 		if ($sFrom === 'Api') {
 			return self::LAYERS[$sTo] >= self::API_MAY_IMPORT_FROM_RANK;
 		}
-		// The chains are independent: Portal reaches Access and below, not Read or Write.
-		if ($sFrom === 'Service\\Portal' && in_array($sTo, ['Service\\Read', 'Service\\Write'], true)) {
-			return false;
-		}
-
 		// Helper, Model and Exception are one tier: the bottom imports within itself.
 		return self::LAYERS[$sTo] > self::LAYERS[$sFrom] || self::LAYERS[$sTo] === self::BOTTOM_RANK && self::LAYERS[$sFrom] === self::BOTTOM_RANK;
 	}
