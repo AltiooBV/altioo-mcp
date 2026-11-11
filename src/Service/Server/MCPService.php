@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
@@ -19,8 +19,8 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
-use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
-use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
@@ -638,7 +638,7 @@ final class MCPService
 	 *
 	 * Only what is served, never the catalogue. Naming a toolset this caller
 	 * does not hold would teach it the shape of the withheld surface, which is
-	 * the thing {@see \Altioo\iTop\Extension\MCP\Server\ServerInstructions}
+	 * the thing {@see \Altioo\iTop\Extension\MCP\Core\ServerInstructions}
 	 * narrows itself to avoid. What comes back here never exceeds what
 	 * tools/list already showed, so an unrestricted caller learns nothing new
 	 * and a narrowed one learns only that its own view has edges.

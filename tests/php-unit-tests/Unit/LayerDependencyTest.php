@@ -100,9 +100,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\MCPContext' => 'Helper', // Helper/
 		'Helper\\MCPLog' => 'Helper', // Helper/
 		'Helper\\Settings' => 'Helper', // Helper/
-		'Server\\ServerInstructions' => 'Core', // Core/
-		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
-		'Service\\MCPService' => 'Service\\Server', // Service/Server/
 	];
 
 	/**
@@ -110,14 +107,14 @@ class LayerDependencyTest extends TestCase
 	 * Shrink it, never grow it.
 	 */
 	private const BASELINE = <<<'TXT'
-Core\Resources\Instructions → Service\MCPService
-Core\Tools\Instructions → Service\MCPService
+Core\Resources\Instructions → Service\Server\MCPService
+Core\Tools\Instructions → Service\Server\MCPService
 Helper\PortalMode → Service\Portal\PortalAware
 Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
 Service\Portal\PortalAccess → Core\Tools\PortalList
 Service\Portal\PortalAccess → Service\Access\ObjectAccess
-Service\Read\CurrentUserReader → Service\MCPService
+Service\Read\CurrentUserReader → Service\Server\MCPService
 Service\Read\DocumentAccess → Service\Access\ObjectAccess
 Service\Read\DocumentAccess → Service\Write\WritePlan
 Service\Read\ObjectSerializer → Service\Write\WritePlan

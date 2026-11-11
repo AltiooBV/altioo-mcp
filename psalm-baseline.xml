@@ -583,7 +583,7 @@
       <code><![CDATA[public function jsonSerialize(): array]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Server/Session/StatelessSessionStore.php">
+  <file src="src/Service/Server/Session/StatelessSessionStore.php">
     <MissingOverrideAttribute>
       <code><![CDATA[public function destroy(Uuid $id): bool]]></code>
       <code><![CDATA[public function exists(Uuid $id): bool]]></code>
@@ -592,7 +592,7 @@
       <code><![CDATA[public function write(Uuid $id, string $data): bool]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Service/MCPService.php">
+  <file src="src/Service/Server/MCPService.php">
     <InvalidArgument>
       <code><![CDATA[MCPLog::class]]></code>
     </InvalidArgument>

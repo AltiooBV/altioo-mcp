@@ -4,7 +4,7 @@
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
-namespace Altioo\iTop\Extension\MCP\Server\Session;
+namespace Altioo\iTop\Extension\MCP\Service\Server\Session;
 
 use Mcp\Server\Session\SessionStoreInterface;
 use Symfony\Component\Uid\Uuid;
