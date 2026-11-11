@@ -96,12 +96,25 @@ An iTop developer opening this module should find that shape.
    surface, and the example pack's suite is the proof that it is enough.
 
 4. **A class does one job.** This is a guide, not a law: a file well past 500 lines is a split
-   waiting to happen. Combodo's module files stay under about 600. The six classes above are
+   waiting to happen. Combodo's module files stay under about 600. The six classes above, and
+   three more the work found (`ObjectSerializer`, `ExclusionPolicy` and `MCPService`), nine in all, are
    split along the jobs they already do; the code is moved, not rewritten.
 
 5. **What stays.**
    - Static helpers and static per-request state, as iTop itself uses them (PHP is
-     share-nothing).
+     share-nothing). The state is opened and closed in one place, though:
+     `Service\Server\RequestScope`. `EnterPortal()` sets the portal and the access that
+     answers for it as one call, `Open()` remembers the access policy and the credential's
+     identity, and `Close()` forgets every per-request slot and the caches derived from the
+     settings and the datamodel. The controller closes the request in a `finally`, after the
+     audit row, and a test closes it in its teardown. `RequestScope` owns the forgetting and
+     the portal pair, not the moment each slot is set: the policy and identity are set once
+     the gates have passed, what a caller is served and the change's tool name when the
+     server is built. `RequestStateTest` reads every `static` property in `src/` from the
+     tokens and fails until it is cleared by `Close()` or listed with a reason as
+     registration that lives as long as the process, so a new static field cannot be added
+     without saying where it is forgotten. A dependency injection container and a context
+     object passed through every signature stay rejected.
    - `execute()` bound by parameter name, with `: mixed`.
    - Combodo's coding conventions.
    - ADR 0014: each tool's security checks stay in its own source, and the contract tests follow
@@ -124,7 +137,7 @@ An iTop developer opening this module should find that shape.
   chose between the console's rules and the portal's. It is the other way round. `ObjectAccess` is
   the console's rules and a base class; `PortalAccess` extends it, so Portal is above Access. The
   choice moved up with it: `ObjectAccess::Current()` answers with a factory that the request's
-  setup sets (`PortalAccess::Enter()`, called by the controller when it admits a portal user),
+  setup sets (`RequestScope::EnterPortal()`, called by the controller when it admits a portal user),
   and with the console's access when none was set. `WritePlan` asks `ObjectAccess` whether a
   referenced object is readable, so Write is above Access, and `ObjectAccess` reads through
   `ObjectQuery`, `ObjectSerializer` and `ObjectHistory`, so Access is above Read. Portal imports
@@ -141,8 +154,8 @@ An iTop developer opening this module should find that shape.
 - **`ServedAccess()` could not move whole.** What a caller is served is the question registration asks of
   every element (`isHidden()`, which also asks `PortalAccess::Serves()`), so the answer is the server's
   and Rights cannot import it. The identity tool and the instructions, both in or below Core, ask for
-  it, so the server remembers how to answer once per request (`MCPService::RememberServed()`, from
-  `run()`) and they ask `Service\Rights\ServedAccess`, as they ask `AccessPolicy`. The answer is
+  it, so the server remembers how to answer once per request (`ServedElements::RememberServed()`, from
+  `MCPService::run()`) and they ask `Service\Rights\ServedAccess`, as they ask `AccessPolicy`. The answer is
   computed when asked, as before. Nothing remembered answers with nothing served.
 - **A setting reader does not judge the exclusions.** `Settings::AccessSettingsAreMalformed()` asked
   `ExclusionPolicy::IsMalformed()`. The list check stays in `Settings` (`AccessListsAreMalformed()`),

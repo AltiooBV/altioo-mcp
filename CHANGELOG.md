@@ -102,6 +102,13 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   `MCPService` each did several jobs. The code was moved,
   not rewritten, and each gate a request passes is one class under `Controller\Gate`, run from
   one ordered list.
+- **A request's state is opened and closed in one place.** `Service\Server\RequestScope` sets the
+  portal and its access together (`EnterPortal()`, which replaces `PortalAccess::Enter()` and
+  `Leave()`), remembers the policy and the credential's identity (`Open()`), and forgets every
+  per-request slot in one call (`Close()`), which the controller makes in a `finally` and the
+  audit task makes too. `RequestStateTest` fails for a static property that is neither cleared
+  by it nor listed as registration for the life of the process. Internal, with no effect on a
+  pack: every one of those slots is `@internal`.
 - **Name table, 1.3 → 2.0, below.** Checked by script against the 1.3.0 tag and the 2.0 tree: every class
   under `src/` at 1.3.0 is in it, every 2.0 name in it exists, and every public or protected
   member that is not at its old name in the class it moved to is in it.
@@ -211,6 +218,7 @@ Not in the table because they did not move: `Controller\MCPController`; `Core\Co
 | `Helper\ChangeTracking::Compose()` | **removed**; nothing has written its line since 1.3 |
 | `Service\MCPService::InstructionsFor()` | `Core\ServerInstructions::ForCaller()`, **renamed** |
 | `Service\PortalMode`: `Serves()` | `Service\Portal\PortalAccess`, same names |
+| `Service\PortalAccess`: `Enter()`, `Leave()` | `Service\Server\RequestScope`: `EnterPortal()`, `Close()`, **renamed**; `Close()` forgets the whole request, not only the portal |
 | `Core\Tools\ObjectSearchByOQL`: `CheckQuery()` | `Service\Read\ObjectQuery`, same names |
 | `Core\Tools\PortalList`: `RowOf()` | `Service\Portal\PortalRows`, same names |
 | `Service\MCPService`: `ServedAccess()`, `AccessPolicyOfCurrentRequest()` | `Service\Server\ServedElements`, same names |
@@ -239,7 +247,7 @@ installed anywhere:
 - **`ObjectAccess::Current()` refuses a request in portal mode that nothing entered.** Splitting
   the choice between the console's rules and the portal's out of `ObjectAccess` would have left
   it answering with the console's when the portal mode was remembered but never entered through
-  `PortalAccess::Enter()`. It now throws `MCPPortalException`, so portal mode serves nothing
+  `RequestScope::EnterPortal()`. It now throws `MCPPortalException`, so portal mode serves nothing
   rather than the console's reach, as 1.3 did. No path in `src/` does this today; the check holds
   the next one to it.
 

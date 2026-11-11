@@ -176,7 +176,7 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 |---|---|
 | `Controller` | The endpoint, `MCPController`, with `CallRequest`, `CallLog` and `MCPResponse`; each check a request passes is one class under `Controller\Gate`, run from one ordered list |
 | `Hook` | What iTop calls into: `AuditHousekeeping`, the background process |
-| `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and its session store |
+| `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), opens and closes the request's state (`RequestScope`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and its session store |
 | `Core` | The core tools, resources, resource templates and prompts, and `ServerInstructions` |
 | `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from, `PortalAccess` (the portal's `ObjectAccess`), the description and the rows a list is built from |
 | `Service\Write` | Turning a caller's fields into a checked write: `DryRun`, `WritePlan`, `WriteValues`, `DeletionCascade`, `WriteOutcome` and the rules a value must pass (`EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `ExternalKeyPolicy`) |
@@ -198,10 +198,10 @@ succeeds.
    `TokenLoginAccountedForGate`, `TokenAudienceGate`. Each lets the request go on or answers
    it. The list and why it is in that order are in
    [doc/security-summary.md](security-summary.md), "The gates a call passes". `PortalAdmission`,
-   which `LoginGate` uses, calls `Service\Portal\PortalAccess::Enter()` for a portal-only
-   user.
-2. The controller decides the caller's `Service\Rights\AccessPolicy`, remembers it and the
-   token's identity, and drops the credential.
+   which `LoginGate` uses, calls `Service\Server\RequestScope::EnterPortal()` for a portal-only
+   user, which sets the portal and the access that answers for it together.
+2. The controller decides the caller's `Service\Rights\AccessPolicy`, opens the request with it
+   (`RequestScope::Open()` remembers it and the token's identity), and drops the credential.
 3. **`Service\Server\MCPService::run()`** builds the MCP server for the request: it takes the
    elements `Api\MCPRegistry` holds, the core ones from `Core\CoreExtensions` and a pack's from
    its `iMCPServiceProvider`, and leaves out those the operator disabled or the caller's
@@ -220,6 +220,11 @@ succeeds.
 7. `Controller\MCPResponse` writes the answer, and `Controller\CallLog` records the audit row,
    whose summaries come from `Service\Audit` (`ChangeSummary`, `ReadSummary`). Later,
    iTop's cron calls `Hook\AuditHousekeeping`, which applies `Service\Audit\AuditRetention`.
+8. **`Service\Server\RequestScope::Close()`** forgets every per-request slot, whichever way the
+   request ended: the controller calls it in a `finally`, after the audit row, as the audit task
+   does and a test's teardown. The state stays static, as iTop's helpers keep theirs;
+   `RequestStateTest` fails for a static property that `Close()` does not clear and that is not
+   listed as registration for the life of the process.
 
 ### Which test holds what
 
