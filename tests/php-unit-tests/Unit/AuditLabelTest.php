@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\CallRequest;
 use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
@@ -261,7 +261,7 @@ class AuditLabelTest extends TestCase
 				'params'  => $aParams,
 			])));
 
-		$oParse = new ReflectionMethod(MCPController::class, 'getMCPInfoFromRequest');
+		$oParse = new ReflectionMethod(CallRequest::class, 'GetMCPInfoFromRequest');
 
 		return $oParse->invoke(null, $oRequest, new MCPResult());
 	}

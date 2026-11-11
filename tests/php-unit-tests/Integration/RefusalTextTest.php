@@ -9,7 +9,6 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
