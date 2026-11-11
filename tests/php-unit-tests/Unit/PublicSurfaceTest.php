@@ -39,29 +39,62 @@ class PublicSurfaceTest extends TestCase
 	private const ROOT = __DIR__.'/../../..';
 
 	/**
-	 * The surface is everything under src/Api, plus these classes. ADR 0015,
-	 * rule 3: a pack extends or calls what is under Api, and calls these four
-	 * directly because the example pack does and no facade wraps them.
+	 * The surface is everything under src/Api, plus these classes. ADR 0016,
+	 * which replaces ADR 0015's rule 3: a class outside Api is on the surface
+	 * when an element under src/Core depends on it, or when a public or
+	 * protected signature of a surface class names it (or it is a parent or an
+	 * interface of one), so a pack can build with what the core tools use and
+	 * call what it is handed.
 	 *
 	 * Adding a class here is promising to keep it stable across minors, a
 	 * decision with a major version attached to it (§11.2), which is why the
-	 * list is written out and not derived from whatever carries a tag. Each
-	 * entry has a pack that calls it:
-	 *
-	 *  - ObjectQuery: ById() builds the search a pack tool resolves an object
-	 *    from, the same way the core tools do (doc/example-pack).
-	 *  - ObjectSerializer: DEFAULT_LIST_FIELDS is the default a search tool
-	 *    offers for its output_fields parameter.
-	 *  - RestValue: a case-log value reaches a tool decoded by the SDK, and
-	 *    RestUtils::MakeValue() takes it only wrapped by FromDecodedJson().
-	 *  - DryRun: a write tool offers a dry run (SIMULATE_BY_DEFAULT,
-	 *    SimulateSchemaProperty(), Simulated()) and validates the object it built (Check()).
+	 * list is written out and not derived: the tests below fail when src/Core
+	 * starts to depend on a class missing from it, and when a class in it is
+	 * used by neither src/Core nor a surface signature.
 	 */
 	public const EXTRA_SURFACE = [
+		'src/Exception/MCPDocumentException.php',
+		'src/Exception/MCPPortalException.php',
+		'src/Helper/ClassRefusal.php',
+		'src/Helper/ErrorReport.php',
+		'src/Helper/JsonPayload.php',
+		'src/Helper/ObjectId.php',
+		'src/Helper/PortalMode.php',
+		'src/Helper/Settings.php',
+		'src/Service/Access/DocumentFetch.php',
+		'src/Service/Access/ObjectAccess.php',
+		'src/Service/Audit/ReadSummary.php',
+		'src/Service/Portal/PortalAware.php',
+		'src/Service/Portal/PortalBricks.php',
+		'src/Service/Portal/PortalDescription.php',
+		'src/Service/Portal/PortalPolicy.php',
+		'src/Service/Portal/PortalRows.php',
+		'src/Service/Read/AttributeDescription.php',
+		'src/Service/Read/ClassCatalog.php',
+		'src/Service/Read/CurrentUserReader.php',
+		'src/Service/Read/DatamodelReader.php',
+		'src/Service/Read/DocumentAccess.php',
+		'src/Service/Read/ObjectGrades.php',
+		'src/Service/Read/ObjectHistory.php',
 		'src/Service/Read/ObjectQuery.php',
 		'src/Service/Read/ObjectSerializer.php',
+		'src/Service/Read/OutputFields.php',
+		'src/Service/Read/UntrustedMarker.php',
+		'src/Service/Rights/AccessGrants.php',
+		'src/Service/Rights/AccessPolicy.php',
+		'src/Service/Rights/ChangeLogReservation.php',
+		'src/Service/Rights/ExclusionPolicy.php',
+		'src/Service/Rights/ExclusionSearches.php',
+		'src/Service/Rights/GateGrades.php',
+		'src/Service/Rights/ServedAccess.php',
+		'src/Service/Write/DeletionCascade.php',
 		'src/Service/Write/DryRun.php',
+		'src/Service/Write/EditPolicy.php',
+		'src/Service/Write/MentionPolicy.php',
 		'src/Service/Write/RestValue.php',
+		'src/Service/Write/WriteOutcome.php',
+		'src/Service/Write/WritePlan.php',
+		'src/Service/Write/WriteValues.php',
 	];
 
 	/**
@@ -123,29 +156,79 @@ class PublicSurfaceTest extends TestCase
 			static fn (string $s): string => 'Altioo\\iTop\\Extension\\MCP\\'.str_replace('/', '\\', substr($s, strlen('src/'), -strlen('.php'))),
 			self::surfaceFiles()
 		);
-		$sPack = realpath(self::ROOT.'/doc/example-pack');
-		$this->assertNotFalse($sPack);
-
-		$aNamed = [];
-		$oIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($sPack, RecursiveDirectoryIterator::SKIP_DOTS));
-		foreach ($oIt as $oFile) {
-			if ($oFile->getExtension() !== 'php' || str_contains($oFile->getPathname(), '/vendor/')) {
-				continue;
-			}
-			preg_match_all('/^use\s+('.preg_quote('Altioo\\iTop\\Extension\\MCP\\', '/').'[\w\\\\]+);/m', (string)file_get_contents($oFile->getPathname()), $aMatches);
-			foreach ($aMatches[1] as $sName) {
-				$aNamed[$sName] = substr($oFile->getPathname(), strlen($sPack) + 1);
-			}
-		}
+		$aNamed = self::examplePackImports();
 
 		$this->assertNotEmpty($aNamed, 'the example pack imports nothing of this extension; the scan has stopped working');
 		foreach ($aNamed as $sName => $sFile) {
 			$this->assertContains($sName, $aSurface, $sFile.' imports '.$sName.', which is not on the surface (src/Api or EXTRA_SURFACE)');
 		}
-		// And the four extras are not there for nothing: the pack calls each.
+	}
+
+	/**
+	 * ADR 0016: what a core tool, resource, template or prompt depends on is
+	 * on the surface, so a pack may build with the same classes. Read from the
+	 * tokens by LayerDependencyTest's own reader, so a mention in a comment
+	 * counts for nothing.
+	 */
+	public function testEveryClassACoreElementUsesIsOnTheSurface(): void
+	{
+		$aSurface = array_flip(self::surfaceClasses());
+		foreach (LayerDependencyTest::Dependencies() as $sClass => $aTargets) {
+			if (!str_starts_with($sClass, 'Core\\')) {
+				continue;
+			}
+			foreach (array_keys($aTargets) as $sTarget) {
+				if (str_starts_with($sTarget, 'Core\\')) {
+					continue;
+				}
+				$this->assertArrayHasKey($sTarget, $aSurface, $sClass.' depends on '.$sTarget.', which is not on the surface; add it to EXTRA_SURFACE and tag it @api (ADR 0016)');
+			}
+		}
+	}
+
+	/**
+	 * A surface class that hands a pack a type the pack may not use is a
+	 * surface with a hole in it: the types a public or protected signature
+	 * names, and the parents and interfaces of a surface class, are on it too.
+	 *
+	 * @dataProvider surfaceProvider
+	 */
+	public function testASurfaceSignatureNamesOnlySurfaceTypes(string $sPath): void
+	{
+		$aSurface = array_flip(self::surfaceClasses());
+		foreach (self::signatureTypes($sPath) as $sType) {
+			if (str_starts_with($sType, 'Core\\')) {
+				continue;
+			}
+			$this->assertArrayHasKey($sType, $aSurface, $sPath.' names '.$sType.' in a public or protected signature, or extends it, but it is not on the surface (ADR 0016)');
+		}
+	}
+
+	/**
+	 * And no class is on the list for nothing: each is used by an element
+	 * under src/Core, named by a surface class's signature, or called by the
+	 * example pack (RestValue, on the surface since 1.x, is the one only the
+	 * pack calls).
+	 */
+	public function testEveryExtraIsUsedByACoreElementOrASurfaceSignature(): void
+	{
+		$aUsed = [];
+		foreach (array_keys(self::examplePackImports()) as $sName) {
+			$aUsed[substr($sName, strlen('Altioo\\iTop\\Extension\\MCP\\'))] = true;
+		}
+		foreach (LayerDependencyTest::Dependencies() as $sClass => $aTargets) {
+			if (str_starts_with($sClass, 'Core\\')) {
+				$aUsed += $aTargets;
+			}
+		}
+		foreach (self::surfaceFiles() as $sPath) {
+			foreach (self::signatureTypes($sPath) as $sType) {
+				$aUsed[$sType] = true;
+			}
+		}
 		foreach (self::EXTRA_SURFACE as $sPath) {
-			$sName = 'Altioo\\iTop\\Extension\\MCP\\'.str_replace('/', '\\', substr($sPath, strlen('src/'), -strlen('.php')));
-			$this->assertArrayHasKey($sName, $aNamed, $sName.' is on EXTRA_SURFACE because the example pack calls it, and it no longer does');
+			$sClass = self::classOf($sPath);
+			$this->assertArrayHasKey($sClass, $aUsed, $sPath.' is on EXTRA_SURFACE but no core element uses it, no surface signature names it and the example pack does not call it; take it off (ADR 0016)');
 		}
 	}
 
@@ -193,8 +276,7 @@ class PublicSurfaceTest extends TestCase
 	{
 		$sGuide = (string)file_get_contents(self::ROOT.'/doc/extending.md');
 		foreach (self::EXTRA_SURFACE as $sPath) {
-			$sName = basename($sPath, '.php');
-			$this->assertStringContainsString('| `'.str_replace('/', '\\', substr(dirname($sPath), strlen('src/'))).'\\'.$sName.'` |', $sGuide, 'doc/extending.md does not list '.$sName.' in its surface table');
+			$this->assertStringContainsString('`'.self::classOf($sPath).'`', $sGuide, 'doc/extending.md does not list '.self::classOf($sPath).' in its surface table');
 		}
 	}
 
@@ -243,6 +325,185 @@ class PublicSurfaceTest extends TestCase
 		sort($aFiles);
 
 		return $aFiles;
+	}
+
+	/**
+	 * What the example pack imports of this module: fully-qualified name => the
+	 * pack file that imports it.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function examplePackImports(): array
+	{
+		$sPack = realpath(self::ROOT.'/doc/example-pack');
+		self::assertNotFalse($sPack);
+		$aNamed = [];
+		$oIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($sPack, RecursiveDirectoryIterator::SKIP_DOTS));
+		foreach ($oIt as $oFile) {
+			if ($oFile->getExtension() !== 'php' || str_contains($oFile->getPathname(), '/vendor/')) {
+				continue;
+			}
+			preg_match_all('/^use\s+('.preg_quote('Altioo\\iTop\\Extension\\MCP\\', '/').'[\w\\\\]+);/m', (string)file_get_contents($oFile->getPathname()), $aMatches);
+			foreach ($aMatches[1] as $sName) {
+				$aNamed[$sName] = substr($oFile->getPathname(), strlen($sPack) + 1);
+			}
+		}
+
+		return $aNamed;
+	}
+
+	/**
+	 * A surface path as a class name relative to the root namespace, the form
+	 * LayerDependencyTest::Dependencies() answers in.
+	 */
+	private static function classOf(string $sPath): string
+	{
+		return str_replace('/', '\\', substr($sPath, strlen('src/'), -strlen('.php')));
+	}
+
+	/** @return array<int, string> */
+	private static function surfaceClasses(): array
+	{
+		return array_map(static fn (string $s): string => self::classOf($s), self::surfaceFiles());
+	}
+
+	/**
+	 * The classes of src/ a file's public and protected method signatures name
+	 * (parameter and return types), and the ones its type declaration extends or
+	 * implements, relative to the root namespace. Read from the tokens; a
+	 * docblock type counts for nothing, as for LayerDependencyTest.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function signatureTypes(string $sPath): array
+	{
+		$sRoot = 'Altioo\\iTop\\Extension\\MCP\\';
+		$aTokens = token_get_all((string)file_get_contents(self::ROOT.'/'.$sPath), TOKEN_PARSE);
+		$sOwn = self::classOf($sPath);
+		$iPos = strrpos($sOwn, '\\');
+		$sNamespace = $iPos === false ? '' : substr($sOwn, 0, $iPos + 1);
+
+		$aImports = [];
+		$iDepth = 0;
+		$iCount = count($aTokens);
+		$aFound = [];
+		$fResolve = static function (string $sName) use (&$aImports, $sRoot, $sNamespace): ?string {
+			if (str_starts_with($sName, '\\')) {
+				$sFull = ltrim($sName, '\\');
+			} elseif (isset($aImports[$sName])) {
+				$sFull = $aImports[$sName];
+			} elseif (!str_contains($sName, '\\')) {
+				$sFull = $sRoot.$sNamespace.$sName;
+			} else {
+				return null;
+			}
+			if (!str_starts_with($sFull, $sRoot)) {
+				return null;
+			}
+			$sRelative = substr($sFull, strlen($sRoot));
+
+			return is_file(self::ROOT.'/src/'.str_replace('\\', '/', $sRelative).'.php') ? $sRelative : null;
+		};
+
+		for ($i = 0; $i < $iCount; $i++) {
+			$mToken = $aTokens[$i];
+			if (!is_array($mToken)) {
+				if ($mToken === '{') {
+					$iDepth++;
+				} elseif ($mToken === '}') {
+					$iDepth--;
+				}
+				continue;
+			}
+			if (in_array($mToken[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true)) {
+				$iDepth++;
+				continue;
+			}
+			if ($mToken[0] === T_USE && $iDepth === 0) {
+				$sName = '';
+				$sAlias = null;
+				for ($j = $i + 1; $j < $iCount && $aTokens[$j] !== ';'; $j++) {
+					if (is_array($aTokens[$j]) && in_array($aTokens[$j][0], [T_FUNCTION, T_CONST], true)) {
+						$sName = '';
+						break;
+					}
+					if (is_array($aTokens[$j]) && in_array($aTokens[$j][0], [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_STRING], true)) {
+						if ($sName === '') {
+							$sName = ltrim($aTokens[$j][1], '\\');
+						} else {
+							$sAlias = $aTokens[$j][1];
+						}
+					}
+				}
+				if ($sName !== '') {
+					$aImports[$sAlias ?? substr($sName, (int)strrpos('\\'.$sName, '\\'))] = $sName;
+				}
+				$i = $j;
+				continue;
+			}
+			if (in_array($mToken[0], [T_EXTENDS, T_IMPLEMENTS], true) && $iDepth === 0) {
+				for ($j = $i + 1; $j < $iCount && $aTokens[$j] !== '{'; $j++) {
+					if (is_array($aTokens[$j]) && in_array($aTokens[$j][0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+						$sType = $fResolve($aTokens[$j][1]);
+						if ($sType !== null) {
+							$aFound[$sType] = true;
+						}
+					}
+				}
+				continue;
+			}
+			if ($mToken[0] !== T_FUNCTION || $iDepth !== 1) {
+				continue;
+			}
+			// The modifiers before `function`: private hides it; an interface's
+			// method, with none, is public.
+			$bPrivate = false;
+			for ($j = $i - 1; $j >= 0; $j--) {
+				$mPrev = $aTokens[$j];
+				if (is_array($mPrev) && in_array($mPrev[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_STATIC, T_ABSTRACT, T_FINAL, T_PUBLIC, T_PROTECTED], true)) {
+					continue;
+				}
+				if (is_array($mPrev) && $mPrev[0] === T_PRIVATE) {
+					$bPrivate = true;
+					continue;
+				}
+				break;
+			}
+			if ($bPrivate) {
+				continue;
+			}
+			// The parameter list and the return type, up to the body or the `;`.
+			$iParen = 0;
+			$bInDefault = false;
+			for ($j = $i + 1; $j < $iCount; $j++) {
+				$mNext = $aTokens[$j];
+				if ($mNext === '(') {
+					$iParen++;
+				} elseif ($mNext === ')') {
+					$iParen--;
+					$bInDefault = false;
+				} elseif (($mNext === '{' || $mNext === ';') && $iParen === 0) {
+					break;
+				} elseif ($mNext === '=' && $iParen === 1) {
+					$bInDefault = true;
+				} elseif ($mNext === ',' && $iParen === 1) {
+					$bInDefault = false;
+				} elseif (is_array($mNext) && !$bInDefault && in_array($mNext[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+					$mAfter = $aTokens[$j + 1] ?? null;
+					if ($mAfter === '(' && $j === $i + 2) {
+						continue; // the method's own name
+					}
+					$sType = $fResolve($mNext[1]);
+					if ($sType !== null) {
+						$aFound[$sType] = true;
+					}
+				}
+			}
+			$i = $j - 1;
+		}
+		unset($aFound[$sOwn]);
+
+		return array_keys($aFound);
 	}
 
 	/**

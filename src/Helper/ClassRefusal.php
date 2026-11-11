@@ -9,7 +9,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 /**
  * What a tool says when it will not act on the class it was given.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 class ClassRefusal

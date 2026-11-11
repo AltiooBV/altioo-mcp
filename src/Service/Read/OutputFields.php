@@ -20,7 +20,7 @@ use MetaModel;
  * An attribute the operator excludes is refused as unknown, the same wording as one that does not
  * exist (ADR 0012). It was the argument half of `ObjectSerializer` in 1.x.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class OutputFields

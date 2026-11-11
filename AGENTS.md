@@ -94,6 +94,7 @@ Settings agent skills read here.
   Also: a tool's security checks stay in its own source, where the contract tests read them; shared code carries plumbing
   only, and a core tool's signatures never narrow, since packs subclass them ([0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
   Also: `src/` follows Combodo's layer folders and `LayerDependencyTest` holds the one-way order, with an empty baseline: a
-  class imports only the layers below it. `@api` is `src/Api/` and the four classes in `PublicSurfaceTest::EXTRA_SURFACE`;
-  every other class says `@internal`, and a pack calls nothing else
-  ([0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md)).
+  class imports only the layers below it ([0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md)).
+  Also: `@api` is `src/Api/` plus every class `src/Core` depends on and the types their public signatures name, listed in
+  `PublicSurfaceTest::EXTRA_SURFACE`; a new dependency of a core element goes on that list with `@api`, never around it,
+  and every other class says `@internal` ([0016](doc/adr/0016-what-the-core-tools-use-is-public.md)).

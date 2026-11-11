@@ -44,7 +44,7 @@ use ormDocument;
  * decision between an image a model can actually look at and a blob it can only
  * hand on are here.
  *
- * @internal
+ * @api
  * @since 1.0.0
  */
 final class DocumentAccess

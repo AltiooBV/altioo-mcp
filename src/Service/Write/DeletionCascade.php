@@ -20,7 +20,7 @@ use UserRights;
 /**
  * What a deletion would take with it: the cascade checked against the caller's rights, and the plan described to the caller.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class DeletionCascade

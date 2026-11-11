@@ -36,7 +36,7 @@ use utils;
  * reads its settings through ExclusionSettings. What the answer does to a search is
  * ExclusionSearches.
  *
- * @internal
+ * @api
  * @since 1.3.0
  */
 final class ExclusionPolicy

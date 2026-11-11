@@ -76,22 +76,47 @@ folder, or disappear.
 grep -rl '@api' src/          # the definitive list, in the copy you have
 ```
 
-It is everything under `src/Api/` and four classes outside it, named in
-`PublicSurfaceTest::EXTRA_SURFACE`, which a test holds:
+It is everything under `src/Api/`, and outside it every class the core tools, resources,
+templates and prompts under `src/Core/` depend on, plus the types those classes' public
+signatures hand you ([ADR 0016](adr/0016-what-the-core-tools-use-is-public.md)). A pack may build
+with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the classes outside
+`Api`, and a test fails when `src/Core` starts to use a class that is not on it:
 
-| Class | What a pack calls |
+| Folder | On the surface |
 |---|---|
 | `Api\*` | the element base classes you extend, `iMCPServiceProvider`, `MCPRegistry` and `MCPExtensionCollector`, `MCPModule`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, and `Testing\ElementContract` |
-| `Service\Write\DryRun` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()`, `Simulated()` and `Check()`, for a write tool's dry run |
-| `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
-| `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
-| `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to `RestUtils::MakeValue()` |
+| Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess` |
+| Access | `Service\Access\ObjectAccess`, `Service\Access\DocumentFetch` |
+| Read | `Service\Read\ObjectQuery`, `Service\Read\ObjectSerializer`, `Service\Read\OutputFields`, `Service\Read\UntrustedMarker`, `Service\Read\ObjectHistory`, `Service\Read\ObjectGrades`, `Service\Read\DocumentAccess`, `Service\Read\DatamodelReader`, `Service\Read\ClassCatalog`, `Service\Read\AttributeDescription`, `Service\Read\CurrentUserReader` |
+| Write | `Service\Write\DryRun`, `Service\Write\RestValue`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
+| Portal | `Service\Portal\PortalPolicy`, `Service\Portal\PortalBricks`, `Service\Portal\PortalRows`, `Service\Portal\PortalDescription`, `Service\Portal\PortalAware` |
+| Audit | `Service\Audit\ReadSummary` |
+| Helper | `Helper\Settings`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
+| Exception | `Exception\MCPDocumentException`, `Exception\MCPPortalException` |
 
-**A pack must not call anything else of ours**: not the access, rights, portal or audit
-classes, not `Helper\*`, not the core tools. Check access with iTop's `UserRights`, as the
-example pack does. If you find you need an `@internal` class, ask for it to be added to the
-list above; do not reach for it. Read the tags rather than this table, because the tags are
-what a test enforces and the table is not.
+**What stays internal**: the controller and its gates, the server, the background process, the
+core tools themselves (subclass one, as below; do not call it), and every class not listed. A
+member of a surface class marked `@internal` is internal too: the `Remember()` and `Forget()`
+methods that hold a request's state belong to `Service\Server\RequestScope`, and a pack never
+calls them. Read the tags rather than this table: the tags are what a test enforces.
+
+**Use the checks a core tool uses, in your own source** ([ADR 0014](adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)):
+
+- **Exclusions.** The operator's `mcp_excluded_classes` and `mcp_excluded_attributes` apply to your
+  routes as to the core's ([ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md)),
+  and nothing applies them for you. A pack that returns object data asks
+  `ExclusionPolicy::Serves($sClass)` before it answers for a class, drops what
+  `ExclusionPolicy::ExcludesAttribute()` names, and narrows a search with
+  `ExclusionSearches::Narrowed()`. Reading through `ObjectSerializer`, or extending
+  `AbstractObjectSearch` as the example pack does, already does the attribute half.
+- **Access-granting classes and the change log.** A write asks `AccessGrants::RefusalFor()` and
+  `ChangeLogReservation::IsReserved()`, as every core write does.
+- **The caller's view of an object.** `ObjectAccess::Current()` answers in the mode the request is
+  served in; `Readable()`, `Hides()` and the `RefusalTo…()` methods are what the core tools ask
+  instead of `UserRights` alone.
+
+Portal mode serves only this module's own elements, whatever implements `PortalAware`
+(ADR 0016, "What follows"). A pack element is a console element.
 
 A breaking change to a tagged class is a major bump. A new optional hook with a default
 implementation is a minor one. A tagged class or member that is to go is marked `@deprecated`
@@ -485,5 +510,6 @@ exactly this reason — the identifier no longer tells the two apart, and the cl
 - Your element is registered only if it honours the contract above, and only if the operator
   has not disabled it through `mcp_disabled_tools`.
 
-What it does **not** do for you: enforce your business rules. Check `UserRights` for anything
-you read or write, and mask what should not be shown.
+What it does **not** do for you: enforce your business rules, or the operator's exclusions on
+data you read yourself. Check `UserRights` for anything you read or write, ask the checks under
+"Use the checks a core tool uses" above, and mask what should not be shown.

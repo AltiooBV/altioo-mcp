@@ -45,7 +45,7 @@ use UserRights;
  * stimulus is named, because its transition form offers fields the current
  * state locks: agent_id on ev_assign is the usual one.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 final class EditPolicy

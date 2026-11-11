@@ -24,7 +24,7 @@ use UserRights;
  * are read as a snapshot of the rights layer, never as a promise that the write will succeed.
  * It was the second half of `ObjectSerializer` in 1.x.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class ObjectGrades

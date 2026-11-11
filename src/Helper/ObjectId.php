@@ -14,7 +14,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
  * Formerly ObjectId::Normalise(). Reading and writing both report ids, so the
  * decision sits at the bottom, where both can ask it.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class ObjectId

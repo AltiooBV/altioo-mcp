@@ -24,7 +24,7 @@ use UserRights;
  * The caller's values for an existing or new object, each held to every rule a value has to pass before it may be Set(), and
  * converted.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class WriteValues

@@ -17,7 +17,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
  * What the barrier on access-granting classes adds to a grade is
  * ClassRights.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class GateGrades

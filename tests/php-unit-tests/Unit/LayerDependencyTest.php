@@ -211,9 +211,12 @@ TXT;
 	}
 
 	/**
+	 * Public because PublicSurfaceTest asks the same question of src/Core
+	 * (ADR 0016): what a core element depends on is on the surface.
+	 *
 	 * @return array<string, array<string, true>> class => the classes of src/ it imports, names fully-qualified or of its own namespace
 	 */
-	private static function Dependencies(): array
+	public static function Dependencies(): array
 	{
 		$aClasses = self::Classes();
 		$aDependencies = [];

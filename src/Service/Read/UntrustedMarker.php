@@ -28,7 +28,7 @@ use Throwable;
  * gives the model a signal at the point of reading. It was the free-text half of
  * `ObjectSerializer` in 1.x.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class UntrustedMarker

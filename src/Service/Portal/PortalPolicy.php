@@ -52,7 +52,7 @@ use UserRights;
  * "every attribute when the form could not be read": each of those is wider
  * than what the operator configured.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 final class PortalPolicy
@@ -114,7 +114,11 @@ final class PortalPolicy
 		return self::$oCurrent;
 	}
 
-	/** For tests, and for a runner that serves more than one request. */
+	/**
+	 * For tests, and for a runner that serves more than one request.
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$oCurrent = null;

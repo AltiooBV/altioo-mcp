@@ -19,7 +19,7 @@ use Throwable;
  * Every method asks {@see ExclusionPolicy} what is excluded and decides nothing about it. It was
  * the search half of `ExclusionPolicy` in 1.x.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class ExclusionSearches

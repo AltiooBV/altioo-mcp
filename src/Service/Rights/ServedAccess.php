@@ -23,7 +23,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
  * the server was asked directly. Nothing remembered answers with nothing
  * served: a caller is never named more than registration gave it.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class ServedAccess
@@ -35,6 +35,7 @@ final class ServedAccess
 	/**
 	 * @param \Closure(): array{toolsets: array<int, string>, tools: array<int, string>, capabilities: array<int, string>, prompts: array<int, string>} $fAccess
 	 * @param \Closure(AccessPolicy): array<int, string>                                                                                       $fPrompts
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
 	 */
 	public static function Remember(\Closure $fAccess, \Closure $fPrompts): void
 	{
@@ -42,7 +43,11 @@ final class ServedAccess
 		self::$fPrompts = $fPrompts;
 	}
 
-	/** For tests, and for a runner that serves more than one request. */
+	/**
+	 * For tests, and for a runner that serves more than one request.
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$fAccess = null;

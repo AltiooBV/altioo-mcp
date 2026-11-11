@@ -50,7 +50,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
  * A value object: no iTop, no configuration, no request. Every rule below is
  * decided here and tested without any of them.
  *
- * @internal
+ * @api
  * @since 1.0.0
  */
 final class AccessPolicy
@@ -140,7 +140,11 @@ final class AccessPolicy
 	 */
 	private static ?self $oCurrent = null;
 
-	/** @since 1.0.0 */
+	/**
+	 * @since 1.0.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Remember(self $oPolicy): void
 	{
 		self::$oCurrent = $oPolicy;
@@ -152,7 +156,11 @@ final class AccessPolicy
 		return self::$oCurrent;
 	}
 
-	/** For tests, and for a runner that serves more than one request. @since 1.0.0 */
+	/**
+	 * For tests, and for a runner that serves more than one request. @since 1.0.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$oCurrent = null;

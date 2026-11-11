@@ -2,7 +2,7 @@
 
 - Date: 2026-11-11
 - Decided by: Guy Couronne, 2026-11-11 ("Yes, accept it"), as amended
-- Status: accepted
+- Status: accepted; rule 3 superseded by [0016](0016-what-the-core-tools-use-is-public.md) on 2026-11-11
 - Amended: 2026-11-11. The first version's layer order was checked against the code with
   `LayerDependencyTest` and was wrong in five places. This version corrects it; see
   "What the measurement changed".
@@ -90,7 +90,8 @@ An iTop developer opening this module should find that shape.
    **`LayerDependencyTest` enforces the order.** It reads each file's imports and same-namespace
    references from the PHP tokens, and it adds no dependency.
 
-3. **`@api` covers what a pack needs and nothing else:** everything under `Api/`, plus a short,
+3. **Superseded by [ADR 0016](0016-what-the-core-tools-use-is-public.md)**, which puts on the surface
+   every class the core elements use. As first decided: **`@api` covers what a pack needs and nothing else:** everything under `Api/`, plus a short,
    named list of the `Service\Read` and `Service\Write` classes the example pack calls
    (`ObjectQuery`, `ObjectSerializer`, `RestValue` and `DryRun`, the pack-facing half of what `WritePlan` held).
    A unit test holds that list, so it grows only by a deliberate change. Everything else is

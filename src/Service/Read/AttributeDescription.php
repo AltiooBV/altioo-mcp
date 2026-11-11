@@ -30,7 +30,7 @@ use UserRights;
  * with ({@see self::ValueHint()}). Attributes the exclusions of ADR 0012 name are
  * absent, and a secret is described without its value.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class AttributeDescription

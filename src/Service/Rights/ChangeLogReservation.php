@@ -15,7 +15,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
  * grading of a class's gates: whether a class belongs to the change log rather
  * than to the object tools.
  *
- * @internal
+ * @api
+ * @since 2.0.0
  */
 final class ChangeLogReservation
 {

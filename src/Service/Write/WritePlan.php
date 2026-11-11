@@ -29,7 +29,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
  * ExternalKeyPolicy judges a key's target, WriteOutcome shapes what a write reports and
  * DeletionCascade checks what a deletion reaches.
  *
- * @internal
+ * @api
  * @since 1.0.0
  */
 final class WritePlan

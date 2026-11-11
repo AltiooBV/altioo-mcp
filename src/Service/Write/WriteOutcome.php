@@ -24,7 +24,7 @@ use utils;
  * What a write reports: the shape of its result, the pieces that fill it, and how it names the object it acted on - including
  * after a failure that arrived with the row already committed or gone.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class WriteOutcome

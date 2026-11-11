@@ -35,7 +35,7 @@ use UserRights;
  * Its write side holds only what a mode adds to the console's checks, which
  * stay in the write tools: on the console every refusal here is null.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 class ObjectAccess
@@ -79,13 +79,18 @@ class ObjectAccess
 	 * Sets how this request builds its access.
 	 *
 	 * @param \Closure(): self $fFactory
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
 	 */
 	public static function Remember(\Closure $fFactory): void
 	{
 		self::$fCurrent = $fFactory;
 	}
 
-	/** For tests, and for a runner that serves more than one request. */
+	/**
+	 * For tests, and for a runner that serves more than one request.
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$fCurrent = null;

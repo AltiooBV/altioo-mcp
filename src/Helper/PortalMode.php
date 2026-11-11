@@ -35,7 +35,7 @@ use utils;
  * The decisions are pure and tested without iTop; the controller gathers
  * their inputs.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 final class PortalMode
@@ -177,7 +177,11 @@ final class PortalMode
 		return $iExpiration !== false && $iExpiration <= $iNow + $iMaxDays * 86400;
 	}
 
-	/** @since 1.2.0 */
+	/**
+	 * @since 1.2.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Remember(string $sPortal): void
 	{
 		self::$sCurrent = $sPortal;
@@ -189,7 +193,11 @@ final class PortalMode
 		return self::$sCurrent;
 	}
 
-	/** For tests, and for a runner that serves more than one request: see RequestScope::Close(). @since 1.2.0 */
+	/**
+	 * For tests, and for a runner that serves more than one request: see RequestScope::Close(). @since 1.2.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$sCurrent = null;

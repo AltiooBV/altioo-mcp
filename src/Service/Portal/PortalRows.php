@@ -25,7 +25,7 @@ use MetaModel;
  * needs it and nothing below Core may import a tool. The tool calls
  * {@see self::ListQuery()} in its own source, as it did before.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class PortalRows

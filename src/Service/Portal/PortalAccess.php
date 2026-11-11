@@ -55,9 +55,10 @@ final class PortalAccess extends ObjectAccess
 	 *
 	 * Only one that declares it enforces the portal's rules ({@see PortalAware})
 	 * and is this module's own. The namespace is the half a pack cannot
-	 * satisfy by accident: PortalPolicy is not yet on the surface a pack may
-	 * build on, so a pack element claiming the declaration would be a console
-	 * element reaching the portal.
+	 * satisfy by accident. PortalPolicy is on the surface a pack may build on
+	 * (ADR 0016), but whether a pack's element is served to portal users is a
+	 * decision of its own, not taken: until it is, a pack element claiming the
+	 * declaration stays a console element.
 	 *
 	 * @since 1.2.0
 	 */

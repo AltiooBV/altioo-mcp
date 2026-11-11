@@ -23,7 +23,7 @@ use Exception;
  * code that throws this, under a reference the message carries when there is
  * one. An element that catches it can pass the message on unchanged.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 class MCPPortalException extends Exception

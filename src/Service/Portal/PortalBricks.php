@@ -21,7 +21,7 @@ use DBSearch;
  * brick reaches, the named lists it offers and the create actions it declares.
  * What the user may then see or do with that is PortalPolicy's to answer.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class PortalBricks

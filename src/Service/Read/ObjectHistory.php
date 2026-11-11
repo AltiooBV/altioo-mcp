@@ -54,7 +54,7 @@ use UserRights;
  * revocation that left the old value readable would be a revocation in name
  * only.
  *
- * @internal
+ * @api
  * @since 1.0.0
  */
 final class ObjectHistory
@@ -204,7 +204,8 @@ final class ObjectHistory
 	 * @param \Closure(string): bool        $fShows Whether the user is shown that attribute of $oObject.
 	 *
 	 * @return array<string, mixed>
-	 * @internal Portal mode's, as long as PortalPolicy is not on the surface a pack builds on.
+	 * @internal Portal mode's, as long as portal mode serves this module's own elements only
+	 *           ({@see \Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::Serves()}, ADR 0016).
 	 */
 	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0): array
 	{

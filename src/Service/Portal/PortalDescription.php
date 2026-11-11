@@ -35,7 +35,7 @@ use UserRights;
  * Nothing here reads an object. The fields of a given object follow its
  * state and any condition in the layout, so those listed are a new object's.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 final class PortalDescription

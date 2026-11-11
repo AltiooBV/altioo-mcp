@@ -11,7 +11,7 @@ use Throwable;
 /**
  * How a failure is told to the caller and to the log: the log gets everything, the caller a reference.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 class ErrorReport
@@ -76,7 +76,11 @@ class ErrorReport
 		return self::$aErrorReferences;
 	}
 
-	/** For tests, and for a runner that serves more than one request. @since 1.0.0 */
+	/**
+	 * For tests, and for a runner that serves more than one request. @since 1.0.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function ForgetReferences(): void
 	{
 		self::$aErrorReferences = [];

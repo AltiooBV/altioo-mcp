@@ -23,7 +23,7 @@ use UserRights;
  * core_class_list and itop://core/classes. Each class in it is summarised by
  * {@see DatamodelReader::Summarize()}; its rights are {@see ClassRights}'s.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class ClassCatalog

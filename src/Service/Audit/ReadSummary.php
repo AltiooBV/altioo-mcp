@@ -27,7 +27,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Audit;
  * {@see \Altioo\iTop\Extension\MCP\Helper\ErrorReport::MintedReferences()},
  * because the places that read are many and the row is written once.
  *
- * @internal
+ * @api
  * @since 1.3.0
  */
 class ReadSummary
@@ -107,7 +107,11 @@ class ReadSummary
 		return implode('; ', $aParts);
 	}
 
-	/** For tests, and for a runner that serves more than one request. @since 1.3.0 */
+	/**
+	 * For tests, and for a runner that serves more than one request. @since 1.3.0
+	 *
+	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
+	 */
 	public static function Forget(): void
 	{
 		self::$aRead = [];

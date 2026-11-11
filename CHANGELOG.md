@@ -15,14 +15,15 @@ All notable changes to this extension are recorded here. The format follows
   that never set it.
 
 Removal of anything on that surface comes at least one minor release after a `@deprecated`
-naming its replacement. Migration steps an administrator has to take are called out in the
+naming its replacement, except in a major release, which may remove what the minor before it
+deprecated (2.0.0 did, and its entry says what). Migration steps an administrator has to take are called out in the
 entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
 ## [2.0.0] - Unreleased
 
-**The source tree is laid out as iTop lays out its own, and a tool pack builds on a short, named surface.**
+**The source tree is laid out as iTop lays out its own, and a tool pack builds with what the core tools use.**
 `src/` follows Combodo's layer folders (`Controller`, `Hook`, `Core`, `Helper`, `Model`,
 `Exception`, and a feature folder for each responsibility under `Service`) with one chain of
 dependencies that a test holds, and the nine largest classes are split by what they do. The
@@ -35,8 +36,8 @@ maintainer; the folders and a request's path through them are in
 
 1. **A tool pack has to be rewritten against the 2.0 names.** Classes moved and no alias was
    left behind, so a pack that imports a 1.3 name fails to load. `@api` now means
-   `src/Api/` and four classes outside it, and the name table below maps every 1.3 name to
-   its 2.0 one (under Changed).
+   `src/Api/` and every class the core tools depend on, and the name table below maps every
+   1.3 name to its 2.0 one (under Changed).
 2. **The 1.3 deprecations are gone** (under Removed).
 3. **An administrator changes nothing.** The module's behaviour, parameters, tool and
    resource identifiers, audit table and defaults are those of 1.3.0. Run the setup as for any
@@ -57,25 +58,26 @@ the 2.0 names. `register.php` of a pack imports `Api\MCPExtensionCollector`, not
 `Registry\MCPExtensionCollector`; its tools extend `Api\AbstractMCPTool` and its provider
 implements `Api\iMCPServiceProvider`.
 
-**`@api` is `src/Api/` and four named classes.** Everything else says `@internal` and may change
-in a patch release. Of the 35 classes marked `@api` in 1.3, 13 are now under `Api/` and three stay (`ObjectQuery`,
-`ObjectSerializer`, `RestValue`); the other 19 are `@internal`: `AccessGrants`, `CurrentUserReader`, `DatamodelReader`,
-`DocumentAccess`, `EditPolicy`, `ExclusionPolicy`, `FormulaPolicy`, `Identifier`, `JsonPayload`,
-`LogAPILogger`, `MCPContext`, `MCPHelper` (gone), `MCPHttp`, `MCPLog`, `MentionPolicy`,
-`ObjectHistory`, `SecretPolicy`, `Settings` and `WritePlan`, whose dry-run half is the new `DryRun`. The four outside `Api/`, named in
-`PublicSurfaceTest::EXTRA_SURFACE` and in [doc/extending.md](doc/extending.md), are the ones
-the example pack calls:
+**`@api` is `src/Api/` and what the core elements use.** A class outside `Api/` is on the surface
+when a tool, resource, template or prompt under `src/Core/` depends on it, or when a public signature
+of a surface class names it ([ADR 0016](doc/adr/0016-what-the-core-tools-use-is-public.md), which
+replaces rule 3 of ADR 0015). `PublicSurfaceTest::EXTRA_SURFACE` lists them, and
+[doc/extending.md](doc/extending.md) has the table by folder. A pack may build with the classes a
+core tool builds with: the exclusions, the barrier on access-granting classes, the change-log
+reservation, the access question in either mode, the write policies, the readers and the portal's
+policy. Everything else says `@internal` and may change in a patch release: the controller and its
+gates, the server, the background process and the classes those use. A member of a surface class
+can be `@internal` too; the `Remember()` and `Forget()` methods of a request's state are.
 
-| Class | Why a pack uses it |
-|---|---|
-| `Service\Write\DryRun` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()`, `Simulated()` and `Check()`, for a write tool's dry run |
-| `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
-| `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
-| `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to iTop's `RestUtils::MakeValue()` |
+Of the 35 classes marked `@api` in 1.3, the ones that are no longer on the surface are
+`FormulaPolicy`, `Identifier`, `LogAPILogger`, `MCPContext`, `MCPHelper` (gone), `MCPHttp`,
+`MCPLog` and `SecretPolicy`. The rest are under `Api/` or on the list, under their 2.0 names.
 
-A pack that called anything else of ours should ask for it to be added to that list, or use
-iTop's own API: check access with `UserRights`, as the example pack does. The example pack
-(`doc/example-pack`) and its suite run against this surface and nothing wider.
+**A pack that returns object data applies the exclusions itself.** `mcp_excluded_classes` and
+`mcp_excluded_attributes` hold on a pack's routes as on the core's (ADR 0012). Nothing applies them
+to data a pack reads with iTop's own API, so ask `ExclusionPolicy` and `ExclusionSearches`, or read
+through `ObjectSerializer`, as [doc/extending.md](doc/extending.md) describes. The example pack
+(`doc/example-pack`) and its suite run against this surface.
 
 ### For administrators
 
@@ -108,7 +110,7 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   per-request slot in one call (`Close()`), which the controller makes in a `finally` and the
   audit task makes too. `RequestStateTest` fails for a static property that is neither cleared
   by it nor listed as registration for the life of the process. Internal, with no effect on a
-  pack: every one of those slots is `@internal`.
+  pack: the methods that set and clear those slots are `@internal`, on surface classes too.
 - **The contract tests read PHP tokens.** `Support\SourceCalls` answers "does this method call
   `X::m(`, and before what" from the tokens, resolved through `use`, so a comment or a string no longer
   satisfies a rule of ADR 0014 and a rename no longer needs a test edited. Test-only; the rules are the same.

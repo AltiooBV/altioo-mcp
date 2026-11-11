@@ -33,7 +33,7 @@ use UserRights;
  * be one class without Read importing Access. DocumentAccess keeps the URI,
  * the ceiling, the type check and the content; this keeps the rights.
  *
- * @internal
+ * @api
  * @since 2.0.0
  */
 final class DocumentFetch

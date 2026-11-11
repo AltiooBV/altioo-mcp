@@ -18,13 +18,12 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
  * bizmodel class, so the safe default for anything undeclared is that a
  * portal user never sees it.
  *
- * Internal on purpose. A tool pack cannot declare it yet: PortalPolicy is not
- * part of the surface a pack may build on, and an element declared
- * portal-aware without it would be a console tool served to the portal. Until
- * it is, MCPService serves only this module's own elements in portal mode,
- * whatever else implements this.
+ * On the surface because the core elements implement it (ADR 0016), but a
+ * pack declaring it gains nothing yet: portal mode serves only this module's
+ * own elements, whatever else implements this (PortalAccess::Serves()).
+ * Serving a pack's element to portal users is a decision not yet taken.
  *
- * @internal
+ * @api
  * @since 1.2.0
  */
 interface PortalAware

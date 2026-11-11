@@ -34,7 +34,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
  * exactly what the trigger will see - including markup sent as plain text,
  * which the trigger decodes back into markup.
  *
- * @internal
+ * @api
  * @since 1.1.0
  */
 final class MentionPolicy
