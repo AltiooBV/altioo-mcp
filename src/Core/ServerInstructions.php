@@ -280,7 +280,7 @@ final class ServerInstructions
 	 * here, and each claimed only where it was actually read: a format is a
 	 * promise about the string on the wire, and a wrong one has the model send
 	 * a value iTop then refuses - worse than saying nothing
-	 * (DatamodelReader::format()).
+	 * (AttributeFormat::format()).
 	 *
 	 * What that tracks is an upgrade, not a configuration. GetInternalFormat()
 	 * returns a literal - 'Y-m-d H:i:s' and 'Y-m-d' on 3.2 - so no operator can

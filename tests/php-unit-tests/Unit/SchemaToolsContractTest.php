@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -576,16 +577,16 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testPatternsForTheFormatsITopActuallyUses(): void
 	{
-		$this->assertSame('^\d{4}-\d{2}-\d{2}$', DatamodelReader::PatternFromDateFormat('Y-m-d'));
+		$this->assertSame('^\d{4}-\d{2}-\d{2}$', AttributeFormat::PatternFromDateFormat('Y-m-d'));
 		$this->assertSame(
 			'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$',
-			DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s')
+			AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s')
 		);
 	}
 
 	public function testThePatternAcceptsITopsValuesAndRejectsRfc3339(): void
 	{
-		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+		$sPattern = AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s');
 
 		$this->assertSame(1, preg_match('/'.$sPattern.'/', '2026-09-18 07:53:01'));
 		// The very string a model told "date-time" would send, and the one
@@ -601,7 +602,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testSeparatorsAreLeftUnescaped(): void
 	{
-		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+		$sPattern = AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s');
 
 		$this->assertStringNotContainsString('\-', $sPattern);
 		$this->assertStringNotContainsString('\:', $sPattern);
@@ -609,7 +610,7 @@ class SchemaToolsContractTest extends TestCase
 
 	public function testRegexSyntaxCharactersInAFormatAreEscaped(): void
 	{
-		$this->assertSame('^\d{4}\.\d{2}$', DatamodelReader::PatternFromDateFormat('Y.m'));
+		$this->assertSame('^\d{4}\.\d{2}$', AttributeFormat::PatternFromDateFormat('Y.m'));
 	}
 
 	/**
@@ -618,9 +619,9 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAnUntranslatableFormatYieldsNoPattern(): void
 	{
-		$this->assertNull(DatamodelReader::PatternFromDateFormat('D, d M Y'), 'D and M are not numeric tokens');
-		$this->assertNull(DatamodelReader::PatternFromDateFormat('\\Y-m-d'), 'a backslash escape is not translated');
-		$this->assertNull(DatamodelReader::PatternFromDateFormat(''));
+		$this->assertNull(AttributeFormat::PatternFromDateFormat('D, d M Y'), 'D and M are not numeric tokens');
+		$this->assertNull(AttributeFormat::PatternFromDateFormat('\\Y-m-d'), 'a backslash escape is not translated');
+		$this->assertNull(AttributeFormat::PatternFromDateFormat(''));
 	}
 
 	/**
