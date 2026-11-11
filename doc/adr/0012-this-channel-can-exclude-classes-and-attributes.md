@@ -3,6 +3,7 @@
 - Date: 2026-11-09
 - Decided by: Guy Couronne, 2026-11-09 ("Accept, amended": the two amendments below)
 - Status: accepted
+- Renamed: 2026-11-11. A name in this record followed the 2.0 layout ([0015](0015-2-0-lays-out-src-as-itop-does.md)); the decision is unchanged.
 
 The only lever an operator has on what leaves through this endpoint is the profile of the account, which also changes
 what that account may do in the console. There is no way to say "`private_log` and phone numbers do not go to a model, and
@@ -23,7 +24,7 @@ put in front of an assistant.
 - **For everyone, in both modes.** Administrator, Basic authentication, a token of any grade and portal mode included, as
   `mcp_read_only` is. No scope lifts it; the one thing that does is the **exempt profile** an administrator grants
   ([0013](0013-an-exempt-profile-is-served-what-is-excluded.md), which amends this line).
-- **Excluded is absent.** An excluded class answers exactly as an unknown class does (`MCPHelper::UnreadableClassRefusal`), an
+- **Excluded is absent.** An excluded class answers exactly as an unknown class does (`Helper\ClassRefusal::Unreadable`), an
   excluded attribute as an unknown attribute. Not "excluded": that would be an oracle for which classes and attributes exist
   and are sensitive. A listing, a schema, a search, a filter, a sort, a count and its buckets, a history, a document, a write
   and its dry run behave as if the datamodel had no such class or attribute.

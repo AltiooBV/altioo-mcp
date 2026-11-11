@@ -45,7 +45,7 @@ harness that drives a real model against a disposable iTop and checks what it di
     it.
 - **A grader model**, from another family than the one under test, is used only where the answer
   is prose. That includes the failure this harness exists for: the server dry-runs unless told
-  otherwise (`WritePlan`), so an agent that stops there and reports the ticket resolved leaves the
+  otherwise (`Service\Write\DryRun`), so an agent that stops there and reports the ticket resolved leaves the
   instance unchanged, and only its message is wrong. The grader gets the narrowest question the
   end state leaves open: nothing landed, so does this message claim it did?
 - **Red cases** come from the hostile-agent pass in `review/review-personas.md` (named, not

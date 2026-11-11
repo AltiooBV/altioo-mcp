@@ -6,6 +6,9 @@
 - Amended: 2026-11-11. The first version's layer order was checked against the code with
   `LayerDependencyTest` and was wrong in five places. This version corrects it; see
   "What the measurement changed".
+- Renamed: 2026-11-11, after the work was done on `refactor/2.0`, so the names match the 2.0 code.
+  The `@api` list in rule 3 names `Service\Write\DryRun`, not a half of `WritePlan`, and step 6's
+  level-2 view exists. The decision and the layer order are unchanged.
 
 **Context.** The architecture review of 2026-11-10 found that the code works and is well tested,
 but that someone new to it cannot find their way around. When checked against PHP and iTop
@@ -89,7 +92,7 @@ An iTop developer opening this module should find that shape.
 
 3. **`@api` covers what a pack needs and nothing else:** everything under `Api/`, plus a short,
    named list of the `Service\Read` and `Service\Write` classes the example pack calls
-   (`ObjectQuery`, `ObjectSerializer`, `RestValue`, and the pack-facing half of `WritePlan`).
+   (`ObjectQuery`, `ObjectSerializer`, `RestValue` and `DryRun`, the pack-facing half of what `WritePlan` held).
    A unit test holds that list, so it grows only by a deliberate change. Everything else is
    `@internal` and can be restructured in a minor release. A pack calls those classes directly;
    no facade wraps them. `doc/extending.md` and `doc/example-pack` are rewritten against this
@@ -201,7 +204,7 @@ repeat it.
    `doc/extending.md` and the example pack are rewritten. The dependency test's baseline is now
    empty.
 6. `doc/architecture.md` gains the level-2 view it says it is waiting for, drawn from the folders
-   above. The version becomes 2.0.0, Unreleased, with the name table in its changelog entry. Then
+   above (done: the view is in it). The version becomes 2.0.0, Unreleased, with the name table in its changelog entry. Then
    the pull request.
 
 **Rejected alternatives.**

@@ -40,6 +40,6 @@ third-party tool and edits the most sensitive text on an instance.
 Not touched, and not ours: that Combodo's case-log action fails on its own at 1.3.4 (`Unknown column 'id'`
 on a temporary table whose key is `objkey`, caught and counted as done).
 
-Enforced by: `ChangeTrackingTest::testNothingComposesTheLineAnyMore` (unit), `ChangeAttributionTest`
+Enforced by: `ChangeTrackingTest::testNothingWritesTheLine` (unit), `ChangeAttributionTest`
 (integration) and step 4c of `tools/ci/http-smoke.sh`, which reads a real write's `userinfo`, origin and
 `change_comment` back.
