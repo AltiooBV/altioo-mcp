@@ -22,6 +22,210 @@ entry itself, not left to be inferred from it.
 
 ## [2.0.0] - Unreleased
 
+**The source tree is laid out as iTop lays out its own, and a tool pack builds on a short, named surface.**
+`src/` follows Combodo's layer folders (`Controller`, `Hook`, `Core`, `Helper`, `Model`,
+`Exception`, and a feature folder for each responsibility under `Service`) with one chain of
+dependencies that a test holds, and the six largest classes are split by what they do. The
+module behaves as it did in 1.3.0. What changes is where the code lives, and with it what a
+pack may call ([ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md), decided by the
+maintainer; the folders and a request's path through them are in
+[doc/architecture.md](doc/architecture.md)).
+
+**Read before upgrading.** Three things, by who you are:
+
+1. **A tool pack has to be rewritten against the 2.0 names.** Classes moved and no alias was
+   left behind, so a pack that imports a 1.3 name fails to load. `@api` now means
+   `src/Api/` and four classes outside it, and the name table below maps every 1.3 name to
+   its 2.0 one (under Changed).
+2. **The 1.3 deprecations are gone** (under Removed).
+3. **An administrator changes nothing.** The module's behaviour, parameters, tool and
+   resource identifiers, audit table and defaults are those of 1.3.0. Run the setup as for any
+   upgrade; nothing else needs doing. The old background-task row is left to iTop (under For
+   administrators).
+
+### Breaking for packs
+
+**The namespace layout changed, and moved classes have no aliases.** A pack is written against
+the 2.0 names. `register.php` of a pack imports `Api\MCPExtensionCollector`, not
+`Registry\MCPExtensionCollector`; its tools extend `Api\AbstractMCPTool` and its provider
+implements `Api\iMCPServiceProvider`.
+
+**`@api` is `src/Api/` and four named classes.** Everything else says `@internal` and may change
+in a patch release. Of the 35 classes marked `@api` in 1.3, 13 are now under `Api/` and the four below stay; the
+other 18 are `@internal`: `AccessGrants`, `CurrentUserReader`, `DatamodelReader`,
+`DocumentAccess`, `EditPolicy`, `ExclusionPolicy`, `FormulaPolicy`, `Identifier`, `JsonPayload`,
+`LogAPILogger`, `MCPContext`, `MCPHelper` (gone), `MCPHttp`, `MCPLog`, `MentionPolicy`,
+`ObjectHistory`, `SecretPolicy` and `Settings`. The four outside `Api/`, named in
+`PublicSurfaceTest::EXTRA_SURFACE` and in [doc/extending.md](doc/extending.md), are the ones
+the example pack calls:
+
+| Class | Why a pack uses it |
+|---|---|
+| `Service\Read\ObjectQuery` | `ById()`, to build the search an object is read from |
+| `Service\Read\ObjectSerializer` | `DEFAULT_LIST_FIELDS`, the default of a search tool's `output_fields` |
+| `Service\Write\RestValue` | `FromDecodedJson()`, to hand a decoded value to iTop's `RestUtils::MakeValue()` |
+| `Service\Write\WritePlan` | `SIMULATE_BY_DEFAULT`, `SimulateSchemaProperty()` and `Check()`, for a write tool's dry run |
+
+A pack that called anything else of ours should ask for it to be added to that list, or use
+iTop's own API: check access with `UserRights`, as the example pack does. The example pack
+(`doc/example-pack`) and its suite run against this surface and nothing wider.
+
+### For administrators
+
+**Nothing needs doing.** No parameter, default, identifier, table or column changed. The hourly
+background process is now `Hook\AuditHousekeeping` where it was `Service\AuditHousekeeping`, so
+the first cron run after the upgrade records a new row for it in iTop's background-task table
+(`priv_backgroundtask`, shown by `cron.php --status_only=1`) and runs it at once.
+
+The row of the old class stays in that table. iTop's own cron deals with it: `ReSyncProcesses()`
+in `webservices/cron.php` marks every task whose class no longer exists `removed` on its next
+run, and only `active` tasks are ever run, so the old row is idle, not running twice. It is never
+deleted, and that is iTop's behaviour for every background process that goes away, so there is
+nothing to clean up. Its run count and durations do not carry over to the new row.
+
+### Changed
+
+- **Architecture.** `src/` follows Combodo's layer folders under one dependency order, enforced
+  by `LayerDependencyTest` with an empty baseline, and `@api` is enforced by
+  `PublicSurfaceTest`. The decision is [ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md); the
+  level-2 view is [doc/architecture.md](doc/architecture.md).
+- **Six classes are split.** `MCPHelper` (dissolved), `WritePlan`, `AccessGrants`,
+  `DatamodelReader`, `PortalPolicy` and `MCPController` each did several jobs. The code was moved,
+  not rewritten, and each gate a request passes is one class under `Controller\Gate`, run from
+  one ordered list.
+- **Name table, 1.3 → 2.0, below.** Checked by script against the 1.3.0 tag and the 2.0 tree: every class
+  under `src/` at 1.3.0 is in it, every 2.0 name in it exists, and every public or protected
+  member that is not at its old name in the class it moved to is in it.
+
+**Classes.** Every class that existed in 1.3.0, by its 1.3.0 name. Namespaces are relative to `Altioo\iTop\Extension\MCP\`.
+
+| 1.3 class | 2.0 class |
+|---|---|
+| `Abstract\AbstractBulkTool` | `Api\AbstractBulkTool` |
+| `Abstract\AbstractMCPPrompt` | `Api\AbstractMCPPrompt` |
+| `Abstract\AbstractMCPResource` | `Api\AbstractMCPResource` |
+| `Abstract\AbstractMCPResourceTemplate` | `Api\AbstractMCPResourceTemplate` |
+| `Abstract\AbstractMCPTool` | `Api\AbstractMCPTool` |
+| `Abstract\AbstractObjectSearch` | `Api\AbstractObjectSearch` |
+| `Contract\iMCPServiceProvider` | `Api\iMCPServiceProvider` |
+| `Helper\AccessGrants` | `Service\Rights\AccessGrants` |
+| `Helper\ChangeTracking` | `Api\ChangeTracking` |
+| `Helper\CurrentUserReader` | `Service\Read\CurrentUserReader` |
+| `Helper\DatamodelReader` | `Service\Read\DatamodelReader` |
+| `Helper\DocumentAccess` | `Service\Read\DocumentAccess` |
+| `Helper\EditPolicy` | `Service\Write\EditPolicy` |
+| `Helper\ExclusionPolicy` | `Service\Rights\ExclusionPolicy` |
+| `Helper\FormulaPolicy` | `Service\Write\FormulaPolicy` |
+| `Helper\MentionPolicy` | `Service\Write\MentionPolicy` |
+| `Helper\ObjectHistory` | `Service\Read\ObjectHistory` |
+| `Helper\ObjectQuery` | `Service\Read\ObjectQuery` |
+| `Helper\ObjectSerializer` | `Service\Read\ObjectSerializer` |
+| `Helper\ResourceOutput` | `Api\ResourceOutput` |
+| `Helper\RestValue` | `Service\Write\RestValue` |
+| `Helper\SecretPolicy` | `Service\Rights\SecretPolicy` |
+| `Helper\ToolOutput` | `Api\ToolOutput` |
+| `Helper\WritePlan` | `Service\Write\WritePlan` |
+| `Models\MCPResult` | `Model\MCPResult` |
+| `Registry\MCPExtensionCollector` | `Api\MCPExtensionCollector` |
+| `Registry\MCPRegistry` | `Api\MCPRegistry` |
+| `Server\ServerInstructions` | `Core\ServerInstructions` |
+| `Server\Session\StatelessSessionStore` | `Service\Server\Session\StatelessSessionStore` |
+| `Service\AccessPolicy` | `Service\Rights\AccessPolicy` |
+| `Service\AuditHousekeeping` | `Hook\AuditHousekeeping` |
+| `Service\AuditRetention` | `Service\Audit\AuditRetention` |
+| `Service\ChangeSummary` | `Service\Audit\ChangeSummary` |
+| `Service\ExcludingModelReflection` | `Service\Rights\ExcludingModelReflection` |
+| `Service\MCPService` | `Service\Server\MCPService` |
+| `Service\ObjectAccess` | `Service\Access\ObjectAccess` |
+| `Service\PortalAccess` | `Service\Portal\PortalAccess` |
+| `Service\PortalAware` | `Service\Portal\PortalAware` |
+| `Service\PortalBrickTemplates` | `Service\Portal\PortalBrickTemplates` |
+| `Service\PortalDescription` | `Service\Portal\PortalDescription` |
+| `Service\PortalMode` | `Helper\PortalMode` |
+| `Service\PortalPolicy` | `Service\Portal\PortalPolicy` |
+| `Service\ReadSummary` | `Service\Audit\ReadSummary` |
+| `Service\TokenScopes` | `Service\Rights\TokenScopes` |
+| `Testing\ElementContract` | `Api\Testing\ElementContract` |
+| `Helper\MCPHelper` | gone, member by member, below |
+
+Not in the table because they did not move: `Controller\MCPController`; `Core\CoreExtensions`; `Core\Prompts\MyOpenTickets`; `Core\ResourceTemplates\{ClassDetail, ObjectDocument}`; `Core\Resources\{ClassList, CurrentUser, Instructions, Version}`; `Core\Tools\{AbstractPortalTool, ClassList, ClassSchema, CurrentUser, Instructions, MyActivity, ObjectApplyStimulus, ObjectAttach, ObjectBulkCreate, ObjectBulkDelete, ObjectBulkUpdate, ObjectCount, ObjectCreate, ObjectDelete, ObjectFindByName, ObjectGet, ObjectGetDocument, ObjectGetRelated, ObjectHistory, ObjectSearchByClass, ObjectSearchByOQL, ObjectUpdate, PortalList, SetObsoleteData}`; `Exception\{MCPAuthException, MCPDocumentException, MCPPortalException, MCPRegistrationException, MCPRequestRejectedException}`; `Helper\{Identifier, JsonPayload, LogAPILogger, MCPContext, MCPHttp, MCPLog, Settings}`.
+
+**Members.** Every public or protected constant, method or property of those classes that is not at the same name in the class above, so a name not listed here exists as it did. **Renamed** marks a member whose name changed as well as its class; the others only moved.
+
+| 1.3 member | 2.0 member |
+|---|---|
+| `Helper\MCPHelper`: `MODULE_NAME`, `VERSION`, `SDK_CONSTRAINT`, `LICENSE`, `SOURCE_URL`, `AtLeast()`, `RequireVersion()` | `Api\MCPModule`, same names |
+| `Helper\MCPHelper::MCP_METHOD_EXCEPTION` | `Helper\MCPMethod::EXCEPTION`, **renamed** |
+| `Helper\MCPHelper::MCP_METHOD_INITIALIZE` | `Helper\MCPMethod::INITIALIZE`, **renamed** |
+| `Helper\MCPHelper::MCP_METHOD_TOOLS_CALL` | `Helper\MCPMethod::TOOLS_CALL`, **renamed** |
+| `Helper\MCPHelper::MCP_METHOD_RESOURCES_READ` | `Helper\MCPMethod::RESOURCES_READ`, **renamed** |
+| `Helper\MCPHelper::MCP_METHOD_PROMPTS_GET` | `Helper\MCPMethod::PROMPTS_GET`, **renamed** |
+| `Helper\MCPHelper`: `LOG_LEVEL_INFO`, `LOG_LEVEL_DEBUG`, `LOG_LEVEL_ERROR` | `Helper\Settings`, same names |
+| `Helper\MCPHelper::UnreadableClassRefusal()` | `Helper\ClassRefusal::Unreadable()`, **renamed** |
+| `Helper\MCPHelper`: `LooksLikeClassName()` | `Helper\ClassRefusal`, same names |
+| `Helper\MCPHelper`: `Translate()` | `Helper\Dictionary`, same names |
+| `Helper\MCPHelper::LogError()` | `Helper\ErrorReport::Log()`, **renamed** |
+| `Helper\MCPHelper::NewErrorReference()` | `Helper\ErrorReport::NewReference()`, **renamed** |
+| `Helper\MCPHelper::MintedErrorReferences()` | `Helper\ErrorReport::MintedReferences()`, **renamed** |
+| `Helper\MCPHelper::ForgetErrorReferences()` | `Helper\ErrorReport::ForgetReferences()`, **renamed** |
+| `Helper\MCPHelper`: `OpaqueFailure()`, `RejectedValue()` | `Helper\ErrorReport`, same names |
+| `Helper\MCPHelper`: `MAP_TYPE` | `Helper\JsonPayload`, same names |
+| `Helper\MCPHelper::RequestedPortal()` | `Helper\PortalMode::Requested()`, **renamed** |
+| `Helper\MCPHelper`: `CalledEndpointUrl()` | `Helper\OAuthResource`, same names |
+| `Helper\MCPHelper::GetProtectedResourceMetadataUrl()` | `Helper\OAuthResource::MetadataUrl()`, **renamed** |
+| `Helper\MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS` | `Helper\OAuthResource::TOKEN_AUDIENCE_CLASS`, **renamed** |
+| `Helper\MCPHelper::__construct()` | **removed**; `MCPLog::EnableForModule()` opens the module log |
+| `Helper\MCPHelper`: every `@deprecated 1.3.0` constant (`MODULE_SETTING_*`, `DEFAULT_*`) and method (`AllowsAccessAdministration()`, `AllowsPrivilegeEscalation()`, `EscalationClassesFrom()`, `GetAllowedHosts()`, `GetAllowedOrigins()`, `GetAuditRetentionDays()`, `GetAuditedMethods()`, `GetCapabilities()`, `GetDisabledIdentifiers()`, `GetEnabledToolsets()`, `GetEscalationClasses()`, `GetMaxMentions()`, `GetPaginationLimit()`, `GetPortalTokenMaxDays()`, `GetServedPortals()`, `GetSourceUrl()`, `IsAccessRestricted()`, `IsReadOnly()`, `LogsCalls()`, `RefusesFormulaValues()`, `RetentionDaysFrom()`, `SwitchFrom()`) | removed; `Helper\Settings` has each under the same name |
+| `Helper\Settings::AccessSettingsAreMalformed()` and its `Helper\MCPHelper` stub | `Service\Rights\AccessPolicy::SettingsAreMalformed()`, **renamed**; both 1.3 methods are removed |
+| `Helper\WritePlan::RefusalForExternalKey()` | `Service\Write\ExternalKeyPolicy::RefusalFor()`, **renamed** |
+| `Helper\WritePlan::ValidatedValues()` | `Service\Write\WriteValues::Validated()`, **renamed** |
+| `Helper\WritePlan`: `RefusalForDroppedSetValues()` | `Service\Write\WriteValues`, same names |
+| `Helper\WritePlan`: `DeletionPlanSchema()`, `CheckDeletionRights()`, `SerializeDeletionPlan()` | `Service\Write\DeletionCascade`, same names |
+| `Helper\WritePlan`: `CredentialNote()`, `OutcomeSchema()`, `ObsoleteOkSchemaProperty()`, `AfterSchemaProperty()`, `After()`, `Map()`, `ChangesSchemaProperty()`, `DefaultedSchemaProperty()`, `Defaulted()`, `OverriddenSchemaProperty()`, `Identity()`, `CommittedId()`, `IsGone()`, `Untrusted()`, `Changes()` | `Service\Write\WriteOutcome`, same names |
+| `Helper\WritePlan::AsId()` | `Helper\ObjectId::Normalise()`, **renamed** |
+| `Helper\AccessGrants`: `AUTOMATION_REFUSAL`, `DELEGATED_RIGHTS_REFUSAL`, `DELEGATED_TARGET_REFUSAL`, `DELEGATION_REFUSAL`, `DETECTION_REFUSAL`, `DETECTION_TAMPER_REFUSAL`, `GRANT_REFUSAL`, `NOT_YOURS_REFUSAL`, `OPERATOR_ESCALATION_REFUSAL`, `RECIPIENT_REFUSAL`, `RECORDING_REFUSAL`, `SELF_REFUSAL` | `Service\Rights\AccessGrantRefusals`, same names |
+| `Helper\AccessGrants`: `IsGranting()`, `IsDelegating()`, `IsAutomation()`, `IsOperatorListed()`, `IsOutboundSecret()`, `IsRecording()`, `IsDetection()`, `IsPersonal()`, `IsBarred()`, `Forget()` | `Service\Rights\AccessGrantFamilies`, same names |
+| `Helper\DatamodelReader`: `OBJECT_RIGHTS_KEYS`, `RIGHTS_ALL`, `RightsKeys()`, `MayValues()` | `Service\Rights\GateGrades`, same names |
+| `Helper\DatamodelReader`: `PatternFromDateFormat()` | `Service\Read\AttributeFormat`, same names |
+| `Helper\DatamodelReader`: `MAX_ALLOWED_VALUES`, `ValueHint()` | `Service\Read\AttributeDescription`, same names |
+| `Helper\DatamodelReader`: `RightsOf()` | `Service\Rights\ClassRights`, same names |
+| `Helper\DatamodelReader`: `Categories()`, `ClassListPayload()`, `ListClasses()`, `FilterByText()`, `WithRights()`, `FilterByRight()` | `Service\Read\ClassCatalog`, same names |
+| `Service\PortalPolicy`: `BRICK_MANAGE`, `BRICK_BROWSE`, `BRICK_CREATE`, `BrickKind()`, `CreateActionOf()` | `Service\Portal\PortalBricks`, same names |
+| `Service\PortalPolicy`: `CompileLockPath()` | `Service\Portal\PortalLoader`, same names |
+| `Service\PortalPolicy`: `BricksReaching()`, `CanHold()` | `Service\Portal\PortalReach`, same names |
+| `Service\PortalPolicy`: `WithReadOnlyHonoured()`, `ShowsAttachments()` | `Service\Portal\PortalForms`, same names |
+| `Controller\MCPController`: `TOOL_REFUSED_MESSAGE` | `Controller\MCPResponse`, same names |
+| `Helper\MCPHttp`: `BearerChallenge()` | `Controller\MCPResponse`, same names |
+| `Helper\ObjectHistory`: `IsReserved()`, `RESERVED_REFUSAL` | `Service\Rights\ChangeLogReservation`, same names |
+| `Helper\DocumentAccess`: `Fetch()` | `Service\Access\DocumentFetch`, same names |
+| `Helper\ChangeTracking::Compose()` | **removed**; nothing has written its line since 1.3 |
+| `Service\MCPService::InstructionsFor()` | `Core\ServerInstructions::ForCaller()`, **renamed** |
+| `Service\PortalMode`: `Serves()` | `Service\Portal\PortalAccess`, same names |
+| `Core\Tools\ObjectSearchByOQL`: `CheckQuery()` | `Service\Read\ObjectQuery`, same names |
+| `Core\Tools\PortalList`: `RowOf()` | `Service\Portal\PortalRows`, same names |
+
+### Removed
+
+The 1.3 deprecations, removed early as ADR 0015 decided, since no 1.x release had been
+installed anywhere:
+
+- the `MCPHelper` settings stubs and constants (use `Helper\Settings`, which has each under the
+  same name), and `MCPHelper` itself, which no longer exists (its other members went to the
+  classes that own them: see the table);
+- `MCPHelper::__construct()` (open the module log with `MCPLog::EnableForModule()`);
+- `ChangeTracking::Compose()`, which nothing has called since 1.3;
+- `Settings::AccessSettingsAreMalformed()`, which asked the exclusions' parser from the layer that
+  reads settings. The question is `Service\Rights\AccessPolicy::SettingsAreMalformed()`.
+
+### Security
+
+- **`ObjectAccess::Current()` refuses a request in portal mode that nothing entered.** Splitting
+  the choice between the console's rules and the portal's out of `ObjectAccess` would have left
+  it answering with the console's when the portal mode was remembered but never entered through
+  `PortalAccess::Enter()`. It now throws `MCPPortalException`, so portal mode serves nothing
+  rather than the console's reach, as 1.3 did. No path in `src/` does this today; the check holds
+  the next one to it.
+
 ## [1.3.0] - 2026-11-11
 
 **The operator decides what this channel never serves, and can see what it did.** Classes and
