@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBlob;
 use DBObject;
@@ -106,7 +107,7 @@ final class DocumentFetch
 		$oSet->Rewind();
 
 		// A file filed under an object of an excluded class is not there.
-		if (ExclusionPolicy::IsFiledUnderExcluded($oObject)) {
+		if (ExclusionSearches::IsFiledUnderExcluded($oObject)) {
 			throw new MCPDocumentException("Object {$sClass}::{$iId} not found.");
 		}
 

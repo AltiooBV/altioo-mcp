@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Access;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -110,7 +111,7 @@ class ObjectAccess
 		}
 
 		$sFinalClass = get_class($oObject);
-		if (ExclusionPolicy::ExcludesClass($sFinalClass) || ExclusionPolicy::IsFiledUnderExcluded($oObject)) {
+		if (ExclusionPolicy::ExcludesClass($sFinalClass) || ExclusionSearches::IsFiledUnderExcluded($oObject)) {
 			return null; // an object of an excluded class, or a file filed under one, is not there (doc/adr/0012)
 		}
 		if ($sFinalClass !== $sClass

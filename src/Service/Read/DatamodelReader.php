@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use MetaModel;
@@ -255,7 +256,7 @@ final class DatamodelReader
 		foreach (array_keys($aOfClass) as $sRelation) {
 			$aRelated = [];
 			// The queries that lead to an excluded class are not listed (doc/adr/0012); their names are no class names.
-			foreach (array_keys(ExclusionPolicy::RelationQueries($sClass, $sRelation)) as $sNeighbour) {
+			foreach (array_keys(ExclusionSearches::RelationQueries($sClass, $sRelation)) as $sNeighbour) {
 				$aRelated[] = $sNeighbour;
 			}
 			if (!empty($aRelated)) {

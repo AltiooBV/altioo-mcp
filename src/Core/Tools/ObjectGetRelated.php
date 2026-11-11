@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -183,7 +184,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		if (ExclusionPolicy::IsActive()) {
 			foreach ($aValidRelations as $sRelationCode => $aDirections) {
 				foreach (['down' => true, 'up' => false] as $sWay => $bDown) {
-					if (isset($aDirections[$sWay]) && ExclusionPolicy::RelationQueries($class, (string)$sRelationCode, $bDown) === []) {
+					if (isset($aDirections[$sWay]) && ExclusionSearches::RelationQueries($class, (string)$sRelationCode, $bDown) === []) {
 						unset($aValidRelations[$sRelationCode][$sWay]);
 					}
 				}

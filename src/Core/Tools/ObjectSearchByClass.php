@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Mcp\Exception\ToolCallException;
@@ -153,7 +154,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 		$aResults = [];
 		// The rows of an excluded subclass are not in the set, so neither the rows nor the total (doc/adr/0012).
-		$oSet = new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
+		$oSet = new DBObjectSet(ExclusionSearches::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'requested_class'  => $class,

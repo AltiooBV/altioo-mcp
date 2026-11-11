@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObject;
 use DBObjectSet;
 use DBSearch;
@@ -84,7 +84,7 @@ final class PortalRows
 
 		// A list on a parent class holds the rows of its subclasses: the excluded ones are not among them (doc/adr/0012).
 		/** @psalm-suppress InvalidReturnStatement DBObjectSearch is a DBSearch; Psalm has no iTop checkout to say so. */
-		return $oBounded === null ? null : ExclusionPolicy::Narrowed($oBounded, $sClass);
+		return $oBounded === null ? null : ExclusionSearches::Narrowed($oBounded, $sClass);
 	}
 
 	/**

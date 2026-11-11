@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;
@@ -102,7 +103,7 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 			'FunctionalCI_contact' => ['sQueryDown' => 'SELECT Contact AS o WHERE o.id = :this->id', 'sDefinedInClass' => 'FunctionalCI'],
 		];
 
-		$aKept = ExclusionPolicy::FilterRelationQueries($aQueries, true);
+		$aKept = ExclusionSearches::FilterRelationQueries($aQueries, true);
 
 		$this->assertArrayNotHasKey('Server_hypervisor', $aKept, 'a query that selects an excluded class is listed: '.$sQuery);
 		$this->assertArrayHasKey('FunctionalCI_contact', $aKept, 'a query that selects another class was dropped');
@@ -130,7 +131,7 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		];
 
 		$this->exclude(['Contact']);
-		$this->assertSame([], ExclusionPolicy::FilterRelationQueries($aQueries, true));
+		$this->assertSame([], ExclusionSearches::FilterRelationQueries($aQueries, true));
 	}
 
 	public function testTheClassResourceAnswersAsTheToolDoes(): void

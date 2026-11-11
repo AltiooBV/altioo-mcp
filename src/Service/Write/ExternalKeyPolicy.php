@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObjectSearch;
@@ -118,7 +119,7 @@ final class ExternalKeyPolicy
 			}
 
 			$oFound = MetaModel::GetObject($sTarget, (int) $value, false);
-			if ($oFound !== null && !ExclusionPolicy::ExcludesClass(get_class($oFound)) && !ExclusionPolicy::IsFiledUnderExcluded($oFound)) {
+			if ($oFound !== null && !ExclusionPolicy::ExcludesClass(get_class($oFound)) && !ExclusionSearches::IsFiledUnderExcluded($oFound)) {
 				return null;
 			}
 
@@ -264,7 +265,7 @@ final class ExternalKeyPolicy
 		} catch (\Mcp\Exception\ToolCallException $e) {
 			return $e->getMessage();
 		}
-		$sUnproved = ExclusionPolicy::OqlRefusal($sValue);
+		$sUnproved = ExclusionSearches::OqlRefusal($sValue);
 		if ($sUnproved !== null) {
 			return $sUnproved;
 		}
@@ -281,7 +282,7 @@ final class ExternalKeyPolicy
 		}
 
 		try {
-			$iCount = (new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $sSelected)))->Count();
+			$iCount = (new DBObjectSet(ExclusionSearches::Narrowed($oSearch, $sSelected)))->Count();
 		} catch (Throwable $e) {
 			// The query parses and names the right class; whatever running it
 			// hit is the ORM's to report, on its own attempt.

@@ -212,6 +212,7 @@ Not in the table because they did not move: `Controller\MCPController`; `Core\Co
 | `Service\PortalMode`: `Serves()` | `Service\Portal\PortalAccess`, same names |
 | `Core\Tools\ObjectSearchByOQL`: `CheckQuery()` | `Service\Read\ObjectQuery`, same names |
 | `Core\Tools\PortalList`: `RowOf()` | `Service\Portal\PortalRows`, same names |
+| `Helper\ExclusionPolicy`: `AddFullText()`, `RelationQueries()`, `FilterRelationQueries()`, `IsFiledUnderExcluded()`, `Narrowed()`, `ExcludedBelow()`, `OqlRefusal()` | `Service\Rights\ExclusionSearches`, same names |
 | `Helper\ExclusionPolicy`: `SETTING_CLASSES`, `SETTING_ATTRIBUTES`, `SETTING_EXEMPT_PROFILES`, `Parse()`, `ParseExempt()` | `Service\Rights\ExclusionSettings`, same names |
 | `Helper\ObjectSerializer`: `MAX_TEXT_CHARS`, `MAX_CASELOG_ENTRIES`, `MAX_LINKS` | `Service\Read\ValueCeilings`, same names |
 | `Helper\ObjectSerializer`: `ALL_FIELDS`, `ParseFieldList()`, `UnknownAttributes()`, `FieldsSchemaProperty()` | `Service\Read\OutputFields`, same names |

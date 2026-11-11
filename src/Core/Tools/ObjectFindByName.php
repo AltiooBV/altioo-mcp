@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObjectSearch;
 use DBObjectSet;
@@ -390,7 +391,7 @@ class ObjectFindByName extends AbstractMCPTool
 		try {
 			$oFilter = new DBObjectSearch($sClass);
 			foreach ($aNeedles as $sNeedle) {
-				ExclusionPolicy::AddFullText($oFilter, self::literal($sNeedle));
+				ExclusionSearches::AddFullText($oFilter, self::literal($sNeedle));
 			}
 			$oFilter->SetShowObsoleteData(utils::ShowObsoleteData());
 

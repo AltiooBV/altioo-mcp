@@ -20,6 +20,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBoolean;
 use AttributeDate;
@@ -252,7 +253,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				throw new ToolCallException('Give class and filters, or oql, not both.');
 			}
 			ObjectQuery::CheckQuery($sOql);
-			$sUnproved = ExclusionPolicy::OqlRefusal($sOql);
+			$sUnproved = ExclusionSearches::OqlRefusal($sOql);
 			if ($sUnproved !== null) {
 				throw new ToolCallException($sUnproved);
 			}
@@ -295,7 +296,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		return self::answer(
 			$sClass,
-			ExclusionPolicy::Narrowed($oSearch, $sClass),
+			ExclusionSearches::Narrowed($oSearch, $sClass),
 			$aGroupBy,
 			static fn (string $sTarget, int $iId): ?string => self::consoleLabel($sTarget, $iId),
 			null,

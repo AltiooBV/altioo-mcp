@@ -17,7 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -103,7 +103,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		}
 
 		ObjectQuery::CheckQuery($oql);
-		$sUnproved = ExclusionPolicy::OqlRefusal($oql);
+		$sUnproved = ExclusionSearches::OqlRefusal($oql);
 		if ($sUnproved !== null) {
 			throw new ToolCallException($sUnproved);
 		}
@@ -131,7 +131,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 
 		$aResults = [];
-		$oSet = new DBObjectSet(ExclusionPolicy::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
+		$oSet = new DBObjectSet(ExclusionSearches::Narrowed($oSearch, $class), $aOrderBy, [], null, $limit, $offset);
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ, $oSet)) {
 			return ToolOutput::Json([
 				'class' => $class,
