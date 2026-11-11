@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\DelegatedWrites;
 use Altioo\iTop\Extension\MCP\Service\Rights\CallersOwnAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
@@ -581,7 +582,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAMechanismIsGradedAgainstTheDirectCall(): void
 	{
-		$sRule = $this->body(AccessGrants::class, 'CouldNotDoItDirectly');
+		$sRule = $this->body(DelegatedWrites::class, 'CouldNotDoItDirectly');
 
 		// A target the barrier itself refuses is refused here, by the same
 		// rule rather than by a second list - which is what makes a source
