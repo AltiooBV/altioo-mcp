@@ -20,6 +20,8 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [2.0.0] - Unreleased
+
 ## [1.3.0] - 2026-11-11
 
 **The operator decides what this channel never serves, and can see what it did.** Classes and

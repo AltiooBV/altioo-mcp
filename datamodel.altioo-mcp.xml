@@ -951,7 +951,7 @@
       <!--
         Where a caller is told to obtain the corresponding source of what this
         instance is serving, reported by the core/version resource. Empty means
-        upstream (MCPHelper::SOURCE_URL), which is right for an unmodified
+        upstream (MCPModule::SOURCE_URL), which is right for an unmodified
         install. Set it if you modified this module and third parties reach it
         over a network: AGPL 13 entitles them to the source of the version
         actually running, and upstream is no longer that.
@@ -960,7 +960,7 @@
       <log_mcp_service type="bool">true</log_mcp_service>
       <!--
         The MCP methods that earn an audit row. This list is what an installed
-        instance actually filters against - MCPHelper::DEFAULT_LOG_METHODS is
+        instance actually filters against - Settings::DEFAULT_LOG_METHODS is
         only the fallback for a configuration that does not declare the
         parameter at all - so a method missing here is a method missing from
         the trail on every install. "initialize" is the one record that a
