@@ -52,6 +52,26 @@ final class PortalAccess extends ObjectAccess
 		ObjectAccess::Remember(static fn (): ObjectAccess => new self(PortalPolicy::ForCurrentRequest()));
 	}
 
+	/**
+	 * Whether an element may be served in portal mode at all, before any of
+	 * the filters every element goes through.
+	 *
+	 * Only one that declares it enforces the portal's rules ({@see PortalAware})
+	 * and is this module's own. The namespace is the half a pack cannot
+	 * satisfy by accident: PortalPolicy is not yet on the surface a pack may
+	 * build on, so a pack element claiming the declaration would be a console
+	 * element reaching the portal.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function Serves(object $oElement): bool
+	{
+		return $oElement instanceof PortalAware && str_starts_with(get_class($oElement), self::CORE_NAMESPACE);
+	}
+
+	/** Where this module's own elements live. */
+	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
+
 	/** Leaves portal mode: for tests, and for a runner that serves more than one request. */
 	public static function Leave(): void
 	{

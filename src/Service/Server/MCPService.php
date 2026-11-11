@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Server;
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
@@ -600,7 +601,7 @@ final class MCPService
 		// that no filter below can be what lets one through; the ones below
 		// still narrow what it lets through, because portal mode widens
 		// nothing.
-		if (PortalMode::Current() !== null && !PortalMode::Serves($oElement)) {
+		if (PortalMode::Current() !== null && !PortalAccess::Serves($oElement)) {
 			return true;
 		}
 

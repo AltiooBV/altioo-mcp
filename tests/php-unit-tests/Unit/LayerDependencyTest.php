@@ -96,8 +96,6 @@ class LayerDependencyTest extends TestCase
 	private const BASELINE = <<<'TXT'
 Core\Resources\Instructions → Service\Server\MCPService
 Core\Tools\Instructions → Service\Server\MCPService
-Helper\PortalMode → Service\Portal\PortalAware
-Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
 Service\Portal\PortalAccess → Core\Tools\PortalList
 Service\Read\CurrentUserReader → Service\Server\MCPService

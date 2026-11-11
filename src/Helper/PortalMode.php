@@ -8,9 +8,6 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
-
 /**
  * Whether this request serves a portal-only user, and through which portal.
  *
@@ -23,7 +20,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
  * instance. So portal mode is decided here, once, and the surface it opens is
  * decided separately and from nothing: an element is served in portal mode
  * only when it enforces the portal's rules itself, through PortalPolicy, and
- * says so ({@see Serves()}).
+ * says so (PortalAccess::Serves()).
  *
  * One portal per request. A user may be allowed into several, and the union
  * of two portals' scopes is wider than either, so they are never merged: the
@@ -189,30 +186,9 @@ final class PortalMode
 		return self::$sCurrent;
 	}
 
-	/** For tests, and for a runner that serves more than one request. @since 1.2.0 */
+	/** For tests, and for a runner that serves more than one request: see PortalAccess::Leave(). @since 1.2.0 */
 	public static function Forget(): void
 	{
 		self::$sCurrent = null;
-		PortalPolicy::Forget();
 	}
-
-	/**
-	 * Whether an element may be served in portal mode at all, before any of
-	 * the filters every element goes through.
-	 *
-	 * Only one that declares it enforces the portal's rules ({@see PortalAware})
-	 * and is this module's own. The namespace is the half a pack cannot
-	 * satisfy by accident: PortalPolicy is not yet on the surface a pack may
-	 * build on, so a pack element claiming the declaration would be a console
-	 * element reaching the portal.
-	 *
-	 * @since 1.2.0
-	 */
-	public static function Serves(object $oElement): bool
-	{
-		return $oElement instanceof PortalAware && str_starts_with(get_class($oElement), self::CORE_NAMESPACE);
-	}
-
-	/** Where this module's own elements live. */
-	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
 }

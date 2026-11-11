@@ -292,7 +292,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 	/** Served to a portal user as the one exception of doc/adr/0010. */
 	public function testItIsServedInPortalMode(): void
 	{
-		$this->assertTrue(PortalMode::Serves(new MyActivity()));
+		$this->assertTrue(PortalAccess::Serves(new MyActivity()));
 	}
 
 	private const PORTAL = 'itop-portal';

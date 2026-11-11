@@ -226,7 +226,7 @@ class PortalModeTest extends TestCase
 		PortalAccess::Enter('itop-portal');
 
 		foreach ($aTools as $sName => $oTool) {
-			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} answers from the portal's description and says so");
+			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} answers from the portal's description and says so");
 			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
 			$this->assertNotSame($aConsole[$sName], (string)$oTool->getDescription(), "{$sName} describes the datamodel to a portal user");
 			$this->assertStringContainsString('PortalDescription::', self::bodyOf(get_class($oTool), 'execute'));
@@ -241,7 +241,7 @@ class PortalModeTest extends TestCase
 	{
 		$oTool = new PortalList();
 		$this->assertTrue($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list is not for a console user');
-		$this->assertTrue(PortalMode::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
+		$this->assertTrue(PortalAccess::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
 
 		PortalAccess::Enter('itop-portal');
 
@@ -296,9 +296,9 @@ class PortalModeTest extends TestCase
 	{
 		PortalAccess::Enter('itop-portal');
 
-		$this->assertFalse(PortalMode::Serves(new PortalAwarePackTool()));
+		$this->assertFalse(PortalAccess::Serves(new PortalAwarePackTool()));
 		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
-		$this->assertTrue(PortalMode::Serves(new ClassList()));
+		$this->assertTrue(PortalAccess::Serves(new ClassList()));
 	}
 
 	/**
@@ -557,7 +557,7 @@ class PortalModeTest extends TestCase
 		PortalAccess::Enter('itop-portal');
 
 		foreach ($aWrites as $sName => $oTool) {
-			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
+			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
 			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
 			$this->assertTrue($this->isHidden($oTool, $sName, [], AccessPolicy::FromScopes(['MCP-read'])), "{$sName} writes, and a read-only token may not");
 			$this->assertStringNotContainsString('core_class_schema', (string)$oTool->getDescription(), 'a console tool is named to a portal user');
@@ -582,7 +582,7 @@ class PortalModeTest extends TestCase
 
 		PortalAccess::Enter('itop-portal');
 
-		$this->assertTrue(PortalMode::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
+		$this->assertTrue(PortalAccess::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get', [], AccessPolicy::FromScopes(['MCP-read'])));
 		$this->assertStringContainsString('core_object_search_by_class', $sConsoleDescription);
@@ -718,7 +718,7 @@ class PortalModeTest extends TestCase
 
 		$iChecked = 0;
 		foreach ($aTools as $sName => $oTool) {
-			if (!PortalMode::Serves($oTool) || $oTool->getToolset() === 'server') {
+			if (!PortalAccess::Serves($oTool) || $oTool->getToolset() === 'server') {
 				continue;
 			}
 
@@ -745,7 +745,7 @@ class PortalModeTest extends TestCase
 		$oTool = new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach();
 		PortalAccess::Enter('itop-portal');
 
-		$this->assertTrue(PortalMode::Serves($oTool));
+		$this->assertTrue(PortalAccess::Serves($oTool));
 		$this->assertFalse($this->isHidden($oTool, 'core_object_attach'), 'core_object_attach to a portal user with a write token');
 		$this->assertTrue($this->isHidden($oTool, 'core_object_attach', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_object_attach writes, and a read-only token may not');
 	}

@@ -159,7 +159,7 @@ class ContextBudgetTest extends TestCase
 			$iDescriptions = 0;
 			$iSchemas = 0;
 			foreach (MCPRegistry::GetTools() as $oTool) {
-				if (!PortalMode::Serves($oTool)) {
+				if (!PortalAccess::Serves($oTool)) {
 					continue;
 				}
 				$iDescriptions += strlen((string)$oTool->getDescription());
