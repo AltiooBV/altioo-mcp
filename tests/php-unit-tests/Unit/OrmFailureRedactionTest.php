@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -63,8 +64,8 @@ class OrmFailureRedactionTest extends TestCase
 	public function testABadExternalKeyIsAnsweredInItsOwnWords(): void
 	{
 		$sBody = $this->methodBody(
-			\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class,
-			'RefusalForExternalKey'
+			\Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy::class,
+			'RefusalFor'
 		);
 
 		$this->assertStringContainsString('IsExternalKey', $sBody, 'the check fires on attributes that are not keys');
@@ -79,7 +80,7 @@ class OrmFailureRedactionTest extends TestCase
 		] as $sClass) {
 			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());
 			$this->assertStringContainsString(
-				'WritePlan::RefusalForExternalKey(',
+				'ExternalKeyPolicy::RefusalFor(',
 				$sSource,
 				"{$sClass} still defers a bad id to the ORM"
 			);

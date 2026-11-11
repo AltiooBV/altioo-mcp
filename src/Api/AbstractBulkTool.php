@@ -23,6 +23,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -374,7 +375,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			// Asked before the ORM sees it: an id pointing at nothing is a
 			// mistake the caller can correct, and iTop answers it with an
 			// exception this module can only report opaquely.
-			$sBadTarget = WritePlan::RefusalForExternalKey($sClass, $sAttCode, $value);
+			$sBadTarget = ExternalKeyPolicy::RefusalFor($sClass, $sAttCode, $value);
 			if ($sBadTarget !== null) {
 				$aIssues[] = $sBadTarget;
 				continue;

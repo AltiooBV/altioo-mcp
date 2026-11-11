@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -45,7 +45,7 @@ class PortalWriteOutcomeContractTest extends TestCase
 
 	public function testAnExternalKeyIsAnIdOnlyInPortalMode(): void
 	{
-		$sBody = $this->bodyOf(WritePlan::class, 'RefusalForExternalKey');
+		$sBody = $this->bodyOf(ExternalKeyPolicy::class, 'RefusalFor');
 
 		$this->assertStringContainsString('PortalMode::Current() !== null', $sBody);
 		$this->assertLessThan(
