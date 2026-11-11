@@ -3,6 +3,9 @@
 - Date: 2026-11-11
 - Decided by: proposed, for Guy Couronne to accept or amend
 - Status: proposed
+- Amended: 2026-11-11. The first version's layer order was checked against the code with
+  `LayerDependencyTest` and was wrong in five places. This version corrects it; see
+  "What the measurement changed".
 
 **Context.** The architecture review of 2026-11-10 found that the code works and is well tested,
 but that someone new to it cannot find their way around. When checked against PHP and iTop
@@ -16,7 +19,7 @@ figures below were measured at 1.3.0.
   across those two folders.
 - **The folders depend on each other in a cycle.** `Helper` imports `Service` 13 times, and
   `Service` imports `Helper` 30 times. `Service` and `Server` import each other.
-  `Service\PortalAccess` imports a tool, `Core\Tools\PortalList`. So no part can be read or
+  `Service\PortalAccess` and `Helper\WritePlan` each import a tool. So no part can be read or
   changed without the rest.
 - **Six classes do several jobs each:** `AccessGrants` (1,915 lines), `WritePlan` (1,723),
   `MCPController` (1,421), `DatamodelReader` (1,331), `PortalPolicy` (1,254) and `MCPHelper`
@@ -49,40 +52,48 @@ An iTop developer opening this module should find that shape.
 
    | Folder | Holds | From |
    |---|---|---|
-   | `Controller/` | The endpoint. Each gate a request passes is one class under `Controller/Gate/`, run from one ordered list. Also CORS and the response. | `Controller\MCPController`, `Helper\MCPHttp` |
-   | `Service/Server/` | Building the MCP server from the registry for one request, the server instructions, the session | `Service\MCPService`, `Server\` |
-   | `Service/Access/` | Who may do what: the token scopes, the access policy, the barrier on access-granting classes, the exclusions, the console's object access, the rights grading | `Service\TokenScopes`, `AccessPolicy`, `ObjectAccess`, `ExcludingModelReflection`, `Helper\AccessGrants`, `ExclusionPolicy`, the grading now in `DatamodelReader` |
-   | `Service/Portal/` | Portal mode: the mode, the portal's policy, its object access, its description | `Service\Portal*` |
-   | `Service/Read/` | Reading objects out: queries, serialisation, history, documents, the current user, the datamodel description | `Helper\ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, `DatamodelReader` |
-   | `Service/Write/` | Turning a caller's fields into a checked write: value conversion, the rules a value must pass (`Edit`, `Secret`, `Mention`, `Formula`), the dry run, the deletion plan | `Helper\WritePlan` split, the four `*Policy`, `RestValue` |
-   | `Service/Audit/` | The audit trail: retention, change and read summaries | `Service\AuditRetention`, `ChangeSummary`, `ReadSummary` |
-   | `Core/` | The core tools, resources, templates and prompts. They stay where they are, like mcp/sdk's `Capability/`. | `Core\` |
-   | `Registry/` | Registration, collecting the providers, identifiers | `Registry\`, `Helper\Identifier` |
+   | `Controller/` | The endpoint. Each gate a request passes is one class under `Controller/Gate/`, run from one ordered list. Also CORS and the response. | `Controller\MCPController`, the response half of `Helper\MCPHttp` |
    | `Hook/` | What iTop calls into: the background process | `Service\AuditHousekeeping` |
-   | `Helper/` | Small stateless utilities only, as in Combodo's modules: settings, logging, JSON encoding, error references, dictionary lookup | `Helper\Settings`, `MCPLog`, `LogAPILogger`, `JsonPayload`, `MCPContext`, the rest of `MCPHelper` |
+   | `Service/Server/` | Building the MCP server from the registry for one request; the session | `Service\MCPService`, `Server\Session\` |
+   | `Core/` | The core tools, resources, templates and prompts. They stay where they are, like mcp/sdk's `Capability/`. It also gets the server instructions, which two of its elements serve. | `Core\`, `Server\ServerInstructions`, `MCPService::InstructionsFor()` |
+   | `Service/Access/` | The question every tool asks about an object: may this caller see it, change it, set this field? It answers by the console's rules or the portal's. | `Service\ObjectAccess` |
+   | `Service/Write/` | Turning a caller's fields into a checked write: value conversion, the rules a value must pass (`Edit`, `Mention`, `Formula`), the dry run, the deletion plan | `Helper\WritePlan` split, `EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `RestValue` |
+   | `Service/Portal/` | The portal: its policy, its object access, its description, the row lookup its lists use | `Service\Portal*` except `PortalMode`, `PortalList::RowOf()` |
+   | `Service/Read/` | Reading objects out: queries and the OQL check, serialisation, history, documents, the current user, the datamodel description | `Helper\ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, `DatamodelReader`, `ObjectSearchByOQL::CheckQuery()` |
+   | `Service/Rights/` | The rules everything above asks: the token scopes, the access policy and what the request is served, the barrier on access-granting classes, the exclusions, the secrets, the rights grading. Named after iTop's `UserRights`. | `Service\TokenScopes`, `AccessPolicy`, `ExcludingModelReflection`, `Helper\AccessGrants`, `ExclusionPolicy`, `SecretPolicy`, `MCPService::ServedAccess()`, the grading now in `DatamodelReader` |
+   | `Service/Audit/` | The audit trail: retention, change and read summaries | `Service\AuditRetention`, `ChangeSummary`, `ReadSummary` |
+   | `Helper/` | Small stateless utilities and per-request facts only, as in Combodo's modules: settings, logging, JSON encoding, error references, dictionary lookup, the portal-mode flag, identifiers, the id normaliser, the request's token and host | `Helper\Settings`, `MCPLog`, `LogAPILogger`, `JsonPayload`, `MCPContext`, `Identifier`, `Service\PortalMode`, `WritePlan::AsId()`, the request half of `MCPHttp`, the rest of `MCPHelper` |
    | `Model/` | Value objects, written in the singular as Combodo writes it | `Models\MCPResult` |
    | `Exception/` | No change | |
-   | `Api/` | What a pack extends or calls: the abstract elements, the provider interface, the registry facade, tool and resource output, the change reason, the version check, `Testing\ElementContract`. iTop has no equivalent; it is the one folder of our own. | `Abstract\`, `Contract\`, `Testing\`, `Helper\ToolOutput`, `ResourceOutput`, `ChangeTracking`, the version check in `MCPHelper` |
+   | `Api/` | What a pack extends or calls: the abstract elements, the provider interface, the registry and the extension collector, tool and resource output, the change reason, the version check, `Testing\ElementContract`. iTop has no equivalent; it is the one folder of our own. | `Abstract\`, `Contract\`, `Registry\`, `Testing\`, `Helper\ToolOutput`, `ResourceOutput`, `ChangeTracking`, the version check in `MCPHelper` |
 
-2. **Dependencies point one way.** The order, from top to bottom:
-   1. `Controller`
+2. **Dependencies point one way**, from top to bottom, one chain:
+   1. `Controller`, `Hook`
    2. `Service\Server`
    3. `Core`
-   4. two independent chains: `Service\Write` → `Service\Read` → `Service\Access`, and
-      `Service\Portal` → `Service\Access`
-   5. `Service\Audit`
-   6. `Helper`, `Model`, `Exception` at the bottom
+   4. `Service\Access`
+   5. `Service\Write`
+   6. `Service\Portal`
+   7. `Service\Read`
+   8. `Service\Rights`
+   9. `Service\Audit`
+   10. `Helper`, `Model`, `Exception`, which may import each other
 
-   `Hook` and `Registry` depend downward only. Everything may depend on `Api`, and `Api` itself
-   depends only downward. There is no cycle, and nothing below `Core` imports a tool: what
-   `PortalAccess` takes from `Core\Tools\PortalList` today moves down into `Service\Portal`.
-   **A unit test enforces the order.** It reads each file's `use` lines, in the style of the
-   existing source-contract tests, and adds no new dependency.
+   Any layer may import `Api`. `Api` imports `Service\Write` and everything below it, and is
+   imported by `Core`, which it does not import back. Nothing below `Core` imports a tool: a check
+   a tool shares moves down into the layer that uses it, and the tool keeps calling it visibly in
+   its own source (ADR 0014). `ObjectSearchByOQL::CheckQuery()` moving to `Service\Read` is a check
+   of that kind, so the contract tests are taught its new name in the same commit.
+   **`LayerDependencyTest` enforces the order.** It reads each file's imports and same-namespace
+   references from the PHP tokens, and it adds no dependency.
 
-3. **`@api` covers what a pack needs and nothing else.** Everything under `Api/` is `@api`.
-   Everything outside it is `@internal`, so it can be restructured in a minor release.
-   `doc/extending.md` and `doc/example-pack` are rewritten against `Api\` only, and the example
-   pack's suite is the proof that this is enough.
+3. **`@api` covers what a pack needs and nothing else:** everything under `Api/`, plus a short,
+   named list of the `Service\Read` and `Service\Write` classes the example pack calls
+   (`ObjectQuery`, `ObjectSerializer`, `RestValue`, and the pack-facing half of `WritePlan`).
+   A unit test holds that list, so it grows only by a deliberate change. Everything else is
+   `@internal` and can be restructured in a minor release. A pack calls those classes directly;
+   no facade wraps them. `doc/extending.md` and `doc/example-pack` are rewritten against this
+   surface, and the example pack's suite is the proof that it is enough.
 
 4. **A class does one job.** This is a guide, not a law: a file well past 500 lines is a split
    waiting to happen. Combodo's module files stay under about 600. The six classes above are
@@ -98,30 +109,59 @@ An iTop developer opening this module should find that shape.
    - ADRs 0006 and 0009 to 0013. This decision changes where code lives, never what it decides.
 
 6. **The 1.3 deprecations go:** the `MCPHelper` settings stubs, `MCPHelper::__construct()` and
-   `ChangeTracking::Compose()`. Moved classes get no aliases: a 2.0 pack is written against
-   `Api\`. The changelog carries a table from each old name to its new one.
+   `ChangeTracking::Compose()`. Moved classes get no aliases: a 2.0 pack is written against the
+   2.0 names. The changelog carries a table from each old name to its new one.
 
-**How it lands.** One pull request per step. The full suite and the iTop matrix are green at
-every step.
+**What the measurement changed.** The first version of this record was checked by running
+`LayerDependencyTest` on the 1.3.0 code. Five things in it were wrong.
 
-1. This record is accepted. The dependency test lands with today's violations listed as a known
-   baseline, so the count can only go down.
-2. Move-only steps, one area at a time, in this order: `Helper`/`Model`, `Service/Audit`,
-   `Service/Access`, `Service/Portal`, `Service/Read`, `Service/Write`, `Controller` and
-   `Service/Server` together, `Hook`, `Api`. Namespaces and files change; logic does not. The
-   source-contract tests are updated in the same commit: 36 of the 79 unit test files read a
-   source file by its path.
-3. Splits, one class per pull request:
+- **Portal and Read are not independent.** The portal reads objects through `ObjectHistory`,
+  `DocumentAccess` and `DatamodelReader`, as it should. So the order is one chain, with Portal
+  above Read.
+- **"Access" was two levels.** `ObjectAccess` is what every tool asks, and it chooses between the
+  console's rules and the portal's, so it sits above both. The scopes, policy, barrier and
+  exclusions sit below Read, which asks them. They are now `Service\Rights`.
+- **Some "feature" classes are bottom-level facts.** `PortalMode`, `Identifier`, `AsId()` and the
+  request's token and host are asked by every layer. They go to `Helper`.
+- **Packs call the registry.** The example pack registers through `MCPRegistry` and
+  `MCPExtensionCollector`, so they are `Api`. Leaving them in `Registry/` made a cycle with the
+  abstract elements.
+- **`@api` cannot be `Api\` alone.** The example pack calls Read and Write classes directly.
+
+**How it lands.** All on one branch, `refactor/2.0`, one step per commit or small group of
+commits. Each step runs the local gates before the next one starts:
+- **every step:** the unit suite, lint and Psalm, on PHP 8.2 and 8.4;
+- **steps that move or split code:** also the iTop matrix;
+- **the last step:** the full matrix.
+
+One pull request at the end. Because the local runner runs the same scripts as CI
+(`tools/ci/local/`), a green local run is the CI result, and a pull request per step would only
+repeat it.
+
+1. `LayerDependencyTest`, with today's violations as a baseline that can only shrink.
+2. Move-only steps, one area at a time, in this order: `Helper`/`Model`/`Hook`, `Service/Audit`,
+   `Service/Rights`, `Service/Read`, `Service/Portal`, `Service/Write`, `Service/Access`,
+   `Service/Server` and `Core`'s instructions, `Api`. Namespaces and files change; logic does not.
+   The source-contract tests are updated in the same commit: 36 of the 79 unit test files read a
+   source file by its path. Each step deletes its classes from the test's class map and its
+   resolved lines from the baseline.
+3. The small moves the measurement found: `PortalMode`, `Identifier` and `AsId()` to `Helper`;
+   `CheckQuery()` to `Service\Read`; `RowOf()` to `Service\Portal`; `ServedAccess()` to
+   `Service\Rights`; the instructions to `Core`.
+4. Splits, one class at a time:
    - `MCPHelper`, which disappears.
    - `WritePlan`.
    - `AccessGrants`. Its class lists are data; its refusals are logic.
-   - `DatamodelReader`. The rights grading moves to `Service/Access`.
+   - `DatamodelReader`. The rights grading moves to `Service/Rights`.
    - `PortalPolicy`. Loading and compiling a portal is split from answering questions about it.
-   - `MCPController`, into one class per gate, run from one ordered list.
-4. `@api` is narrowed to `Api/` and the deprecations are removed. `doc/extending.md` and the
-   example pack are rewritten. The dependency test's baseline is now empty.
-5. `doc/architecture.md` gains the level-2 view it says it is waiting for, drawn from the folders
-   above. Then 2.0.0 is released, with the name table in its changelog entry.
+   - `MCPController`, into one class per gate, run from one ordered list. `MCPHttp`'s request
+     half goes to `Helper` and its response half to `Controller`.
+5. `@api` is narrowed to the surface in rule 3, and the deprecations are removed.
+   `doc/extending.md` and the example pack are rewritten. The dependency test's baseline is now
+   empty.
+6. `doc/architecture.md` gains the level-2 view it says it is waiting for, drawn from the folders
+   above. The version becomes 2.0.0, Unreleased, with the name table in its changelog entry. Then
+   the pull request.
 
 **Rejected alternatives.**
 
@@ -133,6 +173,8 @@ every step.
   ASP.NET applications use. That layout serves an application with its own tables. Here, iTop
   owns the datamodel and the queries (`DBObjectSearch`, `DBObjectSet`), so a `Repository/` would
   wrap iTop for nothing.
+- **Facades in `Api/` over the Read and Write classes packs use.** They would add a wrapper
+  layer to keep up for no behaviour, when a named `@api` list does the same job.
 - **Restructuring in place over several 1.x minors, with aliases and deprecations.** That is the
   cautious path for a published API. Nobody has installed this one, and the path would leave
   both layouts in the tree for a year.
@@ -141,5 +183,5 @@ every step.
 - **`deptrac` or a similar tool to check the dependency rule.** A unit test in the existing
   style does the same check without a new dependency.
 
-**Enforced by:** the dependency test from step 1, plus `ModuleMetadataTest` and `ElementContract`
-as today. Neither the size guide nor the "one job" rule is checked by a machine.
+**Enforced by:** `LayerDependencyTest`, the `@api` list test from step 5, `ModuleMetadataTest`
+and `ElementContract`. Neither the size guide nor the "one job" rule is checked by a machine.
