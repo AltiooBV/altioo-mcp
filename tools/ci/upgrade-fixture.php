@@ -28,6 +28,11 @@
  *
  * Usage: php tools/ci/upgrade-fixture.php <itop-dir> seed
  *        php tools/ci/upgrade-fixture.php <itop-dir> verify
+ *        php tools/ci/upgrade-fixture.php <itop-dir> reset
+ *
+ * `reset` puts the exclusion settings back to their defaults (empty), and touches nothing else. The
+ * seeded exclusions are there for `verify`; the integration suite assumes an instance that excludes
+ * nothing, so the workflow resets them between the last verify and the suite.
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -51,8 +56,8 @@ const FIXTURE_EXEMPT_PROFILES = ['MCP Services User'];
 $sItopDir = rtrim($argv[1] ?? '', '/');
 $sAction = $argv[2] ?? '';
 
-if ($sItopDir === '' || !is_file($sItopDir.'/approot.inc.php') || !in_array($sAction, ['seed', 'verify'], true)) {
-	fwrite(STDERR, "usage: php upgrade-fixture.php <itop-dir> seed|verify\n");
+if ($sItopDir === '' || !is_file($sItopDir.'/approot.inc.php') || !in_array($sAction, ['seed', 'verify', 'reset'], true)) {
+	fwrite(STDERR, "usage: php upgrade-fixture.php <itop-dir> seed|verify|reset\n");
 	exit(1);
 }
 
@@ -95,6 +100,21 @@ function installed_version(string $sItopDir): string
 if (!UserRights::Login(getenv('ITOP_ADMIN_USER') ?: 'admin')) {
 	fwrite(STDERR, "could not log in - is this instance installed?\n");
 	exit(1);
+}
+
+if ($sAction === 'reset') {
+	// Written the way the seed wrote them, so what the suite reads is what an instance with the default
+	// settings reads: the datamodel declares all three as an empty array.
+	$oConfig = utils::GetConfig();
+	$sConfigFile = $oConfig->GetLoadedFile();
+	@chmod($sConfigFile, 0770);
+	foreach (['mcp_excluded_classes', 'mcp_excluded_attributes', 'mcp_exclusion_exempt_profiles'] as $sSetting) {
+		$oConfig->SetModuleSetting(module_code(), $sSetting, []);
+		echo "  ".module_code()."/$sSetting back to its default (empty)\n";
+	}
+	$oConfig->WriteToFile();
+	@chmod($sConfigFile, 0640);
+	exit(0);
 }
 
 if ($sAction === 'seed') {

@@ -263,6 +263,14 @@ jobs:
       - name: Is everything still there, still
         run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" verify
 
+      # The seed put exclusions and an exemption into the configuration, for the
+      # verify steps above to find again. The integration suite assumes an instance
+      # that excludes nothing - its fixtures read a Team, a phone, an impact graph -
+      # so it would fail on them for a reason that has nothing to do with the
+      # upgrade. The tests of the exclusions set their own configuration.
+      - name: Back to the default settings for the suite
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" reset
+
       # The upgraded instance, not a freshly installed one, is what a client
       # runs. This is the only place the integration suite meets one.
       - name: The integration suite against the upgraded instance
