@@ -35,7 +35,7 @@ Each test would have to learn the helper, and the reviewer of a new tool would h
 Rejected: narrowing `execute(): mixed` to `CallToolResult` for accuracy. It breaks every pack
 that redeclares `execute()` with the documented `: mixed`.
 
-Enforced by: `AccessGrantsTest::testEveryWritingToolReachesTheBarrier`,
+Enforced by (these read PHP tokens through `tests/php-unit-tests/Support/SourceCalls`, so a comment, a docblock or a string naming a call does not satisfy them, and a rename needs no edit to them): `AccessGrantsTest::testEveryWritingToolReachesTheBarrier`,
 `ObjectHistoryContractTest::testNoObjectToolWillTouchTheChangeLog`,
 `PortalModeTest::testTheWritesAreServedInBothModesWithThePortalsRefusals`. The exclusions of
 [0012](0012-this-channel-can-exclude-classes-and-attributes.md) are enforced by route instead, in the

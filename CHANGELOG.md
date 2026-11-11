@@ -109,6 +109,9 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   audit task makes too. `RequestStateTest` fails for a static property that is neither cleared
   by it nor listed as registration for the life of the process. Internal, with no effect on a
   pack: every one of those slots is `@internal`.
+- **The contract tests read PHP tokens.** `Support\SourceCalls` answers "does this method call
+  `X::m(`, and before what" from the tokens, resolved through `use`, so a comment or a string no longer
+  satisfies a rule of ADR 0014 and a rename no longer needs a test edited. Test-only; the rules are the same.
 - **Name table, 1.3 → 2.0, below.** Checked by script against the 1.3.0 tag and the 2.0 tree: every class
   under `src/` at 1.3.0 is in it, every 2.0 name in it exists, and every public or protected
   member that is not at its old name in the class it moved to is in it.

@@ -235,6 +235,10 @@ succeeds.
 - **The `@api` surface** is `PublicSurfaceTest`: a class carries `@api` only under `src/Api/`
   or in its `EXTRA_SURFACE`, and every other class says `@internal`.
   [doc/extending.md](extending.md) names the four classes outside `Api`.
+- **A tool's security checks** (ADR 0014: the barrier, the change-log reservation, the gate order of the
+  controller, the policies before every value conversion) are contract tests that read PHP tokens through
+  `Support\SourceCalls`, resolving `X::m(` through the file's `use` lines, so a comment or a string that
+  names a call does not count and a rename needs no edit.
 - **The version** is `ModuleMetadataTest`; the tool packs' contract is `Api\Testing\ElementContract`.
 
 ## What it leaves out
