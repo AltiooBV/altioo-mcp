@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -153,31 +154,12 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheWritePathAndTheSchemaBothAskTheSetting(): void
 	{
-		$this->assertStringContainsString('Settings::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
+		$this->assertTrue(SourceCalls::OfClass(AccessGrants::class)->HasCall(Settings::class.'::GetEscalationClasses', 'RefusalFor'));
+		$oRights = SourceCalls::OfClass(ClassRights::class);
+		$this->assertTrue($oRights->HasCall(AccessGrantFamilies::class.'::IsOperatorListed', 'narrowedByTheBarrier'));
 		$this->assertStringContainsString(
 			'AccessGrantFamilies::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
-			$this->body(ClassRights::class, 'narrowedByTheBarrier')
+			$oRights->Code('narrowedByTheBarrier')
 		);
-	}
-
-	private function body(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines  = file((string)$oMethod->getFileName());
-		$sBody   = implode('', array_slice(
-			(array)$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT, T_WHITESPACE], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 }

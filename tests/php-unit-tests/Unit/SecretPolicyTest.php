@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -130,25 +131,13 @@ class SecretPolicyTest extends TestCase
 			if ($oFile->getExtension() !== 'php') {
 				continue;
 			}
-			$sSource = '';
-			foreach (token_get_all((string) file_get_contents($oFile->getPathname())) as $mToken) {
-				if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-					continue;
-				}
-				$sSource .= is_array($mToken) ? $mToken[1] : $mToken;
-			}
-			$iOffset = 0;
-			while (($iMake = strpos($sSource, 'RestUtils::MakeValue(', $iOffset)) !== false) {
+			$oSource = SourceCalls::OfFile($oFile->getPathname());
+			foreach ($oSource->MethodsCalling('RestUtils::MakeValue') as $sMethod) {
 				$iFound++;
-				$sBefore = substr($sSource, 0, $iMake);
-				$iFunction = strrpos($sBefore, 'function ');
-				$this->assertIsInt($iFunction);
-				$this->assertStringContainsString(
-					'SecretPolicy::RefusalFor(',
-					substr($sBefore, $iFunction),
+				$this->assertTrue(
+					$oSource->CallsInOrder([SecretPolicy::class.'::RefusalFor', 'RestUtils::MakeValue'], $sMethod),
 					$oFile->getFilename().' turns a caller value into an attribute value without asking SecretPolicy first'
 				);
-				$iOffset = $iMake + 1;
 			}
 		}
 

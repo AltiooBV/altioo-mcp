@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Mcp\Server\Stateless\RequestMeta;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -165,10 +166,10 @@ class AuditLabelTest extends TestCase
 
 	public function testTheAuditRowsMessageGoesThroughTheSameNormaliser(): void
 	{
-		$sSource = (string) file_get_contents((string) (new \ReflectionClass(CallLog::class))->getFileName());
+		$sSource = SourceCalls::OfClass(CallLog::class)->Code();
 
-		$this->assertMatchesRegularExpression("/->Set\\('message',\\s*self::AuditLabel\\(/", $sSource);
-		$this->assertDoesNotMatchRegularExpression("/->Set\\('message',\\s*\\\$oResult->message\\)/", $sSource);
+		$this->assertMatchesRegularExpression("/->Set\\('message',self::AuditLabel\\(/", $sSource);
+		$this->assertDoesNotMatchRegularExpression("/->Set\\('message',\\\$oResult->message\\)/", $sSource);
 	}
 
 	/**

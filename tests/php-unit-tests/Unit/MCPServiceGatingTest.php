@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Service\Server\SettingsWarnings;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnavailableTool;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -211,7 +212,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
-		$this->assertStringContainsString('isHidden', $sBody, 'the served set is not decided the way registration decides it');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCallTo('isHidden', 'ServedAccess'), 'the served set is not decided the way registration decides it');
 		$this->assertStringNotContainsString('$oPolicy->toolsets()', $sBody, 'the permitted list is being reported as the reachable one');
 	}
 
@@ -225,8 +226,10 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
+		$oSource = SourceCalls::OfClass(ServedElements::class);
 		$this->assertStringContainsString('!self::isHidden', $sBody, 'toolsets are collected without asking whether the element is served');
-		$this->assertStringNotContainsString('GetKnownToolsets', $sBody);
+		$this->assertTrue($oSource->HasCallTo('isHidden', 'ServedAccess'), 'toolsets are collected without asking whether the element is served');
+		$this->assertFalse($oSource->HasCallTo('GetKnownToolsets', 'ServedAccess'));
 	}
 
 	/**
@@ -248,8 +251,10 @@ class MCPServiceGatingTest extends TestCase
 		$this->assertStringContainsString("'prompts'", $sBody, 'the identity block never mentions prompts');
 
 		$sNames = $this->bodyOf('servedPromptNames');
-		$this->assertStringContainsString('GetPrompts', $sNames);
+		$oSource = SourceCalls::OfClass(ServedElements::class);
+		$this->assertTrue($oSource->HasCallTo('GetPrompts', 'servedPromptNames'));
 		$this->assertStringContainsString('!self::isHidden', $sNames, 'a withheld prompt would be advertised');
+		$this->assertTrue($oSource->HasCallTo('isHidden', 'servedPromptNames'), 'a withheld prompt would be advertised');
 	}
 
 	/**
@@ -276,7 +281,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
-		$this->assertStringContainsString('CapabilityOf(', $sBody, 'the capabilities are not read off the served tools');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCallTo('CapabilityOf', 'ServedAccess'), 'the capabilities are not read off the served tools');
 		$this->assertStringContainsString('$aServedGrades', $sBody);
 		$this->assertMatchesRegularExpression('/in_array\(\$sGrade, \$aGranted, true\) && isset\(\$aServedGrades\[\$sGrade\]\)/', $sBody, 'a grade is reported without being both granted and served');
 	}
@@ -291,6 +296,7 @@ class MCPServiceGatingTest extends TestCase
 		$sBody = $this->bodyOf('ServedAccess');
 
 		$this->assertStringContainsString('AccessPolicy::Current() ??', $sBody, 'the report is recomputed after the token is gone');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCall(AccessPolicy::class.'::Current', 'ServedAccess'), 'the report is recomputed after the token is gone');
 	}
 
 	/** The body of one MCPService method, comments stripped. */

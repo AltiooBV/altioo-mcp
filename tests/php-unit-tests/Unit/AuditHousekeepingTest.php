@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -89,6 +90,7 @@ class AuditHousekeepingTest extends TestCase
 		$this->assertMatchesRegularExpression('/final class AuditHousekeeping implements iBackgroundProcess/', $sSource);
 		$this->assertMatchesRegularExpression('/function GetPeriodicity\(\)\s*\{\s*return 3600;/', $sSource);
 		$this->assertStringContainsString('AllowAllData()', $sSource, 'cron runs as nobody; the search must not depend on a user');
+		$this->assertTrue(SourceCalls::OfFile(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php')->HasCallTo('AllowAllData'), 'cron runs as nobody; the search must not depend on a user');
 	}
 
 	/**
