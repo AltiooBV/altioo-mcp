@@ -65,7 +65,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->iOrg = (int)$this->CreateOrganization('PortalPolicyTest '.$sSuffix)->GetKey();
 		$this->iContact = (int)$this->CreatePerson(1, $this->iOrg)->GetKey();
 		$this->sLogin = 'portal-policy-'.$sSuffix;
-		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Policy-'.$sSuffix.'!', $this->iContact);
+		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Policy-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
 		PortalMode::Remember(self::PORTAL);

@@ -94,7 +94,7 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$this->iDraft = (int)$oDraft->DBInsert();
 
 		$sLogin = 'portal-attach-'.$sSuffix;
-		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Portal-Attach-'.$sSuffix.'!', $this->iContact);
+		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Portal-Attach-'.$sSuffix.'-1!', $this->iContact);
 		UserRights::Login($sLogin);
 		PortalMode::Remember(self::PORTAL);
 	}

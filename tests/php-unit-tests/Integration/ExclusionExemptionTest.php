@@ -66,9 +66,9 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 		$iAdmin = self::profileId('Administrator');
 		$this->sExempt = 'exempt-'.$sSuffix;
 		$this->sPlain = 'plain-'.$sSuffix;
-		$iExemptUser = (int)$this->CreateUser($this->sExempt, $iAdmin, 'Exempt-'.$sSuffix.'!', $this->iPerson)->GetKey();
+		$iExemptUser = (int)$this->CreateUser($this->sExempt, $iAdmin, 'Exempt-'.$sSuffix.'-1!', $this->iPerson)->GetKey();
 		$this->grant($iExemptUser, $this->sProfile);
-		$this->CreateUser($this->sPlain, $iAdmin, 'Plain-'.$sSuffix.'!', (int)$this->CreatePerson(2, $this->iOrg)->GetKey());
+		$this->CreateUser($this->sPlain, $iAdmin, 'Plain-'.$sSuffix.'-1!', (int)$this->CreatePerson(2, $this->iOrg)->GetKey());
 
 		if (MetaModel::IsValidClass('UserRequest')) {
 			$iContact = (int)$this->CreatePerson(3, $this->iOrg)->GetKey();
@@ -76,7 +76,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 			$this->sPortalUser = 'portal-exempt-'.$sSuffix;
 			// Not the custom profile: the portal refuses a user holding a profile its scopes do not list. The
 			// stock 'Portal user' profile is the one a portal user does hold, so it is the one made exempt for this.
-			$this->CreateUser($this->sPortalUser, self::profileId('Portal user'), 'Portal-Exempt-'.$sSuffix.'!', $iContact);
+			$this->CreateUser($this->sPortalUser, self::profileId('Portal user'), 'Portal-Exempt-'.$sSuffix.'-1!', $iContact);
 		}
 
 		$this->configure(['Team'], ['Person' => ['phone'], 'UserRequest' => ['description']], [$this->sProfile]);

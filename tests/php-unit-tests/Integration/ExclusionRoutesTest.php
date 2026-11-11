@@ -461,7 +461,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	public function testMyActivityNamesNoExcludedClassAndNoExcludedCode(): void
 	{
 		$sLogin = 'excl-me-'.bin2hex(random_bytes(3));
-		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Administrator'), 'Excl-Me-'.bin2hex(random_bytes(3)).'!', $this->iPerson)->GetKey();
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Administrator'), 'Excl-Me-'.bin2hex(random_bytes(3)).'-1!', $this->iPerson)->GetKey();
 
 		$oChange = MetaModel::NewObject('CMDBChange');
 		$oChange->Set('date', date('Y-m-d H:i:s'));
@@ -512,7 +512,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		}
 
 		$sLogin = 'excl-evt-'.bin2hex(random_bytes(3));
-		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Administrator'), 'Excl-Evt-'.bin2hex(random_bytes(3)).'!', $this->iPerson)->GetKey();
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Administrator'), 'Excl-Evt-'.bin2hex(random_bytes(3)).'-1!', $this->iPerson)->GetKey();
 		$oRow = new AltiooEventMCPService();
 		$oRow->Set('userinfo', $sLogin);
 		$oRow->Set('message', 'row');

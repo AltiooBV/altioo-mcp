@@ -185,7 +185,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 	private function limitedUser(): string
 	{
 		$sLogin = 'count-limited-'.$this->sSuffix;
-		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Support Agent'), 'Count-Limited-'.$this->sSuffix.'!', $this->iPersonA)->GetKey();
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Support Agent'), 'Count-Limited-'.$this->sSuffix.'-1!', $this->iPersonA)->GetKey();
 		$oLink = MetaModel::NewObject('URP_UserOrg');
 		$oLink->Set('userid', $iUser);
 		$oLink->Set('allowed_org_id', $this->iOrgA);
@@ -314,7 +314,7 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 		$iContact = (int)$this->CreatePerson(40, $this->iOrgA)->GetKey();
 		$this->CreateUserRequest(40, ['org_id' => $this->iOrgA, 'caller_id' => $iContact, 'title' => 'Count portal own '.$this->sSuffix]);
 		$sLogin = 'count-portal-'.$this->sSuffix;
-		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Count-Portal-'.$this->sSuffix.'!', $iContact);
+		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Count-Portal-'.$this->sSuffix.'-1!', $iContact);
 
 		return ['login' => $sLogin, 'contact' => $iContact];
 	}
