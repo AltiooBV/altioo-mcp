@@ -628,6 +628,7 @@ class PortalModeTest extends TestCase
 		);
 		// execute() and the count tool both resolve a list through Resolve(), which refuses it.
 		$this->assertStringContainsString('self::Resolve(', self::bodyOf(PortalList::class, 'execute'));
+		$this->assertStringContainsString('PortalRows::ListQuery(', self::bodyOf(PortalList::class, 'Resolve'), 'the list is no longer bounded through the portal');
 		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'Resolve'));
 
 		$sHistory = self::bodyOf(ObjectHistoryTool::class, 'execute');

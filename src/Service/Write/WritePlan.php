@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 
@@ -880,7 +881,7 @@ final class WritePlan
 
 		// Held to what this channel serves, as a query is anywhere else (doc/adr/0012).
 		try {
-			\Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL::CheckQuery($sValue);
+			ObjectQuery::CheckQuery($sValue);
 		} catch (\Mcp\Exception\ToolCallException $e) {
 			return $e->getMessage();
 		}

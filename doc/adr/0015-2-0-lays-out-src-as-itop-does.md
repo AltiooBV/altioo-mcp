@@ -133,6 +133,11 @@ An iTop developer opening this module should find that shape.
   `ObjectSerializer` (Read) describes a blob through `DocumentAccess`. Kept whole it would make
   Read import Access. So `Fetch()` and the rights it checks moved to `Service\Access\DocumentFetch`,
   and the URI, the ceiling, the type check and the content stay in `Service\Read\DocumentAccess`.
+- **`RowOf()` did not move alone.** It builds its row from the list's query, which `core_portal_list`
+  also builds, so the query (`listQuery`, `tabQuery`, `childrenOf`) moved with it to
+  `Service\Portal\PortalRows`, and the tool calls `PortalRows::ListQuery()` in its own source.
+  `CheckQuery()` moved to `ObjectQuery` with its three private helpers; the advice on a query with
+  an ORDER BY reads the sort constants from `Api\AbstractObjectSearch`, which any layer may import.
 - **Some "feature" classes are bottom-level facts.** `PortalMode`, `Identifier`, `AsId()` and the
   request's token and host are asked by every layer. They go to `Helper`.
 - **Packs call the registry.** The example pack registers through `MCPRegistry` and

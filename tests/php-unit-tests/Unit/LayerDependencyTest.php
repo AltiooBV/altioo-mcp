@@ -97,11 +97,9 @@ class LayerDependencyTest extends TestCase
 Core\Resources\Instructions → Service\Server\MCPService
 Core\Tools\Instructions → Service\Server\MCPService
 Helper\Settings → Service\Rights\ExclusionPolicy
-Service\Portal\PortalAccess → Core\Tools\PortalList
 Service\Read\CurrentUserReader → Service\Server\MCPService
 Service\Read\DocumentAccess → Service\Write\WritePlan
 Service\Read\ObjectSerializer → Service\Write\WritePlan
-Service\Write\WritePlan → Core\Tools\ObjectSearchByOQL
 TXT;
 
 	public function testEveryClassHasALayer(): void

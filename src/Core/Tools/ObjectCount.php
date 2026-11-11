@@ -247,7 +247,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			if ($sClass !== '' || $aFilters !== []) {
 				throw new ToolCallException('Give class and filters, or oql, not both.');
 			}
-			ObjectSearchByOQL::CheckQuery($sOql);
+			ObjectQuery::CheckQuery($sOql);
 			$sUnproved = ExclusionPolicy::OqlRefusal($sOql);
 			if ($sUnproved !== null) {
 				throw new ToolCallException($sUnproved);

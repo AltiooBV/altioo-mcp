@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -48,7 +49,7 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testAnOrderByInTheQueryIsToldWhereToPutIt(): void
 	{
-		$oHint = new \ReflectionMethod(ObjectSearchByOQL::class, 'orderByHint');
+		$oHint = new \ReflectionMethod(ObjectQuery::class, 'orderByHint');
 
 		$sHint = (string) $oHint->invoke(null, 'SELECT UserRequest ORDER BY start_date DESC');
 		$this->assertStringContainsString('order_by', $sHint);
@@ -199,13 +200,28 @@ class SearchPagingContractTest extends TestCase
 	public function testAnUnknownClassIsAnsweredWithASuggestion(): void
 	{
 		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(ObjectSearchByOQL::class))->getFileName()
+			(new \ReflectionClass(ObjectQuery::class))->getFileName()
 		);
 
 		$this->assertStringContainsString('GetUserFriendlyDescription', $sBody, 'the suggestion iTop already computes is discarded');
 		$this->assertStringContainsString('new \\OqlInterpreter', $sBody, 'the exception is still being thrown away by CheckOQL()');
 		$this->assertStringNotContainsString('CheckOQL($oql', $sBody, 'the message with the full class list is back');
 		$this->assertStringContainsString('catch (\\OQLException', $sBody, 'a parse failure is no longer told apart from a broken datamodel');
+	}
+
+	/**
+	 * ADR 0014 with ADR 0015: the OQL check moved to Service\Read\ObjectQuery,
+	 * and the tools that take a query still call it in their own source.
+	 */
+	public function testTheToolsThatTakeAQueryCallTheCheckVisibly(): void
+	{
+		foreach (['ObjectSearchByOQL', 'ObjectCount'] as $sTool) {
+			$this->assertStringContainsString(
+				'ObjectQuery::CheckQuery(',
+				(string) file_get_contents(dirname(__DIR__, 3).'/src/Core/Tools/'.$sTool.'.php'),
+				"{$sTool} takes an OQL query and no longer checks it"
+			);
+		}
 	}
 
 	/**
@@ -221,7 +237,7 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testARefusalDoesNotEndInASuggestionOfNothing(): void
 	{
-		$oDrop = new \ReflectionMethod(ObjectSearchByOQL::class, 'withoutEmptySuggestion');
+		$oDrop = new \ReflectionMethod(ObjectQuery::class, 'withoutEmptySuggestion');
 
 		$this->assertSame(
 			"Syntax error - found 'FROM' at 20, expecting {WHERE}",

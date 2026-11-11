@@ -8,7 +8,6 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
-use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -392,7 +391,7 @@ final class PortalAccess extends ObjectAccess
 			return [null, []];
 		}
 
-		$oFrom = $iFromId > 0 ? PortalList::RowOf($this->oPolicy, $sList, $iFromId) : null;
+		$oFrom = $iFromId > 0 ? PortalRows::RowOf($this->oPolicy, $sList, $iFromId) : null;
 		if ($oFrom === null) {
 			throw new ToolCallException(sprintf(
 				'This create action starts from a %s: from_id must be one listed by core_portal_list on %s.',
@@ -405,7 +404,7 @@ final class PortalAccess extends ObjectAccess
 		$oRow = $oFrom;
 		$aLevel = $this->oPolicy->ListDefinition($sList);
 		while (is_array($aLevel) && is_string($aLevel['parent']) && is_string($aLevel['parent_att']) && $aLevel['parent_att'] !== '') {
-			$oRow = PortalList::RowOf($this->oPolicy, $aLevel['parent'], (int)$oRow->Get($aLevel['parent_att']));
+			$oRow = PortalRows::RowOf($this->oPolicy, $aLevel['parent'], (int)$oRow->Get($aLevel['parent_att']));
 			if ($oRow === null) {
 				break;
 			}
