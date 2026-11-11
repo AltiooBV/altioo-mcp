@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\SettingsWarnings;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnavailableTool;
 use PHPUnit\Framework\TestCase;
@@ -60,7 +61,7 @@ class MCPServiceGatingTest extends TestCase
 	 */
 	private function matchingNothing(array $aConfigured, array $aKnown): array
 	{
-		$oMethod = new ReflectionMethod(MCPService::class, 'entriesMatchingNothing');
+		$oMethod = new ReflectionMethod(SettingsWarnings::class, 'entriesMatchingNothing');
 
 		return $oMethod->invoke(null, $aConfigured, array_fill_keys($aKnown, true));
 	}
