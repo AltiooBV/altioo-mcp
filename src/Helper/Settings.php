@@ -266,7 +266,7 @@ final class Settings
 	 * either. Narrowing two lists correctly means telling "named nothing" from
 	 * "agreed on nothing", which a list of grades cannot say and AccessPolicy
 	 * can, so the two are combined there: see
-	 * MCPService::AccessPolicyOfCurrentRequest().
+	 * ServedElements::AccessPolicyOfCurrentRequest().
 	 *
 	 * @return array<int, string> Granted grades, or an empty list for all of them.
 	 * @since 1.3.0

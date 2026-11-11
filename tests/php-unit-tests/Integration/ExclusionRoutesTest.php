@@ -32,7 +32,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AltiooEventMCPService;
 use DBObjectSearch;
@@ -443,7 +443,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		$this->exclude($mClasses, $mAttributes);
 
 		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
-		$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
+		$oPolicy = ServedElements::AccessPolicyOfCurrentRequest();
 		foreach (['objects', 'datamodel', 'history', 'documents'] as $sToolset) {
 			$this->assertFalse($oPolicy->allowsToolset($sToolset), "{$sToolset} is served although the exclusions cannot be honoured");
 		}
@@ -454,7 +454,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		$this->exclude(['Team'], ['Person' => ['phone']]);
 
 		$this->assertFalse(AccessPolicy::SettingsAreMalformed());
-		$this->assertTrue(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset('objects'));
+		$this->assertTrue(ServedElements::AccessPolicyOfCurrentRequest()->allowsToolset('objects'));
 	}
 
 	// ------------------------------------------------------------------ what an account did

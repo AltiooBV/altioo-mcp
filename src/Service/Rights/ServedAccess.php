@@ -13,7 +13,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
  * grades and prompts a caller can reach.
  *
  * The server alone knows, because the answer is the question registration asks
- * of every element (MCPService::ServedAccess()), and registration sits above
+ * of every element (ServedElements::ServedAccess()), and registration sits above
  * everything that reports it: the identity tool, its resource and the server
  * instructions. So the server remembers how to answer, once per request, and
  * they ask here, next to AccessPolicy, which they ask the same way and which is

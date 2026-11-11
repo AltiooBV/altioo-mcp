@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -46,7 +46,7 @@ class CoreInstructionsTest extends ItopDataTestCaseAlias
 	{
 		parent::setUp();
 		MCPExtensionCollector::CollectAll();
-		MCPService::RememberServed();
+		ServedElements::RememberServed();
 	}
 
 	protected function tearDown(): void

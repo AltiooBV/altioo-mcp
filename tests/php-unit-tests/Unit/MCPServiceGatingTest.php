@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Service\Server\SettingsWarnings;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnavailableTool;
@@ -42,7 +42,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		// No setAccessible(): it has been a no-op since PHP 8.1 and is
 		// deprecated in 8.5, which this suite treats as a failure.
-		$oMethod = new ReflectionMethod(MCPService::class, 'isHidden');
+		$oMethod = new ReflectionMethod(ServedElements::class, 'isHidden');
 
 		return $oMethod->invoke(
 			null,
@@ -296,7 +296,7 @@ class MCPServiceGatingTest extends TestCase
 	/** The body of one MCPService method, comments stripped. */
 	private function bodyOf(string $sMethod): string
 	{
-		$oMethod = new ReflectionMethod(MCPService::class, $sMethod);
+		$oMethod = new ReflectionMethod(ServedElements::class, $sMethod);
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 

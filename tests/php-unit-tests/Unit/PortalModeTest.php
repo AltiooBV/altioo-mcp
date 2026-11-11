@@ -35,7 +35,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalLoader;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalReach;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
@@ -70,7 +70,7 @@ class PortalModeTest extends TestCase
 	 */
 	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null): bool
 	{
-		return (new ReflectionMethod(MCPService::class, 'isHidden'))
+		return (new ReflectionMethod(ServedElements::class, 'isHidden'))
 			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted());
 	}
 

@@ -18,7 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -177,7 +177,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
 		$this->assertFalse(ExclusionPolicy::IsExempt(), 'an account was exempted by a setting that cannot be honoured');
 		foreach (['objects', 'datamodel'] as $sToolset) {
-			$this->assertFalse(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset($sToolset), "{$sToolset} is served");
+			$this->assertFalse(ServedElements::AccessPolicyOfCurrentRequest()->allowsToolset($sToolset), "{$sToolset} is served");
 		}
 	}
 

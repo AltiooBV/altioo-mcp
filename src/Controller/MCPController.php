@@ -27,6 +27,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Combodo\iTop\Application\Helper\Session;
 use ExecutionKPI;
@@ -96,7 +97,7 @@ final class MCPController
 			// What follows builds a PSR-7 request out of $_SERVER, and a token
 			// still sitting there would be copied into its server parameters
 			// and live for the rest of the call.
-			$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
+			$oPolicy = ServedElements::AccessPolicyOfCurrentRequest();
 			// Remembered before the token is dropped, because deciding it again
 			// later would need the token back. A write tool asks this to learn
 			// whether it is rehearsing, and asking must not cost a query.

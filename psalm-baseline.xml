@@ -606,6 +606,8 @@
     <InvalidArgument>
       <code><![CDATA[MCPLog::class]]></code>
     </InvalidArgument>
+  </file>
+  <file src="src/Service/Server/ServedElements.php">
     <TypeDoesNotContainType>
       <code><![CDATA[is_array($aSerialized)]]></code>
     </TypeDoesNotContainType>
