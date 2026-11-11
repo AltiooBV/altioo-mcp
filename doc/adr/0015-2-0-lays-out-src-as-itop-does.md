@@ -1,8 +1,8 @@
 # 0015 — 2.0 lays out `src/` as iTop does: Combodo's layer folders, features inside, one-way dependencies
 
 - Date: 2026-11-11
-- Decided by: proposed, for Guy Couronne to accept or amend
-- Status: proposed
+- Decided by: Guy Couronne, 2026-11-11 ("Yes, accept it"), as amended
+- Status: accepted
 - Amended: 2026-11-11. The first version's layer order was checked against the code with
   `LayerDependencyTest` and was wrong in five places. This version corrects it; see
   "What the measurement changed".
