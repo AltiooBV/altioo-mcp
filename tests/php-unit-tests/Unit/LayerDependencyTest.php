@@ -98,8 +98,6 @@ Core\Resources\Instructions → Service\Server\MCPService
 Core\Tools\Instructions → Service\Server\MCPService
 Helper\Settings → Service\Rights\ExclusionPolicy
 Service\Read\CurrentUserReader → Service\Server\MCPService
-Service\Read\DocumentAccess → Service\Write\WritePlan
-Service\Read\ObjectSerializer → Service\Write\WritePlan
 TXT;
 
 	public function testEveryClassHasALayer(): void

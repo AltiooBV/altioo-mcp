@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -590,7 +591,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	{
 		return [
 			'row'     => $iRow,
-			'id'      => WritePlan::AsId($mId),
+			'id'      => ObjectId::Normalise($mId),
 			'status'  => $bOk ? 'ok' : 'error',
 			'message' => $sMessage,
 		];

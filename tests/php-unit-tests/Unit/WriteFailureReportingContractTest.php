@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
@@ -105,7 +106,7 @@ class WriteFailureReportingContractTest extends TestCase
 	{
 		$this->assertMatchesRegularExpression(
 			'/\(int\)\s*\$mId\s*>\s*0\s*\?/',
-			$this->methodBody(WritePlan::class, 'AsId'),
+			$this->methodBody(ObjectId::class, 'Normalise'),
 			'A temporary key is negative; treating it as an id reports failures as successes.'
 		);
 		$this->assertStringContainsString(
@@ -260,7 +261,7 @@ class WriteFailureReportingContractTest extends TestCase
 			$sType
 		));
 		$this->assertStringContainsString(
-			'WritePlan::AsId',
+			'ObjectId::Normalise',
 			$this->methodBody('Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DocumentAccess', 'Describe'),
 			'the id is used without going through the one normaliser'
 		);
@@ -306,7 +307,7 @@ class WriteFailureReportingContractTest extends TestCase
 			$sType
 		));
 		$this->assertStringContainsString(
-			'WritePlan::AsId',
+			'ObjectId::Normalise',
 			$this->methodBody(
 				'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 				'outcome'

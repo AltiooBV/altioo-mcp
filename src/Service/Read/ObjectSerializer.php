@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -29,7 +30,6 @@ use Throwable;
 use UserRights;
 use utils;
 use iAttributeNoGroupBy;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
@@ -102,11 +102,11 @@ final class ObjectSerializer
 	 */
 	public static function Serialize(DBObject $oObject, string $sClass, ?array $aFields = null): array
 	{
-		// WritePlan::AsId(), because a write already reports the id through it and
+		// ObjectId::Normalise(), because a write already reports the id through it and
 		// a read that answers "4" where a create answered 4 is one surface with
 		// two types in it - the caller that pastes the first into the second is
 		// the caller this module has already had refused by its own schema.
-		$aData = [MetaModel::DBGetKey($sClass) => WritePlan::AsId($oObject->GetKey())];
+		$aData = [MetaModel::DBGetKey($sClass) => ObjectId::Normalise($oObject->GetKey())];
 
 		// The audit row says which objects left, by class and id. Here and not in
 		// each tool, because this is where an object becomes an answer.
@@ -600,7 +600,7 @@ final class ObjectSerializer
 	public static function Value(DBObject $oObject, string $sClass, string $sAttCode, bool $bClip = true): mixed
 	{
 		if ($sAttCode === 'id') {
-			return WritePlan::AsId($oObject->GetKey());
+			return ObjectId::Normalise($oObject->GetKey());
 		}
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);

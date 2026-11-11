@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
@@ -15,7 +16,6 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -303,7 +303,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			$sKey = $sClass.'::'.$oObject->GetKey();
 			$aObjects[$sKey] = [
 				'class'        => $sClass,
-				MetaModel::DBGetKey($sClass)           => WritePlan::AsId($oObject->GetKey()),
+				MetaModel::DBGetKey($sClass)           => ObjectId::Normalise($oObject->GetKey()),
 				'friendlyname' => $oObject->GetName(),
 			];
 

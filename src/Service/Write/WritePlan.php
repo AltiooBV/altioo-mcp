@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
@@ -498,7 +499,7 @@ final class WritePlan
 		];
 
 		try {
-			$iId = self::AsId($oObject->GetKey());
+			$iId = ObjectId::Normalise($oObject->GetKey());
 			if (!$bSimulated && $iId !== null) {
 				// One read, for both halves of the answer.
 				//
@@ -1502,7 +1503,7 @@ final class WritePlan
 	 */
 	public static function Identity(string $sClass, int|string|null $mId): array
 	{
-		$aIdentity = ['id' => self::AsId($mId)];
+		$aIdentity = ['id' => ObjectId::Normalise($mId)];
 
 		try {
 			$sKeyField = MetaModel::DBGetKey($sClass);
@@ -1515,33 +1516,6 @@ final class WritePlan
 		}
 
 		return $aIdentity;
-	}
-
-	/**
-	 * An object id as a number, or null when there is not one yet.
-	 *
-	 * The one place that decides what counts as an id, because two callers
-	 * need the same answer for different reasons: this class reports it, and
-	 * ObjectCreate uses it to tell a write that committed from one that did
-	 * not.
-	 *
-	 * Anything not a positive number is null. iTop gives an unsaved object a
-	 * deliberately negative temporary key (DBObject::GetNextTempId()), so a
-	 * negative one means the row never landed - the same thing "no id yet"
-	 * already means here - and reporting it would be reporting a row nobody
-	 * can fetch.
-	 *
-	 * @param int|string|null $mId
-	 *
-	 * @since 1.0.0
-	 */
-	public static function AsId(int|string|null $mId): ?int
-	{
-		if ($mId === null || !is_numeric($mId)) {
-			return null;
-		}
-
-		return (int) $mId > 0 ? (int) $mId : null;
 	}
 
 	/**
@@ -1572,7 +1546,7 @@ final class WritePlan
 		}
 
 		try {
-			return self::AsId($oObject->GetKey());
+			return ObjectId::Normalise($oObject->GetKey());
 		} catch (Throwable $e) {
 			return null;
 		}

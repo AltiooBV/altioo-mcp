@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Mcp\Schema\Content\BlobResourceContents;
 use Mcp\Schema\Content\ImageContent;
 use MetaModel;
 use ormDocument;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
@@ -291,7 +291,7 @@ final class DocumentAccess
 		// same reason: a declared type is a claim about the source, and ?int
 		// for an identifier is what an id ought to be rather than what the ORM
 		// hands over. Normalised in one place instead.
-		$iId = WritePlan::AsId($mId);
+		$iId = ObjectId::Normalise($mId);
 
 		if ($iId !== null) {
 			$aDescription['uri'] = self::Uri($sClass, $iId, $sAttCode);
