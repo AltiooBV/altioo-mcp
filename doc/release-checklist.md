@@ -13,7 +13,7 @@ repeat these — *Every release* below is the recurring list.
       resolves anonymously, which is what closes it: the URL is the value of `more_info_url` in
       `extension.xml`, of `homepage` and `support.*` in `composer.json`, of
       `doc.manual_setup` / `doc.more_information` in the module declaration, of the link line at
-      the top of the README, and of `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer
+      the top of the README, and of `MCPModule::SOURCE_URL`, which is the AGPL 13 source offer
       served to callers. `ModuleMetadataTest` asserts those six agree; being public is what makes
       them resolve.
 - [x] **Enable private vulnerability reporting** — done 2026-09-20, in the same sitting as
@@ -76,7 +76,7 @@ time this repository tests what happens to an instance a client already has.
 
 ## Every release
 
-**Version.** The same `x.y.z` in `MCPHelper::VERSION`, `extension.xml` and
+**Version.** The same `x.y.z` in `MCPModule::VERSION`, `extension.xml` and
 `module.altioo-mcp.php` — `ModuleMetadataTest` fails if they drift — with a
 [CHANGELOG.md](../CHANGELOG.md) entry under a dated heading, not under `[Unreleased]`.
 

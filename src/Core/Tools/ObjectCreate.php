@@ -8,18 +8,20 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -119,7 +121,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 						'default'     => 0,
 					],
 					'fields'   => [
-						'type'                 => MCPHelper::MAP_TYPE,
+						'type'                 => JsonPayload::MAP_TYPE,
 						'description'          => 'Attribute code => value for the settable fields of the portal\'s create form for the class.',
 						'additionalProperties' => true,
 					],
@@ -138,7 +140,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'fields' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
@@ -184,7 +186,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		$aAction = $oPrepared === null ? [] : ['action' => trim($action)];
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
@@ -200,7 +202,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
@@ -236,7 +238,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			try {
 				$oObject->Set($sAttCode, $realValue);
 			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
+				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
@@ -330,8 +332,8 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				// WritePlan::Check() ran first and refused everything the
 				// caller could have corrected, so what reaches here is the
 				// instance's problem, described in the instance's vocabulary.
-				// MCPHelper explains the split.
-				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to create the object', $e));
+				// ErrorReport explains the split.
+				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to create the object', $e));
 			}
 
 			return ToolOutput::Structured(['class' => $class]
@@ -345,7 +347,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WritePlan::Map($aOverridden),
 					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-					'warning'    => MCPHelper::OpaqueFailure(
+					'warning'    => ErrorReport::OpaqueFailure(
 						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
 						$e
 					),

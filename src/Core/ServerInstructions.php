@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core;
 
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
@@ -543,7 +543,7 @@ TEXT;
 		try {
 			$sFormat = $sAttributeClass::GetInternalFormat();
 		} catch (\Throwable $oException) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				'Could not read the internal format of %s for the server instructions: %s',
 				$sAttributeClass,
 				$oException->getMessage()

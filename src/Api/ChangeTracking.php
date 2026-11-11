@@ -8,11 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use CMDBObject;
 use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
 use Psr\Http\Message\MessageInterface;
 use Throwable;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * What this request says about a change it makes: which tool, and why.
@@ -222,7 +223,7 @@ final class ChangeTracking
 			CMDBObject::SetCurrentChange(null);
 		} catch (Throwable $e) {
 			// Never worth failing the change over.
-			MCPHelper::LogError('Could not set up the change for the MCP caller: '.$e->getMessage());
+			ErrorReport::Log('Could not set up the change for the MCP caller: '.$e->getMessage());
 		}
 	}
 
@@ -259,7 +260,7 @@ final class ChangeTracking
 		}
 
 		$aPayload = json_decode($sBody, true);
-		if (!is_array($aPayload) || ($aPayload['method'] ?? null) !== MCPHelper::MCP_METHOD_TOOLS_CALL) {
+		if (!is_array($aPayload) || ($aPayload['method'] ?? null) !== MCPMethod::TOOLS_CALL) {
 			return null;
 		}
 

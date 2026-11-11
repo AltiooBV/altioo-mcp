@@ -9,10 +9,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use appUserPreferences;
@@ -171,7 +171,7 @@ class SetObsoleteData extends AbstractMCPTool
 		try {
 			appUserPreferences::SetPref('show_obsolete_data', $visible);
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the preference', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the preference', $e));
 		}
 
 		return ToolOutput::Structured([

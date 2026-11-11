@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
+use utils;
+
 /**
  * Whether this request serves a portal-only user, and through which portal.
  *
@@ -190,5 +192,22 @@ final class PortalMode
 	public static function Forget(): void
 	{
 		self::$sCurrent = null;
+	}
+
+	/**
+	 * The portal the endpoint URL names in portal_id, or null when it names
+	 * none; '' when the value is not shaped like a portal id, which then
+	 * matches no portal and is never quoted back (doc/adr/0007).
+	 *
+	 * @since 1.2.0
+	 */
+	public static function Requested(): ?string
+	{
+		$mRaw = utils::ReadParam(self::PARAMETER, null, false, utils::ENUM_SANITIZATION_FILTER_RAW_DATA);
+		if ($mRaw === null || $mRaw === '') {
+			return null;
+		}
+
+		return is_string($mRaw) && self::IsPortalId($mRaw) ? $mRaw : '';
 	}
 }

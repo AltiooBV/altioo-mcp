@@ -8,19 +8,20 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
-use Altioo\iTop\Extension\MCP\Helper\ObjectId;
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
-use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use DBObject;
 use DBObjectSet;
@@ -137,7 +138,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	protected static function checkBulkAllowed(string $sClass, int $iBulkAction, int $iSingleAction, string $sVerb): void
 	{
 		if (!ExclusionPolicy::Serves($sClass)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 		}
 
 		if (ObjectHistory::IsReserved($sClass)) {
@@ -148,7 +149,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 		if (MetaModel::DBIsReadOnly()) {
 			throw new ToolCallException("The database is in read-only mode, cannot {$sVerb} objects.");
@@ -421,7 +422,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 					continue;
 				}
 			} catch (\Throwable $e) {
-				$aIssues[] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
+				$aIssues[] = ErrorReport::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
 			}
 		}

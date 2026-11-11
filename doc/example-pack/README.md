@@ -77,7 +77,7 @@ first. Installing it and deleting `vendor/mcp` before packaging does **not** wor
 — `classmap-authoritative` has already written those classes into
 `autoload_classmap.php`, so the entries outlive the files and the first call
 fatals on a missing include. Pin the same constraint the base vendors,
-`MCPHelper::SDK_CONSTRAINT`.
+`MCPModule::SDK_CONSTRAINT`.
 
 ## Testing it
 

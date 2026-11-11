@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Combodo\iTop\AuthentToken\Hook\TokenLoginExtension;
 use MetaModel;
@@ -65,7 +65,7 @@ final class TokenScopes
 					}
 				}
 			} catch (Throwable $e) {
-				MCPHelper::LogError('Could not read the declared token scopes of '.$sClass.': '.$e->getMessage());
+				ErrorReport::Log('Could not read the declared token scopes of '.$sClass.': '.$e->getMessage());
 			}
 		}
 
@@ -149,7 +149,7 @@ final class TokenScopes
 				}
 			}
 		} catch (Throwable $e) {
-			MCPHelper::LogError('Could not read the scopes declared by '.$sClass.': '.$e->getMessage());
+			ErrorReport::Log('Could not read the scopes declared by '.$sClass.': '.$e->getMessage());
 		}
 
 		return false;
@@ -219,7 +219,7 @@ final class TokenScopes
 		}
 
 		if (!class_exists(TokenLoginExtension::class)) {
-			MCPHelper::LogError('authent-token is not installed, so token scopes cannot be read.');
+			ErrorReport::Log('authent-token is not installed, so token scopes cannot be read.');
 
 			return null;
 		}
@@ -240,7 +240,7 @@ final class TokenScopes
 			// it up is free to quote what it was given - which would put the
 			// token itself in log/error.log, in clear, for as long as that file
 			// is kept.
-			MCPHelper::LogError('The scopes of the presented token could not be read ('.get_class($e).').');
+			ErrorReport::Log('The scopes of the presented token could not be read ('.get_class($e).').');
 
 			return null;
 		}
@@ -286,7 +286,7 @@ final class TokenScopes
 		} catch (Throwable $e) {
 			// The class, never the message - GetToken() is handed the raw
 			// credential and an exception is free to quote it.
-			MCPHelper::LogError('The presented token could not be resolved ('.get_class($e).').');
+			ErrorReport::Log('The presented token could not be resolved ('.get_class($e).').');
 
 			return null;
 		}

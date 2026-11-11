@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -34,7 +34,7 @@ class OAuthServerDiscoveryTest extends TestCase
 
 	private function url(mixed $mConfigured, bool $bInstalled, string $sModulesRoot = self::MODULES_ROOT, ?string $sForCalledUrl = null): ?string
 	{
-		return (new ReflectionMethod(MCPHelper::class, 'protectedResourceMetadataUrl'))
+		return (new ReflectionMethod(OAuthResource::class, 'metadataUrlFor'))
 			->invoke(null, $mConfigured, $bInstalled, $sModulesRoot, $sForCalledUrl);
 	}
 
@@ -107,7 +107,7 @@ class OAuthServerDiscoveryTest extends TestCase
 			}
 		}
 
-		$sMetadata = $this->bodyOf(MCPHelper::class, 'GetProtectedResourceMetadataUrl');
+		$sMetadata = $this->bodyOf(OAuthResource::class, 'MetadataUrl');
 		$this->assertStringContainsString('class_exists(self::OAUTH_RESOURCE_METADATA_CLASS)', $sMetadata);
 		$this->assertLessThan(
 			strpos($sMetadata, "call_user_func([self::OAUTH_RESOURCE_METADATA_CLASS"),
@@ -117,7 +117,7 @@ class OAuthServerDiscoveryTest extends TestCase
 
 		$sAudience = $this->bodyOf(\Altioo\iTop\Extension\MCP\Controller\MCPController::class, 'rejectATokenGrantedForAnotherUrl');
 		$this->assertMatchesRegularExpression(
-			'/^[^{]*\{\s*\$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return;\s*\}/',
+			'/^[^{]*\{\s*\$sAudienceClass = OAuthResource::TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return;\s*\}/',
 			$sAudience,
 			'the audience check does anything before asking whether the module is there'
 		);

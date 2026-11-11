@@ -18,7 +18,7 @@
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
  */
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 
 // The module's own code is loadable from the compiled environment. iTop
 // registers the module's vendor/autoload.php because module.<code>.php lists
@@ -26,7 +26,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 // extension is missing at runtime and nothing else here would say so.
 check(
 	'the module autoloader is registered and reports version '.$sDeclaredVersion,
-	class_exists(MCPHelper::class) && MCPHelper::VERSION === $sDeclaredVersion
+	class_exists(MCPModule::class) && MCPModule::VERSION === $sDeclaredVersion
 );
 
 // Settings the controller reads at every request. A missing one does not fail

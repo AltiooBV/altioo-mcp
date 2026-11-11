@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExcludingModelReflection;
 use DBObjectSearch;
 use Mcp\Exception\ToolCallException;
@@ -167,7 +167,7 @@ final class ObjectQuery
 			}
 			// Not an OQL problem at all - a datamodel that will not reflect, or
 			// something under it. The caller cannot act on that one.
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Could not check the OQL query', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Could not check the OQL query', $e));
 		}
 	}
 

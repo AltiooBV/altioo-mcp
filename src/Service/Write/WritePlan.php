@@ -28,8 +28,8 @@ use utils;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 
 /**
  * What a write would do, established before it does it.
@@ -176,7 +176,7 @@ final class WritePlan
 					continue;
 				}
 			} catch (Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
+				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
 					.DatamodelReader::ValueHint($sClass, $sAttCode, $value);
 			}
 		}
@@ -426,7 +426,7 @@ final class WritePlan
 			// A question about the object must not refuse a write it cannot
 			// answer for: the guard is a courtesy, and failing open leaves the
 			// caller exactly where it was before the guard existed.
-			MCPHelper::LogError('Could not check obsolescence before a write on '.$sClass.': '.$e->getMessage());
+			ErrorReport::Log('Could not check obsolescence before a write on '.$sClass.': '.$e->getMessage());
 
 			return;
 		}
@@ -532,7 +532,7 @@ final class WritePlan
 			}
 		} catch (Throwable $e) {
 			// Describing the write must never cost the write that succeeded.
-			MCPHelper::LogError('Could not describe '.$sClass.' after the write: '.$e->getMessage());
+			ErrorReport::Log('Could not describe '.$sClass.' after the write: '.$e->getMessage());
 		}
 
 		return $aAfter;
@@ -642,7 +642,7 @@ final class WritePlan
 		} catch (Throwable $e) {
 			// In portal mode the ORM's say is what this keeps from running.
 			if (PortalMode::Current() !== null) {
-				MCPHelper::LogError("Could not check '{$sAttCode}' against the portal: ".$e->getMessage());
+				ErrorReport::Log("Could not check '{$sAttCode}' against the portal: ".$e->getMessage());
 
 				return sprintf("'%s' could not be checked against what the portal shows, so it was not accepted.", $sAttCode);
 			}
@@ -1152,7 +1152,7 @@ final class WritePlan
 			} catch (Throwable $e) {
 				// Same reading as Check(): a check that could not run is not a
 				// check that passed, and what it threw is for the log.
-				throw new ToolCallException(MCPHelper::OpaqueFailure("Could not validate {$sWhat}", $e));
+				throw new ToolCallException(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
 			}
 
 			if ($mResult !== true) {
@@ -1610,7 +1610,7 @@ final class WritePlan
 			// A check that cannot run is not a check that passed. What it threw
 			// came from inside CheckToWrite() - a class extension, a query -
 			// and is for the log, not for the caller.
-			throw new ToolCallException(MCPHelper::OpaqueFailure("Could not validate {$sWhat}", $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
 		}
 
 		if ($bOk) {

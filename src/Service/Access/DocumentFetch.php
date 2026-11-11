@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Access;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -59,7 +59,7 @@ final class DocumentFetch
 		$bPortalFile = $sClass === 'Attachment' && !$oAccess->AttachmentsAreObjects();
 
 		if (!ExclusionPolicy::Serves($sClass) || (!$bPortalFile && !UserRights::IsActionAllowed($sClass, UR_ACTION_READ))) {
-			throw new MCPDocumentException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+			throw new MCPDocumentException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 		if ($iId < 1) {
 			throw new MCPDocumentException('Invalid ID. Please specify a valid object ID.');

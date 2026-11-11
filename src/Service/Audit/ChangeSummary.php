@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Audit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use CMDBChangeOpCreate;
 use CMDBChangeOpDelete;
 use CMDBChangeOpSetAttribute;
@@ -287,7 +287,7 @@ class ChangeSummary
 		try {
 			return self::Compose(self::OperationsOfChange($iChangeId));
 		} catch (Throwable $e) {
-			MCPHelper::LogError('Could not summarise change '.$iChangeId.' ('.get_class($e).').');
+			ErrorReport::Log('Could not summarise change '.$iChangeId.' ('.get_class($e).').');
 
 			return '';
 		}

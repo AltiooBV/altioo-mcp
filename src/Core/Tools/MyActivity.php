@@ -8,18 +8,19 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AltiooEventMCPService;
 use CMDBChange;
 use DBObject;
@@ -196,7 +197,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		} catch (MCPPortalException $oException) {
 			throw new ToolCallException($oException->getMessage());
 		} catch (Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to read your activity', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to read your activity', $oException));
 		}
 	}
 
@@ -486,9 +487,9 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 			return ['notes' => ['Some earlier calls may not be listed. Objects you can no longer see are counted in objects_you_cannot_see.']];
 		}
 
-		$sLevel = (string)MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL);
+		$sLevel = (string)MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL);
 		// An unset or unknown level records every call, which is what "info" is.
-		if (!in_array($sLevel, [MCPHelper::LOG_LEVEL_ERROR, MCPHelper::LOG_LEVEL_DEBUG], true)) {
+		if (!in_array($sLevel, [Settings::LOG_LEVEL_ERROR, Settings::LOG_LEVEL_DEBUG], true)) {
 			$sLevel = 'info';
 		}
 		$iRetention = Settings::GetAuditRetentionDays();
@@ -499,7 +500,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		if (!Settings::LogsCalls()) {
 			$aNotes[] = 'This instance does not record calls (log_mcp_service is off): nothing new appears here.';
 		}
-		if ($sLevel === MCPHelper::LOG_LEVEL_ERROR) {
+		if ($sLevel === Settings::LOG_LEVEL_ERROR) {
 			$aNotes[] = 'This instance records failures and connections only (log_mcp_level is error): successful calls are not listed.';
 		}
 		if ($iRetention > 0) {

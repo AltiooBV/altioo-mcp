@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
@@ -30,7 +31,6 @@ use Throwable;
 use UserRights;
 use utils;
 use iAttributeNoGroupBy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * One object, rendered the way iTop's own REST API renders it.
@@ -872,7 +872,7 @@ final class ObjectSerializer
 	public static function UnknownAttributes(array $aCodes, string $sClass): string
 	{
 		$aShown = array_map(
-			static fn (string $sCode): string => MCPHelper::LooksLikeClassName($sCode) ? "'{$sCode}'" : 'a code that is not an attribute code',
+			static fn (string $sCode): string => ClassRefusal::LooksLikeClassName($sCode) ? "'{$sCode}'" : 'a code that is not an attribute code',
 			array_values($aCodes)
 		);
 

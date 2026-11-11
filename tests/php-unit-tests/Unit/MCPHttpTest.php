@@ -386,7 +386,7 @@ class MCPHttpTest extends TestCase
 	}
 
 	/**
-	 * An empty list is not "allow everything" - MCPHelper never produces one,
+	 * An empty list is not "allow everything" - Settings never produces one,
 	 * and if it ever did the safe reading is that nothing is served.
 	 */
 	public function testAnEmptyListServesNoHost(): void

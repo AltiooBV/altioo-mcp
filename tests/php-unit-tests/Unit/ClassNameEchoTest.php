@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\ResourceTemplates\ClassDetail;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -57,24 +57,24 @@ class ClassNameEchoTest extends TestCase
 	 */
 	public function testOnlyAClassNameShapeIsRecognised(string $sValue, bool $bExpected): void
 	{
-		$this->assertSame($bExpected, MCPHelper::LooksLikeClassName($sValue));
+		$this->assertSame($bExpected, ClassRefusal::LooksLikeClassName($sValue));
 	}
 
 	public function testTheRefusalQuotesAClassName(): void
 	{
-		$this->assertStringContainsString("Unknown class 'UserReqest'", MCPHelper::UnreadableClassRefusal('UserReqest'));
+		$this->assertStringContainsString("Unknown class 'UserReqest'", ClassRefusal::Unreadable('UserReqest'));
 	}
 
 	public function testTheRefusalDoesNotQuoteAnythingElse(): void
 	{
 		$sInjection = "UserRequest' OR 1=1 --";
-		$sRefusal = MCPHelper::UnreadableClassRefusal($sInjection);
+		$sRefusal = ClassRefusal::Unreadable($sInjection);
 
 		$this->assertStringNotContainsString('OR 1=1', $sRefusal, 'the caller\'s text came back');
 		$this->assertStringContainsString('not a class name', $sRefusal);
 		$this->assertSame(
 			$sRefusal,
-			MCPHelper::UnreadableClassRefusal('<b>x</b>'),
+			ClassRefusal::Unreadable('<b>x</b>'),
 			'one answer for every value that is no class name, so none of it is reflected'
 		);
 	}
@@ -87,7 +87,7 @@ class ClassNameEchoTest extends TestCase
 	{
 		$sBody = $this->methodBody(PortalDescription::class, 'Of');
 
-		$iCheck = strpos($sBody, 'MCPHelper::LooksLikeClassName($sClass)');
+		$iCheck = strpos($sBody, 'ClassRefusal::LooksLikeClassName($sClass)');
 		$iQuote = strpos($sBody, "offers no class '%s'");
 		$this->assertNotFalse($iCheck, 'describe quotes the class without checking its shape');
 		$this->assertNotFalse($iQuote);
@@ -102,7 +102,7 @@ class ClassNameEchoTest extends TestCase
 	{
 		$sBody = $this->methodBody(ClassDetail::class, 'read');
 
-		$this->assertStringContainsString('MCPHelper::UnreadableClassRefusal($sClass)', $sBody);
+		$this->assertStringContainsString('ClassRefusal::Unreadable($sClass)', $sBody);
 		$this->assertStringNotContainsString('Unknown class', $sBody, 'a refusal of its own wording is back');
 	}
 

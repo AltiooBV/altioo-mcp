@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -36,7 +36,7 @@ class RefusalTextTest extends ItopDataTestCaseAlias
 
 	private function refusedRow(string $sLevel): \AltiooEventMCPService
 	{
-		MetaModel::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, $sLevel);
+		MetaModel::GetConfig()->SetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, $sLevel);
 		$sName = 'refusal-text-'.bin2hex(random_bytes(4));
 
 		$oResult = new MCPResult(MCPResult::TOOL_REFUSED, MCPController::TOOL_REFUSED_MESSAGE);

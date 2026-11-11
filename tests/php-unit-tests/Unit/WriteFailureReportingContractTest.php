@@ -8,11 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -452,7 +453,7 @@ class WriteFailureReportingContractTest extends TestCase
 	 *
 	 * `fields: {}` on an update is a caller with nothing to update - an
 	 * ordinary mistake with an ordinary answer. Declaring the map as
-	 * MCPHelper::MAP_TYPE lets it through to the tool, which says so.
+	 * JsonPayload::MAP_TYPE lets it through to the tool, which says so.
 	 *
 	 * Checked against the real validator rather than by reading the schema,
 	 * because the bug is in how the validator converts, not in what the schema

@@ -8,19 +8,21 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -112,7 +114,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 					'description' => 'Stimulus code to apply (e.g. ev_assign, ev_resolve, ev_close). Call core_class_schema for the stimuli valid in the current state.',
 				],
 				'fields'   => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Optional attribute values to set before applying the stimulus (e.g. agent_id, team_id for ev_assign).',
 					'additionalProperties' => true,
 				],
@@ -175,7 +177,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
@@ -186,7 +188,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
@@ -294,7 +296,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			try {
 				$oObject->Set($sAttCode, $realValue);
 			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
+				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
@@ -415,7 +417,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		try {
 			$bApplied = $oObject->ApplyStimulus($stimulus);
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
 		}
 		// ApplyStimulus returns false if the state transition did not happen (e.g. due to a condition on the transition that is not met), but no exception is thrown in this case, so we need to check the return value to provide a helpful error message.
 		if (!$bApplied) {

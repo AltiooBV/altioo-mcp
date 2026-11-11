@@ -24,7 +24,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Audit;
  * Filled by whatever turns an object into an answer - the serializer, the
  * related graph, a document fetch, the history reader - and emptied by the
  * controller once the row is written. Static for the request, like
- * {@see \Altioo\iTop\Extension\MCP\Helper\MCPHelper::MintedErrorReferences()},
+ * {@see \Altioo\iTop\Extension\MCP\Helper\ErrorReport::MintedReferences()},
  * because the places that read are many and the row is written once.
  *
  * @since 1.3.0

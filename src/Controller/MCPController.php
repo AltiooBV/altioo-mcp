@@ -8,22 +8,25 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Controller;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
-use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
-use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
+use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
+use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
-use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
-use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
+use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Combodo\iTop\Application\Helper\Session;
@@ -153,7 +156,7 @@ final class MCPController
 			// TypeError or a missing class here would otherwise escape uncaught -
 			// producing a bare 500 with no audit entry.
 			$oResult = self::buildErrorResult($e);
-			$oResult->mcpMethod = MCPHelper::MCP_METHOD_EXCEPTION;
+			$oResult->mcpMethod = MCPMethod::EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
 			self::discardRequestSession();
 			self::outputJsonResultException($oResult);
@@ -260,7 +263,7 @@ final class MCPController
 		// The name that was refused goes to the log, not to the caller: an
 		// operator whose endpoint answers 403 needs to see it, and a caller
 		// probing for the configured hostnames does not.
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Refused an MCP request: neither its Origin (%s) nor its Host (%s) is in '%s'. "
 			.'Set that module parameter to the hostname this instance is served under.',
 			is_string($sOrigin) && $sOrigin !== '' ? $sOrigin : '-',
@@ -357,7 +360,7 @@ final class MCPController
 			return;
 		}
 
-		MCPHelper::LogError('Refused an MCP request carrying auth_token as a request parameter. The endpoint reads a token from the Authorization or Auth-Token header only.');
+		ErrorReport::Log('Refused an MCP request carrying auth_token as a request parameter. The endpoint reads a token from the Authorization or Auth-Token header only.');
 
 		throw new MCPAuthException(
 			'Send the token in the Authorization header (Bearer) or the Auth-Token header. '
@@ -382,7 +385,7 @@ final class MCPController
 			return;
 		}
 
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Refused an MCP request: iTop logged it in under login mode '%s' with a token this module was not shown, so the token's scopes could not be applied.",
 			is_string($mLoginMode) ? $mLoginMode : gettype($mLoginMode)
 		));
@@ -420,7 +423,7 @@ final class MCPController
 			return LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED;
 		}
 
-		$sRequested = MCPHelper::RequestedPortal();
+		$sRequested = PortalMode::Requested();
 		$sPortal = PortalMode::Choose(array_column(UserRights::GetAllowedPortals(), 'id'), $aServed, $sRequested);
 		$iMaxDays = Settings::GetPortalTokenMaxDays();
 		$sRefusal = PortalMode::RefusalOf(
@@ -441,7 +444,7 @@ final class MCPController
 
 		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL && $sRequested !== null) {
 			// The id is the request's text: quoted only when it is shaped like one.
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Refused an MCP request in portal mode: the URL names %s, which '%s' may not enter or '%s' does not serve (%s).",
 				$sRequested === '' ? 'a malformed '.PortalMode::PARAMETER : "the portal '{$sRequested}'",
 				UserRights::GetUser(),
@@ -453,7 +456,7 @@ final class MCPController
 		}
 
 		if ($sRefusal === PortalMode::REFUSED_NO_SERVED_PORTAL) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Refused an MCP request in portal mode: '%s' is allowed into none of the portals in '%s' (%s).",
 				UserRights::GetUser(),
 				Settings::MODULE_SETTING_PORTALS,
@@ -464,7 +467,7 @@ final class MCPController
 		}
 
 		if ($sRefusal === PortalMode::REFUSED_NOT_A_TOKEN) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Refused an MCP request in portal mode: '%s' did not log in with a token.",
 				UserRights::GetUser()
 			));
@@ -477,7 +480,7 @@ final class MCPController
 		}
 
 		if ($sRefusal === PortalMode::REFUSED_TOKEN_UNBOUNDED) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Refused an MCP request in portal mode: '%s' presented a token that never expires, or expires more than %d days from now ('%s').",
 				UserRights::GetUser(),
 				$iMaxDays,
@@ -493,7 +496,7 @@ final class MCPController
 		}
 
 		if ($sRefusal === PortalMode::REFUSED_NO_CONTACT) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Refused an MCP request in portal mode: '%s' is linked to no contact.",
 				UserRights::GetUser()
 			));
@@ -522,7 +525,7 @@ final class MCPController
 	 */
 	private static function rejectATokenGrantedForAnotherUrl(): void
 	{
-		$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;
+		$sAudienceClass = OAuthResource::TOKEN_AUDIENCE_CLASS;
 		if (!class_exists($sAudienceClass)) {
 			return;
 		}
@@ -537,12 +540,12 @@ final class MCPController
 			return;
 		}
 
-		$sCalled = MCPHelper::CalledEndpointUrl();
+		$sCalled = OAuthResource::CalledEndpointUrl();
 		if ($oAudience->IsFor($sCalled) === true) {
 			return;
 		}
 
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Refused an MCP request: '%s' presented a token granted for the OAuth resource '%s', not for the URL called ('%s').",
 			UserRights::GetUser(),
 			property_exists($oAudience, 'sResourceKey') ? (string)$oAudience->sResourceKey : '?',
@@ -610,13 +613,13 @@ final class MCPController
 	 */
 	private static function GetAuthorizedProfiles() : array
 	{
-		$aProfiles = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', self::DEFAULT_ALLOWED_PROFILES);
+		$aProfiles = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, 'mcp_allowed_profiles', self::DEFAULT_ALLOWED_PROFILES);
 		if (is_array($aProfiles)) {
 			return $aProfiles;
 		}
 
 		$sType = gettype($aProfiles);
-		MCPHelper::LogError("Itop configuration parameter 'mcp_allowed_profiles' should be an array instead of $sType");
+		ErrorReport::Log("Itop configuration parameter 'mcp_allowed_profiles' should be an array instead of $sType");
 		return [];
 	}
 
@@ -653,7 +656,7 @@ final class MCPController
 	{
 		$aProfiles = self::GetAuthorizedProfiles();
 
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Refused an MCP request: '%s' holds none of the profiles in '%s' (%s).",
 			UserRights::GetUser(),
 			'mcp_allowed_profiles',
@@ -686,7 +689,7 @@ final class MCPController
 	 */
 	private static function createNoConsoleAccessException(): MCPAuthException
 	{
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Refused an MCP request: '%s' authenticated but holds no profile granting access to the "
 			.'console, so there is no interface for this endpoint to serve. A portal-only user cannot '
 			.'use the MCP services whatever their token scopes or MCP profile are, unless portal mode '
@@ -753,8 +756,8 @@ final class MCPController
 			return $oResult;
 		}
 
-		$sReference = MCPHelper::NewErrorReference();
-		MCPHelper::LogError(sprintf(
+		$sReference = ErrorReport::NewReference();
+		ErrorReport::Log(sprintf(
 			'[%s] Unhandled %s: %s in %s:%d',
 			$sReference,
 			get_class($e),
@@ -877,16 +880,16 @@ final class MCPController
 				// Extract tool/resource/prompt name depending on method
 				$aParams = $aPayload['params'] ?? [];
 				$sMcpName = match ($sMcpMethod) {
-					MCPHelper::MCP_METHOD_TOOLS_CALL     => $aParams['name'] ?? null,
-					MCPHelper::MCP_METHOD_RESOURCES_READ => $aParams['uri'] ?? null,
-					MCPHelper::MCP_METHOD_PROMPTS_GET    => $aParams['name'] ?? null,
+					MCPMethod::TOOLS_CALL     => $aParams['name'] ?? null,
+					MCPMethod::RESOURCES_READ => $aParams['uri'] ?? null,
+					MCPMethod::PROMPTS_GET    => $aParams['name'] ?? null,
 					// The one row that says a client connected is worth naming
 					// the client on. clientInfo is what the caller declares
 					// about itself and nothing verifies it, so it identifies a
 					// well-behaved integration rather than authenticating
 					// anyone - which is what an operator reading the trail is
 					// after: which of these connected, and when did it stop.
-					MCPHelper::MCP_METHOD_INITIALIZE     => self::clientDescription(self::clientInfoOf($aParams)),
+					MCPMethod::INITIALIZE     => self::clientDescription(self::clientInfoOf($aParams)),
 					default                              => null,
 				};
 				$sMcpName = self::auditLabel($sMcpName);
@@ -912,8 +915,8 @@ final class MCPController
 			// The dump of the unencodable structure goes to the log, not the wire:
 			// it is arbitrary internal state and may hold whatever the failed call
 			// was carrying.
-			$sReference = MCPHelper::NewErrorReference();
-			MCPHelper::LogError(sprintf(
+			$sReference = ErrorReport::NewReference();
+			ErrorReport::Log(sprintf(
 				'[%s] json encoding failed (%s). Response structure (print_r+bin2hex): %s',
 				$sReference,
 				json_last_error_msg(),
@@ -941,7 +944,7 @@ final class MCPController
 			// worked. RFC 9110 requires one on this status; RFC 9728 is what a
 			// client with a Connect button follows to find the authorization
 			// server, when the operator has put one in front of iTop.
-			$oP->add_header('WWW-Authenticate: '.MCPHttp::BearerChallenge(MCPHelper::GetProtectedResourceMetadataUrl(), $oResult->challengeError));
+			$oP->add_header('WWW-Authenticate: '.MCPHttp::BearerChallenge(OAuthResource::MetadataUrl(), $oResult->challengeError));
 		}
 		$oP->SetData(json_decode($sResponse, true));
 		$oP->SetOutputDataOnly(true);
@@ -1114,7 +1117,7 @@ final class MCPController
 	 */
 	private static function isConnection(string $sMethod): bool
 	{
-		return $sMethod === MCPHelper::MCP_METHOD_INITIALIZE;
+		return $sMethod === MCPMethod::INITIALIZE;
 	}
 
 	/**
@@ -1187,7 +1190,7 @@ final class MCPController
 		// If the response is successful and the log level is set to error, skip logging to avoid filling the logs with successful calls
 		if ($oResult->isSuccess()
 			&& !self::isConnection($sMethod)
-			&& MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL) === MCPHelper::LOG_LEVEL_ERROR) {
+			&& MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL) === Settings::LOG_LEVEL_ERROR) {
 			return;
 		}
 
@@ -1234,13 +1237,13 @@ final class MCPController
 			// on the way - which used to reach the iTop log and nothing else,
 			// leaving this column empty on every error row and the identifier
 			// the caller was told to quote resolvable by nobody.
-			$aReferences = MCPHelper::MintedErrorReferences();
+			$aReferences = ErrorReport::MintedReferences();
 			if ($oResult->errorReference !== null && $oResult->errorReference !== '') {
 				array_unshift($aReferences, $oResult->errorReference);
 			}
 			$oLog->Set('error_ref', self::truncate(implode(' ', array_unique($aReferences)), 255));
 			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
-			if (MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL) === MCPHelper::LOG_LEVEL_DEBUG) {
+			if (MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL) === Settings::LOG_LEVEL_DEBUG) {
 				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
 				// And what the tool said when it refused, which can quote the value it
 				// refused: the same standing as the parameters, and cleared with them
@@ -1251,7 +1254,7 @@ final class MCPController
 			ReadSummary::Forget();
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
-			MCPHelper::LogError('Failed to log AltiooEventMCPService: '.$e->getMessage());
+			ErrorReport::Log('Failed to log AltiooEventMCPService: '.$e->getMessage());
 		}
 	}
 
@@ -1283,7 +1286,7 @@ final class MCPController
 			self::describeUser($oLog);
 			$oLog->DBInsertNoReload();
 		} catch (Throwable $e) {
-			MCPHelper::LogError('Failed to log a portal admission refusal: '.$e->getMessage());
+			ErrorReport::Log('Failed to log a portal admission refusal: '.$e->getMessage());
 		}
 	}
 

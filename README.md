@@ -1393,7 +1393,7 @@ is for, and the terms are agreed there rather than promised here.
 ## Versioning and compatibility
 
 The extension follows [semver](https://semver.org/). The running version is
-`MCPHelper::VERSION` — the same string the server sends clients in `serverInfo`, and the same
+`MCPModule::VERSION` — the same string the server sends clients in `serverInfo`, and the same
 string in `extension.xml` and the module declaration.
 
 **What a major version means for you.** Three things this extension promises to keep stable
@@ -1414,7 +1414,7 @@ When a later version changes one of those, the changelog entry for it is where t
 identifier or the changed default is named, along with what an administrator has to do about it.
 
 **On `mcp/sdk`.** The MCP SDK this module vendors is pinned to one minor in `composer.json`,
-published as `MCPHelper::SDK_CONSTRAINT`: a pre-1.0 package, whose API can change between minor
+published as `MCPModule::SDK_CONSTRAINT`: a pre-1.0 package, whose API can change between minor
 versions. The module pins the minor it was tested against, ships
 it inside the archive, and treats an SDK upgrade as a release of its own with the test suite as
 the gate. Nothing on an installed instance moves until you install a new version of this

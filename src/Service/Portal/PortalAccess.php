@@ -525,7 +525,7 @@ final class PortalAccess extends ObjectAccess
 		$sState = (string)$oObject->GetState();
 
 		// The code is the client's text: quoted only when it is shaped like one.
-		return (\Altioo\iTop\Extension\MCP\Helper\MCPHelper::LooksLikeClassName($sStimulus) ? "The portal does not offer '{$sStimulus}'" : 'The portal does not offer that stimulus')
+		return (\Altioo\iTop\Extension\MCP\Helper\ClassRefusal::LooksLikeClassName($sStimulus) ? "The portal does not offer '{$sStimulus}'" : 'The portal does not offer that stimulus')
 			." on {$sClass} {$oObject->GetKey()} in state '{$sState}'. "
 			.($aOffered === [] ? 'It offers none in this state.' : 'It offers: '.implode(', ', array_keys($aOffered)).'.');
 	}
@@ -549,7 +549,7 @@ final class PortalAccess extends ObjectAccess
 		foreach (array_keys($aFields) as $sAttCode) {
 			if (!in_array((string)$sAttCode, $aSettable, true) && !in_array((string)$sAttCode, $aAlso, true)) {
 				// Quoted only when it is shaped like a code: the text lands in the audit row.
-				$aIssues[] = (\Altioo\iTop\Extension\MCP\Helper\MCPHelper::LooksLikeClassName((string)$sAttCode) ? "'{$sAttCode}'" : 'A key')
+				$aIssues[] = (\Altioo\iTop\Extension\MCP\Helper\ClassRefusal::LooksLikeClassName((string)$sAttCode) ? "'{$sAttCode}'" : 'A key')
 					." is not a field the portal's {$sForm} form lets you set";
 			}
 		}

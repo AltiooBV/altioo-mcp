@@ -10,12 +10,12 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 // Same namespace, imported anyway: it extends a portal class, so it can be
 // loaded only where the portal is, and nothing should load it to find out.
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalBrickTemplates;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Combodo\iTop\Application\TwigBase\Twig\Extension;
 use Combodo\iTop\Portal\Brick\BrickCollection;
 use Combodo\iTop\Portal\Brick\BrowseBrick;
@@ -450,7 +450,7 @@ final class PortalPolicy
 
 			$oHelper->PrepareObject(['rules' => array_values($aRules), 'sources' => $aSources], $oObject);
 		} catch (\Throwable $oException) {
-			throw new MCPPortalException(MCPHelper::OpaqueFailure(
+			throw new MCPPortalException(ErrorReport::OpaqueFailure(
 				sprintf("Could not apply the rules of a create action in portal '%s'", $this->sPortal),
 				$oException
 			), 0, $oException);
@@ -478,7 +478,7 @@ final class PortalPolicy
 			}
 			$oCreated = call_user_func($sMethod, $oFrom);
 		} catch (\Throwable $oException) {
-			throw new MCPPortalException(MCPHelper::OpaqueFailure(
+			throw new MCPPortalException(ErrorReport::OpaqueFailure(
 				sprintf("Could not choose the class to create in portal '%s'", $this->sPortal),
 				$oException
 			), 0, $oException);
@@ -558,7 +558,7 @@ final class PortalPolicy
 			// Build(), which renders. Pinned in doc/itop-branch-notes.md.
 			$aFlags = (new \ReflectionProperty(ObjectFormManager::class, 'aFieldsAtts'))->getValue($oManager);
 		} catch (\Throwable $oException) {
-			throw new MCPPortalException(MCPHelper::OpaqueFailure(
+			throw new MCPPortalException(ErrorReport::OpaqueFailure(
 				sprintf("Could not read the '%s' form of %s in portal '%s'", $sMode, $sClass, $this->sPortal),
 				$oException
 			), 0, $oException);
@@ -831,7 +831,7 @@ final class PortalPolicy
 
 			[$aReach, $aBrickSets, $aLists, $aListDefs, $aCreates] = self::granted($oBricks->GetBricks() ?? []);
 		} catch (\Throwable $oException) {
-			throw new MCPPortalException(MCPHelper::OpaqueFailure(sprintf("Could not read portal '%s'", $sPortal), $oException), 0, $oException);
+			throw new MCPPortalException(ErrorReport::OpaqueFailure(sprintf("Could not read portal '%s'", $sPortal), $oException), 0, $oException);
 		}
 
 		return new self(
@@ -1216,7 +1216,7 @@ final class PortalPolicy
 	 */
 	private static function refusal(string $sDetail): MCPPortalException
 	{
-		MCPHelper::LogError($sDetail);
+		ErrorReport::Log($sDetail);
 
 		return new MCPPortalException(
 			'This portal\'s configuration could not be read, so nothing is served for it. '

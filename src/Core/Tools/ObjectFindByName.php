@@ -8,13 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -294,14 +294,14 @@ class ObjectFindByName extends AbstractMCPTool
 			$aCandidates = MetaModel::GetClasses('searchable');
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 			}
 
 			if (ObjectHistory::IsReserved($sClass)) {
 				throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 			}
 
 			$aCandidates = MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL);

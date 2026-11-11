@@ -8,16 +8,18 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBoolean;
 use AttributeDate;
 use AttributeDateTime;
@@ -155,7 +157,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 					'description' => 'iTop class name, from core_class_list. A parent class counts its children too. Not with oql.',
 				],
 				'filters' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Attribute code => value, combined with AND, each an equality. Omit for the whole class; an empty one is {}, never [].',
 					'additionalProperties' => true,
 					'default'              => new \stdClass(),
@@ -206,7 +208,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		} catch (\OQLException $oException) {
 			throw new ToolCallException('Invalid filter condition. '.$oException->getMessage());
 		} catch (Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to count', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to count', $oException));
 		}
 	}
 
@@ -256,7 +258,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			$sClass = $oSearch->GetClass();
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 			}
 			$oSearch = DBObjectSearch::FromOQL("SELECT {$sClass}");
 		}
@@ -267,7 +269,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		if (ObjectHistory::IsReserved($sClass)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 		}
 
 		self::applyArchived($oSearch, $sClass, $sArchived);

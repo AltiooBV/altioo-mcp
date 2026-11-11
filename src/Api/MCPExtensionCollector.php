@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery;
 use LogAPI;
 use Throwable;
@@ -133,6 +133,6 @@ final class MCPExtensionCollector
 			return;
 		}
 
-		MCPHelper::LogError($sMessage);
+		ErrorReport::Log($sMessage);
 	}
 }

@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Helper\Dictionary;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 use Mcp\Schema\Annotations;
 
@@ -50,7 +50,7 @@ abstract class AbstractMCPResourceTemplate
 	 */
 	public function getTitle(): ?string
 	{
-		return MCPHelper::Translate($this->titleDictionaryKey(), $this->defaultTitle());
+		return Dictionary::Translate($this->titleDictionaryKey(), $this->defaultTitle());
 	}
 
 	/**

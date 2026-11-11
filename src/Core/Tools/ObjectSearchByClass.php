@@ -8,13 +8,15 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -67,7 +69,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 						.'A parent class searches its children too, so "Ticket" answers across UserRequest, Incident and whatever else a datamodel derives from it, and each result reports the class it actually is - one call rather than one per subclass.',
 				],
 				'filters' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Key/value pairs to filter results (combined with AND). Keys are attribute codes, from core_class_schema. '
 						.'Every pair is an equality: the value must match in full, so a word out of a title matches nothing. For a substring use core_object_search_by_oql with LIKE, and for text you would have typed into the console\'s search box use core_object_find_by_name. '
 						.'Omit it to search the whole class - an empty filter is {} and never [], which is the shape a language without a distinct empty map will hand you.',
@@ -115,14 +117,14 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
 		if (ObjectHistory::IsReserved($class)) {
 			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_BULK_READ)) {
@@ -226,7 +228,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		} catch (\Throwable $e) {
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to execute the search', $e));
 		}
 	}
 

@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 use AttributeExternalField;
@@ -72,7 +74,7 @@ final class ExclusionPolicy
 			return ['classes' => [], 'attributes' => [], 'problem' => sprintf("'%s' should be an array of class names, not %s", self::SETTING_CLASSES, gettype($mClasses))];
 		}
 		foreach ($mClasses as $mClass) {
-			if (!is_string($mClass) || !MCPHelper::LooksLikeClassName(trim($mClass))) {
+			if (!is_string($mClass) || !ClassRefusal::LooksLikeClassName(trim($mClass))) {
 				return ['classes' => [], 'attributes' => [], 'problem' => sprintf("'%s' should be an array of class names, and holds %s", self::SETTING_CLASSES, is_scalar($mClass) ? var_export($mClass, true) : gettype($mClass))];
 			}
 			$aClasses[strtolower(trim($mClass))] = trim($mClass);
@@ -82,11 +84,11 @@ final class ExclusionPolicy
 			return ['classes' => [], 'attributes' => [], 'problem' => sprintf("'%s' should be an array of class => array of attribute codes, not %s", self::SETTING_ATTRIBUTES, gettype($mAttributes))];
 		}
 		foreach ($mAttributes as $mClass => $mCodes) {
-			if (!is_string($mClass) || !MCPHelper::LooksLikeClassName(trim($mClass)) || !is_array($mCodes) || $mCodes === []) {
+			if (!is_string($mClass) || !ClassRefusal::LooksLikeClassName(trim($mClass)) || !is_array($mCodes) || $mCodes === []) {
 				return ['classes' => [], 'attributes' => [], 'problem' => sprintf("'%s' should be an array of class => array of attribute codes, and holds a bad entry for %s", self::SETTING_ATTRIBUTES, var_export($mClass, true))];
 			}
 			foreach ($mCodes as $mCode) {
-				if (!is_string($mCode) || !MCPHelper::LooksLikeClassName(trim($mCode))) {
+				if (!is_string($mCode) || !ClassRefusal::LooksLikeClassName(trim($mCode))) {
 					return ['classes' => [], 'attributes' => [], 'problem' => sprintf("'%s' should list attribute codes for %s, and holds %s", self::SETTING_ATTRIBUTES, trim($mClass), is_scalar($mCode) ? var_export($mCode, true) : gettype($mCode))];
 				}
 				if (in_array(strtolower(trim($mCode)), self::IDENTITY_CODES, true)) {
@@ -620,9 +622,9 @@ final class ExclusionPolicy
 	private static function state(): array
 	{
 		$oConfig = utils::GetConfig();
-		$mClasses = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_CLASSES, []);
-		$mAttributes = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_ATTRIBUTES, []);
-		$mExempt = $oConfig->GetModuleSetting(MCPHelper::MODULE_NAME, self::SETTING_EXEMPT_PROFILES, []);
+		$mClasses = $oConfig->GetModuleSetting(MCPModule::MODULE_NAME, self::SETTING_CLASSES, []);
+		$mAttributes = $oConfig->GetModuleSetting(MCPModule::MODULE_NAME, self::SETTING_ATTRIBUTES, []);
+		$mExempt = $oConfig->GetModuleSetting(MCPModule::MODULE_NAME, self::SETTING_EXEMPT_PROFILES, []);
 		// Who is asking is part of the answer: the real user (the account that authenticated, not the one it
 		// acts as), and whether this is portal mode, which is never exempt.
 		$sKey = md5(serialize([$mClasses, $mAttributes, $mExempt, self::asking()]));
@@ -641,7 +643,7 @@ final class ExclusionPolicy
 		$sProblem ??= $aExempt['problem'] ?? self::exemptProfilesProblem($aExempt['profiles']);
 
 		if ($sProblem !== null) {
-			MCPHelper::LogError("Itop configuration parameter for exclusions: {$sProblem}. Nothing is served to anyone until it is corrected.");
+			ErrorReport::Log("Itop configuration parameter for exclusions: {$sProblem}. Nothing is served to anyone until it is corrected.");
 
 			return self::$aCache = ['classes' => [], 'attributes' => [], 'problem' => $sProblem, 'key' => $sKey, 'active' => false, 'exempt' => false, 'datamodel' => null];
 		}
@@ -726,7 +728,7 @@ final class ExclusionPolicy
 				}
 			}
 		} catch (Throwable $e) {
-			return MCPHelper::OpaqueFailure('The exempt profiles could not be checked against the instance', $e);
+			return ErrorReport::OpaqueFailure('The exempt profiles could not be checked against the instance', $e);
 		}
 
 		return null;
@@ -779,7 +781,7 @@ final class ExclusionPolicy
 				}
 			}
 		} catch (Throwable $e) {
-			return MCPHelper::OpaqueFailure('The datamodel could not be checked against the exclusions', $e);
+			return ErrorReport::OpaqueFailure('The datamodel could not be checked against the exclusions', $e);
 		}
 
 		return null;

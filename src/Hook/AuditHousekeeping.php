@@ -8,9 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Hook;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
 use AltiooEventMCPService;
 use DBObjectSearch;
@@ -95,7 +95,7 @@ final class AuditHousekeeping implements iBackgroundProcess
 					$iInBatch++;
 				}
 			} catch (Throwable $e) {
-				MCPHelper::LogError('The audit retention could not delete a row: '.$e->getMessage());
+				ErrorReport::Log('The audit retention could not delete a row: '.$e->getMessage());
 
 				return $iCount + $iInBatch;
 			}
@@ -141,7 +141,7 @@ final class AuditHousekeeping implements iBackgroundProcess
 					$iInBatch++;
 				}
 			} catch (Throwable $e) {
-				MCPHelper::LogError('The audit clean-up for anonymised people could not update a row: '.$e->getMessage());
+				ErrorReport::Log('The audit clean-up for anonymised people could not update a row: '.$e->getMessage());
 
 				return $iCount + $iInBatch;
 			}

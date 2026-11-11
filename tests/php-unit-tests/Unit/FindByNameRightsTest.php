@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -130,13 +130,13 @@ class FindByNameRightsTest extends TestCase
 
 		$this->assertSame(
 			2,
-			substr_count($sBody, 'MCPHelper::UnreadableClassRefusal'),
+			substr_count($sBody, 'ClassRefusal::Unreadable'),
 			'Both the invalid class and the unreadable one must answer with the one helper;'
 			.' splitting them hands an unprivileged caller a class enumerator.'
 		);
 
 		// And the helper itself must not give the two cases away.
-		$sRefusal = MCPHelper::UnreadableClassRefusal('SomeClass');
+		$sRefusal = ClassRefusal::Unreadable('SomeClass');
 		$this->assertStringContainsString('either this datamodel has no such class, or this account may not read it', $sRefusal,
 			'the refusal settles which of the two happened, which is the oracle this rule closes');
 		$this->assertStringNotContainsString('exists', $sRefusal,

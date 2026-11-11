@@ -12,7 +12,7 @@ use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
 use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 
 /**
@@ -32,7 +32,7 @@ class AcmeServiceDeskExtensions implements iMCPServiceProvider
 		// The module dependency in module.acme-servicedesk.php is the real
 		// gate and the setup enforces it. This catches the case that gets past
 		// it: a base extension downgraded under a pack already installed.
-		MCPHelper::RequireVersion('1.0.0', 'acme-servicedesk');
+		MCPModule::RequireVersion('1.0.0', 'acme-servicedesk');
 
 		MCPRegistry::RegisterTool(new TicketAddLogEntry());
 		MCPRegistry::RegisterTool(new TicketSearchMine());

@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -53,7 +53,7 @@ final class PortalDescription
 	 * One class in full, fields included; refused alike whether it is
 	 * unknown or not offered, so this cannot map out the classes the portal
 	 * withholds. A value that is no class name is not quoted back
-	 * (MCPHelper::LooksLikeClassName()).
+	 * (ClassRefusal::LooksLikeClassName()).
 	 *
 	 * @return array<string, mixed>
 	 *
@@ -63,7 +63,7 @@ final class PortalDescription
 	public static function Of(PortalPolicy $oPolicy, string $sClass): array
 	{
 		if (!in_array($sClass, self::offeredClasses($oPolicy), true)) {
-			if (!MCPHelper::LooksLikeClassName($sClass)) {
+			if (!ClassRefusal::LooksLikeClassName($sClass)) {
 				throw new ToolCallException('That is not a class name. Call core_class_list for the classes this portal offers.');
 			}
 			throw new ToolCallException(sprintf(

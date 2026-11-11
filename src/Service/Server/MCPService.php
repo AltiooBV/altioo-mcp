@@ -10,22 +10,23 @@ namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
-use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPLog;
-use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
-use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
+use Altioo\iTop\Extension\MCP\Helper\MCPLog;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server;
 use Mcp\Server\Builder;
@@ -142,7 +143,7 @@ final class MCPService
 	private static function createServer(AccessPolicy $oPolicy): Server
 	{
 		$builder = Server::builder()
-			->setServerInfo('Altioo iTop MCP Base', MCPHelper::VERSION, 'Altioo iTop MCP extension framework')
+			->setServerInfo('Altioo iTop MCP Base', MCPModule::VERSION, 'Altioo iTop MCP extension framework')
 			->setInstructions(ServerInstructions::ForCaller($oPolicy))
 			->setPaginationLimit(Settings::GetPaginationLimit())
 			->setLogger(new LogAPILogger(MCPLog::class))
@@ -183,7 +184,7 @@ final class MCPService
 		$aKnown = array_flip(array_map('strtolower', MetaModel::GetClasses()));
 		$aStale = array_values(array_filter($aListed, static fn (string $sClass): bool => !isset($aKnown[strtolower($sClass)])));
 		if ($aStale !== []) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"'%s' names %s this instance's datamodel does not have: %s. Nothing is refused by those entries. "
 				.'Check the spelling against the class name core_class_schema reports, or remove an entry for an extension that is no longer installed.',
 				Settings::MODULE_SETTING_ESCALATION_CLASSES,
@@ -243,7 +244,7 @@ final class MCPService
 
 		$aStale = self::entriesMatchingNothing($aDisabled, $aKnownIdentifiers);
 		if ($aStale !== []) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"'%s' names %s that no registered element answers to: %s. "
 				.'Nothing is being turned off by those entries. An element renamed by an upgrade is the usual cause - '
 				.'check the CHANGELOG of the extension that used to provide it, or list the current names with tools/list.',
@@ -255,7 +256,7 @@ final class MCPService
 
 		$aStale = self::entriesMatchingNothing($aToolsets, $aKnownToolsets);
 		if ($aStale !== []) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"'%s' names %s that no registered element declares: %s. "
 				.'Those entries serve nothing rather than everything, so the elements they were meant to enable are absent. '
 				.'Known toolsets on this instance: %s.',
@@ -293,7 +294,7 @@ final class MCPService
 		}
 
 		foreach (self::bulkSiblingsLeftOn($aDisabled, $aTools) as $sDisabled => $sSibling) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"'%s' turns off %s but not %s, which does the same job %s. List %s as well, "
 				."or leave the grade out of '%s' to stop the operation whichever tool asks for it.",
 				Settings::MODULE_SETTING_DISABLED,

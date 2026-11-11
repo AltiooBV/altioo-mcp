@@ -8,19 +8,20 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -246,7 +247,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException('Invalid ID. Please specify a valid object ID.');
 		}
 		if (!ExclusionPolicy::Serves($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 
 		if (ObjectHistory::IsReserved($sClass)) {
@@ -450,7 +451,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// one means the row reached the database.
 			$iCommittedId = WritePlan::CommittedId($oAttachment);
 			if ($iCommittedId === null) {
-				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
+				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to attach the document', $e));
 			}
 
 			// Stored, and the description of it is what failed. Reported as the
@@ -464,7 +465,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'valid'       => true,
 					'attached_to' => ['class' => $sClass, 'id' => $iId],
 					'document'    => ['filename' => $oDocument->GetFileName(), 'mimetype' => $oDocument->GetMimeType()],
-					'warning'     => MCPHelper::OpaqueFailure(
+					'warning'     => ErrorReport::OpaqueFailure(
 						"The document was attached as {$iCommittedId}, but the call failed while describing it",
 						$e
 					),
@@ -558,7 +559,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the document', $e));
 		}
 	}
 }

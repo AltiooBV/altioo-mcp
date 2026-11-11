@@ -11,7 +11,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use PHPUnit\Framework\TestCase;
@@ -65,9 +67,9 @@ class PortalWriteOutcomeContractTest extends TestCase
 
 	public function testThePortalTextNamesNoToolItDoesNotServe(): void
 	{
-		$sBody = $this->bodyOf(MCPHelper::class, 'UnreadableClassRefusal');
+		$sBody = $this->bodyOf(ClassRefusal::class, 'Unreadable');
 		$this->assertLessThan(strpos($sBody, 'rights model'), strpos($sBody, 'PortalMode::Current()'));
-		$this->assertStringContainsString('PortalMode::Current()', $this->bodyOf(MCPHelper::class, 'auditLookup'));
+		$this->assertStringContainsString('PortalMode::Current()', $this->bodyOf(ErrorReport::class, 'auditLookup'));
 	}
 
 	private function bodyOf(string $sClass, string $sMethod): string

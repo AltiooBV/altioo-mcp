@@ -7,6 +7,7 @@
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use utils;
 
 /**
@@ -16,7 +17,7 @@ use utils;
  * Static, as iTop's own utils and MetaModel helpers are: PHP serves one
  * request per process and nothing here is held between them. The names of the
  * settings and their defaults are this class's constants; the earlier
- * MCPHelper spellings still resolve to them.
+ * 1.x spellings that lived elsewhere are gone in 2.0.
  *
  * @api
  * @since 1.3.0
@@ -37,6 +38,10 @@ final class Settings
 	const MODULE_SETTING_LOG_LEVEL = 'log_mcp_level';
 
 	const DEFAULT_LOG_LEVEL = 'info';
+
+	const LOG_LEVEL_INFO = 'info';
+	const LOG_LEVEL_DEBUG = 'debug';
+	const LOG_LEVEL_ERROR = 'error';
 
 	const MODULE_SETTING_ALLOWED_ORIGINS = 'mcp_allowed_origins';
 
@@ -222,11 +227,11 @@ final class Settings
 	 * @since 1.0.0
 	 */
 	const DEFAULT_LOG_METHODS = [
-		MCPHelper::MCP_METHOD_INITIALIZE,
-		MCPHelper::MCP_METHOD_TOOLS_CALL,
-		MCPHelper::MCP_METHOD_RESOURCES_READ,
-		MCPHelper::MCP_METHOD_PROMPTS_GET,
-		MCPHelper::MCP_METHOD_EXCEPTION,
+		MCPMethod::INITIALIZE,
+		MCPMethod::TOOLS_CALL,
+		MCPMethod::RESOURCES_READ,
+		MCPMethod::PROMPTS_GET,
+		MCPMethod::EXCEPTION,
 	];
 
 	/**
@@ -238,11 +243,11 @@ final class Settings
 	 */
 	public static function GetAuditedMethods(): array
 	{
-		$aMethods = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_LOG_METHOD, self::DEFAULT_LOG_METHODS);
+		$aMethods = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_LOG_METHOD, self::DEFAULT_LOG_METHODS);
 
 		if (!is_array($aMethods)) {
 			$sType = gettype($aMethods);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_LOG_METHOD."' should be an array instead of $sType");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_LOG_METHOD."' should be an array instead of $sType");
 
 			return self::DEFAULT_LOG_METHODS;
 		}
@@ -268,10 +273,10 @@ final class Settings
 	 */
 	public static function GetCapabilities(): array
 	{
-		$aCapabilities = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_CAPABILITIES, []);
+		$aCapabilities = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_CAPABILITIES, []);
 		if (!is_array($aCapabilities)) {
 			$sType = gettype($aCapabilities);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_CAPABILITIES."' should be an array instead of $sType. Nothing is served until it is corrected.");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_CAPABILITIES."' should be an array instead of $sType. Nothing is served until it is corrected.");
 			$aCapabilities = [];
 		}
 
@@ -307,7 +312,7 @@ final class Settings
 	public static function AccessListsAreMalformed(): bool
 	{
 		foreach ([self::MODULE_SETTING_CAPABILITIES, self::MODULE_SETTING_ENABLED_TOOLSETS] as $sSetting) {
-			if (!is_array(utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, []))) {
+			if (!is_array(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, $sSetting, []))) {
 				return true;
 			}
 		}
@@ -349,7 +354,7 @@ final class Settings
 	 */
 	private static function ReadSwitch(string $sSetting, bool $bDefault, bool $bSafe): bool
 	{
-		return self::SwitchFrom($sSetting, utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, $bDefault), $bSafe);
+		return self::SwitchFrom($sSetting, utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, $sSetting, $bDefault), $bSafe);
 	}
 
 	/**
@@ -366,7 +371,7 @@ final class Settings
 			return $mValue;
 		}
 
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Itop configuration parameter '%s' should be true or false, not %s. It is read as %s until it is corrected.",
 			$sSetting,
 			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue),
@@ -421,7 +426,7 @@ final class Settings
 	 */
 	public static function GetEscalationClasses(): ?array
 	{
-		return self::EscalationClassesFrom(utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_ESCALATION_CLASSES, []));
+		return self::EscalationClassesFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_ESCALATION_CLASSES, []));
 	}
 
 	/**
@@ -457,7 +462,7 @@ final class Settings
 		}
 
 		if ($sProblem !== null) {
-			MCPHelper::LogError(sprintf(
+			ErrorReport::Log(sprintf(
 				"Itop configuration parameter '%s' should be %s. Every class is read as listed - nothing can be written through this endpoint "
 				."unless '%s' is on - until it is corrected.",
 				self::MODULE_SETTING_ESCALATION_CLASSES,
@@ -485,10 +490,10 @@ final class Settings
 	 */
 	public static function GetEnabledToolsets(): array
 	{
-		$aToolsets = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_ENABLED_TOOLSETS, []);
+		$aToolsets = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_ENABLED_TOOLSETS, []);
 		if (!is_array($aToolsets)) {
 			$sType = gettype($aToolsets);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_ENABLED_TOOLSETS."' should be an array instead of $sType. Nothing is served until it is corrected.");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_ENABLED_TOOLSETS."' should be an array instead of $sType. Nothing is served until it is corrected.");
 
 			return [];
 		}
@@ -504,10 +509,10 @@ final class Settings
 	 */
 	public static function GetAllowedOrigins(): array
 	{
-		$aOrigins = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_ALLOWED_ORIGINS, []);
+		$aOrigins = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_ALLOWED_ORIGINS, []);
 		if (!is_array($aOrigins)) {
 			$sType = gettype($aOrigins);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_ORIGINS."' should be an array instead of $sType");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_ORIGINS."' should be an array instead of $sType");
 
 			return [];
 		}
@@ -527,10 +532,10 @@ final class Settings
 	 */
 	public static function GetAllowedHosts(): array
 	{
-		$aHosts = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_ALLOWED_HOSTS, []);
+		$aHosts = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_ALLOWED_HOSTS, []);
 		if (!is_array($aHosts)) {
 			$sType = gettype($aHosts);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_HOSTS."' should be an array instead of $sType");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_ALLOWED_HOSTS."' should be an array instead of $sType");
 			$aHosts = [];
 		}
 
@@ -593,9 +598,9 @@ final class Settings
 	 */
 	public static function GetSourceUrl(): string
 	{
-		$sUrl = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_SOURCE_URL, '');
+		$sUrl = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_SOURCE_URL, '');
 
-		return is_string($sUrl) && trim($sUrl) !== '' ? trim($sUrl) : MCPHelper::SOURCE_URL;
+		return is_string($sUrl) && trim($sUrl) !== '' ? trim($sUrl) : MCPModule::SOURCE_URL;
 	}
 
 	/**
@@ -605,9 +610,9 @@ final class Settings
 	 */
 	public static function GetPaginationLimit(): int
 	{
-		$iLimit = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_PAGINATION_LIMIT, self::DEFAULT_PAGINATION_LIMIT);
+		$iLimit = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_PAGINATION_LIMIT, self::DEFAULT_PAGINATION_LIMIT);
 		if (!is_int($iLimit) || $iLimit < 1) {
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_PAGINATION_LIMIT."' should be a positive integer");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_PAGINATION_LIMIT."' should be a positive integer");
 
 			return self::DEFAULT_PAGINATION_LIMIT;
 		}
@@ -622,9 +627,9 @@ final class Settings
 	 */
 	public static function GetMaxMentions(): int
 	{
-		$iMax = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_MAX_MENTIONS, self::DEFAULT_MAX_MENTIONS);
+		$iMax = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_MAX_MENTIONS, self::DEFAULT_MAX_MENTIONS);
 		if (!is_int($iMax) || $iMax < 0) {
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_MAX_MENTIONS."' should be a non-negative integer");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_MAX_MENTIONS."' should be a non-negative integer");
 
 			return self::DEFAULT_MAX_MENTIONS;
 		}
@@ -654,10 +659,10 @@ final class Settings
 	 */
 	public static function GetDisabledIdentifiers(): array
 	{
-		$aDisabled = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_DISABLED, []);
+		$aDisabled = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_DISABLED, []);
 		if (!is_array($aDisabled)) {
 			$sType = gettype($aDisabled);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_DISABLED."' should be an array instead of $sType");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_DISABLED."' should be an array instead of $sType");
 
 			return [];
 		}
@@ -679,10 +684,10 @@ final class Settings
 	 */
 	public static function GetServedPortals(): array
 	{
-		$aPortals = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_PORTALS, ['*']);
+		$aPortals = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_PORTALS, ['*']);
 		if (!is_array($aPortals)) {
 			$sType = gettype($aPortals);
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTALS."' should be an array instead of $sType. Portal mode is off until it is corrected.");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_PORTALS."' should be an array instead of $sType. Portal mode is off until it is corrected.");
 
 			return [];
 		}
@@ -702,9 +707,9 @@ final class Settings
 	 */
 	public static function GetPortalTokenMaxDays(): int
 	{
-		$iDays = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS, self::DEFAULT_PORTAL_TOKEN_MAX_DAYS);
+		$iDays = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS, self::DEFAULT_PORTAL_TOKEN_MAX_DAYS);
 		if (!is_int($iDays) || $iDays < 0) {
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS."' should be a non-negative integer. Using ".self::DEFAULT_PORTAL_TOKEN_MAX_DAYS.' until it is corrected.');
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_PORTAL_TOKEN_MAX_DAYS."' should be a non-negative integer. Using ".self::DEFAULT_PORTAL_TOKEN_MAX_DAYS.' until it is corrected.');
 
 			return self::DEFAULT_PORTAL_TOKEN_MAX_DAYS;
 		}
@@ -723,7 +728,7 @@ final class Settings
 	 */
 	public static function GetAuditRetentionDays(): int
 	{
-		return self::RetentionDaysFrom(utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_AUDIT_RETENTION_DAYS, 0));
+		return self::RetentionDaysFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_AUDIT_RETENTION_DAYS, 0));
 	}
 
 	/**
@@ -740,7 +745,7 @@ final class Settings
 			return $mValue;
 		}
 
-		MCPHelper::LogError(sprintf(
+		ErrorReport::Log(sprintf(
 			"Itop configuration parameter '%s' should be a non-negative integer of days, not %s. It is read as 0, which keeps every audit row, until it is corrected.",
 			self::MODULE_SETTING_AUDIT_RETENTION_DAYS,
 			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue)

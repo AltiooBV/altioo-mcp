@@ -20,7 +20,7 @@
     "missing include. require-dev keeps the SDK out of the production dump",
     "entirely, which is the only version of this that is safe.",
     "",
-    "Pin the same constraint the base vendors - MCPHelper::SDK_CONSTRAINT - so",
+    "Pin the same constraint the base vendors - MCPModule::SDK_CONSTRAINT - so",
     "that what you compile against is what will be loaded."
   ],
 

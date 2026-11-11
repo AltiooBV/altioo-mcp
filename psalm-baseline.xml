@@ -266,7 +266,7 @@
 						'simulated'    => false,
 						'valid'        => true,
 						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
-						'warning'      => MCPHelper::OpaqueFailure(
+						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
 						),

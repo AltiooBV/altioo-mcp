@@ -8,16 +8,17 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use DBObject;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -100,7 +101,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 				'objects' => [
 					'type'        => 'array',
 					'description' => 'One entry per object to create, each a key/value map of attribute codes. Call core_class_schema for the attribute codes of the class and which ones are mandatory.',
-					'items'       => ['type' => MCPHelper::MAP_TYPE, 'additionalProperties' => true],
+					'items'       => ['type' => JsonPayload::MAP_TYPE, 'additionalProperties' => true],
 					'minItems'    => 1,
 					'maxItems'    => self::MAX_OBJECTS,
 				],
@@ -291,7 +292,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 					+ [
 						'changes'    => WritePlan::Map($aChanges),
 						'overridden' => WritePlan::Map($aOverridden),
-						'warning'    => MCPHelper::OpaqueFailure(
+						'warning'    => ErrorReport::OpaqueFailure(
 							"Row {$iRow} was created with id {$iCommittedId}, but the call failed after the write",
 							$e
 						),
@@ -301,7 +302,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// The ToolCallException branch above carries this module's own
 			// refusals, which are what the caller fixes the row with. This one
 			// carries the ORM's, which it does not.
-			return self::outcome(null, $iRow, false, MCPHelper::OpaqueFailure("Row {$iRow} could not be created", $e));
+			return self::outcome(null, $iRow, false, ErrorReport::OpaqueFailure("Row {$iRow} could not be created", $e));
 		}
 	}
 

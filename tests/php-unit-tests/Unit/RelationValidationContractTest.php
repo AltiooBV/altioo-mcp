@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -87,7 +88,7 @@ class RelationValidationContractTest extends TestCase
 		$sBody = $this->executeBody();
 
 		$this->assertStringContainsString('catch (\Throwable', $sBody);
-		$this->assertStringContainsString('MCPHelper::OpaqueFailure', $sBody);
+		$this->assertStringContainsString('ErrorReport::OpaqueFailure', $sBody);
 	}
 
 	/** This module's own refusals keep their wording rather than being wrapped. */

@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -106,13 +107,13 @@ class OrmFailureRedactionTest extends TestCase
 	 */
 	public function testTheOpaqueRefusalPointsAtSomethingThatResolves(): void
 	{
-		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'RejectedValue');
+		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ErrorReport::class, 'RejectedValue');
 
 		$this->assertStringContainsString('core_class_schema', $sBody, 'the caller is told nothing it can check');
 		// Said by auditLookup(), which keeps it from a portal user, who may read
 		// neither the class nor be served the tool.
 		$this->assertStringContainsString('self::auditLookup()', $sBody);
-		$sLookup = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\MCPHelper::class, 'auditLookup');
+		$sLookup = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ErrorReport::class, 'auditLookup');
 		$this->assertStringContainsString('AltiooEventMCPService', $sLookup,
 			'the reference is handed out without naming anything that resolves it');
 		$this->assertStringContainsString('core_object_search_by_class', $sLookup,
@@ -125,7 +126,7 @@ class OrmFailureRedactionTest extends TestCase
 		$sController = (string) file_get_contents(
 			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Controller\MCPController::class))->getFileName()
 		);
-		$this->assertStringContainsString('MCPHelper::MintedErrorReferences()', $sController,
+		$this->assertStringContainsString('ErrorReport::MintedReferences()', $sController,
 			'the audit row records only the controller\'s own reference, so a tool-level one resolves to nothing');
 	}
 
@@ -162,7 +163,7 @@ class OrmFailureRedactionTest extends TestCase
 			'Error in SQL query: SELECT `id` FROM `priv_ticket_request` WHERE `org_id` = 42 -- duplicate entry'
 		);
 
-		$sMessage = MCPHelper::OpaqueFailure('Failed to create the object', $oOrmFailure);
+		$sMessage = ErrorReport::OpaqueFailure('Failed to create the object', $oOrmFailure);
 
 		$this->assertStringNotContainsString('SELECT', $sMessage, 'the ORM message reached the caller');
 		$this->assertStringNotContainsString('priv_ticket_request', $sMessage, 'a table name reached the caller');
@@ -187,7 +188,7 @@ class OrmFailureRedactionTest extends TestCase
 			.'WHERE `name` = 0x27, mysql_error -> You have an error in your SQL syntax'
 		);
 
-		$sMessage = MCPHelper::RejectedValue("Invalid value for attribute 'org_id'", $oOrmFailure);
+		$sMessage = ErrorReport::RejectedValue("Invalid value for attribute 'org_id'", $oOrmFailure);
 
 		$this->assertStringNotContainsString('SELECT', $sMessage, 'the ORM message reached the caller');
 		$this->assertStringNotContainsString('priv_organization', $sMessage, 'a table name reached the caller');
@@ -207,7 +208,7 @@ class OrmFailureRedactionTest extends TestCase
 	 */
 	public function testEachFailureGetsItsOwnReference(): void
 	{
-		$this->assertNotSame(MCPHelper::NewErrorReference(), MCPHelper::NewErrorReference());
+		$this->assertNotSame(ErrorReport::NewReference(), ErrorReport::NewReference());
 	}
 
 	/**
@@ -243,8 +244,8 @@ class OrmFailureRedactionTest extends TestCase
 			sprintf(
 				"%s passes a caught exception's own message on from a broad catch.\n"
 				.'Lines: %s.'."\n"
-				.'Wrap it in MCPHelper::OpaqueFailure() for a server-side failure, or '
-				.'MCPHelper::RejectedValue() for a value the caller supplied - both log what was thrown '
+				.'Wrap it in ErrorReport::OpaqueFailure() for a server-side failure, or '
+				.'ErrorReport::RejectedValue() for a value the caller supplied - both log what was thrown '
 				."and return a reference.\n"
 				.'A narrower catch - ToolCallException, OQLException, MCPDocumentException - keeps its message and belongs in its own clause.',
 				self::relative($sPath),
@@ -291,7 +292,7 @@ class OrmFailureRedactionTest extends TestCase
 			$x = f();
 		} catch (\Exception $e) {
 			$aIssues[$sAttCode] = "Invalid value for attribute '{$sAttCode}'.";
-			MCPHelper::LogError('failed: '.$e->getMessage());
+			ErrorReport::Log('failed: '.$e->getMessage());
 		}
 		PHP;
 

@@ -33,10 +33,10 @@ In your own `module.<your-extension>.php`:
 This is the version check that matters: the setup refuses the install and tells the
 administrator why, which is a better place to find out than a log entry on the first request.
 For the case that gets past it — a base extension downgraded under a pack already installed —
-call `MCPHelper::RequireVersion('1.0.0', 'your-pack')` at the top of your provider. It throws,
+call `MCPModule::RequireVersion('1.0.0', 'your-pack')` at the top of your provider. It throws,
 and a provider that throws is logged and skipped on its own, so the failure mode is "this pack
 is missing and the log says why" rather than a fatal error taking the endpoint down for every
-other pack. `MCPHelper::AtLeast()` is the same question without the exception, for a pack that
+other pack. `MCPModule::AtLeast()` is the same question without the exception, for a pack that
 would rather hide one element through `isAvailable()` and serve the rest.
 
 **Your autoloader has to produce a classmap.** Not the composer default, and the failure is
@@ -61,7 +61,7 @@ autoloaded. Two copies in one process resolve to whichever autoloader answered f
 Installing it and deleting `vendor/mcp` before packaging does **not** work:
 `classmap-authoritative` has already written those classes into `autoload_classmap.php`, so the
 entries outlive the files and the first call fatals on a missing include. Pin the same
-constraint this module vendors, published as `MCPHelper::SDK_CONSTRAINT`, so that what you
+constraint this module vendors, published as `MCPModule::SDK_CONSTRAINT`, so that what you
 compile against is what will be loaded. The types that are part of the contract described here
 are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`
 and `Mcp\Exception\ResourceReadException`.
@@ -86,9 +86,9 @@ implementation is a minor one. Removal comes at least one minor after a document
 configuration that allow-lists a tool by name, and any `mcp_disabled_tools` entry, breaks when
 a name changes, so a rename is a major bump too.
 
-The running version is `MCPHelper::VERSION` — the same string the server sends to clients in
+The running version is `MCPModule::VERSION` — the same string the server sends to clients in
 `serverInfo`, and the same string in `extension.xml` and the module declaration. Guard against
-an older base with `MCPHelper::RequireVersion()` or `MCPHelper::AtLeast()`, above.
+an older base with `MCPModule::RequireVersion()` or `MCPModule::AtLeast()`, above.
 
 ## 2. Write a tool
 

@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
@@ -16,8 +18,6 @@ use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 /**
  * What iTop recorded happening to an object, read as this caller may read it.
@@ -380,7 +380,7 @@ final class ObjectHistory
 				return $aEntry;
 			}
 		} catch (\Throwable $e) {
-			MCPHelper::LogError('Could not grade '.$sClass.'::'.$sAttCode.' for the history: '.$e->getMessage());
+			ErrorReport::Log('Could not grade '.$sClass.'::'.$sAttCode.' for the history: '.$e->getMessage());
 		}
 
 		$aEntry['from'] = $aEntry['from'] === null ? null : ObjectSerializer::MASK;
@@ -455,7 +455,7 @@ final class ObjectHistory
 		} catch (\Throwable $e) {
 			// The row is worth reporting without its text; the history is not
 			// worth losing over one entry that will not render.
-			MCPHelper::LogError('Could not read a case log entry for '.$sClass.'::'.$sAttCode.': '.$e->getMessage());
+			ErrorReport::Log('Could not read a case log entry for '.$sClass.'::'.$sAttCode.': '.$e->getMessage());
 		}
 
 		return $aEntry;

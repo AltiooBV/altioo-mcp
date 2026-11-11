@@ -8,11 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObjectSet;
 use DBSearch;
 use Mcp\Exception\ToolCallException;
@@ -155,7 +155,7 @@ class PortalList extends AbstractPortalTool
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 	}
 
@@ -191,7 +191,7 @@ class PortalList extends AbstractPortalTool
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 
 		return ['policy' => $oPolicy, 'list' => $aList, 'class' => $sClass, 'query' => $oQuery];

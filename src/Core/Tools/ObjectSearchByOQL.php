@@ -8,13 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
@@ -116,7 +117,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_BULK_READ)) {
@@ -177,7 +178,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		} catch (\Throwable $e) {
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to execute the search', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to execute the search', $e));
 		}
 	}
 }

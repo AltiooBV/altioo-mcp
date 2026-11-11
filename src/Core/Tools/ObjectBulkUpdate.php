@@ -8,13 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -83,7 +84,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			'type'       => 'object',
 			'properties' => self::targetSchemaProperties('apply the change') + [
 				'fields' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Key/value pairs applied to every listed object. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
@@ -201,7 +202,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// other thirty-nine; it is reported as its own failure.
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $e->getMessage());
 			} catch (\Throwable $e) {
-				$aOutcomes[] = self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
+				$aOutcomes[] = self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
 			}
 		}
 

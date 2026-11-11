@@ -8,13 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
-use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Mcp\Schema\Content\BlobResourceContents;
 use Mcp\Schema\Content\ImageContent;
 use MetaModel;
 use ormDocument;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * The one way bytes leave this endpoint.
@@ -109,10 +110,10 @@ final class DocumentAccess
 	 */
 	public static function MaxBytes(): int
 	{
-		$iMax = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, self::MODULE_SETTING_MAX_BYTES, self::DEFAULT_MAX_BYTES);
+		$iMax = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_MAX_BYTES, self::DEFAULT_MAX_BYTES);
 
 		if (!is_int($iMax) || $iMax < 1) {
-			MCPHelper::LogError("Itop configuration parameter '".self::MODULE_SETTING_MAX_BYTES."' should be a positive integer");
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_MAX_BYTES."' should be a positive integer");
 
 			return self::DEFAULT_MAX_BYTES;
 		}

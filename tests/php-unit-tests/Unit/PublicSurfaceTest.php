@@ -73,6 +73,8 @@ class PublicSurfaceTest extends TestCase
 	 * narrows the surface and replaces the directory entry, they are named here.
 	 */
 	private const NOT_SURFACE = [
+		'src/Helper/MCPMethod.php',
+		'src/Helper/OAuthResource.php',
 		'src/Helper/PortalMode.php',
 	];
 

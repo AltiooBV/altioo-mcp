@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -37,14 +38,14 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	public function testSecureMcpServicesIsDeclaredAndDefaultsToOn(): void
 	{
 		$this->assertTrue(
-			MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, 'secure_mcp_services', null),
+			MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, 'secure_mcp_services', null),
 			'secure_mcp_services must be declared in module_parameters and default to true'
 		);
 	}
 
 	public function testAllowedProfilesIsAnArrayContainingTheGateProfile(): void
 	{
-		$aProfiles = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, 'mcp_allowed_profiles', null);
+		$aProfiles = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, 'mcp_allowed_profiles', null);
 
 		$this->assertIsArray($aProfiles);
 		$this->assertContains('Administrator', $aProfiles);
@@ -58,7 +59,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testAllowedOriginsIsDeclaredAndDefaultsToEmpty(): void
 	{
-		$aOrigins = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_ORIGINS, null);
+		$aOrigins = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_ORIGINS, null);
 
 		$this->assertIsArray($aOrigins, 'mcp_allowed_origins must be declared in module_parameters');
 		$this->assertSame([], $aOrigins);
@@ -73,11 +74,11 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 * in config-itop.php to set.
 	 *
 	 * Must default to empty, which is not "no check": empty is what makes
-	 * MCPHelper derive the list from app_root_url and the localhost variants.
+	 * Settings derive the list from app_root_url and the localhost variants.
 	 */
 	public function testAllowedHostsIsDeclaredAndDefaultsToEmpty(): void
 	{
-		$aHosts = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_HOSTS, null);
+		$aHosts = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_HOSTS, null);
 
 		$this->assertIsArray($aHosts, 'mcp_allowed_hosts must be declared in module_parameters');
 		$this->assertSame([], $aHosts, 'a shipped hostname would refuse every instance not served under it');
@@ -91,7 +92,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testEscalationClassesIsDeclaredAndDefaultsToEmpty(): void
 	{
-		$aClasses = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ESCALATION_CLASSES, null);
+		$aClasses = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_ESCALATION_CLASSES, null);
 
 		$this->assertIsArray($aClasses, 'mcp_privilege_escalation_classes must be declared in module_parameters');
 		$this->assertSame([], $aClasses);
@@ -104,15 +105,15 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testTheConnectionMethodIsAudited(): void
 	{
-		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
+		$aLogged = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
 
-		$this->assertContains(MCPHelper::MCP_METHOD_INITIALIZE, $aLogged);
+		$this->assertContains(MCPMethod::INITIALIZE, $aLogged);
 	}
 
 	public function testLoggingSettingsAreDeclared(): void
 	{
-		$this->assertIsBool(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG, null));
-		$this->assertIsArray(MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, null));
+		$this->assertIsBool(MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG, null));
+		$this->assertIsArray(MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, null));
 	}
 
 	/**
@@ -121,7 +122,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testLoggedMethodsCoverTheMethodsTheControllerExtracts(): void
 	{
-		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
+		$aLogged = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
 
 		foreach (['tools/call', 'resources/read', 'prompts/get'] as $sMethod) {
 			$this->assertContains($sMethod, $aLogged);
@@ -136,9 +137,9 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testTheExceptionPseudoMethodIsAudited(): void
 	{
-		$aLogged = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
+		$aLogged = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_METHOD, []);
 
-		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, $aLogged);
+		$this->assertContains(MCPMethod::EXCEPTION, $aLogged);
 	}
 
 	/**
@@ -147,7 +148,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	 */
 	public function testDisabledToolsIsDeclaredAndDefaultsToEmpty(): void
 	{
-		$aDisabled = MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_DISABLED, null);
+		$aDisabled = MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_DISABLED, null);
 
 		$this->assertIsArray($aDisabled, 'mcp_disabled_tools must be declared in module_parameters');
 		$this->assertSame([], $aDisabled);
@@ -162,7 +163,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	{
 		$this->assertSame(
 			Settings::DEFAULT_LOG_SETTING,
-			MetaModel::GetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG, null)
+			MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG, null)
 		);
 	}
 
