@@ -103,7 +103,6 @@ class LayerDependencyTest extends TestCase
 		'Server\\ServerInstructions' => 'Core', // Core/
 		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
 		'Service\\MCPService' => 'Service\\Server', // Service/Server/
-		'Service\\ObjectAccess' => 'Service\\Access', // Service/Access/
 	];
 
 	/**
@@ -117,13 +116,13 @@ Helper\PortalMode → Service\Portal\PortalAware
 Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
 Service\Portal\PortalAccess → Core\Tools\PortalList
-Service\Portal\PortalAccess → Service\ObjectAccess
+Service\Portal\PortalAccess → Service\Access\ObjectAccess
 Service\Read\CurrentUserReader → Service\MCPService
-Service\Read\DocumentAccess → Service\ObjectAccess
+Service\Read\DocumentAccess → Service\Access\ObjectAccess
 Service\Read\DocumentAccess → Service\Write\WritePlan
 Service\Read\ObjectSerializer → Service\Write\WritePlan
 Service\Write\WritePlan → Core\Tools\ObjectSearchByOQL
-Service\Write\WritePlan → Service\ObjectAccess
+Service\Write\WritePlan → Service\Access\ObjectAccess
 TXT;
 
 	public function testEveryClassHasALayer(): void

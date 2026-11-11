@@ -654,7 +654,7 @@ class PortalModeTest extends TestCase
 		);
 		$this->assertStringContainsString('IsReserved', $sReadable, 'the change log is read as an object in portal mode');
 
-		$oConsole = \Altioo\iTop\Extension\MCP\Service\ObjectAccess::Current();
+		$oConsole = \Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess::Current();
 		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
 		$this->assertTrue($oConsole->ShowsHistory());
 	}

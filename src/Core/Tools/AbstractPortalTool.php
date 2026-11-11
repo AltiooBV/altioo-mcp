@@ -23,7 +23,7 @@ use MetaModel;
  *
  * Only what has no console counterpart is one: the portal's lists. Reading,
  * changing and creating objects are the console's tools, served in portal
- * mode through {@see \Altioo\iTop\Extension\MCP\Service\ObjectAccess}
+ * mode through {@see \Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess}
  * (doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md).
  *
  * Each one answers from {@see PortalPolicy} and nothing else, and none of

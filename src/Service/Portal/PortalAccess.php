@@ -20,7 +20,7 @@ use DBSearch;
 use MetaModel;
 use Mcp\Exception\ToolCallException;
 use UserRights;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 
 /**
  * {@see ObjectAccess} in portal mode: the console's answer, narrowed by the
