@@ -489,7 +489,7 @@ TEXT;
 	 * renderings of the same guidance is the shape that diverges quietly, and
 	 * the one that diverges is always the one nobody is reading.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function ForCaller(AccessPolicy $oPolicy): string
 	{

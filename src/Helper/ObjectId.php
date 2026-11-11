@@ -35,7 +35,7 @@ final class ObjectId
 	 *
 	 * @param int|string|null $mId
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function Normalise(int|string|null $mId): ?int
 	{

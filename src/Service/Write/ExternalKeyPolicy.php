@@ -66,7 +66,7 @@ final class ExternalKeyPolicy
 	 * @param mixed $value As the caller sent it.
 	 *
 	 * @return string|null The refusal, or null when there is nothing to object to.
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function RefusalFor(string $sClass, string $sAttCode, mixed $value): ?string
 	{

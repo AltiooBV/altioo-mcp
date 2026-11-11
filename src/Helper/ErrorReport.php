@@ -22,7 +22,7 @@ class ErrorReport
 	 * Detail that must not reach the caller goes here: the response gets a
 	 * generic message, the log gets everything.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function Log(string $sMessage, array $aContext = []): void
 	{
@@ -36,7 +36,7 @@ class ErrorReport
 	 * response and grep for it, long enough that two failures on a busy
 	 * instance do not collide.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function NewReference(): string
 	{
@@ -69,7 +69,7 @@ class ErrorReport
 	 * Every reference this request minted, in the order it minted them.
 	 *
 	 * @return array<int, string>
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function MintedReferences(): array
 	{

@@ -63,7 +63,7 @@ class OAuthResource
 	 * has a resource configured with exactly it: a client that called one
 	 * portal's URL is sent to consent for that portal (doc/adr/0007).
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function MetadataUrl(): ?string
 	{

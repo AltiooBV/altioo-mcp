@@ -37,7 +37,7 @@ class ClassRefusal
 	 * A value that could not be a class name is not repeated back: see
 	 * {@see self::LooksLikeClassName()}.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
 	public static function Unreadable(string $sClass): string
 	{

@@ -48,7 +48,7 @@ final class WriteValues
 	 * @param string|null          $sStimulus    The transition the values are set for, which may prompt for what the state locks.
 	 *
 	 * @return array{0: array<string, mixed>, 1: array<string, string>} The converted values, and attribute code => refusal.
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 */
 	public static function Validated(DBObject $oObject, string $sClass, array $aFields, ?DBObjectSet $oInstanceSet, ?string $sStimulus = null): array
 	{

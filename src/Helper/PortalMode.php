@@ -200,7 +200,7 @@ final class PortalMode
 	 * none; '' when the value is not shaped like a portal id, which then
 	 * matches no portal and is never quoted back (doc/adr/0007).
 	 *
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 */
 	public static function Requested(): ?string
 	{
