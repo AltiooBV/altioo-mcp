@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use DBObjectSet;
 use DBSearch;
 use Mcp\Exception\ToolCallException;
@@ -152,7 +152,7 @@ class PortalList extends AbstractPortalTool
 				$aRows[] = self::serialized($oObject, $aList['columns']);
 			}
 
-			return ToolOutput::Json(ObjectSerializer::MarkRows(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows), $aRows, $sClass)
+			return ToolOutput::Json(UntrustedMarker::MarkRows(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows), $aRows, $sClass)
 				+ self::tabsOf($oPolicy, $aList, $sClass));
 		} catch (ToolCallException $oException) {
 			throw $oException;

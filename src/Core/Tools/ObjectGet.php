@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -160,7 +161,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			'class' => $sFinalClass,
 			'object' => $aObject,
 		];
-		$aUntrusted = ObjectSerializer::UntrustedText($sFinalClass, $aObject);
+		$aUntrusted = UntrustedMarker::UntrustedText($sFinalClass, $aObject);
 		if ($aUntrusted !== null) {
 			$aResult['untrusted_text'] = $aUntrusted;
 		}

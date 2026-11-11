@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
@@ -494,11 +495,11 @@ final class WriteOutcome
 	 */
 	public static function Untrusted(string $sClass, array $aChanges): array
 	{
-		$aMarked = ObjectSerializer::UntrustedText($sClass, $aChanges);
+		$aMarked = UntrustedMarker::UntrustedText($sClass, $aChanges);
 		$aFields = array_map(static fn (string $s): string => 'changes.'.$s, $aMarked['fields'] ?? []);
 		$aFields[] = 'after.friendlyname';
 
-		return ['untrusted_text' => ['fields' => $aFields, 'note' => ObjectSerializer::UNTRUSTED_NOTICE]];
+		return ['untrusted_text' => ['fields' => $aFields, 'note' => UntrustedMarker::UNTRUSTED_NOTICE]];
 	}
 
 	/**

@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -184,7 +185,7 @@ class ObjectFindByName extends AbstractMCPTool
 			);
 		}
 
-		return ToolOutput::Json(ObjectSerializer::MarkRows([
+		return ToolOutput::Json(UntrustedMarker::MarkRows([
 			'search'           => $name,
 			'needles'          => $aNeedles,
 			'class'            => $class,

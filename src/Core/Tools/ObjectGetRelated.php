@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
@@ -386,7 +386,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		];
 
 		// The names are what people typed into the objects.
-		$aPayload = ObjectSerializer::MarkRows($aPayload, array_values($aObjects));
+		$aPayload = UntrustedMarker::MarkRows($aPayload, array_values($aObjects));
 
 		if ($aWithheld !== []) {
 			$aPayload['withheld'] = [

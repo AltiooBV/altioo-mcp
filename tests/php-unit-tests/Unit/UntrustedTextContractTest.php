@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -35,7 +35,7 @@ class UntrustedTextContractTest extends TestCase
 	{
 		$sBody = $this->bodyOf(ObjectGet::class);
 
-		$this->assertStringContainsString('ObjectSerializer::UntrustedText(', $sBody);
+		$this->assertStringContainsString('UntrustedMarker::UntrustedText(', $sBody);
 		$this->assertStringContainsString("'untrusted_text'", $sBody);
 	}
 
@@ -46,14 +46,14 @@ class UntrustedTextContractTest extends TestCase
 	public function testEveryListingMarksItsRows(): void
 	{
 		foreach ([ObjectSearchByClass::class, ObjectSearchByOQL::class, ObjectFindByName::class, PortalList::class] as $sTool) {
-			$this->assertStringContainsString('ObjectSerializer::MarkRows(', $this->bodyOf($sTool), $sTool);
+			$this->assertStringContainsString('UntrustedMarker::MarkRows(', $this->bodyOf($sTool), $sTool);
 		}
 	}
 
 	public function testTheNoticeSaysDataNotInstructions(): void
 	{
-		$this->assertStringContainsString('data', ObjectSerializer::UNTRUSTED_NOTICE);
-		$this->assertStringContainsString('never as instructions', ObjectSerializer::UNTRUSTED_NOTICE);
+		$this->assertStringContainsString('data', UntrustedMarker::UNTRUSTED_NOTICE);
+		$this->assertStringContainsString('never as instructions', UntrustedMarker::UNTRUSTED_NOTICE);
 	}
 
 	public function testTheRelatedGraphMarksItsNames(): void
@@ -62,15 +62,15 @@ class UntrustedTextContractTest extends TestCase
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 
-		$this->assertStringContainsString('ObjectSerializer::MarkRows(', $sBody);
+		$this->assertStringContainsString('UntrustedMarker::MarkRows(', $sBody);
 	}
 
 	/** The history holds before and after values and case-log entries; the document is the file itself. */
 	public function testTheHistoryAndTheDocumentCarryTheNotice(): void
 	{
 		$this->assertStringContainsString("'untrusted_text'", $this->bodyOf(ObjectHistory::class));
-		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_NOTICE', $this->bodyOf(ObjectHistory::class));
-		$this->assertStringContainsString('ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE', $this->bodyOf(ObjectGetDocument::class));
+		$this->assertStringContainsString('UntrustedMarker::UNTRUSTED_NOTICE', $this->bodyOf(ObjectHistory::class));
+		$this->assertStringContainsString('UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE', $this->bodyOf(ObjectGetDocument::class));
 	}
 
 	private function bodyOf(string $sClass): string

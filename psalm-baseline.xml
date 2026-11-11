@@ -359,7 +359,7 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByClass.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
+      <code><![CDATA[ToolOutput::Json(UntrustedMarker::MarkRows([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
 				'filters' => $filters,
@@ -409,7 +409,7 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByOQL.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
+      <code><![CDATA[ToolOutput::Json(UntrustedMarker::MarkRows([
 				'class' => $class,
 				'oql'       => $oql,
 				'total'     => $iTotal,

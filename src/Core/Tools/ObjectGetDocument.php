@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
@@ -147,7 +147,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// The notice first: the file is whatever its author put in it, and the
 		// bytes carry no field to mark.
 		return [
-			new TextContent(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE),
+			new TextContent(UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE),
 			DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
 		];
 	}

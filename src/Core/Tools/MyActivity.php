@@ -18,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -191,7 +192,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 				'has_more'    => $iNext < $iTotal,
 				'next_offset' => $iNext < $iTotal ? $iNext : null,
 				'coverage'    => self::coverage(),
-				'untrusted_text' => ['fields' => ['activity[].reason'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE],
+				'untrusted_text' => ['fields' => ['activity[].reason'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE],
 			]);
 		} catch (ToolCallException $oException) {
 			throw $oException;

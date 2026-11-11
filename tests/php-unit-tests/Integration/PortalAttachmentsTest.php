@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetDocument;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -114,7 +114,7 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$aContents = ObjectGetDocument::execute('Attachment', $this->iInjected, 'contents');
 
 		$this->assertInstanceOf(TextContent::class, $aContents[0]);
-		$this->assertSame(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE, $aContents[0]->text);
+		$this->assertSame(UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE, $aContents[0]->text);
 		$this->assertCount(2, $aContents);
 	}
 

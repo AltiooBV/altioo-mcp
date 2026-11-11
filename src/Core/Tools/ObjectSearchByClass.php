@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -210,7 +211,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 
 			$iTotal = $oSet->Count();
 
-			return ToolOutput::Json(ObjectSerializer::MarkRows([
+			return ToolOutput::Json(UntrustedMarker::MarkRows([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
 				'filters' => $filters,

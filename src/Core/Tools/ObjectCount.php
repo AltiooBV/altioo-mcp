@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -440,7 +441,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		// Labels are the objects' own text.
 		if ($aGroupBy !== []) {
-			$aAnswer['untrusted_text'] = ['fields' => ['groups[].label'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+			$aAnswer['untrusted_text'] = ['fields' => ['groups[].label'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
 		}
 
 		return ToolOutput::Json($aAnswer);

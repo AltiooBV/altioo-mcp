@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
@@ -195,7 +196,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// Before and after values and case-log entries are what other people
 		// wrote, and a planted instruction later edited out stays readable here.
 		if ($aHistory['entries'] !== []) {
-			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
 		}
 
 		return ToolOutput::Json($aHistory);
