@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Support;
 
 use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Http\Discovery\Psr17Factory;
 use Mcp\Capability\Discovery\SchemaValidator;

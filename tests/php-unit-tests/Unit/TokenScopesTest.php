@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
-use Altioo\iTop\Extension\MCP\Service\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Combodo\iTop\AuthentToken\Hook\TokenLoginExtension;
 use PHPUnit\Framework\TestCase;
 

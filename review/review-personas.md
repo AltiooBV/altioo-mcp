@@ -28,7 +28,7 @@ release archive.
   someone other than the caller can write — descriptions, logs, email bodies, attachment text,
   names; then every tool that writes, deletes or sends, for what one planted instruction makes it
   do with the caller's rights. Check what holds without the client's cooperation: token scopes
-  (`src/Service/TokenScopes.php`), `mcp_read_only` and `mcp_capabilities`, the write barriers in
+  (`src/Service/Rights/TokenScopes.php`), `mcp_read_only` and `mcp_capabilities`, the write barriers in
   `SECURITY.md` ("The rule the write barriers reduce to"), and whether "dry run by default" is
   enforced by the server or only asked of the client. A control that works only if the model
   obeys a tool description is not a control.

@@ -6,9 +6,9 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
-use Altioo\iTop\Extension\MCP\Service\TokenScopes;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use DBObject;
 use DBObjectSearch;
 use MetaModel;

@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
@@ -19,7 +19,7 @@ use Altioo\iTop\Extension\MCP\Helper\MentionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\RestValue;
-use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
 use DBObjectSet;

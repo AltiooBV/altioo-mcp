@@ -9,10 +9,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -468,7 +468,7 @@ class AccessGrantsTest extends TestCase
 		);
 
 		$sSource = (string) file_get_contents(
-			dirname(__DIR__, 3).'/src/Helper/AccessGrants.php'
+			dirname(__DIR__, 3).'/src/Service/Rights/AccessGrants.php'
 		);
 		$this->assertStringNotContainsString("DELEGATING_PREFIX", $sSource, 'the prefix match is still there');
 		$this->assertStringContainsString('IsExternalKey', $sSource, 'nothing asks the datamodel what hangs off a data source');

@@ -600,7 +600,7 @@
       <code><![CDATA[is_array($aSerialized)]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Service/TokenScopes.php">
+  <file src="src/Service/Rights/TokenScopes.php">
     <RedundantFunctionCall>
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>

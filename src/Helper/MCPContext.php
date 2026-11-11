@@ -23,7 +23,7 @@ class MCPContext
 	 * context tag are the same string by construction, and everything this
 	 * module recognises has to be pushed as a tag before DoLogin() runs.
 	 *
-	 * @see \Altioo\iTop\Extension\MCP\Service\TokenScopes
+	 * @see \Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes
 	 */
 	const SCOPE_MCP = self::TAG_MCP;
 

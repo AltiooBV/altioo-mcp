@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
@@ -129,7 +129,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	/** The profile is the whole of it: an account is not exempt because it asks to be, or because of what it carries. */
 	public function testNothingButTheAccountDecidesIt(): void
 	{
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Helper/ExclusionPolicy.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/Rights/ExclusionPolicy.php');
 		foreach (['TokenScopes', 'MCPContext', 'clientInfo', 'OAuthServer', 'RequestCarriesAToken'] as $sNot) {
 			$this->assertStringNotContainsString($sNot, $sSource, "the exemption reads {$sNot}, which the caller chooses");
 		}

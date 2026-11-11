@@ -6,7 +6,10 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Rights;
+
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 use AttributeExternalField;
 use AttributeExternalKey;

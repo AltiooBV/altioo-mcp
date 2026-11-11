@@ -22,6 +22,8 @@ use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server;
 use Mcp\Server\Builder;

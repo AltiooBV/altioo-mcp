@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;

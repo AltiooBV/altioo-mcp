@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;

@@ -95,8 +95,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
 		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
-		'Helper\\AccessGrants' => 'Service\\Rights', // Service/Rights/
-		'Helper\\ExclusionPolicy' => 'Service\\Rights', // Service/Rights/
 		'Helper\\CurrentUserReader' => 'Service\\Read', // Service/Read/
 		'Helper\\DatamodelReader' => 'Service\\Read', // Service/Read/ (its rights grading goes to Service/Rights/)
 		'Helper\\DocumentAccess' => 'Service\\Read', // Service/Read/
@@ -106,7 +104,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\EditPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\FormulaPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\MentionPolicy' => 'Service\\Write', // Service/Write/
-		'Helper\\SecretPolicy' => 'Service\\Rights', // Service/Rights/
 		'Helper\\RestValue' => 'Service\\Write', // Service/Write/
 		'Helper\\WritePlan' => 'Service\\Write', // Service/Write/
 		'Helper\\JsonPayload' => 'Helper', // Helper/
@@ -117,10 +114,7 @@ class LayerDependencyTest extends TestCase
 		'Server\\ServerInstructions' => 'Core', // Core/
 		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
 		'Service\\MCPService' => 'Service\\Server', // Service/Server/
-		'Service\\AccessPolicy' => 'Service\\Rights', // Service/Rights/
-		'Service\\ExcludingModelReflection' => 'Service\\Rights', // Service/Rights/
 		'Service\\ObjectAccess' => 'Service\\Access', // Service/Access/
-		'Service\\TokenScopes' => 'Service\\Rights', // Service/Rights/
 		'Service\\PortalAccess' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalAware' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalBrickTemplates' => 'Service\\Portal', // Service/Portal/
@@ -141,7 +135,7 @@ Helper\DocumentAccess → Service\ObjectAccess
 Helper\ObjectSerializer → Helper\WritePlan
 Helper\PortalMode → Service\PortalAware
 Helper\PortalMode → Service\PortalPolicy
-Helper\Settings → Helper\ExclusionPolicy
+Helper\Settings → Service\Rights\ExclusionPolicy
 Helper\WritePlan → Core\Tools\ObjectSearchByOQL
 Helper\WritePlan → Service\ObjectAccess
 Service\PortalAccess → Core\Tools\PortalList

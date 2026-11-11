@@ -54,6 +54,10 @@ class PublicSurfaceTest extends TestCase
 		'src/Registry/MCPRegistry.php',
 		'src/Registry/MCPExtensionCollector.php',
 		'src/Contract/iMCPServiceProvider.php',
+		// Moved out of src/Helper by ADR 0015 and still @api; step 5 decides their tag.
+		'src/Service/Rights/AccessGrants.php',
+		'src/Service/Rights/ExclusionPolicy.php',
+		'src/Service/Rights/SecretPolicy.php',
 	];
 
 	/**
