@@ -25,14 +25,13 @@ require_once __DIR__.'/../bootstrap.php';
  * today and become one the day the file moves) are read from the PHP tokens, so
  * a mention in a comment or a string counts for nothing.
  *
- * The code is still in the pre-2.0 folders. CLASS_LAYERS names the layer each
- * class will belong to; a class not listed takes its layer from its namespace.
- * Each step of the ADR's landing plan deletes the entries of the classes it
- * moves.
+ * A class takes its layer from its namespace; CLASS_LAYERS overrides that for
+ * a class that must be judged by another layer, and is empty.
  *
- * BASELINE is today's violations, frozen. The test fails on a violation that is
- * not in it, and on an entry that no longer occurs: a fix removes its line in
- * the same commit, so the list only shrinks and is empty when the ADR is done.
+ * BASELINE is the violations accepted for now, one `importer → imported` line
+ * each. It is empty, as ADR 0015 ends: the test fails on a violation that is
+ * not in it, and on an entry that no longer occurs, so a line would be removed
+ * in the commit that fixes it. The mechanism stays for a future restructuring.
  * To see what a change did, run this test: each failure prints the lines to
  * add or to remove. Never add a line to make a new dependency pass.
  */
@@ -74,20 +73,14 @@ class LayerDependencyTest extends TestCase
 	private const API_MAY_IMPORT_FROM_RANK = 50;
 
 	/**
-	 * Class (relative to the root namespace) => the layer ADR 0015 gives it.
-	 * The target folder is in the comment. Delete the entry when the file moves.
+	 * Class (relative to the root namespace) => the layer, for a class whose
+	 * layer is not the one its folder gives it. Empty: every class is where
+	 * ADR 0015 puts it. Kept for a class that has to be judged by another layer
+	 * than its namespace.
 	 *
 	 * @var array<string, string>
 	 */
-	private const CLASS_LAYERS = [
-		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
-		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
-		'Helper\\JsonPayload' => 'Helper', // Helper/
-		'Helper\\LogAPILogger' => 'Helper', // Helper/
-		'Helper\\MCPContext' => 'Helper', // Helper/
-		'Helper\\MCPLog' => 'Helper', // Helper/
-		'Helper\\Settings' => 'Helper', // Helper/
-	];
+	private const CLASS_LAYERS = [];
 
 	/**
 	 * Today's violations, `importer → imported`, sorted, one per line.
