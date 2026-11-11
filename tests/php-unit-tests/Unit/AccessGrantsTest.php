@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\CallersOwnAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRoots;
@@ -1420,7 +1421,7 @@ class AccessGrantsTest extends TestCase
 	public function testTheSettingCannotReachTheSelfGuard(): void
 	{
 		$sDecision = $this->body(AccessGrants::class, 'RefusalGiven');
-		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+		$sGuard = $this->body(CallersOwnAccess::class, 'ReachesTheCaller');
 
 		$this->assertStringContainsString('ReachesTheCaller', $sDecision, 'the self-guard is no longer consulted');
 		$this->assertStringContainsString('SELF_REFUSAL', $sDecision);
@@ -1449,7 +1450,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheGuardIsAskedOfTheRowIncludingOnACreate(): void
 	{
-		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+		$sGuard = $this->body(CallersOwnAccess::class, 'ReachesTheCaller');
 
 		$this->assertStringContainsString('user_id', $sGuard, 'the owner of a token is not consulted');
 		$this->assertStringContainsString('userid', $sGuard, 'the user named by a rights link is not consulted');
