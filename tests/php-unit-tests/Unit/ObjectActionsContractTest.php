@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -61,10 +62,10 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testOnlyADependsCostsAQuery(): void
 	{
-		$sBody = $this->bodyOf(ObjectGrades::class, 'RightsOn');
+		$oSource = SourceCalls::OfClass(ObjectGrades::class);
 
-		$this->assertStringContainsString("!== 'depends'", $sBody, 'a settled class grade is asked again per object');
-		$this->assertStringContainsString('IsActionAllowed', $sBody);
+		$this->assertStringContainsString("!=='depends'", $oSource->Code('RightsOn'), 'a settled class grade is asked again per object');
+		$this->assertTrue($oSource->HasCallTo('IsActionAllowed', 'RightsOn'));
 	}
 
 	/**
@@ -74,14 +75,13 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testAStimulusIsOfferedOnlyIfBothGatesAllowIt(): void
 	{
-		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
+		$oSource = SourceCalls::OfClass(ObjectGrades::class);
 
-		$this->assertStringContainsString('stricterGrade', $sBody, 'the two gates are not combined');
-		$this->assertStringContainsString('stimulusGrade', $sBody);
-		$this->assertStringContainsString("'modify'", $sBody);
-		$this->assertStringContainsString(
-			'IsStimulusAllowed',
-			$this->bodyOf(ObjectGrades::class, 'stimulusGrade'),
+		$this->assertTrue($oSource->HasCallTo('stricterGrade', 'StimuliOn'), 'the two gates are not combined');
+		$this->assertTrue($oSource->HasCallTo('stimulusGrade', 'StimuliOn'));
+		$this->assertTrue($oSource->HasString('modify', 'StimuliOn'));
+		$this->assertTrue(
+			$oSource->HasCallTo('IsStimulusAllowed', 'stimulusGrade'),
 			'the stimulus gate itself is never asked'
 		);
 	}
@@ -98,12 +98,12 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testARefusedStimulusSaysWhichGateRefusedIt(): void
 	{
-		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
+		$oSource = SourceCalls::OfClass(ObjectGrades::class);
 
-		$this->assertStringContainsString("'gates'", $sBody, 'the entry does not report its gates');
+		$this->assertTrue($oSource->HasString('gates', 'StimuliOn'), 'the entry does not report its gates');
 		$this->assertMatchesRegularExpression(
-			"/'gates'\s*=>\s*\[\s*'modify'\s*=>[^,]+,\s*'stimulus'\s*=>/s",
-			$sBody,
+			"/'gates'=>\['modify'=>[^,]+,'stimulus'=>/",
+			$oSource->Code('StimuliOn'),
 			'both gates are reported, under the names the grades are read from'
 		);
 	}
@@ -115,19 +115,19 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testAClassWithNoLifecycleIsNotReportedAsStuck(): void
 	{
-		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
+		$oSource = SourceCalls::OfClass(ObjectGrades::class);
 
-		$this->assertStringContainsString('HasLifecycle', $sBody);
-		$this->assertStringContainsString('return null;', $sBody);
+		$this->assertTrue($oSource->HasCallTo('HasLifecycle', 'StimuliOn'));
+		$this->assertStringContainsString('returnnull;', $oSource->Code('StimuliOn'));
 	}
 
 	/** One object, so no flag; a page, so a flag and a ceiling. */
 	public function testOneObjectIsAnsweredWithoutBeingAsked(): void
 	{
-		$sBody = $this->bodyOf(ObjectGet::class, 'execute');
+		$oSource = SourceCalls::OfClass(ObjectGet::class);
 
-		$this->assertStringContainsString('RightsOn', $sBody);
-		$this->assertStringContainsString('StimuliOn', $sBody);
+		$this->assertTrue($oSource->HasCallTo('RightsOn', 'execute'));
+		$this->assertTrue($oSource->HasCallTo('StimuliOn', 'execute'));
 	}
 
 	public function testAPageHasToAskAndIsBounded(): void
@@ -139,14 +139,14 @@ class ObjectActionsContractTest extends TestCase
 			$this->assertFalse($aSchema['properties']['actions']['default'], $sTool.' answers it for every page by default');
 			$this->assertStringContainsString(
 				'$actions',
-				$this->bodyOf($sTool, 'execute'),
+				SourceCalls::OfClass($sTool)->Code('execute'),
 				$sTool.' accepts the argument and never passes it on'
 			);
 		}
 
 		$this->assertStringContainsString(
 			'actions',
-			$this->bodyOf(\Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch::class, 'refuseUnattributablePage'),
+			SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch::class)->Code('refuseUnattributablePage'),
 			'a page of any size may ask what can be done with every row'
 		);
 	}
@@ -155,24 +155,4 @@ class ObjectActionsContractTest extends TestCase
 	 * The body of one method, comments stripped - otherwise a call named only
 	 * in a doc comment would satisfy the search.
 	 */
-	private function bodyOf(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
-	}
 }
