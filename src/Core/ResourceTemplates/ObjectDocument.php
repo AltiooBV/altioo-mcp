@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -98,8 +98,8 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is the same way into the change log core_object_get_document
 		// refuses - and the one that was missed when that refusal went in.
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ResourceReadException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ResourceReadException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {

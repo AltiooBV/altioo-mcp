@@ -12,10 +12,10 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
@@ -133,8 +133,8 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 	{
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is a real way into the change log and not a formality.
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {

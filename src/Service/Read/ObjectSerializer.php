@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use AttributeBlob;

@@ -17,9 +17,9 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AltiooEventMCPService;
 use CMDBChange;
@@ -361,7 +361,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		// An excluded class is not named (counted among the unseen), as an object the account cannot see is
 		// (doc/adr/0012).
 		return ExclusionPolicy::Serves($sClass)
-			&& !ObjectHistory::IsReserved($sClass)
+			&& !ChangeLogReservation::IsReserved($sClass)
 			&& UserRights::IsActionAllowed($sClass, UR_ACTION_READ);
 	}
 

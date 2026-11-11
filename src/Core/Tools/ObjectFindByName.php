@@ -11,9 +11,9 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObjectSearch;
 use DBObjectSet;
@@ -297,8 +297,8 @@ class ObjectFindByName extends AbstractMCPTool
 				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 			}
 
-			if (ObjectHistory::IsReserved($sClass)) {
-				throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+			if (ChangeLogReservation::IsReserved($sClass)) {
+				throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 				throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
@@ -315,7 +315,7 @@ class ObjectFindByName extends AbstractMCPTool
 			}
 			// Not searchable on a stock install, so this is for the datamodel
 			// that marks it so rather than for the one that ships.
-			if (ObjectHistory::IsReserved($sCandidate)) {
+			if (ChangeLogReservation::IsReserved($sCandidate)) {
 				continue;
 			}
 			if (ExclusionPolicy::ExcludesClass($sCandidate) || !UserRights::IsActionAllowed($sCandidate, UR_ACTION_READ)) {

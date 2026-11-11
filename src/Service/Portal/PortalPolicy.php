@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -187,7 +188,7 @@ final class PortalPolicy
 	 */
 	public function WriteSet(string $sClass): ?DBSearch
 	{
-		if (ObjectHistory::IsReserved($sClass)) {
+		if (ChangeLogReservation::IsReserved($sClass)) {
 			return null;
 		}
 

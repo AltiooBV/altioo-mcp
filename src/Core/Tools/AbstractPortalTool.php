@@ -9,11 +9,11 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -67,7 +67,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	 */
 	protected static function refuseReserved(string $sClass): void
 	{
-		if (ObjectHistory::IsReserved($sClass)) {
+		if (ChangeLogReservation::IsReserved($sClass)) {
 			throw new ToolCallException('This list is the change log: core_object_history gives the history of one object the portal shows you.');
 		}
 	}

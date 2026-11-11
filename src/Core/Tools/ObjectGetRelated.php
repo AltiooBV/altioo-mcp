@@ -14,9 +14,9 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -150,8 +150,8 @@ class ObjectGetRelated extends AbstractMCPTool
 			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {

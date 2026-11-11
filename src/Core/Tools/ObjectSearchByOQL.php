@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use DBObjectSearch;
@@ -112,8 +113,8 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		// The class comes from the query rather than from an argument, which is
 		// exactly why this one matters: "SELECT CMDBChangeOpSetAttributeScalar"
 		// is the shortest way round every gate core_object_history applies.
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {

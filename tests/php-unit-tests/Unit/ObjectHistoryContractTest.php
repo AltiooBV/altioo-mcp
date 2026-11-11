@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use PHPUnit\Framework\TestCase;
@@ -342,11 +343,11 @@ class ObjectHistoryContractTest extends TestCase
 	/** Reserved roots cover their subclasses, which is what a list would not. */
 	public function testTheReservationCoversSubclasses(): void
 	{
-		$this->assertTrue(ObjectHistory::IsReserved('CMDBChangeOp'));
-		$this->assertTrue(ObjectHistory::IsReserved('CMDBChange'));
-		$this->assertFalse(ObjectHistory::IsReserved('UserRequest'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('CMDBChangeOp'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('CMDBChange'));
+		$this->assertFalse(ChangeLogReservation::IsReserved('UserRequest'));
 		// Case is not what decides it: OQL is parsed before this is asked.
-		$this->assertTrue(ObjectHistory::IsReserved('cmdbchangeop'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('cmdbchangeop'));
 	}
 
 	/** The source of a class and of every ancestor it inherits a guard from. */

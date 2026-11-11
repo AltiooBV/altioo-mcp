@@ -6,12 +6,9 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service\Read;
+namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
-use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 
 use UserRights;
 
@@ -23,9 +20,6 @@ use UserRights;
  * and by the change log's reservation, with `restricted` saying in words which
  * of them applies. The block exists so a model can pick a call that will
  * succeed instead of discovering the refusal by making it.
- *
- * It lives in Read and not in Rights, with the rest of the grading, because the
- * narrowing asks {@see ObjectHistory::IsReserved()} and Rights may not import Read.
  *
  * @internal
  * @since 2.0.0
@@ -130,14 +124,14 @@ final class ClassRights
 			// which is the shape of a class nothing guards. A reviewer reading
 			// that concludes the audit log is writable; a model reading it
 			// makes the call and learns otherwise. Neither is the block's job.
-			if (ObjectHistory::IsReserved($sClass)) {
+			if (ChangeLogReservation::IsReserved($sClass)) {
 				foreach (array_keys($aRights) as $sGate) {
 					if ($sGate !== 'restricted') {
 						$aRights[$sGate] = 'no';
 					}
 				}
 
-				return $aRights + ['restricted' => sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass)];
+				return $aRights + ['restricted' => sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass)];
 			}
 
 			$bListed = AccessGrantFamilies::IsOperatorListed($sClass, Settings::GetEscalationClasses());

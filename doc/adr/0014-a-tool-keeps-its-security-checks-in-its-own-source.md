@@ -11,7 +11,7 @@ allowed. It proposed extracting it into one shared helper.
 
 On inspection the repetition is the design the unit suite enforces. `AccessGrantsTest`,
 `ObjectHistoryContractTest` and `PortalModeTest` read each registered tool's source and require
-the barrier (`AccessGrants::RefusalFor`), the change-log reservation (`ObjectHistory::IsReserved`)
+the barrier (`AccessGrants::RefusalFor`), the change-log reservation (`ChangeLogReservation::IsReserved`)
 and the mode's refusals (`$oAccess->Hides(…)`, `RefusalToChange`, `RefusalToSet`, …) to be in it.
 They find tools through the registry, so a tool added later is held to them on the day it is
 registered. A reviewer opening one tool sees every check it makes.

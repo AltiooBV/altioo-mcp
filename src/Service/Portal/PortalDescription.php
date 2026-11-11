@@ -10,8 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
 use UserRights;
@@ -213,7 +213,7 @@ final class PortalDescription
 			}
 
 			foreach (MetaModel::EnumChildClasses($sRoot, ENUM_CHILD_CLASSES_ALL) as $sClass) {
-				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass) && !ObjectHistory::IsReserved($sClass)
+				if (!isset($aClasses[$sClass]) && !MetaModel::IsAbstract($sClass) && !ChangeLogReservation::IsReserved($sClass)
 					&& $oPolicy->ReachedBy($sClass) !== [] && $oPolicy->ReadSet($sClass) !== null) {
 					$aClasses[$sClass] = true;
 				}
@@ -237,7 +237,7 @@ final class PortalDescription
 	{
 		return array_values(array_filter(
 			$oPolicy->Lists(),
-			static fn (array $aList): bool => !ObjectHistory::IsReserved((string)$aList['class'])
+			static fn (array $aList): bool => !ChangeLogReservation::IsReserved((string)$aList['class'])
 				&& $oPolicy->ReadSet((string)$aList['class']) !== null
 		));
 	}

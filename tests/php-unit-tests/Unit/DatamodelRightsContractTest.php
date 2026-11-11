@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
-use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -45,7 +45,7 @@ class DatamodelRightsContractTest extends TestCase
 {
 	private const SOURCE_DIR = __DIR__.'/../../../src';
 
-	private const READER = self::SOURCE_DIR.'/Service/Read/ClassRights.php';
+	private const READER = self::SOURCE_DIR.'/Service/Rights/ClassRights.php';
 
 	/**
 	 * The rights block answers for this endpoint, not only for iTop.
@@ -131,7 +131,7 @@ class DatamodelRightsContractTest extends TestCase
 	{
 		$sBody = $this->body('narrowedByTheBarrier');
 
-		$this->assertStringContainsString('ObjectHistory::IsReserved', $sBody,
+		$this->assertStringContainsString('ChangeLogReservation::IsReserved', $sBody,
 			'the block never asks whether the class is the change log, so it reports it as unguarded');
 		$this->assertStringContainsString('RESERVED_REFUSAL', $sBody,
 			'a caller is told no without being told which tool serves it instead');

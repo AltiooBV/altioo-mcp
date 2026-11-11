@@ -17,8 +17,8 @@ use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
@@ -191,8 +191,8 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		// A field iTop requires is excluded: no create could pass, and the setting is said to be why.
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);

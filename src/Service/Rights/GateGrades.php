@@ -15,7 +15,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
  * UserRights becomes (yes, no, depends), the stricter of two grades, and the
  * values a caller may narrow a class list by. Pure: no datamodel is read here.
  * What the barrier on access-granting classes adds to a grade is
- * ClassRights, in Service\Read, because it asks the change log's reservation.
+ * ClassRights.
  *
  * @internal
  * @since 2.0.0

@@ -16,9 +16,9 @@ use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBoolean;
 use AttributeDate;
@@ -266,7 +266,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		// One answer for every reason a class may not be counted: reserved, not
 		// readable, no bulk read. A refusal that said which would say that the
 		// class exists, and what is hidden about it.
-		if (ObjectHistory::IsReserved($sClass)
+		if (ChangeLogReservation::IsReserved($sClass)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)) {
 			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
@@ -519,7 +519,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	private static function consoleLabel(string $sTarget, int $iId): ?string
 	{
 		if (!ExclusionPolicy::Serves($sTarget)
-			|| ObjectHistory::IsReserved($sTarget)
+			|| ChangeLogReservation::IsReserved($sTarget)
 			|| !UserRights::IsActionAllowed($sTarget, UR_ACTION_READ)) {
 			return null;
 		}
@@ -531,7 +531,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	/** The portal's: a target its scopes show this user, which UserRights does not decide. */
 	private static function portalLabel(PortalPolicy $oPolicy, string $sTarget, int $iId): ?string
 	{
-		if (!ExclusionPolicy::Serves($sTarget) || ObjectHistory::IsReserved($sTarget)) {
+		if (!ExclusionPolicy::Serves($sTarget) || ChangeLogReservation::IsReserved($sTarget)) {
 			return null;
 		}
 		$oQuery = $oPolicy->ReadSet($sTarget);

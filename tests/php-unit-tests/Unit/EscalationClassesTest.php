@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 

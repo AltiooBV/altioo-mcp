@@ -12,9 +12,9 @@ use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
@@ -142,8 +142,8 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 		}
 
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+		if (ChangeLogReservation::IsReserved($sClass)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass);
 		if ($sAccessRefusal !== null) {

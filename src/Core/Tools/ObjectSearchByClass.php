@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Mcp\Exception\ToolCallException;
@@ -120,8 +121,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
 			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read

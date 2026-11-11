@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use DBObject;
 use DBObjectSearch;
@@ -87,12 +87,12 @@ final class PortalAccess extends ObjectAccess
 	#[\Override]
 	public function Readable(string $sClass, int $iId): ?DBObject
 	{
-		if (ObjectHistory::IsReserved($sClass)) {
+		if (ChangeLogReservation::IsReserved($sClass)) {
 			return null;
 		}
 
 		$oObject = parent::Readable($sClass, $iId);
-		if ($oObject === null || ObjectHistory::IsReserved(get_class($oObject))) {
+		if ($oObject === null || ChangeLogReservation::IsReserved(get_class($oObject))) {
 			return null;
 		}
 
@@ -419,7 +419,7 @@ final class PortalAccess extends ObjectAccess
 	#[\Override]
 	public function Hides(string $sClass, int $iId): bool
 	{
-		return ObjectHistory::IsReserved($sClass) || ExclusionPolicy::ExcludesClass($sClass) || $this->oPolicy->Readable($sClass, $iId) === null;
+		return ChangeLogReservation::IsReserved($sClass) || ExclusionPolicy::ExcludesClass($sClass) || $this->oPolicy->Readable($sClass, $iId) === null;
 	}
 
 	/** An object outside the portal's write scope, or the change log, which nothing here writes. */

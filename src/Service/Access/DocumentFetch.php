@@ -13,8 +13,8 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBlob;
 use DBObject;
@@ -45,8 +45,8 @@ final class DocumentFetch
 		// no organisation and no attribute right of their own: read by id, they
 		// are every past document on the instance, silos and today's
 		// per-attribute rights notwithstanding.
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw new MCPDocumentException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+		if (ChangeLogReservation::IsReserved($sClass)) {
+			throw new MCPDocumentException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		try {
 			$oAccess = ObjectAccess::Current();

@@ -625,7 +625,7 @@ class PortalModeTest extends TestCase
 	public function testTheChangeLogIsServedByTheHistoryToolOnlyAndNeverWritten(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/^[^{]*\{\s*if \(ObjectHistory::IsReserved\(\$sClass\)\) \{\s*return null;\s*\}/',
+			'/^[^{]*\{\s*if \(ChangeLogReservation::IsReserved\(\$sClass\)\) \{\s*return null;\s*\}/',
 			self::bodyOf(PortalPolicy::class, 'WriteSet'),
 			'WriteSet() must refuse the change log before anything else'
 		);

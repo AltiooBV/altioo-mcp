@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
-use Altioo\iTop\Extension\MCP\Service\Read\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;

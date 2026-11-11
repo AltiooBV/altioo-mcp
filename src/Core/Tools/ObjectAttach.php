@@ -17,9 +17,9 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
@@ -251,8 +251,8 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+		if (ChangeLogReservation::IsReserved($sClass)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
 		if ($sAccessRefusal !== null) {
