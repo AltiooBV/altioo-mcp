@@ -9,26 +9,14 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectId;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 
 use DBObject;
-use DBObjectSearch;
-use DBObjectSet;
-use DeletionPlan;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
-use RestUtils;
 use Throwable;
-use UserRights;
 use utils;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\Identifier;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 
 /**
