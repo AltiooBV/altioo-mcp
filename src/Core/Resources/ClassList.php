@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;

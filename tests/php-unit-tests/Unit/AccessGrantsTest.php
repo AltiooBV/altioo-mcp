@@ -744,7 +744,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testASynchronisationClassIsStillReadable(): void
 	{
-		$sBlock = $this->body('Altioo\\iTop\\Extension\\MCP\\Helper\\DatamodelReader', 'narrowedByTheBarrier');
+		$sBlock = $this->body('Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DatamodelReader', 'narrowedByTheBarrier');
 
 		$this->assertStringContainsString(
 			'Readingisunaffected',

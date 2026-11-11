@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -16,6 +16,8 @@ use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 /**
  * What iTop recorded happening to an object, read as this caller may read it.

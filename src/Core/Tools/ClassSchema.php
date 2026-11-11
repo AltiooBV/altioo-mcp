@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalDescription;
@@ -23,7 +23,7 @@ use Mcp\Schema\ToolAnnotations;
  * One class in detail, as a tool.
  *
  * Same content as itop://core/class/{class} - see
- * {@see \Altioo\iTop\Extension\MCP\Helper\DatamodelReader} for why the schema
+ * {@see \Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader} for why the schema
  * is exposed on both surfaces. This is the one every other core tool depends
  * on: attribute codes, allowed values and stimuli are what an ObjectCreate or
  * an ObjectApplyStimulus call has to get right, and a model that cannot read

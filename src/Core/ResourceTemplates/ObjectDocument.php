@@ -10,8 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;

@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
@@ -21,6 +21,8 @@ use Mcp\Schema\Content\ImageContent;
 use MetaModel;
 use ormDocument;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * The one way bytes leave this endpoint.

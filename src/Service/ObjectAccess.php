@@ -10,9 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Exception\ToolCallException;
 use DBObject;

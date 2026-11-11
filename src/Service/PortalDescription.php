@@ -9,9 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
 use UserRights;

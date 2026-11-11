@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -20,6 +20,7 @@ use AttributeEmailAddress;
 use AttributeURL;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 
 /**
  * The datamodel, read the way the calling user is allowed to see it.

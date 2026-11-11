@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;

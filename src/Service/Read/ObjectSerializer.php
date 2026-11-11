@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
@@ -29,6 +29,8 @@ use Throwable;
 use UserRights;
 use utils;
 use iAttributeNoGroupBy;
+use Altioo\iTop\Extension\MCP\Helper\WritePlan;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * One object, rendered the way iTop's own REST API renders it.

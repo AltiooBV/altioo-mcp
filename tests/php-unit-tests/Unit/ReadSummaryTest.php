@@ -127,10 +127,10 @@ class ReadSummaryTest extends TestCase
 	{
 		$sRoot = dirname(__DIR__, 3).'/src/';
 		foreach ([
-			'Helper/ObjectSerializer.php',
+			'Service/Read/ObjectSerializer.php',
 			'Core/Tools/ObjectGetRelated.php',
-			'Helper/DocumentAccess.php',
-			'Helper/ObjectHistory.php',
+			'Service/Read/DocumentAccess.php',
+			'Service/Read/ObjectHistory.php',
 			'Service/PortalAccess.php',
 		] as $sFile) {
 			$this->assertStringContainsString('ReadSummary::Note(', (string)file_get_contents($sRoot.$sFile), $sFile.' returns objects and does not tell the audit row');

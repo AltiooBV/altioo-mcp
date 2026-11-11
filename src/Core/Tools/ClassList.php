@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\PortalDescription;
@@ -22,7 +22,7 @@ use Mcp\Schema\ToolAnnotations;
  * The readable classes of the datamodel, as a tool.
  *
  * Same list as itop://core/classes, narrowable - see
- * {@see \Altioo\iTop\Extension\MCP\Helper\DatamodelReader} for why the schema
+ * {@see \Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader} for why the schema
  * is exposed on both surfaces. Narrowing is what the resource cannot offer: a
  * stock iTop declares several hundred classes, and the handful a model needs
  * are almost always one category ('bizmodel') or one word ('ticket') away.

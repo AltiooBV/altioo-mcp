@@ -6,13 +6,14 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use MetaModel;
 use UserRights;
 use utils;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 /**
  * Who the request authenticated as.

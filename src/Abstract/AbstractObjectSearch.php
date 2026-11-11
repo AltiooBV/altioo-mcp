@@ -9,9 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Abstract;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;

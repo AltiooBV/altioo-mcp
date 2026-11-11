@@ -23,6 +23,8 @@ use RestUtils;
 use Throwable;
 use UserRights;
 use utils;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 
 /**
  * What a write would do, established before it does it.

@@ -58,6 +58,12 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Rights/AccessGrants.php',
 		'src/Service/Rights/ExclusionPolicy.php',
 		'src/Service/Rights/SecretPolicy.php',
+		'src/Service/Read/CurrentUserReader.php',
+		'src/Service/Read/DatamodelReader.php',
+		'src/Service/Read/DocumentAccess.php',
+		'src/Service/Read/ObjectHistory.php',
+		'src/Service/Read/ObjectQuery.php',
+		'src/Service/Read/ObjectSerializer.php',
 	];
 
 	/**

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -130,8 +130,8 @@ class ObjectSerializerClippingTest extends TestCase
 	 */
 	public function testASensitiveAttributeIsMaskedBeforeAnythingReadsIt(): void
 	{
-		$sValue = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'Value');
-		$sPredicate = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'IsSensitive');
+		$sValue = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'Value');
+		$sPredicate = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'IsSensitive');
 
 		$iMask = strpos($sValue, 'IsSensitive');
 		$this->assertNotFalse($iMask, 'a read never asks whether the attribute is sensitive');
@@ -150,7 +150,7 @@ class ObjectSerializerClippingTest extends TestCase
 
 		$this->assertStringContainsString(
 			'IsSensitive',
-			$this->methodBody(\Altioo\iTop\Extension\MCP\Helper\DatamodelReader::class, 'attributes'),
+			$this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader::class, 'attributes'),
 			'the schema flag and the masking would be two predicates that can disagree'
 		);
 	}
@@ -180,11 +180,11 @@ class ObjectSerializerClippingTest extends TestCase
 	 */
 	public function testEveryReadAnswersBothStateQuestionsOrSaysTheyDoNotApply(): void
 	{
-		$sAdds = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'withStateFlags');
-		$sHas = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'HasAttribute');
-		$sSerialize = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class, 'Serialize');
+		$sAdds = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'withStateFlags');
+		$sHas = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'HasAttribute');
+		$sSerialize = $this->methodBody(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class, 'Serialize');
 		$sSource = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectSerializer::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer::class))->getFileName()
 		);
 
 		$this->assertStringContainsString("'archive_flag'", $sSource);

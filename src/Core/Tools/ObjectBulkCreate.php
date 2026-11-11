@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
 use DBObject;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Mcp\Exception\ToolCallException;

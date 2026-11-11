@@ -10,9 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Exception\ToolCallException;

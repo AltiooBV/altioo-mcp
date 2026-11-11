@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 

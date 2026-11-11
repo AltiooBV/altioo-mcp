@@ -499,7 +499,7 @@
       <code><![CDATA[(int)$this->getCode()]]></code>
     </RedundantCast>
   </file>
-  <file src="src/Helper/DatamodelReader.php">
+  <file src="src/Service/Read/DatamodelReader.php">
     <RedundantCondition>
       <code><![CDATA[!empty($aRelated)]]></code>
       <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
@@ -516,7 +516,7 @@
       <code><![CDATA[$oAttDef instanceof AttributeURL]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/DocumentAccess.php">
+  <file src="src/Service/Read/DocumentAccess.php">
     <InvalidOperand>
       <code><![CDATA[round($iBytes / 1024, 1)]]></code>
       <code><![CDATA[round($iBytes / 1048576, 1)]]></code>
@@ -539,7 +539,7 @@
       <code><![CDATA[null]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/ObjectSerializer.php">
+  <file src="src/Service/Read/ObjectSerializer.php">
     <RedundantCondition>
       <code><![CDATA[$oAttDef instanceof AttributeExternalField]]></code>
     </RedundantCondition>

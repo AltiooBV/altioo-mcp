@@ -13,8 +13,8 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 use PHPUnit\Framework\TestCase;
@@ -65,7 +65,7 @@ class ObjectHistoryContractTest extends TestCase
 	public function testASecretIsNotReadableThroughTheChangeLog(): void
 	{
 		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory::class))->getFileName()
 		);
 
 		$this->assertStringContainsString('ObjectSerializer::IsSensitive', $sBody, 'the history grades by rights alone');
@@ -101,7 +101,7 @@ class ObjectHistoryContractTest extends TestCase
 	public function testACaseLogRowCarriesTheEntryThatWasWritten(): void
 	{
 		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory::class))->getFileName()
 		);
 
 		$this->assertStringContainsString('CMDBChangeOpSetAttributeCaseLog', $sBody, 'the one operation with no value of its own is not recognised');

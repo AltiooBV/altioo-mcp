@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use DBObjectSearch;
 use DBObjectSet;

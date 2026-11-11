@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 // Same namespace, imported anyway: it extends a portal class, so it can be
 // loaded only where the portal is, and nothing should load it to find out.
@@ -1055,7 +1055,7 @@ final class PortalPolicy
 	 * The object with this id in a set, or null.
 	 *
 	 * The id is bound, not written into the query. Obsolete objects are
-	 * kept, as every read by id here keeps them ({@see \Altioo\iTop\Extension\MCP\Helper\ObjectQuery}).
+	 * kept, as every read by id here keeps them ({@see \Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery}).
 	 */
 	private static function fetchFrom(?DBSearch $oSet, int $iId): ?DBObject
 	{

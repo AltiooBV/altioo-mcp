@@ -250,7 +250,7 @@ class WriteFailureReportingContractTest extends TestCase
 	public function testTheDocumentDescriberTakesTheIdAsITopReportsIt(): void
 	{
 		$oMethod = new ReflectionMethod(
-			'Altioo\\iTop\\Extension\\MCP\\Helper\\DocumentAccess',
+			'Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DocumentAccess',
 			'Describe'
 		);
 		$sType = (string) $oMethod->getParameters()[2]->getType();
@@ -261,7 +261,7 @@ class WriteFailureReportingContractTest extends TestCase
 		));
 		$this->assertStringContainsString(
 			'WritePlan::AsId',
-			$this->methodBody('Altioo\\iTop\\Extension\\MCP\\Helper\\DocumentAccess', 'Describe'),
+			$this->methodBody('Altioo\\iTop\\Extension\\MCP\\Service\\Read\\DocumentAccess', 'Describe'),
 			'the id is used without going through the one normaliser'
 		);
 	}

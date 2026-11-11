@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -62,7 +62,7 @@ class CurrentUserContactTest extends TestCase
 	public function testArchiveModeExplainsItselfRatherThanNamingAState(): void
 	{
 		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\CurrentUserReader::class))->getFileName()
+			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader::class))->getFileName()
 		);
 
 		$this->assertStringContainsString("'enabled' => utils::IsArchiveMode()", $sBody, 'the flag is no longer the datum');

@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Mcp\Exception\ToolCallException;

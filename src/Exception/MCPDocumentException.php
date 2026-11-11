@@ -16,7 +16,7 @@ use Exception;
  * The same file is reachable as a tool and as a resource template, and the SDK
  * wants a different exception from each: ToolCallException from one,
  * ResourceReadException from the other. Neither belongs in
- * {@see \Altioo\iTop\Extension\MCP\Helper\DocumentAccess}, which would then have
+ * {@see \Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess}, which would then have
  * to know which of its two callers it was serving and would have two copies of
  * every refusal. It throws this instead, and each door translates.
  *

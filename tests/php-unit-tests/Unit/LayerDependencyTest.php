@@ -95,12 +95,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
 		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
-		'Helper\\CurrentUserReader' => 'Service\\Read', // Service/Read/
-		'Helper\\DatamodelReader' => 'Service\\Read', // Service/Read/ (its rights grading goes to Service/Rights/)
-		'Helper\\DocumentAccess' => 'Service\\Read', // Service/Read/
-		'Helper\\ObjectHistory' => 'Service\\Read', // Service/Read/
-		'Helper\\ObjectQuery' => 'Service\\Read', // Service/Read/
-		'Helper\\ObjectSerializer' => 'Service\\Read', // Service/Read/
 		'Helper\\EditPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\FormulaPolicy' => 'Service\\Write', // Service/Write/
 		'Helper\\MentionPolicy' => 'Service\\Write', // Service/Write/
@@ -129,10 +123,6 @@ class LayerDependencyTest extends TestCase
 	private const BASELINE = <<<'TXT'
 Core\Resources\Instructions → Service\MCPService
 Core\Tools\Instructions → Service\MCPService
-Helper\CurrentUserReader → Service\MCPService
-Helper\DocumentAccess → Helper\WritePlan
-Helper\DocumentAccess → Service\ObjectAccess
-Helper\ObjectSerializer → Helper\WritePlan
 Helper\PortalMode → Service\PortalAware
 Helper\PortalMode → Service\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
@@ -140,6 +130,10 @@ Helper\WritePlan → Core\Tools\ObjectSearchByOQL
 Helper\WritePlan → Service\ObjectAccess
 Service\PortalAccess → Core\Tools\PortalList
 Service\PortalAccess → Service\ObjectAccess
+Service\Read\CurrentUserReader → Service\MCPService
+Service\Read\DocumentAccess → Helper\WritePlan
+Service\Read\DocumentAccess → Service\ObjectAccess
+Service\Read\ObjectSerializer → Helper\WritePlan
 TXT;
 
 	public function testEveryClassHasALayer(): void

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -44,7 +44,7 @@ class DatamodelRightsContractTest extends TestCase
 {
 	private const SOURCE_DIR = __DIR__.'/../../../src';
 
-	private const READER = self::SOURCE_DIR.'/Helper/DatamodelReader.php';
+	private const READER = self::SOURCE_DIR.'/Service/Read/DatamodelReader.php';
 
 	/**
 	 * The rights block answers for this endpoint, not only for iTop.

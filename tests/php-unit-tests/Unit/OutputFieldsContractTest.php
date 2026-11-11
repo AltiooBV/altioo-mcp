@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Mcp\Exception\ToolCallException;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
