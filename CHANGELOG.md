@@ -25,7 +25,7 @@ entry itself, not left to be inferred from it.
 **The source tree is laid out as iTop lays out its own, and a tool pack builds on a short, named surface.**
 `src/` follows Combodo's layer folders (`Controller`, `Hook`, `Core`, `Helper`, `Model`,
 `Exception`, and a feature folder for each responsibility under `Service`) with one chain of
-dependencies that a test holds, and the six largest classes are split by what they do. The
+dependencies that a test holds, and the nine largest classes are split by what they do. The
 module behaves as it did in 1.3.0. What changes is where the code lives, and with it what a
 pack may call ([ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md), decided by the
 maintainer; the folders and a request's path through them are in
