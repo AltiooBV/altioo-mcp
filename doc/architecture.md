@@ -1,7 +1,8 @@
-# Architecture — system context
+# Architecture — system context and containers
 
-Level 1 of the [C4 model](https://c4model.com/): who and what Altioo MCP deals with, and nothing
-inside it, then one dynamic view of how a client comes to hold its credential. It is for
+Levels 1 and 2 of the [C4 model](https://c4model.com/): who and what Altioo MCP deals with, one
+dynamic view of how a client comes to hold its credential, then the folders under `src/`, the
+order they depend on each other in, and the path one request takes through them. It is for
 whoever has to place the module in an estate — an approver, an operator, a contributor seeing it
 for the first time — before reading the README's reasons for that shape, in
 [Why it runs inside iTop](../README.md#why-it-runs-inside-itop).
@@ -139,10 +140,102 @@ sequenceDiagram
 - **Every call passes the same gates whichever way the token came**; the list and their order
   are in [doc/security-summary.md](security-summary.md), "The gates a call passes".
 
+## Inside the module — the folders and their order
+
+Level 2: the parts of `src/`. The layout is Combodo's: layer folders, with a feature folder
+for each responsibility under `Service/`
+([ADR 0015](adr/0015-2-0-lays-out-src-as-itop-does.md)). The arrows run one way, from the top
+of the list to the bottom: a class imports its own folder and the ones below it, never one
+above. `Api` is outside the order, and any folder may import it.
+
+```mermaid
+flowchart TB
+  Api["<b>Api</b><br/>what a pack extends or calls<br/>(any folder may import it)"]
+  subgraph L1 [" "]
+    direction LR
+    Controller["<b>Controller</b>"]
+    Hook["<b>Hook</b>"]
+  end
+  Server["<b>Service\Server</b>"]
+  Core["<b>Core</b>"]
+  Portal["<b>Service\Portal</b>"]
+  Write["<b>Service\Write</b>"]
+  Access["<b>Service\Access</b>"]
+  Read["<b>Service\Read</b>"]
+  Rights["<b>Service\Rights</b>"]
+  Audit["<b>Service\Audit</b>"]
+  Bottom["<b>Helper · Model · Exception</b><br/>may import each other"]
+
+  L1 --> Server --> Core --> Portal --> Write --> Access --> Read --> Rights --> Audit --> Bottom
+```
+
+Top to bottom, as `LayerDependencyTest::LAYERS` ranks them (`Controller` and `Hook` share the
+top rank, `Helper`, `Model` and `Exception` the bottom one):
+
+| Folder | Holds |
+|---|---|
+| `Controller` | The endpoint, `MCPController`, with `CallRequest`, `CallLog` and `MCPResponse`; each check a request passes is one class under `Controller\Gate`, run from one ordered list |
+| `Hook` | What iTop calls into: `AuditHousekeeping`, the background process |
+| `Service\Server` | Builds the MCP server for one request from the registry, `MCPService`, and its session store |
+| `Core` | The core tools, resources, resource templates and prompts, and `ServerInstructions` |
+| `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from, `PortalAccess` (the portal's `ObjectAccess`), the description and the rows a list is built from |
+| `Service\Write` | Turning a caller's fields into a checked write: `WritePlan`, `WriteValues`, `DeletionCascade`, `WriteOutcome` and the rules a value must pass (`EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `ExternalKeyPolicy`) |
+| `Service\Access` | The question every tool asks of an object: may this caller see it, change it? `ObjectAccess` answers by the console's rules; `DocumentFetch` is the rights half of reading a document |
+| `Service\Read` | Reading objects out: `ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, and the datamodel description (`DatamodelReader`, `ClassCatalog`, `AttributeDescription`, `AttributeFormat`) |
+| `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy`, `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
+| `Service\Audit` | The audit trail: `AuditRetention`, `ChangeSummary`, `ReadSummary` |
+| `Helper`, `Model`, `Exception` | Small stateless utilities and per-request facts (`Settings`, `MCPLog`, `PortalMode`, `ObjectId`, `MCPHttp`), the value object `MCPResult`, and the exceptions |
+| `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`. iTop has no equivalent folder |
+
+### How one request flows
+
+The arrows above are import rules; this is the order things happen in, for a call that
+succeeds.
+
+1. **`Controller\MCPController`** receives the request and runs `Controller\Gate`'s gates in the
+   order of its `GATES` list: `PreflightGate`, `HostIsServedGate`, `BodyIsJsonGate`,
+   `CredentialPresentedGate`, `TokenNotAParameterGate`, `LoginGate`, `McpProfileGate`,
+   `TokenLoginAccountedForGate`, `TokenAudienceGate`. Each lets the request go on or answers
+   it. The list and why it is in that order are in
+   [doc/security-summary.md](security-summary.md), "The gates a call passes". `PortalAdmission`,
+   which `LoginGate` uses, calls `Service\Portal\PortalAccess::Enter()` for a portal-only
+   user.
+2. The controller decides the caller's `Service\Rights\AccessPolicy`, remembers it and the
+   token's identity, and drops the credential.
+3. **`Service\Server\MCPService::run()`** builds the MCP server for the request: it takes the
+   elements `Api\MCPRegistry` holds, the core ones from `Core\CoreExtensions` and a pack's from
+   its `iMCPServiceProvider`, and leaves out those the operator disabled or the caller's
+   `AccessPolicy` does not serve.
+4. The server hands the call to a **`Core`** tool, or to a pack's tool extending `Api\AbstractMCPTool`.
+   The tool states its own security checks in its own source
+   ([ADR 0014](adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
+5. The tool asks **`Service\Access\ObjectAccess::Current()`** whether the caller may see or
+   change the object. That is `ObjectAccess` itself, the console's rules through `UserRights`,
+   or `PortalAccess` when the request entered portal mode; with nothing entered in portal mode
+   it refuses rather than answering as the console.
+6. A read goes through `Service\Read` (`ObjectQuery`, `ObjectSerializer`); a write through
+   `Service\Write\WritePlan`, which checks each value, simulates by default and applies the
+   change only when asked. Both ask `Service\Rights` what is excluded, secret or barred
+   (`ExclusionPolicy`, `SecretPolicy`, `AccessGrants`).
+7. `Controller\MCPResponse` writes the answer, and `Controller\CallLog` records the audit row,
+   whose summaries come from `Service\Audit` (`ChangeSummary`, `ReadSummary`). Later,
+   iTop's cron calls `Hook\AuditHousekeeping`, which applies `Service\Audit\AuditRetention`.
+
+### Which test holds what
+
+- **The order** is `LayerDependencyTest` (`tests/php-unit-tests/Unit/`). It reads each file's
+  imports and same-namespace references from the PHP tokens and fails on a class importing a
+  layer above its own. Its baseline of accepted violations is empty, and an entry is removed
+  in the commit that fixes it.
+- **The `@api` surface** is `PublicSurfaceTest`: a class carries `@api` only under `src/Api/`
+  or in its `EXTRA_SURFACE`, and every other class says `@internal`.
+  [doc/extending.md](extending.md) names the four classes outside `Api`.
+- **The version** is `ModuleMetadataTest`; the tool packs' contract is `Api\Testing\ElementContract`.
+
 ## What it leaves out
 
-- **Containers and components** — the endpoint, the policy layer, the element registry. The code
-  under `src/` is the reference until a level-2 diagram earns its place here.
+- **Components** — the classes inside a folder. The code under `src/` is the reference; the
+  folders above are as far down as this page goes.
 - **Deployment** — the web server, the `.htaccess` / `web.config` pair, the compiled
   `env-production/` copy: [README, Endpoint](../README.md#endpoint) and
   [SECURITY.md, Hardening the deployment](../SECURITY.md#hardening-the-deployment).
@@ -152,7 +245,8 @@ sequenceDiagram
 
 ## Keeping it true
 
-Change the diagram in the same pull request as the change that alters it: a new kind of client
+Change the diagrams in the same pull request as the change that alters them: a new folder or a
+change to the layer order (which `LayerDependencyTest::LAYERS` holds), a new kind of client
 credential, a new optional dependency, a new actor, a new check a call passes. **An arrow
 from Altioo MCP that leaves the iTop boundary is the one change that would make the README's
 privacy section false**, so a pull request adding one fixes both, and says so in its
