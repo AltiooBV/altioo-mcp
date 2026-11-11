@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Mcp\Exception\ToolCallException;
 use DBObject;
 use DBObjectSearch;
@@ -199,7 +199,7 @@ class ObjectAccess
 
 	/**
 	 * The write gates on the object, with 'depends' resolved where the
-	 * object settles it ({@see ObjectSerializer::RightsOn()}).
+	 * object settles it ({@see ObjectGrades::RightsOn()}).
 	 *
 	 * @param DBObjectSet|null $oInstanceSet Reused across gates of one object.
 	 *
@@ -207,12 +207,12 @@ class ObjectAccess
 	 */
 	public function RightsOn(DBObject $oObject, ?DBObjectSet &$oInstanceSet): array
 	{
-		return ObjectSerializer::RightsOn($oObject, get_class($oObject), null, $oInstanceSet);
+		return ObjectGrades::RightsOn($oObject, get_class($oObject), null, $oInstanceSet);
 	}
 
 	/**
 	 * The stimuli the object's current state accepts, and whether the caller
-	 * may apply each ({@see ObjectSerializer::StimuliOn()}); null for a class
+	 * may apply each ({@see ObjectGrades::StimuliOn()}); null for a class
 	 * with no lifecycle.
 	 *
 	 * @param array<string, string> $aRights      {@see RightsOn()} for this object.
@@ -222,7 +222,7 @@ class ObjectAccess
 	 */
 	public function StimuliOn(DBObject $oObject, array $aRights, ?DBObjectSet &$oInstanceSet): ?array
 	{
-		return ObjectSerializer::StimuliOn($oObject, get_class($oObject), $aRights, $oInstanceSet);
+		return ObjectGrades::StimuliOn($oObject, get_class($oObject), $aRights, $oInstanceSet);
 	}
 
 	/**

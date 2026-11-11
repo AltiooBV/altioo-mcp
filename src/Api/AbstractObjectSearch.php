@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Api;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
@@ -340,8 +341,8 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		if ($bActions) {
 			// One instance set for both, built only if some gate asks for it.
 			$oInstanceSet = null;
-			$aObject['rights'] = ObjectSerializer::RightsOn($oObject, $sClass, null, $oInstanceSet);
-			$aObject['stimuli'] = ObjectSerializer::StimuliOn($oObject, $sClass, $aObject['rights'], $oInstanceSet);
+			$aObject['rights'] = ObjectGrades::RightsOn($oObject, $sClass, null, $oInstanceSet);
+			$aObject['stimuli'] = ObjectGrades::StimuliOn($oObject, $sClass, $aObject['rights'], $oInstanceSet);
 		}
 
 		return $aObject;

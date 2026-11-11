@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -300,7 +300,7 @@ class ObjectDelete extends AbstractMCPTool
 	{
 		try {
 			$oInstanceSet = null;
-			$aStimuli = ObjectSerializer::StimuliOn($oObject, $sClass, null, $oInstanceSet);
+			$aStimuli = ObjectGrades::StimuliOn($oObject, $sClass, null, $oInstanceSet);
 			if ($aStimuli === null) {
 				return '';
 			}

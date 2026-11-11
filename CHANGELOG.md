@@ -212,6 +212,7 @@ Not in the table because they did not move: `Controller\MCPController`; `Core\Co
 | `Service\PortalMode`: `Serves()` | `Service\Portal\PortalAccess`, same names |
 | `Core\Tools\ObjectSearchByOQL`: `CheckQuery()` | `Service\Read\ObjectQuery`, same names |
 | `Core\Tools\PortalList`: `RowOf()` | `Service\Portal\PortalRows`, same names |
+| `Helper\ObjectSerializer`: `RightsOn()`, `StimuliOn()` | `Service\Read\ObjectGrades`, same names |
 
 ### Removed
 

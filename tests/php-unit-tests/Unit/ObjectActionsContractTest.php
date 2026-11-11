@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -61,7 +61,7 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testOnlyADependsCostsAQuery(): void
 	{
-		$sBody = $this->bodyOf(ObjectSerializer::class, 'RightsOn');
+		$sBody = $this->bodyOf(ObjectGrades::class, 'RightsOn');
 
 		$this->assertStringContainsString("!== 'depends'", $sBody, 'a settled class grade is asked again per object');
 		$this->assertStringContainsString('IsActionAllowed', $sBody);
@@ -74,14 +74,14 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testAStimulusIsOfferedOnlyIfBothGatesAllowIt(): void
 	{
-		$sBody = $this->bodyOf(ObjectSerializer::class, 'StimuliOn');
+		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
 
 		$this->assertStringContainsString('stricterGrade', $sBody, 'the two gates are not combined');
 		$this->assertStringContainsString('stimulusGrade', $sBody);
 		$this->assertStringContainsString("'modify'", $sBody);
 		$this->assertStringContainsString(
 			'IsStimulusAllowed',
-			$this->bodyOf(ObjectSerializer::class, 'stimulusGrade'),
+			$this->bodyOf(ObjectGrades::class, 'stimulusGrade'),
 			'the stimulus gate itself is never asked'
 		);
 	}
@@ -98,7 +98,7 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testARefusedStimulusSaysWhichGateRefusedIt(): void
 	{
-		$sBody = $this->bodyOf(ObjectSerializer::class, 'StimuliOn');
+		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
 
 		$this->assertStringContainsString("'gates'", $sBody, 'the entry does not report its gates');
 		$this->assertMatchesRegularExpression(
@@ -115,7 +115,7 @@ class ObjectActionsContractTest extends TestCase
 	 */
 	public function testAClassWithNoLifecycleIsNotReportedAsStuck(): void
 	{
-		$sBody = $this->bodyOf(ObjectSerializer::class, 'StimuliOn');
+		$sBody = $this->bodyOf(ObjectGrades::class, 'StimuliOn');
 
 		$this->assertStringContainsString('HasLifecycle', $sBody);
 		$this->assertStringContainsString('return null;', $sBody);
