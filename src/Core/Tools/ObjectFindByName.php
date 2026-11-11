@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -128,7 +129,7 @@ class ObjectFindByName extends AbstractMCPTool
 					'minimum'     => self::MIN_LIMIT,
 					'maximum'     => self::MAX_LIMIT,
 				],
-				'output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS),
+				'output_fields' => OutputFields::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS),
 			],
 			'required'   => ['name'],
 		];
@@ -401,7 +402,7 @@ class ObjectFindByName extends AbstractMCPTool
 				return []; // hides objects that the caller should not see
 			}
 
-			$aFields  = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+			$aFields  = OutputFields::ParseFieldList($sClass, $sOutputFields);
 			$aMatches = [];
 
 			while ($oObject = $oSet->Fetch()) {

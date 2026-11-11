@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -60,9 +60,9 @@ class PortalWriteOutcomeContractTest extends TestCase
 	{
 		$this->assertSame(
 			"Unknown attribute 'org_id' on class 'UserRequest'. Call core_class_schema for the attribute codes of the class.",
-			ObjectSerializer::UnknownAttributes(['org_id'], 'UserRequest')
+			OutputFields::UnknownAttributes(['org_id'], 'UserRequest')
 		);
-		$this->assertStringNotContainsString('OR 1=1', ObjectSerializer::UnknownAttributes(["x' OR 1=1 --"], 'UserRequest'));
+		$this->assertStringNotContainsString('OR 1=1', OutputFields::UnknownAttributes(["x' OR 1=1 --"], 'UserRequest'));
 	}
 
 	public function testThePortalTextNamesNoToolItDoesNotServe(): void

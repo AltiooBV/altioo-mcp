@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -93,7 +94,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 					'description' => 'The ID of the object to get.',
 					'minimum'     => 1,
 				],
-				'output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::ALL_FIELDS),
+				'output_fields' => OutputFields::FieldsSchemaProperty(OutputFields::ALL_FIELDS),
 			],
 			'required' => ['class', 'id'],
 		];
@@ -109,7 +110,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	public static function execute(
 		string $class,
 		int    $id,
-		string $output_fields = ObjectSerializer::ALL_FIELDS,
+		string $output_fields = OutputFields::ALL_FIELDS,
 	): mixed
 	{
 		if ($id < 1) {
@@ -182,11 +183,11 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 		$sClass = get_class($oObject);
 		$aVisible = $oAccess->VisibleFields($oObject);
 		if ($aVisible === null) {
-			return ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+			return OutputFields::ParseFieldList($sClass, $sOutputFields);
 		}
 
 		$sOutputFields = trim($sOutputFields);
-		if ($sOutputFields === '' || $sOutputFields === ObjectSerializer::ALL_FIELDS) {
+		if ($sOutputFields === '' || $sOutputFields === OutputFields::ALL_FIELDS) {
 			return $aVisible;
 		}
 
@@ -195,7 +196,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 		$aRequested = array_values(array_diff(array_filter(array_map('trim', explode(',', $sOutputFields)), 'strlen'), ['id', 'class']));
 		$aHidden = array_values(array_diff($aRequested, $aVisible));
 		if ($aHidden !== []) {
-			throw new ToolCallException(ObjectSerializer::UnknownAttributes($aHidden, $sClass));
+			throw new ToolCallException(OutputFields::UnknownAttributes($aHidden, $sClass));
 		}
 
 		return $aRequested;

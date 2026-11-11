@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
@@ -425,7 +426,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 */
 	protected static function fieldsSchemaProperties(): array
 	{
-		return ['output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS)];
+		return ['output_fields' => OutputFields::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS)];
 	}
 
 	/**
@@ -443,7 +444,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 */
 	protected static function fieldsForPage(string $sClass, string $sOutputFields, int $iLimit): ?array
 	{
-		$aFields = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+		$aFields = OutputFields::ParseFieldList($sClass, $sOutputFields);
 
 		if ($aFields === null && $iLimit > self::MAX_LIMIT_ALL_FIELDS) {
 			throw new ToolCallException(sprintf(

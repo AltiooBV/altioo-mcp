@@ -212,6 +212,7 @@ Not in the table because they did not move: `Controller\MCPController`; `Core\Co
 | `Service\PortalMode`: `Serves()` | `Service\Portal\PortalAccess`, same names |
 | `Core\Tools\ObjectSearchByOQL`: `CheckQuery()` | `Service\Read\ObjectQuery`, same names |
 | `Core\Tools\PortalList`: `RowOf()` | `Service\Portal\PortalRows`, same names |
+| `Helper\ObjectSerializer`: `ALL_FIELDS`, `ParseFieldList()`, `UnknownAttributes()`, `FieldsSchemaProperty()` | `Service\Read\OutputFields`, same names |
 | `Helper\ObjectSerializer`: `UNTRUSTED_NOTICE`, `UNTRUSTED_DOCUMENT_NOTICE`, `UntrustedText()`, `UntrustedTextOfRows()`, `MarkRows()` | `Service\Read\UntrustedMarker`, same names |
 | `Helper\ObjectSerializer`: `RightsOn()`, `StimuliOn()` | `Service\Read\ObjectGrades`, same names |
 

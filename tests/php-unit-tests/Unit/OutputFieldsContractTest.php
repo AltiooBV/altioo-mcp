@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Mcp\Exception\ToolCallException;
 use PHPUnit\Framework\TestCase;
@@ -61,7 +62,7 @@ class OutputFieldsContractTest extends TestCase
 		}
 
 		$this->assertSame(
-			ObjectSerializer::ALL_FIELDS,
+			OutputFields::ALL_FIELDS,
 			(new ObjectGet())->getInputSchema()['properties']['output_fields']['default']
 		);
 	}
@@ -99,9 +100,9 @@ class OutputFieldsContractTest extends TestCase
 	public function testAskingForEverythingMeansNoNarrowing(): void
 	{
 		// Neither path touches MetaModel, which is what keeps this a unit test.
-		$this->assertNull(ObjectSerializer::ParseFieldList('UserRequest', ObjectSerializer::ALL_FIELDS));
-		$this->assertNull(ObjectSerializer::ParseFieldList('UserRequest', ''));
-		$this->assertNull(ObjectSerializer::ParseFieldList('UserRequest', '  *  '));
+		$this->assertNull(OutputFields::ParseFieldList('UserRequest', OutputFields::ALL_FIELDS));
+		$this->assertNull(OutputFields::ParseFieldList('UserRequest', ''));
+		$this->assertNull(OutputFields::ParseFieldList('UserRequest', '  *  '));
 	}
 
 	/**
@@ -113,13 +114,13 @@ class OutputFieldsContractTest extends TestCase
 		$this->expectException(ToolCallException::class);
 		$this->expectExceptionMessageMatches('/output_fields|limit/');
 
-		$this->fieldsForPage('UserRequest', ObjectSerializer::ALL_FIELDS, AbstractObjectSearch::MAX_LIMIT);
+		$this->fieldsForPage('UserRequest', OutputFields::ALL_FIELDS, AbstractObjectSearch::MAX_LIMIT);
 	}
 
 	public function testEveryAttributeOfASmallPageIsAllowed(): void
 	{
 		$this->assertNull(
-			$this->fieldsForPage('UserRequest', ObjectSerializer::ALL_FIELDS, AbstractObjectSearch::MAX_LIMIT_ALL_FIELDS)
+			$this->fieldsForPage('UserRequest', OutputFields::ALL_FIELDS, AbstractObjectSearch::MAX_LIMIT_ALL_FIELDS)
 		);
 	}
 

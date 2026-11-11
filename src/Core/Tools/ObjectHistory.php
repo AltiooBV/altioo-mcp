@@ -16,7 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
-use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -181,7 +181,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
 		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
-			throw new ToolCallException(ObjectSerializer::UnknownAttributes([$sAttCode], $sFinalClass));
+			throw new ToolCallException(OutputFields::UnknownAttributes([$sAttCode], $sFinalClass));
 		}
 
 		$aHistory = HistoryReader::Within(
