@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
@@ -248,7 +249,7 @@ class PortalList extends AbstractPortalTool
 	 */
 	private static function order(array $aList, string $sClass): array
 	{
-		if ($aList['kind'] === PortalPolicy::BRICK_BROWSE) {
+		if ($aList['kind'] === PortalBricks::BRICK_BROWSE) {
 			$sFirst = $aList['columns'][0] ?? null;
 			if (is_string($sFirst) && MetaModel::IsValidAttCode($sClass, $sFirst)) {
 				return [$sFirst => true, 'id' => true];

@@ -298,7 +298,7 @@ final class PortalAccess extends ObjectAccess
 	 */
 	public static function AttachmentsOf(DBObject $oObject): array
 	{
-		if (!PortalPolicy::ShowsAttachments($oObject)) {
+		if (!PortalForms::ShowsAttachments($oObject)) {
 			return [];
 		}
 
@@ -467,7 +467,7 @@ final class PortalAccess extends ObjectAccess
 		}
 		$oHost = $this->Readable($sHostClass, (int)$oAttachment->Get('item_id'));
 
-		return $oHost !== null && PortalPolicy::ShowsAttachments($oHost) ? $oAttachment : null;
+		return $oHost !== null && PortalForms::ShowsAttachments($oHost) ? $oAttachment : null;
 	}
 
 	#[\Override]
@@ -499,7 +499,7 @@ final class PortalAccess extends ObjectAccess
 		if ($sWhy !== null) {
 			return $sWhy;
 		}
-		if (!PortalPolicy::ShowsAttachments($oObject)) {
+		if (!PortalForms::ShowsAttachments($oObject)) {
 			return "The portal does not take attachments on {$sClass}.";
 		}
 		if (\AttachmentPlugIn::IsReadonlyState($oObject, (string)$oObject->GetState(), \AttachmentPlugIn::ENUM_GUI_PORTALS) === true) {

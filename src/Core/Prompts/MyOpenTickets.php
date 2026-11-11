@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Prompts;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use MetaModel;
 use UserRights;
@@ -189,7 +190,7 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 
 		return array_values(array_filter(
 			$oPolicy->Lists(),
-			static fn (array $aList): bool => $aList['kind'] === PortalPolicy::BRICK_MANAGE
+			static fn (array $aList): bool => $aList['kind'] === PortalBricks::BRICK_MANAGE
 				&& MetaModel::IsValidClass((string)$aList['class'])
 				&& is_a((string)$aList['class'], self::TICKET_CLASS, true)
 				&& $oPolicy->ReadSet((string)$aList['class']) !== null

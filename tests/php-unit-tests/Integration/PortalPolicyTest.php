@@ -14,6 +14,8 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalLoader;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalTestBrick;
@@ -197,7 +199,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	 */
 	public function testACustomBrickClassIsReadAsTheStockTypeItExtends(): void
 	{
-		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind(PortalTestBrick::class));
+		$this->assertSame(PortalBricks::BRICK_MANAGE, PortalBricks::BrickKind(PortalTestBrick::class));
 	}
 
 	/** Reading a portal takes that portal's lock, not one every portal shares. */
@@ -205,7 +207,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	{
 		PortalPolicy::ForCurrentRequest();
 
-		$this->assertFileExists(PortalPolicy::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
+		$this->assertFileExists(PortalLoader::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
 	}
 
 	/** An id that is no file name is refused before anything is read or written under it. */
@@ -221,7 +223,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		} catch (MCPPortalException $oException) {
 			// A failure while reading the portal is wrapped, with its cause.
 			$this->assertNull($oException->getPrevious(), 'Refused by its shape, before anything tried to read it.');
-			$this->assertFileDoesNotExist(PortalPolicy::CompileLockPath($sCompiled, $sId));
+			$this->assertFileDoesNotExist(PortalLoader::CompileLockPath($sCompiled, $sId));
 			$this->assertFileDoesNotExist($sCompiled.$sId.'.scopes.php');
 		}
 	}

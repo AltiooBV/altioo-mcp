@@ -39,4 +39,4 @@ customisation made by subclassing, including the ones that change only the layou
 
 Enforced by: `PortalModeTest::testTheStockBrickTypesAreReadAndNothingElse` (unit suite) and
 `PortalPolicyTest::testACustomBrickClassIsReadAsTheStockTypeItExtends` (integration suite), on
-`PortalPolicy::BrickKind()`, which every brick goes through.
+`PortalBricks::BrickKind()`, which every brick goes through.

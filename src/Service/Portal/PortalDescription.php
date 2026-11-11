@@ -135,7 +135,7 @@ final class PortalDescription
 		return ['portal' => $oPolicy->Portal()] + $aClass + [
 			// Shown beside every form but a transition's, as a plugin field
 			// rather than an attribute; listed by core_object_get.
-			'attachments' => PortalPolicy::ShowsAttachments(MetaModel::NewObject($sClass)),
+			'attachments' => PortalForms::ShowsAttachments(MetaModel::NewObject($sClass)),
 			'forms'       => $aForms,
 		];
 	}
@@ -180,7 +180,7 @@ final class PortalDescription
 			'edit'        => $oPolicy->WriteSet($sClass) !== null,
 			// Whether a file can be added at all: the class takes attachments and may be edited. A state or an
 			// edit form can still refuse one object; core_object_get says may_attach for that.
-			'attach'      => $oPolicy->WriteSet($sClass) !== null && PortalPolicy::ShowsAttachments(MetaModel::NewObject($sClass)),
+			'attach'      => $oPolicy->WriteSet($sClass) !== null && PortalForms::ShowsAttachments(MetaModel::NewObject($sClass)),
 			'create'      => $aCreate,
 			'create_chosen_by_portal' => $aChosen,
 			'stimuli'     => $aStimuli,

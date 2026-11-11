@@ -26,7 +26,11 @@ use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalForms;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalLoader;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalReach;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
@@ -332,7 +336,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testAFormFieldWrittenReadOnlyIsReadOnly(): void
 	{
-		$aForm = PortalPolicy::WithReadOnlyHonoured([
+		$aForm = PortalForms::WithReadOnlyHonoured([
 			'type'   => 'custom_list',
 			'fields' => [
 				'title'       => ['readonly' => true],
@@ -351,7 +355,7 @@ class PortalModeTest extends TestCase
 	{
 		$aForm = ['type' => 'zlist', 'fields' => 'details'];
 
-		$this->assertSame($aForm, PortalPolicy::WithReadOnlyHonoured($aForm));
+		$this->assertSame($aForm, PortalForms::WithReadOnlyHonoured($aForm));
 	}
 
 	/**
@@ -369,10 +373,10 @@ class PortalModeTest extends TestCase
 
 		$this->assertSame(
 			['ongoing-tickets', 'all-tickets', 'services'],
-			PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Ticket', 'UserRequest'])
+			PortalReach::BricksReaching($aReach, ['cmdbAbstractObject', 'Ticket', 'UserRequest'])
 		);
-		$this->assertSame(['ongoing-tickets', 'all-tickets'], PortalPolicy::BricksReaching($aReach, ['Ticket', 'Incident']));
-		$this->assertSame([], PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
+		$this->assertSame(['ongoing-tickets', 'all-tickets'], PortalReach::BricksReaching($aReach, ['Ticket', 'Incident']));
+		$this->assertSame([], PortalReach::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
 	}
 
 	/** The id becomes a file name that iTop then requires, so nothing else passes for one. */
@@ -409,10 +413,10 @@ class PortalModeTest extends TestCase
 	 */
 	public function testEachPortalCompilesUnderALockOfItsOwn(): void
 	{
-		$sOne = PortalPolicy::CompileLockPath('/cache/portals/', 'itop-portal');
+		$sOne = PortalLoader::CompileLockPath('/cache/portals/', 'itop-portal');
 
 		$this->assertSame('/cache/portals/itop-portal.compile.lock', $sOne);
-		$this->assertNotSame($sOne, PortalPolicy::CompileLockPath('/cache/portals/', 'partner-portal'));
+		$this->assertNotSame($sOne, PortalLoader::CompileLockPath('/cache/portals/', 'partner-portal'));
 	}
 
 	/**
@@ -423,13 +427,13 @@ class PortalModeTest extends TestCase
 	 */
 	public function testTheStockBrickTypesAreReadAndNothingElse(): void
 	{
-		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\ManageBrick'));
-		$this->assertSame(PortalPolicy::BRICK_BROWSE, PortalPolicy::BrickKind('\\Combodo\\iTop\\Portal\\Brick\\BrowseBrick'));
-		$this->assertSame(PortalPolicy::BRICK_CREATE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\CreateBrick'));
+		$this->assertSame(PortalBricks::BRICK_MANAGE, PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\ManageBrick'));
+		$this->assertSame(PortalBricks::BRICK_BROWSE, PortalBricks::BrickKind('\\Combodo\\iTop\\Portal\\Brick\\BrowseBrick'));
+		$this->assertSame(PortalBricks::BRICK_CREATE, PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\CreateBrick'));
 
-		$this->assertNull(PortalPolicy::BrickKind('Acme\\Portal\\Brick\\MyTicketsBrick'), 'a class that extends none of them');
-		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\FilterBrick'), 'a brick that holds no data of its own');
-		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\UserProfileBrick'));
+		$this->assertNull(PortalBricks::BrickKind('Acme\\Portal\\Brick\\MyTicketsBrick'), 'a class that extends none of them');
+		$this->assertNull(PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\FilterBrick'), 'a brick that holds no data of its own');
+		$this->assertNull(PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\UserProfileBrick'));
 	}
 
 	/**
@@ -441,7 +445,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testACreateActionIsKeptWhetherItsClassIsNamedOrChosen(): void
 	{
-		$aNamed = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+		$aNamed = PortalBricks::CreateActionOf('services/1/1/1/create_from_this', [
 			'type'    => 'create_from_this',
 			'factory' => ['type' => 'class', 'value' => 'UserRequest'],
 			'rules'   => ['contact-to-userrequest'],
@@ -450,7 +454,7 @@ class PortalModeTest extends TestCase
 		$this->assertNull($aNamed['factory_method']);
 		$this->assertSame(['contact-to-userrequest'], $aNamed['rules']);
 
-		$aChosen = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+		$aChosen = PortalBricks::CreateActionOf('services/1/1/1/create_from_this', [
 			'type'    => 'create_from_this',
 			'factory' => ['type' => 'method', 'value' => '\\Ticket::CreateFromServiceSubcategory'],
 		], 'ServiceSubcategory', 'New request');
@@ -458,8 +462,8 @@ class PortalModeTest extends TestCase
 		$this->assertSame('\\Ticket::CreateFromServiceSubcategory', $aChosen['factory_method']);
 		$this->assertSame('ServiceSubcategory', $aChosen['from']);
 
-		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'view'], 'Service', ''), 'not a create action');
-		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'create_from_this', 'factory' => ['type' => 'method', 'value' => '']], 'Service', ''));
+		$this->assertNull(PortalBricks::CreateActionOf('x', ['type' => 'view'], 'Service', ''), 'not a create action');
+		$this->assertNull(PortalBricks::CreateActionOf('x', ['type' => 'create_from_this', 'factory' => ['type' => 'method', 'value' => '']], 'Service', ''));
 	}
 
 	/**
@@ -472,12 +476,12 @@ class PortalModeTest extends TestCase
 	{
 		$aPinned = ['UserRequest', 'Incident'];
 
-		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['UserRequest']));
-		$this->assertFalse(PortalPolicy::CanHold($aPinned, [], ['Change']));
-		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['Change', 'Incident']), 'one concrete class the scope allows is enough');
-		$this->assertFalse(PortalPolicy::CanHold(null, ['Change', 'Problem'], ['Change']), 'excluded by NOT IN');
-		$this->assertTrue(PortalPolicy::CanHold(null, [], ['Change']), 'no condition, no conclusion');
-		$this->assertFalse(PortalPolicy::CanHold(null, [], []), 'a class with no concrete class holds nothing');
+		$this->assertTrue(PortalReach::CanHold($aPinned, [], ['UserRequest']));
+		$this->assertFalse(PortalReach::CanHold($aPinned, [], ['Change']));
+		$this->assertTrue(PortalReach::CanHold($aPinned, [], ['Change', 'Incident']), 'one concrete class the scope allows is enough');
+		$this->assertFalse(PortalReach::CanHold(null, ['Change', 'Problem'], ['Change']), 'excluded by NOT IN');
+		$this->assertTrue(PortalReach::CanHold(null, [], ['Change']), 'no condition, no conclusion');
+		$this->assertFalse(PortalReach::CanHold(null, [], []), 'a class with no concrete class holds nothing');
 	}
 
 	/**
