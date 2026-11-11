@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use AttributeBlob;
 use AttributeCaseLog;
 use AttributeDefinition;
@@ -357,7 +358,7 @@ final class ObjectSerializer
 		];
 
 		$aGrades = [];
-		foreach (DatamodelReader::OBJECT_RIGHTS_KEYS as $sKey) {
+		foreach (GateGrades::OBJECT_RIGHTS_KEYS as $sKey) {
 			$sClassGrade = $aClassGrades[$sKey] ?? 'depends';
 			if ($sClassGrade !== 'depends') {
 				$aGrades[$sKey] = $sClassGrade;

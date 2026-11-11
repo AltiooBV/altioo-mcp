@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -46,11 +47,11 @@ class ObjectActionsContractTest extends TestCase
 	{
 		$this->assertSame(
 			[],
-			array_diff(DatamodelReader::OBJECT_RIGHTS_KEYS, DatamodelReader::RightsKeys()),
+			array_diff(GateGrades::OBJECT_RIGHTS_KEYS, GateGrades::RightsKeys()),
 			'an object gate is named that no rights block carries'
 		);
-		$this->assertNotContains('read', DatamodelReader::OBJECT_RIGHTS_KEYS);
-		$this->assertNotContains('create', DatamodelReader::OBJECT_RIGHTS_KEYS);
+		$this->assertNotContains('read', GateGrades::OBJECT_RIGHTS_KEYS);
+		$this->assertNotContains('create', GateGrades::OBJECT_RIGHTS_KEYS);
 	}
 
 	/**

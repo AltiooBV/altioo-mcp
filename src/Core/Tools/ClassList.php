@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -99,8 +100,8 @@ class ClassList extends AbstractMCPTool implements PortalAware
 				'may'      => [
 					'type'        => 'string',
 					'description' => 'Keep only the classes this caller may act on through the named gate, and report every gate on each one. Empty (the default) means no such narrowing and no rights reported. "*" reports the gates without narrowing on any of them, which is the one call that answers "what may I do across all of these". A class the named gate refuses outright is dropped; one graded "depends" is kept, because that is the datamodel asking for the object rather than refusing the class. The gates are the ones the tools check: '
-						.implode(', ', DatamodelReader::RightsKeys()).'.',
-					'enum'        => DatamodelReader::MayValues(),
+						.implode(', ', GateGrades::RightsKeys()).'.',
+					'enum'        => GateGrades::MayValues(),
 					'default'     => '',
 				],
 			],
@@ -140,13 +141,13 @@ class ClassList extends AbstractMCPTool implements PortalAware
 			));
 		}
 
-		if ($sMay !== '' && !in_array($sMay, DatamodelReader::MayValues(), true)) {
+		if ($sMay !== '' && !in_array($sMay, GateGrades::MayValues(), true)) {
 			// Same courtesy as the category above: the valid ones cost one line.
 			throw new ToolCallException(sprintf(
 				"Unknown gate '%s'. Valid gates: %s. Pass '%s' to report them all without narrowing.",
 				$sMay,
-				implode(', ', DatamodelReader::RightsKeys()),
-				DatamodelReader::RIGHTS_ALL
+				implode(', ', GateGrades::RightsKeys()),
+				GateGrades::RIGHTS_ALL
 			));
 		}
 

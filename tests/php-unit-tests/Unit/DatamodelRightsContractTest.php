@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -234,7 +235,7 @@ class DatamodelRightsContractTest extends TestCase
 		$sRights = $this->body('RightsOf');
 
 		$this->assertMatchesRegularExpression(
-			"/'bulkCreate'\s*=>\s*self::stricter\(/",
+			"/'bulkCreate'\s*=>\s*GateGrades::stricter\(/",
 			$sRights,
 			'bulkCreate is no longer derived from two grades'
 		);
@@ -253,7 +254,7 @@ class DatamodelRightsContractTest extends TestCase
 	 */
 	public function testStricterTakesTheWorseOfTwoGrades(): void
 	{
-		$oStricter = new ReflectionMethod(DatamodelReader::class, 'stricter');
+		$oStricter = new ReflectionMethod(GateGrades::class, 'stricter');
 
 		$this->assertSame('yes', $oStricter->invoke(null, 'yes', 'yes'));
 
@@ -310,7 +311,7 @@ class DatamodelRightsContractTest extends TestCase
 			$this->markTestSkipped('UR_ALLOWED_* are defined by iTop.');
 		}
 
-		$oGrade = new ReflectionMethod(DatamodelReader::class, 'grade');
+		$oGrade = new ReflectionMethod(GateGrades::class, 'grade');
 
 		$this->assertSame('no', $oGrade->invoke(null, UR_ALLOWED_NO));
 		$this->assertSame('yes', $oGrade->invoke(null, UR_ALLOWED_YES));
@@ -328,7 +329,7 @@ class DatamodelRightsContractTest extends TestCase
 			$this->markTestSkipped('UR_ALLOWED_* are defined by iTop.');
 		}
 
-		$oGrade = new ReflectionMethod(DatamodelReader::class, 'grade');
+		$oGrade = new ReflectionMethod(GateGrades::class, 'grade');
 
 		$this->assertSame('yes', $oGrade->invoke(null, true));
 		$this->assertSame('no', $oGrade->invoke(null, false));
@@ -405,15 +406,17 @@ class DatamodelRightsContractTest extends TestCase
 		return array_values($aActions);
 	}
 
-	/** The body of one DatamodelReader method, as written. */
+	/** The body of one method of the datamodel reader or of the grades it uses, as written. */
 	private function body(string $sMethod): string
 	{
-		$aLines = file(self::READER, FILE_IGNORE_NEW_LINES);
 		$iStart = null;
-		foreach ($aLines as $iIndex => $sLine) {
-			if (preg_match('/function '.preg_quote($sMethod, '/').'\s*\(/', $sLine)) {
-				$iStart = $iIndex;
-				break;
+		foreach ([self::READER, self::SOURCE_DIR.'/Service/Rights/GateGrades.php'] as $sFile) {
+			$aLines = file($sFile, FILE_IGNORE_NEW_LINES);
+			foreach ($aLines as $iIndex => $sLine) {
+				if (preg_match('/function '.preg_quote($sMethod, '/').'\s*\(/', $sLine)) {
+					$iStart = $iIndex;
+					break 2;
+				}
 			}
 		}
 		$this->assertNotNull($iStart, "DatamodelReader::{$sMethod}() is gone");

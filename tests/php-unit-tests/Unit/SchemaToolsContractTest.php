@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -62,19 +63,19 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aSchema = (new ClassList())->getInputSchema();
 
-		$this->assertSame(DatamodelReader::MayValues(), $aSchema['properties']['may']['enum']);
+		$this->assertSame(GateGrades::MayValues(), $aSchema['properties']['may']['enum']);
 
 		// Every offered value is either a key of the block or the sentinel that
 		// asks for the block without narrowing. A ninth gate arriving in one
 		// list and not the other is what this catches.
 		$this->assertSame(
-			DatamodelReader::RightsKeys(),
-			array_values(array_diff(DatamodelReader::MayValues(), [DatamodelReader::RIGHTS_ALL])),
+			GateGrades::RightsKeys(),
+			array_values(array_diff(GateGrades::MayValues(), [GateGrades::RIGHTS_ALL])),
 			'may offers a value that is neither a gate a rights block reports nor the report-them-all sentinel'
 		);
 		$this->assertNotContains(
-			DatamodelReader::RIGHTS_ALL,
-			DatamodelReader::RightsKeys(),
+			GateGrades::RIGHTS_ALL,
+			GateGrades::RightsKeys(),
 			'the report-them-all sentinel has become a gate name, so FilterByRight() would look for it in a rights block'
 		);
 	}
@@ -101,7 +102,7 @@ class SchemaToolsContractTest extends TestCase
 		);
 		$this->assertCount(
 			2,
-			DatamodelReader::FilterByRight($aClasses, DatamodelReader::RIGHTS_ALL),
+			DatamodelReader::FilterByRight($aClasses, GateGrades::RIGHTS_ALL),
 			'the sentinel must narrow on nothing: it reports what the caller may do, it does not decide it'
 		);
 	}
@@ -553,7 +554,7 @@ class SchemaToolsContractTest extends TestCase
 		preg_match_all("/'([A-Za-z]+)'\\s*=>/", $sBody, $aMatches);
 
 		$this->assertSame(
-			DatamodelReader::RightsKeys(),
+			GateGrades::RightsKeys(),
 			$aMatches[1],
 			'RightsKeys() and the block rights() returns have come apart'
 		);
