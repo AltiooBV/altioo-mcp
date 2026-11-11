@@ -43,6 +43,13 @@ maintainer; the folders and a request's path through them are in
    upgrade; nothing else needs doing. The old background-task row is left to iTop (under For
    administrators).
 
+**Tested on.** iTop **3.2.3-3** and **3.3.0-1**, each on PHP **8.2** and **8.4** — installed
+through iTop's own unattended setup by the local CI runner (`tools/ci/local/run.sh matrix`), then
+exercised by iTop's module validation suite, the module's integration suite and by calling the
+endpoint over HTTP, portal mode included. The unit suite ran on 8.2, 8.3 and 8.4. An instance
+installed with 1.3.0 on iTop 3.2.3-3 (PHP 8.2) was upgraded to this version, twice, with its
+seeded data and settings intact, and the integration suite passed on it.
+
 ### Breaking for packs
 
 **The namespace layout changed, and moved classes have no aliases.** A pack is written against
@@ -81,7 +88,8 @@ The row of the old class stays in that table. iTop's own cron deals with it: `Re
 in `webservices/cron.php` marks every task whose class no longer exists `removed` on its next
 run, and only `active` tasks are ever run, so the old row is idle, not running twice. It is never
 deleted, and that is iTop's behaviour for every background process that goes away, so there is
-nothing to clean up. Its run count and durations do not carry over to the new row.
+nothing to clean up (checked on iTop 3.2.3-3: with a row for the old class in place, one cron run
+set it to `removed`). Its run count and durations do not carry over to the new row.
 
 ### Changed
 
