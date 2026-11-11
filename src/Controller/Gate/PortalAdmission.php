@@ -14,8 +14,8 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Combodo\iTop\Application\Helper\Session;
 use LoginWebPage;
 use MetaModel;
@@ -26,7 +26,7 @@ use UserRights;
  * refusal as it was.
  *
  * Asked once, by the login gate, after iTop has refused a portal-only user the
- * console. It is what calls PortalAccess::Enter() (doc/adr/0007), and so is the
+ * console. It is what calls RequestScope::EnterPortal() (doc/adr/0007), and so is the
  * one place a request enters a portal.
  *
  * @internal
@@ -73,7 +73,7 @@ final class PortalAdmission
 		);
 
 		if ($sRefusal === null) {
-			PortalAccess::Enter($sPortal);
+			RequestScope::EnterPortal($sPortal);
 
 			return LoginWebPage::EXIT_CODE_OK;
 		}

@@ -28,6 +28,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalForms;
@@ -62,7 +63,7 @@ class PortalModeTest extends TestCase
 {
 	protected function tearDown(): void
 	{
-		PortalAccess::Leave();
+		RequestScope::Close();
 	}
 
 	/**
@@ -217,7 +218,7 @@ class PortalModeTest extends TestCase
 			$this->assertFalse($this->isHidden($oElement, $sIdentifier), get_class($oElement).' should be served to a console user');
 		}
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aElements as $sIdentifier => $oElement) {
 			$this->assertTrue($this->isHidden($oElement, $sIdentifier), get_class($oElement).' must not be served in portal mode');
@@ -234,7 +235,7 @@ class PortalModeTest extends TestCase
 		$aTools = ['core_class_list' => new ClassList(), 'core_class_schema' => new ClassSchema()];
 		$aConsole = array_map(static fn ($oTool): string => (string)$oTool->getDescription(), $aTools);
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aTools as $sName => $oTool) {
 			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} answers from the portal's description and says so");
@@ -254,7 +255,7 @@ class PortalModeTest extends TestCase
 		$this->assertTrue($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list is not for a console user');
 		$this->assertTrue(PortalAccess::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list to a portal user');
 		$this->assertFalse($this->isHidden($oTool, 'core_portal_list', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_portal_list to a read-only token');
@@ -269,7 +270,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
 		$this->assertFalse($this->isHidden($oResource, 'itop://core/current-user'));
@@ -288,7 +289,7 @@ class PortalModeTest extends TestCase
 		$oResource = new InstructionsResource();
 		$sConsoleDescription = (string)$oTool->getDescription();
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_instructions'));
 		$this->assertFalse($this->isHidden($oResource, 'itop://core/instructions'));
@@ -305,7 +306,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testAPackElementDeclaringItselfPortalAwareIsNotServed(): void
 	{
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse(PortalAccess::Serves(new PortalAwarePackTool()));
 		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
@@ -318,7 +319,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testTheUsualFiltersStillNarrowWhatPortalModeServes(): void
 	{
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		$oList = new ClassList();
 
 		$this->assertTrue($this->isHidden($oList, 'core_class_list', ['core_class_list']), 'by identifier');
@@ -494,7 +495,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testThePortalIsToldWhatItIsServed(): void
 	{
-		PortalAccess::Enter('partner-portal');
+		RequestScope::EnterPortal('partner-portal');
 
 		$sText = ServerInstructions::ForCaller(AccessPolicy::Unrestricted());
 
@@ -563,7 +564,7 @@ class PortalModeTest extends TestCase
 			'core_object_create'         => ['$oAccess->Prepared(trim($action), $from_id)', '$oAccess->RefusalToSet($oObject, $fields)', '$oAccess->RefusalsForReach('],
 		];
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aWrites as $sName => $oTool) {
 			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
@@ -589,7 +590,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertTrue(PortalAccess::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
@@ -611,7 +612,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
 
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
 		$this->assertTrue($this->isHidden($oTool, 'core_object_history', ['core_object_history']), 'the instance can still turn it off');
@@ -677,7 +678,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testEveryToolRegistersInPortalMode(): void
 	{
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		MCPRegistry::Clear();
 		try {
 			CoreExtensions::RegisterServiceProvider();
@@ -753,7 +754,7 @@ class PortalModeTest extends TestCase
 	public function testAReadOnlyTokenCannotAttachInPortalMode(): void
 	{
 		$oTool = new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach();
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertTrue(PortalAccess::Serves($oTool));
 		$this->assertFalse($this->isHidden($oTool, 'core_object_attach'), 'core_object_attach to a portal user with a write token');
@@ -774,13 +775,13 @@ class PortalModeTest extends TestCase
 	 */
 	public function testPortalModeWithoutItsAccessIsRefused(): void
 	{
-		PortalAccess::Leave();
+		RequestScope::Close();
 		PortalMode::Remember('itop-portal');
 		try {
 			$this->expectException(MCPPortalException::class);
 			ObjectAccess::Current();
 		} finally {
-			PortalAccess::Leave();
+			RequestScope::Close();
 		}
 	}
 }

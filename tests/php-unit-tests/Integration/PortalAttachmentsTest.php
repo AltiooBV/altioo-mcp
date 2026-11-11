@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetDocument;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -97,12 +97,12 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$sLogin = 'portal-attach-'.$sSuffix;
 		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Portal-Attach-'.$sSuffix.'-1!', $this->iContact);
 		UserRights::Login($sLogin);
-		PortalAccess::Enter(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalAccess::Leave();
+		RequestScope::Close();
 		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', DocumentAccess::MODULE_SETTING_MAX_BYTES, DocumentAccess::DEFAULT_MAX_BYTES);
 		MetaModel::GetConfig()->SetModuleSetting('itop-attachments', 'readonly_states', null);
 
@@ -233,7 +233,7 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 	{
 		$this->assertFalse((bool)UserRights::IsActionAllowed('Attachment', UR_ACTION_CREATE), 'the stock Portal user profile holds no such right');
 
-		PortalAccess::Leave();
+		RequestScope::Close();
 		try {
 			ObjectAttach::execute('UserRequest', $this->iOwn, 'x.txt', base64_encode('x'), 'text/plain', null, false);
 			$this->fail('the console let a user without the right create an attachment');

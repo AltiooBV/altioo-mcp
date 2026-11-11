@@ -17,8 +17,8 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -64,14 +64,14 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$sLogin = 'excl-portal-'.$sSuffix;
 		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Excl-Portal-'.$sSuffix.'-1!', $iContact);
 		UserRights::Login($sLogin);
-		PortalAccess::Enter(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 		$this->exclude([], []);
 	}
 
 	protected function tearDown(): void
 	{
 		$this->exclude([], []);
-		PortalAccess::Leave();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 

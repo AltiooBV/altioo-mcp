@@ -189,7 +189,7 @@ final class PortalMode
 		return self::$sCurrent;
 	}
 
-	/** For tests, and for a runner that serves more than one request: see PortalAccess::Leave(). @since 1.2.0 */
+	/** For tests, and for a runner that serves more than one request: see RequestScope::Close(). @since 1.2.0 */
 	public static function Forget(): void
 	{
 		self::$sCurrent = null;

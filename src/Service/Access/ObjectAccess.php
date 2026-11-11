@@ -43,7 +43,7 @@ class ObjectAccess
 	/**
 	 * How this request builds its access, when something above set one.
 	 *
-	 * Set by whoever puts the request in portal mode ({@see PortalAccess::Enter()}),
+	 * Set by whoever puts the request in portal mode (`RequestScope::EnterPortal()`),
 	 * because choosing the portal's subclass is a decision about the portal, and
 	 * this base class sits below it. A factory and not an instance: the portal
 	 * cannot always be read, and the refusal belongs to the first tool that asks,

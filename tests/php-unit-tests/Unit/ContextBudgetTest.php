@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
@@ -154,7 +155,7 @@ class ContextBudgetTest extends TestCase
 	{
 		MCPRegistry::Clear();
 		CoreExtensions::RegisterServiceProvider();
-		PortalAccess::Enter('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		try {
 			$iDescriptions = 0;
 			$iSchemas = 0;
@@ -166,7 +167,7 @@ class ContextBudgetTest extends TestCase
 				$iSchemas += strlen((string)json_encode($oTool->getInputSchema()));
 			}
 		} finally {
-			PortalAccess::Leave();
+			RequestScope::Close();
 			MCPRegistry::Clear();
 		}
 

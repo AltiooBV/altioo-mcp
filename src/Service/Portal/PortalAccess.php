@@ -20,7 +20,6 @@ use MetaModel;
 use Mcp\Exception\ToolCallException;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 /**
  * {@see ObjectAccess} in portal mode: the console's answer, narrowed by the
@@ -37,18 +36,17 @@ final class PortalAccess extends ObjectAccess
 	}
 
 	/**
-	 * Puts this request in portal mode: remembers the portal, and tells
-	 * ObjectAccess to answer with this class from now on.
+	 * The access of the portal this request is served in.
 	 *
-	 * The one place the request is set up for a portal, called by the
-	 * controller once the admission checks pass. The access is built on each
-	 * call to ObjectAccess::Current(), not here, so a portal that cannot be
-	 * read refuses the tool that needs it and not the connection.
+	 * What RequestScope::EnterPortal() has ObjectAccess build on each call to
+	 * Current(), so a portal that cannot be read refuses the tool that needs it
+	 * and not the connection.
+	 *
+	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the request is not in portal mode, or the portal cannot be read.
 	 */
-	public static function Enter(string $sPortal): void
+	public static function ForCurrentRequest(): self
 	{
-		PortalMode::Remember($sPortal);
-		ObjectAccess::Remember(static fn (): ObjectAccess => new self(PortalPolicy::ForCurrentRequest()));
+		return new self(PortalPolicy::ForCurrentRequest());
 	}
 
 	/**
@@ -70,14 +68,6 @@ final class PortalAccess extends ObjectAccess
 
 	/** Where this module's own elements live. */
 	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
-
-	/** Leaves portal mode: for tests, and for a runner that serves more than one request. */
-	public static function Leave(): void
-	{
-		PortalMode::Forget();
-		PortalPolicy::Forget();
-		ObjectAccess::Forget();
-	}
 
 	/**
 	 * The object, if UserRights and the portal's scopes both let the caller
