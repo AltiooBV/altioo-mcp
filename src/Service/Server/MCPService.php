@@ -27,6 +27,10 @@ use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
 
 /**
+ * Builds the MCP server for one request: the transport and its middleware, and every element the
+ * registry holds that this caller is served. What the caller is served is ServedElements, and the
+ * warnings about stale settings are SettingsWarnings.
+ *
  * @internal
  * @since 1.0.0
  */

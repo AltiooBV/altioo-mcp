@@ -176,13 +176,13 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 |---|---|
 | `Controller` | The endpoint, `MCPController`, with `CallRequest`, `CallLog` and `MCPResponse`; each check a request passes is one class under `Controller\Gate`, run from one ordered list |
 | `Hook` | What iTop calls into: `AuditHousekeeping`, the background process |
-| `Service\Server` | Builds the MCP server for one request from the registry, `MCPService`, and its session store |
+| `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and its session store |
 | `Core` | The core tools, resources, resource templates and prompts, and `ServerInstructions` |
 | `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from, `PortalAccess` (the portal's `ObjectAccess`), the description and the rows a list is built from |
 | `Service\Write` | Turning a caller's fields into a checked write: `DryRun`, `WritePlan`, `WriteValues`, `DeletionCascade`, `WriteOutcome` and the rules a value must pass (`EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `ExternalKeyPolicy`) |
 | `Service\Access` | The question every tool asks of an object: may this caller see it, change it? `ObjectAccess` answers by the console's rules; `DocumentFetch` is the rights half of reading a document |
-| `Service\Read` | Reading objects out: `ObjectQuery`, `ObjectSerializer`, `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, and the datamodel description (`DatamodelReader`, `ClassCatalog`, `AttributeDescription`, `AttributeFormat`) |
-| `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy`, `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
+| `Service\Read` | Reading objects out: `ObjectQuery`, `ObjectSerializer` (with `ObjectGrades`, `UntrustedMarker`, `OutputFields` and `ValueCeilings`), `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, and the datamodel description (`DatamodelReader`, `ClassCatalog`, `AttributeDescription`, `AttributeFormat`) |
+| `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy` (with `ExclusionSettings` and `ExclusionSearches`), `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
 | `Service\Audit` | The audit trail: `AuditRetention`, `ChangeSummary`, `ReadSummary` |
 | `Helper`, `Model`, `Exception` | Small stateless utilities and per-request facts (`Settings`, `MCPLog`, `PortalMode`, `ObjectId`, `MCPHttp`), the value object `MCPResult`, and the exceptions |
 | `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`. iTop has no equivalent folder |

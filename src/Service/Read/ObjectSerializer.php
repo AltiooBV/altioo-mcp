@@ -50,6 +50,10 @@ use iAttributeNoGroupBy;
  * read it in full; the ceilings are there so that a broad read cannot spend a
  * context window nobody asked it to spend.
  *
+ * What it used to do beside this lives in Service\Read: ObjectGrades (what the caller may do to the
+ * object), UntrustedMarker (which fields hold other people's text), OutputFields (the output_fields
+ * argument) and ValueCeilings (the cuts that keep a read small).
+ *
  * @api
  * @since 1.0.0
  */

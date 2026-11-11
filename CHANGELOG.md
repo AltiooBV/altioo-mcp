@@ -97,8 +97,9 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   by `LayerDependencyTest` with an empty baseline, and `@api` is enforced by
   `PublicSurfaceTest`. The decision is [ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md); the
   level-2 view is [doc/architecture.md](doc/architecture.md).
-- **Six classes are split.** `MCPHelper` (dissolved), `WritePlan`, `AccessGrants`,
-  `DatamodelReader`, `PortalPolicy` and `MCPController` each did several jobs. The code was moved,
+- **Nine classes are split.** `MCPHelper` (dissolved), `WritePlan`, `AccessGrants`,
+  `DatamodelReader`, `PortalPolicy`, `MCPController`, `ObjectSerializer`, `ExclusionPolicy` and
+  `MCPService` each did several jobs. The code was moved,
   not rewritten, and each gate a request passes is one class under `Controller\Gate`, run from
   one ordered list.
 - **Name table, 1.3 → 2.0, below.** Checked by script against the 1.3.0 tag and the 2.0 tree: every class

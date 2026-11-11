@@ -32,6 +32,10 @@ use utils;
  * This narrows the channel, not the account. Nothing here is an access control:
  * the same account reads the same data in the console.
  *
+ * It answers the question - is this class, this attribute excluded, and is the caller exempt - and
+ * reads its settings through ExclusionSettings. What the answer does to a search is
+ * ExclusionSearches.
+ *
  * @internal
  * @since 1.3.0
  */
