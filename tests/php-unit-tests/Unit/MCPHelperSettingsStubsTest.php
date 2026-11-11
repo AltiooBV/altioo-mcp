@@ -40,6 +40,9 @@ class MCPHelperSettingsStubsTest extends TestCase
 		$aMissing = [];
 		foreach ((new ReflectionClass(Settings::class))->getMethods(\ReflectionMethod::IS_PUBLIC) as $oMethod) {
 			$sName = $oMethod->getName();
+			if (str_contains((string)$oMethod->getDocComment(), '@since 2.0.0')) {
+				continue; // new in 2.0: no 1.x caller can have used it, so nothing to keep as a stub
+			}
 			if (!method_exists(MCPHelper::class, $sName)) {
 				$aMissing[] = $sName;
 				continue;

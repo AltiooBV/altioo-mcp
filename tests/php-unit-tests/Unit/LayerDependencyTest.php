@@ -94,7 +94,6 @@ class LayerDependencyTest extends TestCase
 	 * Shrink it, never grow it.
 	 */
 	private const BASELINE = <<<'TXT'
-Helper\Settings → Service\Rights\ExclusionPolicy
 TXT;
 
 	public function testEveryClassHasALayer(): void

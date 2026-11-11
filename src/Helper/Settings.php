@@ -6,7 +6,6 @@
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
-use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use utils;
 
@@ -300,9 +299,12 @@ final class Settings
 	 * AccessPolicy::Of() already answers with nothing for a list of unknown
 	 * grades. The caller serves nothing on true; the readers above log why.
 	 *
-	 * @since 1.3.0
+	 * Only the two lists: {@see \Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy::SettingsAreMalformed()}
+	 * adds the exclusions, which a setting reader does not judge.
+	 *
+	 * @since 2.0.0
 	 */
-	public static function AccessSettingsAreMalformed(): bool
+	public static function AccessListsAreMalformed(): bool
 	{
 		foreach ([self::MODULE_SETTING_CAPABILITIES, self::MODULE_SETTING_ENABLED_TOOLSETS] as $sSetting) {
 			if (!is_array(utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, []))) {
@@ -310,9 +312,7 @@ final class Settings
 			}
 		}
 
-		// The exclusions (doc/adr/0012): a setting that cannot be honoured is not one to read as empty,
-		// since empty is the spelling of "nothing is excluded".
-		return ExclusionPolicy::IsMalformed();
+		return false;
 	}
 
 	/**

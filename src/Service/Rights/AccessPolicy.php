@@ -84,8 +84,23 @@ final class AccessPolicy
 	}
 
 	/**
+	 * Whether the access settings cannot be honoured: mcp_capabilities or
+	 * mcp_enabled_toolsets is not a list, or the exclusions are malformed.
+	 *
+	 * The exclusions (doc/adr/0012): a setting that cannot be honoured is not
+	 * one to read as empty, since empty is the spelling of "nothing is
+	 * excluded". The caller serves {@see self::Nothing()} on true.
+	 *
+	 * @since 2.0.0
+	 */
+	public static function SettingsAreMalformed(): bool
+	{
+		return Settings::AccessListsAreMalformed() || ExclusionPolicy::IsMalformed();
+	}
+
+	/**
 	 * No grade and no toolset: what an instance whose access settings cannot
-	 * be read is served. See Settings::AccessSettingsAreMalformed().
+	 * be read is served. See {@see self::SettingsAreMalformed()}.
 	 *
 	 * @since 1.1.1
 	 */

@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -173,7 +173,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 		$this->configure(['Team'], ['Person' => ['phone']], $mExempt);
 		UserRights::Login($this->sExempt);
 
-		$this->assertTrue(Settings::AccessSettingsAreMalformed());
+		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
 		$this->assertFalse(ExclusionPolicy::IsExempt(), 'an account was exempted by a setting that cannot be honoured');
 		foreach (['objects', 'datamodel'] as $sToolset) {
 			$this->assertFalse(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset($sToolset), "{$sToolset} is served");

@@ -615,15 +615,6 @@ class MCPHelper
 	}
 
 	/**
-	 * @deprecated 1.3.0 use Settings::AccessSettingsAreMalformed()
-	 * @since 1.1.1
-	 */
-	public static function AccessSettingsAreMalformed(): bool
-	{
-		return Settings::AccessSettingsAreMalformed();
-	}
-
-	/**
 	 * @deprecated 1.3.0 use Settings::IsAccessRestricted()
 	 * @since 1.1.1
 	 */

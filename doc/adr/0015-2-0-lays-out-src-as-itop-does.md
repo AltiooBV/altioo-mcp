@@ -144,6 +144,11 @@ An iTop developer opening this module should find that shape.
   it, so the server remembers how to answer once per request (`MCPService::RememberServed()`, from
   `run()`) and they ask `Service\Rights\ServedAccess`, as they ask `AccessPolicy`. The answer is
   computed when asked, as before. Nothing remembered answers with nothing served.
+- **A setting reader does not judge the exclusions.** `Settings::AccessSettingsAreMalformed()` asked
+  `ExclusionPolicy::IsMalformed()`. The list check stays in `Settings` (`AccessListsAreMalformed()`),
+  and the whole question moved to `AccessPolicy::SettingsAreMalformed()`, its only caller's neighbour.
+  The 1.3 method and its `MCPHelper` stub could not stay: the stub would have imported Rights from
+  Helper. Both go with the other 1.3 deprecations, early; the changelog's name table lists them.
 - **Some "feature" classes are bottom-level facts.** `PortalMode`, `Identifier`, `AsId()` and the
   request's token and host are asked by every layer. They go to `Helper`.
 - **Packs call the registry.** The example pack registers through `MCPRegistry` and

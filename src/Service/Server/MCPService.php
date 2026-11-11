@@ -672,7 +672,7 @@ final class MCPService
 	{
 		$oConfigured = AccessPolicy::Of(Settings::GetCapabilities(), Settings::GetEnabledToolsets());
 
-		if (Settings::AccessSettingsAreMalformed()) {
+		if (AccessPolicy::SettingsAreMalformed()) {
 			// The readers above answered "everything" and logged why. A token
 			// cannot widen nothing, so there is nothing left to narrow.
 			return AccessPolicy::Nothing();

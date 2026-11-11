@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use AltiooEventMCPService;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
@@ -30,7 +31,6 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -441,7 +441,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	{
 		$this->exclude($mClasses, $mAttributes);
 
-		$this->assertTrue(Settings::AccessSettingsAreMalformed());
+		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
 		$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
 		foreach (['objects', 'datamodel', 'history', 'documents'] as $sToolset) {
 			$this->assertFalse($oPolicy->allowsToolset($sToolset), "{$sToolset} is served although the exclusions cannot be honoured");
@@ -452,7 +452,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	{
 		$this->exclude(['Team'], ['Person' => ['phone']]);
 
-		$this->assertFalse(Settings::AccessSettingsAreMalformed());
+		$this->assertFalse(AccessPolicy::SettingsAreMalformed());
 		$this->assertTrue(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset('objects'));
 	}
 
@@ -522,7 +522,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		$oRow->DBInsertNoReload();
 
 		$this->exclude(['EventNotification'], []);
-		$this->assertFalse(Settings::AccessSettingsAreMalformed());
+		$this->assertFalse(AccessPolicy::SettingsAreMalformed());
 
 		UserRights::Login($sLogin);
 		try {
