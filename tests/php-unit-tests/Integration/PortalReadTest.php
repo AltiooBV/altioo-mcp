@@ -80,7 +80,8 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		])->GetKey();
 
 		$this->sLogin = 'portal-read-'.$sSuffix;
-		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Read-'.$sSuffix.'!', $this->iContact);
+		// The password policy wants a digit, and a hex suffix has none about one time in 2500: the digit is written in.
+		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Read-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
 		PortalMode::Remember(self::PORTAL);

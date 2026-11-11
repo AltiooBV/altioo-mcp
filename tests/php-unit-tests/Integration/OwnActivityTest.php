@@ -58,8 +58,8 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 
 		$this->sMe = 'own-me-'.$this->sSuffix;
 		$this->sOther = 'own-other-'.$this->sSuffix;
-		$this->iMe = (int)$this->CreateUser($this->sMe, self::profileId('Administrator'), 'Own-Me-'.$this->sSuffix.'!', $this->iPersonA)->GetKey();
-		$this->iOther = (int)$this->CreateUser($this->sOther, self::profileId('Administrator'), 'Own-Other-'.$this->sSuffix.'!', $this->iPersonB)->GetKey();
+		$this->iMe = (int)$this->CreateUser($this->sMe, self::profileId('Administrator'), 'Own-Me-'.$this->sSuffix.'-1!', $this->iPersonA)->GetKey();
+		$this->iOther = (int)$this->CreateUser($this->sOther, self::profileId('Administrator'), 'Own-Other-'.$this->sSuffix.'-1!', $this->iPersonB)->GetKey();
 	}
 
 	protected function tearDown(): void
@@ -212,7 +212,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$iHidden = (int)$this->CreateUserRequest(2, ['org_id' => $this->iOrgB, 'caller_id' => $this->iPersonB, 'title' => 'OwnB '.$this->sSuffix])->GetKey();
 
 		$sLogin = 'own-limited-'.$this->sSuffix;
-		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Support Agent'), 'Own-Limited-'.$this->sSuffix.'!', $this->iPersonA)->GetKey();
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Support Agent'), 'Own-Limited-'.$this->sSuffix.'-1!', $this->iPersonA)->GetKey();
 		$oLink = MetaModel::NewObject('URP_UserOrg');
 		$oLink->Set('userid', $iUser);
 		$oLink->Set('allowed_org_id', $this->iOrgA);
@@ -307,7 +307,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		}
 		$iContact = (int)$this->CreatePerson(50, $this->iOrgA)->GetKey();
 		$sLogin = 'own-portal-'.$this->sSuffix;
-		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Portal user'), 'Own-Portal-'.$this->sSuffix.'!', $iContact)->GetKey();
+		$iUser = (int)$this->CreateUser($sLogin, self::profileId('Portal user'), 'Own-Portal-'.$this->sSuffix.'-1!', $iContact)->GetKey();
 		$iOwn = (int)$this->CreateUserRequest(50, ['org_id' => $this->iOrgA, 'caller_id' => $iContact, 'title' => 'Own portal '.$this->sSuffix])->GetKey();
 		// A colleague's request in the same organisation: the portal's scope hides it from this user.
 		$iColleague = (int)$this->CreatePerson(51, $this->iOrgA)->GetKey();
@@ -320,7 +320,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 	public function testThePortalUserSeesTheirOwnRowsAndNotAnotherPortalUsers(): void
 	{
 		$aMe = $this->portalUser();
-		$iSecond = (int)$this->CreateUser('own-portal2-'.$this->sSuffix, self::profileId('Portal user'), 'Own-Portal2-'.$this->sSuffix.'!', (int)$this->CreatePerson(53, $this->iOrgA)->GetKey())->GetKey();
+		$iSecond = (int)$this->CreateUser('own-portal2-'.$this->sSuffix, self::profileId('Portal user'), 'Own-Portal2-'.$this->sSuffix.'-1!', (int)$this->CreatePerson(53, $this->iOrgA)->GetKey())->GetKey();
 		$this->row($aMe['user'], ['mcp_name' => 'portal-mine']);
 		$this->row($iSecond, ['mcp_name' => 'portal-second']);
 		UserRights::Login($aMe['login']);

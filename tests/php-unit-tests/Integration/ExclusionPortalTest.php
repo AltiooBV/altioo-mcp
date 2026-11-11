@@ -60,7 +60,7 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$this->iOwn = (int)$this->CreateUserRequest(1, ['org_id' => $iOrg, 'caller_id' => $iContact, 'description' => self::SENTINEL.' description'])->GetKey();
 
 		$sLogin = 'excl-portal-'.$sSuffix;
-		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Excl-Portal-'.$sSuffix.'!', $iContact);
+		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Excl-Portal-'.$sSuffix.'-1!', $iContact);
 		UserRights::Login($sLogin);
 		PortalMode::Remember(self::PORTAL);
 		$this->exclude([], []);

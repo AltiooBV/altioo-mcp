@@ -108,7 +108,7 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		])->GetKey();
 
 		$this->sLogin = 'portal-write-'.$sSuffix;
-		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Write-'.$sSuffix.'!', $this->iContact);
+		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Write-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
 		PortalMode::Remember(self::PORTAL);
