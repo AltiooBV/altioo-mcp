@@ -228,7 +228,7 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheSessionIsDiscardedBetweenTheToolsAndTheAnswer(): void
 	{
 		$this->assertComesBefore('MCPService::run', 'discardRequestSession', 'the session must outlive the tools');
-		$this->assertComesBefore('discardRequestSession', 'emitResponse', 'the session must go before the answer is written');
+		$this->assertComesBefore('discardRequestSession', 'EmitResponse', 'the session must go before the answer is written');
 	}
 
 	/**
@@ -241,7 +241,7 @@ class RequestPipelineOrderTest extends TestCase
 		$sCatch = (string) substr($sCode, (int) strpos($sCode, 'catch ('));
 
 		$iDiscard = strpos($sCatch, 'discardRequestSession');
-		$iOutput = strpos($sCatch, 'outputJsonResultException');
+		$iOutput = strpos($sCatch, 'OutputJsonResultException');
 
 		$this->assertIsInt($iDiscard, 'the exception path no longer discards the session');
 		$this->assertIsInt($iOutput, 'the exception path no longer answers');

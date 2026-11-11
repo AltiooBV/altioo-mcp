@@ -53,7 +53,7 @@ class ModuleConfigurationTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * Read by MCPController::addCorsHeader(). Must default to an empty list: a
+	 * Read by MCPResponse::addCorsHeader(). Must default to an empty list: a
 	 * populated default, and above all a "*", would let any site read the
 	 * authenticated responses of a logged-in user's browser session.
 	 */

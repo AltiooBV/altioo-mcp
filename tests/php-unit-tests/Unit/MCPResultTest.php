@@ -58,7 +58,7 @@ class MCPResultTest extends TestCase
 	}
 
 	/**
-	 * MCPController::outputJsonResultException() json_encodes the result
+	 * MCPResponse::OutputJsonResultException() json_encodes the result
 	 * directly, so the public shape is part of the wire contract.
 	 */
 	public function testSerialisesToJsonWithPublicProperties(): void

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Mcp\Server\Stateless\RequestMeta;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -100,7 +101,7 @@ class AuditLabelTest extends TestCase
 			'error'   => ['code' => -32602, 'message' => sprintf('Tool not found: "%s".', $sLongName)],
 		]);
 
-		$oBuild   = new ReflectionMethod(MCPController::class, 'buildResultFromBody');
+		$oBuild   = new ReflectionMethod(MCPResponse::class, 'buildResultFromBody');
 		$sMessage = $oBuild->invoke(null, $oResponse, $sBody)->message;
 		$this->assertStringContainsString("\r\n", $sMessage, 'the SDK error does carry the raw name');
 
@@ -124,12 +125,12 @@ class AuditLabelTest extends TestCase
 			'isError' => true,
 		]]);
 
-		$oResult = (new ReflectionMethod(MCPController::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
+		$oResult = (new ReflectionMethod(MCPResponse::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
 
 		$this->assertFalse($oResult->isSuccess());
 		$this->assertSame(MCPResult::TOOL_REFUSED, $oResult->code);
 		$this->assertStringNotContainsString('jane.doe', $oResult->message, 'a refusal may quote what was refused');
-		$this->assertSame(MCPController::TOOL_REFUSED_MESSAGE, $oResult->message);
+		$this->assertSame(MCPResponse::TOOL_REFUSED_MESSAGE, $oResult->message);
 		$this->assertStringContainsString('jane.doe@example.com', (string)$oResult->toolText, 'kept apart, for the debug level');
 		$this->assertArrayNotHasKey('toolText', $oResult->jsonSerialize(), 'never part of what a caller is sent');
 	}
@@ -138,7 +139,7 @@ class AuditLabelTest extends TestCase
 	{
 		$oFactory = new Psr17Factory();
 		$oResponse = $oFactory->createResponse(200)->withHeader('Content-Type', 'application/json');
-		$oBuild = new ReflectionMethod(MCPController::class, 'buildResultFromBody');
+		$oBuild = new ReflectionMethod(MCPResponse::class, 'buildResultFromBody');
 
 		foreach ([
 			['result' => ['content' => [['type' => 'text', 'text' => 'ok']], 'isError' => false]],
@@ -155,7 +156,7 @@ class AuditLabelTest extends TestCase
 		$oResponse = $oFactory->createResponse(200)->withHeader('Content-Type', 'application/json');
 		$sBody = (string)json_encode(['jsonrpc' => '2.0', 'id' => 1, 'error' => ['code' => -32602, 'message' => 'Tool not found']]);
 
-		$oResult = (new ReflectionMethod(MCPController::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
+		$oResult = (new ReflectionMethod(MCPResponse::class, 'buildResultFromBody'))->invoke(null, $oResponse, $sBody);
 
 		$this->assertSame(-32602, $oResult->code);
 		$this->assertSame('Tool not found', $oResult->message);

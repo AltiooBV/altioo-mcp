@@ -47,9 +47,6 @@ final class MCPHttp
 
 	private const BEARER_PREFIX = 'Bearer ';
 
-	/** Named in the challenge so a human reading a 401 knows what refused them. */
-	private const REALM = 'iTop MCP';
-
 	/**
 	 * The one media type a JSON-RPC POST may carry.
 	 *
@@ -78,74 +75,6 @@ final class MCPHttp
 	 * be cleared as soon as iTop has finished with it - see ForgetAuthToken().
 	 */
 	private static ?string $sAuthToken = null;
-
-	/**
-	 * The WWW-Authenticate challenge that goes with a 401.
-	 *
-	 * A 401 with no challenge tells a client that it failed, not what it
-	 * failed at, and RFC 9110 requires one on the status anyway. The
-	 * resource_metadata parameter is RFC 9728: it points a client at the
-	 * document describing which authorization server protects this resource,
-	 * which is what turns "the connect button does nothing" into a working
-	 * OAuth flow.
-	 *
-	 * This module implements no OAuth and does not intend to - the deployment
-	 * pattern is an OIDC-terminating proxy in front of iTop - but the proxy
-	 * cannot inject the parameter into a 401 it never sees. Advertising the
-	 * URL of a document someone else serves is the whole of what is needed
-	 * here, so it is a setting rather than an implementation.
-	 *
-	 * The error is RFC 6750's, and only for a request that presented a token:
-	 * invalid_token is what tells a client to refresh or connect again rather
-	 * than retry, and a request that presented nothing gets no error code at
-	 * all (RFC 6750 section 3.1), only the challenge.
-	 *
-	 * @param string|null $sResourceMetadataUrl As configured, or null when nothing is.
-	 * @param string|null $sError An RFC 6750 error code, or null for none.
-	 * @since 1.0.0
-	 */
-	public static function BearerChallenge(?string $sResourceMetadataUrl, ?string $sError = null): string
-	{
-		$sChallenge = 'Bearer realm="'.self::REALM.'"';
-
-		// A code is a fixed word this module chose; anything else is a bug,
-		// and is left out rather than put in a header.
-		if ($sError !== null && preg_match('/^[a-z_]+$/D', $sError) === 1) {
-			$sChallenge .= ', error="'.$sError.'"';
-		}
-
-		$sUrl = self::SafeMetadataUrl($sResourceMetadataUrl);
-		if ($sUrl !== null) {
-			$sChallenge .= ', resource_metadata="'.$sUrl.'"';
-		}
-
-		return $sChallenge;
-	}
-
-	/**
-	 * The configured URL, if it is one that can go in a header at all.
-	 *
-	 * It comes from the instance configuration rather than from the request,
-	 * so this is not defending against an attacker - it is making a typo in
-	 * config-itop.php produce no parameter rather than a split header.
-	 */
-	private static function SafeMetadataUrl(?string $sUrl): ?string
-	{
-		if ($sUrl === null) {
-			return null;
-		}
-
-		$sUrl = trim($sUrl);
-		if ($sUrl === '') {
-			return null;
-		}
-
-		if (!preg_match('#^https?://[^\s"\'\\\\\x00-\x1F\x7F]+$#', $sUrl)) {
-			return null;
-		}
-
-		return $sUrl;
-	}
 
 	/**
 	 * Copies an "Authorization: Bearer <token>" credential to the header

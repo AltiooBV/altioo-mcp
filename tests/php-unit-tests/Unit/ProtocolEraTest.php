@@ -149,7 +149,7 @@ class ProtocolEraTest extends TestCase
 	 *
 	 * Mcp-Param-* is absent on purpose: the SDK validates those when they are
 	 * sent and does not require them, which is what lets the endpoint advertise
-	 * a fixed Access-Control-Allow-Headers list - see MCPController::corsHeaders().
+	 * a fixed Access-Control-Allow-Headers list - see MCPResponse::corsHeaders().
 	 *
 	 * @return array<string, string>
 	 */
