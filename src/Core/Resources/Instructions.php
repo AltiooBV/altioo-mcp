@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;

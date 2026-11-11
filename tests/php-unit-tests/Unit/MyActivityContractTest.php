@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\MyActivity;
 use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;

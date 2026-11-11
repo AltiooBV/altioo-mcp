@@ -21,6 +21,8 @@ use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 
 /**
  * What the caller may read of objects, in the mode this request is served in.

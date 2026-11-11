@@ -13,7 +13,7 @@ use Exception;
 /**
  * A portal whose configuration could not be read, so nothing is served for it.
  *
- * Thrown by {@see \Altioo\iTop\Extension\MCP\Service\PortalPolicy} when the
+ * Thrown by {@see \Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy} when the
  * portal's bricks, scopes or forms cannot be loaded, or when this iTop lacks
  * what reading them needs. Portal mode never falls back to anything wider when
  * that happens: a portal it cannot read is a portal it serves nothing of.

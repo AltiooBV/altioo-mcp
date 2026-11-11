@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
@@ -15,7 +15,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 // Same namespace, imported anyway: it extends a portal class, so it can be
 // loaded only where the portal is, and nothing should load it to find out.
-use Altioo\iTop\Extension\MCP\Service\PortalBrickTemplates;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBrickTemplates;
 use Combodo\iTop\Application\TwigBase\Twig\Extension;
 use Combodo\iTop\Portal\Brick\BrickCollection;
 use Combodo\iTop\Portal\Brick\BrowseBrick;

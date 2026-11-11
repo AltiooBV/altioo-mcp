@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
@@ -20,6 +20,7 @@ use DBSearch;
 use MetaModel;
 use Mcp\Exception\ToolCallException;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
 
 /**
  * {@see ObjectAccess} in portal mode: the console's answer, narrowed by the

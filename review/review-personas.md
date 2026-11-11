@@ -100,7 +100,7 @@ release archive.
   `mcp_allowed_profiles`, `mcp_portals`). In portal mode, iTop's visibility is the wrong
   yardstick — `Portal user` reads every bizmodel class — so check instead every element
   `PortalMode::Serves()` admits against the portal it is served in: what it returns must come
-  from `PortalPolicy` (`src/Service/PortalPolicy.php`'s granted bricks, scopes and forms), never
+  from `PortalPolicy` (`src/Service/Portal/PortalPolicy.php`'s granted bricks, scopes and forms), never
   from a UserRights check alone, and never be more than that portal shows the same user.
 - **Blocks:** release when personal data leaves the instance by a route the operator cannot see or
   switch off; otherwise backlog.

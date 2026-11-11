@@ -24,7 +24,7 @@ use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\MCPService;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
@@ -646,7 +646,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testThePortalAccessNarrowsTheConsolesAndNeverReplacesIt(): void
 	{
-		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, 'Readable');
+		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::class, 'Readable');
 		$this->assertLessThan(
 			strpos($sReadable, '$this->oPolicy->Readable('),
 			(int)strpos($sReadable, 'parent::Readable('),
@@ -655,7 +655,7 @@ class PortalModeTest extends TestCase
 		$this->assertStringContainsString('IsReserved', $sReadable, 'the change log is read as an object in portal mode');
 
 		$oConsole = \Altioo\iTop\Extension\MCP\Service\ObjectAccess::Current();
-		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
+		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
 		$this->assertTrue($oConsole->ShowsHistory());
 	}
 

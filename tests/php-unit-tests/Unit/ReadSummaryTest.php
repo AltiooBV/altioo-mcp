@@ -131,7 +131,7 @@ class ReadSummaryTest extends TestCase
 			'Core/Tools/ObjectGetRelated.php',
 			'Service/Read/DocumentAccess.php',
 			'Service/Read/ObjectHistory.php',
-			'Service/PortalAccess.php',
+			'Service/Portal/PortalAccess.php',
 		] as $sFile) {
 			$this->assertStringContainsString('ReadSummary::Note(', (string)file_get_contents($sRoot.$sFile), $sFile.' returns objects and does not tell the audit row');
 		}

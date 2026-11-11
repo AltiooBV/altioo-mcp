@@ -109,11 +109,6 @@ class LayerDependencyTest extends TestCase
 		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
 		'Service\\MCPService' => 'Service\\Server', // Service/Server/
 		'Service\\ObjectAccess' => 'Service\\Access', // Service/Access/
-		'Service\\PortalAccess' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalAware' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalBrickTemplates' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalDescription' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalPolicy' => 'Service\\Portal', // Service/Portal/
 	];
 
 	/**
@@ -123,13 +118,13 @@ class LayerDependencyTest extends TestCase
 	private const BASELINE = <<<'TXT'
 Core\Resources\Instructions → Service\MCPService
 Core\Tools\Instructions → Service\MCPService
-Helper\PortalMode → Service\PortalAware
-Helper\PortalMode → Service\PortalPolicy
+Helper\PortalMode → Service\Portal\PortalAware
+Helper\PortalMode → Service\Portal\PortalPolicy
 Helper\Settings → Service\Rights\ExclusionPolicy
 Helper\WritePlan → Core\Tools\ObjectSearchByOQL
 Helper\WritePlan → Service\ObjectAccess
-Service\PortalAccess → Core\Tools\PortalList
-Service\PortalAccess → Service\ObjectAccess
+Service\Portal\PortalAccess → Core\Tools\PortalList
+Service\Portal\PortalAccess → Service\ObjectAccess
 Service\Read\CurrentUserReader → Service\MCPService
 Service\Read\DocumentAccess → Helper\WritePlan
 Service\Read\DocumentAccess → Service\ObjectAccess
