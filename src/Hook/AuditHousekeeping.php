@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use AltiooEventMCPService;
 use DBObjectSearch;
 use DBObjectSet;
@@ -65,9 +66,20 @@ final class AuditHousekeeping implements iBackgroundProcess
 	 */
 	public function Process($iUnixTimeLimit)
 	{
+		try {
+			return $this->Run((int)$iUnixTimeLimit);
+		} finally {
+			// This task opens no request, and sets none of the slots a request
+			// does; it closes one all the same, so that a cron process which
+			// runs other tasks after it inherits nothing from it.
+			RequestScope::Close();
+		}
+	}
+
+	private function Run(int $iLimit): string
+	{
 		MCPLog::EnableForModule();
 
-		$iLimit = (int)$iUnixTimeLimit;
 		$iDays = Settings::GetAuditRetentionDays();
 		$iDeleted = $iDays > 0 ? $this->Purge(AuditRetention::CutoffFor(time(), $iDays), $iLimit) : 0;
 		$iReconciled = $this->Reconcile($iLimit);

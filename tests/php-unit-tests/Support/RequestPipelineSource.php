@@ -44,7 +44,7 @@ final class RequestPipelineSource
 		foreach (self::Gates() as $sGate) {
 			$sSource .= '[['.substr((string)strrchr($sGate, '\\'), 1)."]]\n".self::bodyOf($sGate, 'Check')."\n";
 		}
-		$sSource .= self::bodyOf(MCPController::class, 'handleRequest');
+		$sSource .= self::bodyOf(MCPController::class, 'serve');
 
 		return $bStripComments ? self::withoutComments($sSource) : $sSource;
 	}

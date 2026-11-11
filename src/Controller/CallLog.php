@@ -120,7 +120,6 @@ final class CallLog
 				$oLog->Set('refusal_text', self::truncate(self::AuditLabel($oResult->toolText, null), 65535) ?? '');
 			}
 			$oLog->DBInsertNoReload();
-			ReadSummary::Forget();
 		} catch (Throwable $e) {
 			// Never let audit logging take down a request that already succeeded.
 			ErrorReport::Log('Failed to log AltiooEventMCPService: '.$e->getMessage());

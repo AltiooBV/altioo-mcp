@@ -25,8 +25,8 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
-use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Combodo\iTop\Application\Helper\Session;
@@ -66,6 +66,17 @@ final class MCPController
 
 	public static function handleRequest(): void
 	{
+		try {
+			self::serve();
+		} finally {
+			// Whichever way the request ended - answered by a gate, served, or
+			// thrown - and after the audit row, which reads some of this state.
+			RequestScope::Close();
+		}
+	}
+
+	private static function serve(): void
+	{
 		MCPLog::EnableForModule();
 
 		// One tag per MCP scope this instance declares. iTop honours a token
@@ -99,14 +110,14 @@ final class MCPController
 			// and live for the rest of the call.
 			$oPolicy = ServedElements::AccessPolicyOfCurrentRequest();
 			// Remembered before the token is dropped, because deciding it again
-			// later would need the token back. A write tool asks this to learn
-			// whether it is rehearsing, and asking must not cost a query.
-			AccessPolicy::Remember($oPolicy);
-			// Same window, same reason: the audit row names the credential that
-			// ran the request, and a row id cannot be recovered once the
-			// credential it belongs to has been dropped. An identity is not a
-			// secret; the token is, and it still goes on the next line.
-			TokenScopes::RememberIdentity();
+			// later would need the token back. A write tool asks the policy to
+			// learn whether it is rehearsing, and asking must not cost a query.
+			// Same window, same reason for the credential's identity: the audit
+			// row names the credential that ran the request, and a row id cannot
+			// be recovered once the credential it belongs to has been dropped. An
+			// identity is not a secret; the token is, and it goes on the next line.
+			// Portal mode, if the login chose it, is already set (PortalAdmission).
+			RequestScope::Open($oPolicy);
 			MCPHttp::ForgetAuthToken();
 
 			$oKPI->ComputeAndReport('Parameters validated');

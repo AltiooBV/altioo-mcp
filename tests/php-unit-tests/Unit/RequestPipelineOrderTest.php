@@ -94,9 +94,9 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheCredentialIsIdentifiedBeforeItIsDropped(): void
 	{
 		$this->assertComesBefore(
-			'RememberIdentity',
+			'RequestScope::Open',
 			'ForgetAuthToken',
-			'RememberIdentity() must run before ForgetAuthToken(), or the audit row cannot name the credential'
+			'RequestScope::Open() (which remembers the identity) must run before ForgetAuthToken(), or the audit row cannot name the credential'
 		);
 	}
 
