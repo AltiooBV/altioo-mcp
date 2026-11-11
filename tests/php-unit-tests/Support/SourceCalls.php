@@ -170,6 +170,21 @@ final class SourceCalls
 	}
 
 	/**
+	 * Is there a static call, of any method, on this class?
+	 */
+	public function HasCallOn(string $sClass, ?string $sMethod = null): bool
+	{
+		$sPrefix = strtolower(ltrim($sClass, '\\')).'::';
+		foreach ($this->Calls($sMethod) as $sCall) {
+			if (str_starts_with(strtolower($sCall), $sPrefix)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Is there a call to a method of this name, static on any class or on any
 	 * object? For a gate that is reached through `self::checkBulkAllowed(` in one
 	 * tool and `static::` or `$this->` in another.
@@ -194,6 +209,29 @@ final class SourceCalls
 	public function CallsInOrder(array $aSpecs, ?string $sMethod = null): bool
 	{
 		return self::InOrder($this->Calls($sMethod), $aSpecs);
+	}
+
+	/**
+	 * Do these calls occur in this order somewhere, each after the one before,
+	 * not necessarily at its first occurrence? For a check that is repeated, the
+	 * one that matters being the one after a given call; CallsInOrder() is the
+	 * stricter question and the right one for "this gate before that action".
+	 *
+	 * @param array<int, string> $aSpecs
+	 */
+	public function CallsInSequence(array $aSpecs, ?string $sMethod = null): bool
+	{
+		$aCalls = array_map('strtolower', $this->Uses($sMethod));
+		$iAt = 0;
+		foreach ($aSpecs as $sSpec) {
+			$iFound = array_search(self::normalise($sSpec), array_slice($aCalls, $iAt, null, true), true);
+			if ($iFound === false) {
+				return false;
+			}
+			$iAt = $iFound + 1;
+		}
+
+		return true;
 	}
 
 	/**
@@ -262,6 +300,41 @@ final class SourceCalls
 	}
 
 	/**
+	 * The calls and constants inside the `catch` blocks of the method, in order:
+	 * what the error path does.
+	 *
+	 * @return array<int, string>
+	 */
+	public function UsesInCatch(?string $sMethod = null): array
+	{
+		$aUses = [];
+		foreach ($this->scopes($sMethod) as [$iFrom, $iTo, $sClass, $sParent]) {
+			for ($i = $iFrom; $i < $iTo; $i++) {
+				if ($this->aTokens[$i]->id !== T_CATCH) {
+					continue;
+				}
+				while ($i < $iTo && $this->aTokens[$i]->text !== '{') {
+					$i++;
+				}
+				$iBraces = 0;
+				for (; $i < $iTo; $i++) {
+					if ($this->aTokens[$i]->text === '{' || $this->aTokens[$i]->id === T_CURLY_OPEN) {
+						$iBraces++;
+					} elseif ($this->aTokens[$i]->text === '}' && --$iBraces === 0) {
+						break;
+					}
+					$sSpec = $this->callAt($i, $sClass, $sParent) ?? $this->constantAt($i, $sClass, $sParent);
+					if ($sSpec !== null) {
+						$aUses[] = $sSpec;
+					}
+				}
+			}
+		}
+
+		return $aUses;
+	}
+
+	/**
 	 * CallsInOrder() over calls and constants.
 	 *
 	 * @param array<int, string> $aSpecs
@@ -287,7 +360,10 @@ final class SourceCalls
 
 			return null;
 		}
-		if ($oToken->id === T_STRING && ($oNext === null || !in_array($oNext->text, ['(', '\\'], true)) && !$this->isDeclarationName($i)) {
+		if ($oToken->id === T_STRING
+			&& ($oNext === null || !in_array($oNext->text, ['(', '\\'], true) && $oNext->id !== T_VARIABLE)
+			&& !in_array(strtolower($oToken->text), ['true', 'false', 'null'], true)
+			&& !$this->isDeclarationName($i)) {
 			return $oToken->text;
 		}
 

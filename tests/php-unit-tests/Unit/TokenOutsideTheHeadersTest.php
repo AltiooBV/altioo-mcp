@@ -204,13 +204,10 @@ class TokenOutsideTheHeadersTest extends TestCase
 
 	private function assertComesBefore(string $sFirst, string $sSecond): void
 	{
-		$sCode = RequestPipelineSource::Flattened();
+		$aSpecs = [RequestPipelineSource::Spec($sFirst), RequestPipelineSource::Spec($sSecond)];
 
-		$iFirst = strpos($sCode, $sFirst);
-		$iSecond = strpos($sCode, $sSecond);
-
-		$this->assertIsInt($iFirst, "handleRequest() no longer calls {$sFirst}");
-		$this->assertIsInt($iSecond, "handleRequest() no longer calls {$sSecond}");
-		$this->assertLessThan($iSecond, $iFirst, "{$sFirst} must run before {$sSecond}");
+		$this->assertTrue(RequestPipelineSource::Has($aSpecs[0]), "the request pipeline no longer calls {$sFirst}");
+		$this->assertTrue(RequestPipelineSource::Has($aSpecs[1]), "the request pipeline no longer calls {$sSecond}");
+		$this->assertTrue(RequestPipelineSource::InOrder($aSpecs), "{$sFirst} must run before {$sSecond}");
 	}
 }

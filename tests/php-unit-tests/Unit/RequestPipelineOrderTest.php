@@ -39,34 +39,16 @@ class RequestPipelineOrderTest extends TestCase
 	 * being asserted, and would otherwise satisfy every one of these searches
 	 * on their own.
 	 */
-	private function pipeline(): string
-	{
-		return RequestPipelineSource::Flattened();
-	}
-
 	private function assertComesBefore(string $sFirst, string $sSecond, string $sWhy): void
 	{
-		$sCode = $this->pipeline();
+		$sFirstSpec = RequestPipelineSource::Spec($sFirst);
+		$sSecondSpec = RequestPipelineSource::Spec($sSecond);
 
-		$iFirst = strpos($sCode, $sFirst);
-		$iSecond = strpos($sCode, $sSecond);
-
-		$this->assertIsInt($iFirst, "handleRequest() no longer calls {$sFirst}");
-		$this->assertIsInt($iSecond, "handleRequest() no longer calls {$sSecond}");
-		$this->assertLessThan($iSecond, $iFirst, $sWhy);
+		$this->assertTrue(RequestPipelineSource::Has($sFirstSpec), "the request pipeline no longer calls {$sFirst}");
+		$this->assertTrue(RequestPipelineSource::Has($sSecondSpec), "the request pipeline no longer calls {$sSecond}");
+		$this->assertTrue(RequestPipelineSource::InOrder([$sFirstSpec, $sSecondSpec]), $sWhy);
 	}
 
-	/**
-	 * The session reset is what stops a browser cookie being a credential for
-	 * this endpoint, for every request that gets as far as it. Without it a
-	 * logged-in user's session would authenticate the call, so it must run
-	 * before the login that would otherwise accept that cookie.
-	 *
-	 * It reads as redundant next to the credential check that now guards it,
-	 * which is exactly why it needs a test: the two are belt and braces, and
-	 * either one alone leaves a hole - see
-	 * testNothingIsResetForARequestThatBroughtNoCredential().
-	 */
 	public function testTheSessionIsResetBeforeAnythingCanAuthenticateWithIt(): void
 	{
 		$this->assertComesBefore(
@@ -223,15 +205,14 @@ class RequestPipelineOrderTest extends TestCase
 	 */
 	public function testTheErrorPathDiscardsItAsWell(): void
 	{
-		$sCode = $this->pipeline();
-		$sCatch = (string) substr($sCode, (int) strpos($sCode, 'catch ('));
+		$aCatch = RequestPipelineSource::ErrorPath();
+		$sDiscard = strtolower(RequestPipelineSource::Spec('discardRequestSession'));
+		$sOutput = strtolower(RequestPipelineSource::Spec('OutputJsonResultException'));
+		$aLowered = array_map('strtolower', $aCatch);
 
-		$iDiscard = strpos($sCatch, 'discardRequestSession');
-		$iOutput = strpos($sCatch, 'OutputJsonResultException');
-
-		$this->assertIsInt($iDiscard, 'the exception path no longer discards the session');
-		$this->assertIsInt($iOutput, 'the exception path no longer answers');
-		$this->assertLessThan($iOutput, $iDiscard, 'the session must go before the error is written');
+		$this->assertContains($sDiscard, $aLowered, 'the exception path no longer discards the session');
+		$this->assertContains($sOutput, $aLowered, 'the exception path no longer answers');
+		$this->assertLessThan(array_search($sOutput, $aLowered, true), array_search($sDiscard, $aLowered, true), 'the session must go before the error is written');
 	}
 
 	/**

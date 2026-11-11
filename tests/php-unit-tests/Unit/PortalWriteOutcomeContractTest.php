@@ -16,8 +16,9 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
 require_once __DIR__.'/../bootstrap.php';
 
@@ -33,11 +34,10 @@ class PortalWriteOutcomeContractTest extends TestCase
 	public function testEveryWriteToolFiltersItsChangesThroughTheAccessPolicy(): void
 	{
 		foreach ([ObjectCreate::class, ObjectUpdate::class, ObjectApplyStimulus::class] as $sTool) {
-			$sBody = $this->bodyOf($sTool, 'execute');
-			$this->assertStringContainsString('$oAccess->Disclosed(', $sBody, $sTool);
-			$this->assertLessThan(
-				strpos($sBody, 'WriteOutcome::Defaulted('),
-				strpos($sBody, '$oAccess->Disclosed('),
+			$oSource = SourceCalls::OfClass($sTool);
+			$this->assertTrue($oSource->HasCall('->Disclosed', 'execute'), $sTool);
+			$this->assertTrue(
+				$oSource->CallsInOrder(['->Disclosed', WriteOutcome::class.'::Defaulted'], 'execute'),
 				"{$sTool} must filter before `defaulted` is derived from the changes"
 			);
 		}
@@ -45,12 +45,11 @@ class PortalWriteOutcomeContractTest extends TestCase
 
 	public function testAnExternalKeyIsAnIdOnlyInPortalMode(): void
 	{
-		$sBody = $this->bodyOf(ExternalKeyPolicy::class, 'RefusalFor');
+		$oSource = SourceCalls::OfClass(ExternalKeyPolicy::class);
 
-		$this->assertStringContainsString('PortalMode::Current() !== null', $sBody);
-		$this->assertLessThan(
-			strpos($sBody, 'RefusalForExternalKeyQuery('),
-			strpos($sBody, 'PortalMode::Current()', strpos($sBody, 'GetTargetClass')),
+		$this->assertStringContainsString('PortalMode::Current()!==null', $oSource->Code('RefusalFor'));
+		$this->assertTrue(
+			$oSource->CallsInSequence(['->GetTargetClass', PortalMode::class.'::Current', ExternalKeyPolicy::class.'::RefusalForExternalKeyQuery'], 'RefusalFor'),
 			'the portal refusal must come before the OQL lookup'
 		);
 	}
@@ -67,16 +66,10 @@ class PortalWriteOutcomeContractTest extends TestCase
 
 	public function testThePortalTextNamesNoToolItDoesNotServe(): void
 	{
-		$sBody = $this->bodyOf(ClassRefusal::class, 'Unreadable');
+		$oRefusal = SourceCalls::OfClass(ClassRefusal::class);
+		$sBody = $oRefusal->Code('Unreadable');
+		$this->assertTrue($oRefusal->HasCall(PortalMode::class.'::Current', 'Unreadable'));
 		$this->assertLessThan(strpos($sBody, 'rights model'), strpos($sBody, 'PortalMode::Current()'));
-		$this->assertStringContainsString('PortalMode::Current()', $this->bodyOf(ErrorReport::class, 'auditLookup'));
-	}
-
-	private function bodyOf(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
-
-		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+		$this->assertTrue(SourceCalls::OfClass(ErrorReport::class)->HasCall(PortalMode::class.'::Current', 'auditLookup'));
 	}
 }

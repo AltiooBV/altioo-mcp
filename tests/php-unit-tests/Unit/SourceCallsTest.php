@@ -86,6 +86,18 @@ abstract class Writer extends Base
 
 	abstract protected function Declared(): void;
 
+	public function Failing(): void
+	{
+		try {
+			Renamed::Work();
+		} catch (\Throwable $e) {
+			Renamed::Discard();
+			// Renamed::Late()
+			return;
+		}
+		Renamed::After();
+	}
+
 	public function WithClosure(): callable
 	{
 		return function () {
@@ -202,6 +214,16 @@ PHP;
 		$this->assertTrue($oSource->CallsInOrder(['Acme\Rights\ChangeLogReservation::IsReserved', '->Hides', 'Acme\Rights\AccessGrants::RefusalFor'], 'Guarded'));
 	}
 
+	public function testASequenceNeedNotStartAtTheFirstOccurrence(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertTrue($oSource->CallsInSequence(['Acme\\Rights\\Other::First', 'strlen', '->fifth'], 'Ordered'));
+		$this->assertFalse($oSource->CallsInSequence(['->fifth', 'strlen'], 'Ordered'));
+		$this->assertFalse($oSource->CallsInSequence(['strlen', 'strlen'], 'Ordered'), 'one call is not two');
+		$this->assertFalse($oSource->CallsInSequence(['Acme\\Rights\\Other::First', 'Acme\\Rights\\Other::Absent'], 'Ordered'));
+	}
+
 	public function testOrderIsAskedOfCallsGatheredFromSeveralPlaces(): void
 	{
 		$this->assertTrue(SourceCalls::InOrder(['a', 'B::c', 'd'], ['A', 'b::C']));
@@ -241,6 +263,16 @@ PHP;
 		$this->assertTrue($oSource->HasCallTo('fifth', 'Ordered'));
 		$this->assertFalse($oSource->HasCallTo('Hides', 'OnlyInAComment'));
 		$this->assertFalse($oSource->HasCallTo('Hide', 'Guarded'), 'a name is matched whole');
+	}
+
+	public function testTheErrorPathIsWhatTheCatchBlocksDo(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertSame(['Acme\Rights\Other::Discard'], $oSource->UsesInCatch('Failing'), 'the try body, the comment and what follows the block are not the error path');
+		$this->assertSame([], $oSource->UsesInCatch('Guarded'));
+		$this->assertTrue($oSource->HasCallOn('Acme\Rights\Other', 'Failing'));
+		$this->assertFalse($oSource->HasCallOn('Acme\Rights\Another', 'Failing'));
 	}
 
 	public function testAClosureInsideAMethodIsPartOfIt(): void
