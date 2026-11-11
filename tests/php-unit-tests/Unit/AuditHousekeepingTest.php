@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\AuditRetention;
+use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot

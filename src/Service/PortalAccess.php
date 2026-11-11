@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
 use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;

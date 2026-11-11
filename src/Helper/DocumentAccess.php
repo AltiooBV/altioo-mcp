@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;

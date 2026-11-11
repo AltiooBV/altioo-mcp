@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 

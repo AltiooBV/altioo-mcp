@@ -126,9 +126,6 @@ class LayerDependencyTest extends TestCase
 		'Service\\PortalBrickTemplates' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalDescription' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalPolicy' => 'Service\\Portal', // Service/Portal/
-		'Service\\AuditRetention' => 'Service\\Audit', // Service/Audit/
-		'Service\\ChangeSummary' => 'Service\\Audit', // Service/Audit/
-		'Service\\ReadSummary' => 'Service\\Audit', // Service/Audit/
 	];
 
 	/**

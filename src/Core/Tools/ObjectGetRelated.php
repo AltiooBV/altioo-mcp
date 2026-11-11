@@ -16,7 +16,7 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSet;

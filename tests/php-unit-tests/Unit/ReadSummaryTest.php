@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 

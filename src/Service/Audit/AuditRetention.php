@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Audit;
 
 /**
  * The decisions {@see AuditHousekeeping} makes, apart from the database it

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use AttributeBlob;
 use AttributeCaseLog;
 use AttributeDefinition;

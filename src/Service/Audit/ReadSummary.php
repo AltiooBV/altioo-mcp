@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Audit;
 
 /**
  * Which objects a request handed back, written onto its own audit row.

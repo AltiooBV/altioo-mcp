@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Service\Audit;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use CMDBChangeOpCreate;
