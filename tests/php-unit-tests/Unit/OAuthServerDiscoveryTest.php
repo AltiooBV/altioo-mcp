@@ -115,9 +115,9 @@ class OAuthServerDiscoveryTest extends TestCase
 			'the metadata API is called before asking whether it exists'
 		);
 
-		$sAudience = $this->bodyOf(\Altioo\iTop\Extension\MCP\Controller\MCPController::class, 'rejectATokenGrantedForAnotherUrl');
+		$sAudience = $this->bodyOf(\Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate::class, 'Check');
 		$this->assertMatchesRegularExpression(
-			'/^[^{]*\{\s*\$sAudienceClass = OAuthResource::TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return;\s*\}/',
+			'/^[^{]*\{\s*\$sAudienceClass = OAuthResource::TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return true;\s*\}/',
 			$sAudience,
 			'the audience check does anything before asking whether the module is there'
 		);

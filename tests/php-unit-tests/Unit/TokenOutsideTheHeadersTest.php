@@ -8,11 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -189,7 +188,7 @@ class TokenOutsideTheHeadersTest extends TestCase
 	 */
 	public function testTheParameterIsRefusedBeforeTheSessionIsReset(): void
 	{
-		$this->assertComesBefore('rejectATokenSentAsAParameter', 'ResetSession');
+		$this->assertComesBefore('[[TokenNotAParameterGate]]', 'ResetSession');
 	}
 
 	/**
@@ -198,27 +197,13 @@ class TokenOutsideTheHeadersTest extends TestCase
 	 */
 	public function testTheLoginIsAccountedForBeforeThePolicyIsDecided(): void
 	{
-		$this->assertComesBefore('DoLogin', 'rejectATokenLoginNotAccountedFor');
-		$this->assertComesBefore('rejectATokenLoginNotAccountedFor', 'AccessPolicyOfCurrentRequest');
+		$this->assertComesBefore('DoLogin', '[[TokenLoginAccountedForGate]]');
+		$this->assertComesBefore('[[TokenLoginAccountedForGate]]', 'AccessPolicyOfCurrentRequest');
 	}
 
 	private function assertComesBefore(string $sFirst, string $sSecond): void
 	{
-		$oMethod = new ReflectionMethod(MCPController::class, 'handleRequest');
-		$aLines = file((string)$oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
+		$sCode = RequestPipelineSource::Flattened();
 
 		$iFirst = strpos($sCode, $sFirst);
 		$iSecond = strpos($sCode, $sSecond);

@@ -8,46 +8,63 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Controller;
 
-use Altioo\iTop\Extension\MCP\Controller\Gate\AllowedProfiles;
-use Altioo\iTop\Extension\MCP\Controller\Gate\AuthRefusal;
-use Altioo\iTop\Extension\MCP\Controller\Gate\PortalAdmission;
+use Altioo\iTop\Extension\MCP\Controller\Gate\BodyIsJsonGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\CredentialPresentedGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\HostIsServedGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\LoginGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\McpProfileGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\PreflightGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenLoginAccountedForGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenNotAParameterGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\iGate;
 use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
 use Altioo\iTop\Extension\MCP\Exception\MCPRequestRejectedException;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
-use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Combodo\iTop\Application\Helper\Session;
-use DBObject;
 use ExecutionKPI;
-use LoginWebPage;
 use Throwable;
-use UserRights;
 use ContextTag;
 
 /**
+ * The endpoint: the gates a request passes in order, the policy decided from
+ * the credential while it is still at hand, the server run, and the answer.
+ *
+ * The checks are the gates' (Controller\Gate), the answer is MCPResponse's and
+ * the audit row is CallLog's; this is the one place that says in what order.
+ *
  * @since 1.0.0
  */
 final class MCPController
 {
+	/**
+	 * The gates a request passes, in order. A gate either lets it continue or
+	 * answers it; see Gate\iGate.
+	 *
+	 * @var array<int, class-string<iGate>>
+	 */
+	private const GATES = [
+		PreflightGate::class,
+		HostIsServedGate::class,
+		BodyIsJsonGate::class,
+		CredentialPresentedGate::class,
+		TokenNotAParameterGate::class,
+		LoginGate::class,
+		McpProfileGate::class,
+		TokenLoginAccountedForGate::class,
+		TokenAudienceGate::class,
+	];
+
 	public static function handleRequest(): void
 	{
 		MCPLog::EnableForModule();
-
-		// Before anything that needs a user: a preflight carries no credential
-		// by definition, so answering it after DoLogin() would answer 401 and
-		// the browser would never send the real request.
-		if (self::isPreflight()) {
-			MCPResponse::EmitPreflight();
-
-			return;
-		}
 
 		// One tag per MCP scope this instance declares. iTop honours a token
 		// scope only when a tag of the same name is on the stack, so a scope
@@ -64,45 +81,14 @@ final class MCPController
 		try {
 			$oKPI->ComputeAndReport('Data model loaded');
 
-			// Both of these run before ResetSession(), which is the point of
-			// them: a page on any website could otherwise make a logged-in
-			// user's browser call this URL and end their console session - no
-			// credential needed, and nothing in the audit trail that looks
-			// like an attack. The third guard on that path is the credential
-			// check below, which is what makes the reset conditional at all.
-			self::rejectUnlessHostIsServed();
-			self::rejectUnlessBodyIsJson();
-
-			MCPHttp::PromoteBearerToAuthToken();
-			self::rejectUnlessACredentialWasPresented();
-			self::rejectATokenSentAsAParameter();
-
-			LoginWebPage::ResetSession();
-			$iRet = LoginWebPage::DoLogin(false, false, LoginWebPage::EXIT_RETURN);
-			$oKPI->ComputeAndReport('User login');
-
-			// Only ever from the console refusal, so a console login reaches
-			// none of it and goes on exactly as before portal mode existed.
-			if ($iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED) {
-				$iRet = PortalAdmission::Admit();
+			// Every check the request passes, in the order it passes them. The
+			// order is the security property (each gate says what it must come
+			// before), and a gate that answers the request ends it here.
+			foreach (self::GATES as $sGate) {
+				if (!(new $sGate())->Check($oKPI)) {
+					return;
+				}
 			}
-
-			if ($iRet === LoginWebPage::EXIT_CODE_OK && Settings::IsAccessRestricted() && !AllowedProfiles::UserHasMCPProfile()) {
-				$iRet = LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
-			}
-
-			if ($iRet !== LoginWebPage::EXIT_CODE_OK) {
-				throw AuthRefusal::CreateAuthException($iRet);
-			}
-
-			// Before the policy is decided, because the policy is what this
-			// protects: a token login whose token this module did not see
-			// would be graded as no token at all.
-			self::rejectATokenLoginNotAccountedFor();
-			// While the token is still at hand: one a person granted for
-			// another URL of this endpoint - another portal's - is not theirs
-			// to use here (doc/adr/0007).
-			self::rejectATokenGrantedForAnotherUrl();
 
 			// The scopes are the last thing that needs the raw credential, so
 			// they are read here and the credential dropped immediately after.
@@ -188,221 +174,6 @@ final class MCPController
 		}
 
 		header_remove('Set-Cookie');
-	}
-
-	/**
-	 * A CORS preflight, which is the one request that reaches this endpoint
-	 * without a credential and must still be answered.
-	 */
-	private static function isPreflight(): bool
-	{
-		return ($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS'
-			&& ($_SERVER['HTTP_ORIGIN'] ?? '') !== '';
-	}
-
-	/**
-	 * Refuses a request that arrived under a hostname this instance does not
-	 * serve.
-	 *
-	 * The SDK applies the same rule, but it applies it inside
-	 * StreamableHttpTransport - which this endpoint only reaches after
-	 * resetting the session and authenticating. Deciding it here as well is
-	 * what makes the check worth anything: the two read the same allow-list, so
-	 * they cannot disagree, and this one runs before anything has a side
-	 * effect.
-	 *
-	 * @throws MCPRequestRejectedException
-	 */
-	private static function rejectUnlessHostIsServed(): void
-	{
-		$sOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
-		$sHost   = $_SERVER['HTTP_HOST'] ?? null;
-
-		if (MCPHttp::IsAllowedHost($sOrigin, $sHost, Settings::GetAllowedHosts())) {
-			return;
-		}
-
-		// The name that was refused goes to the log, not to the caller: an
-		// operator whose endpoint answers 403 needs to see it, and a caller
-		// probing for the configured hostnames does not.
-		ErrorReport::Log(sprintf(
-			"Refused an MCP request: neither its Origin (%s) nor its Host (%s) is in '%s'. "
-			.'Set that module parameter to the hostname this instance is served under.',
-			is_string($sOrigin) && $sOrigin !== '' ? $sOrigin : '-',
-			is_string($sHost) && $sHost !== '' ? $sHost : '-',
-			Settings::MODULE_SETTING_ALLOWED_HOSTS
-		));
-
-		throw new MCPRequestRejectedException(
-			'This host is not served by the MCP endpoint.',
-			MCPRequestRejectedException::HTTP_FORBIDDEN
-		);
-	}
-
-	/**
-	 * Refuses a POST that does not announce a JSON body.
-	 *
-	 * A cross-origin fetch() is preflighted unless its Content-Type is one of
-	 * three the browser considers safe, none of which is application/json.
-	 * Requiring JSON therefore means every cross-origin call is preceded by an
-	 * OPTIONS this endpoint answers with nothing unless the origin is
-	 * allow-listed - so the browser never sends the call at all. Without it the
-	 * endpoint is reachable as a simple request, which is the whole CSRF class.
-	 *
-	 * GET and DELETE carry no body and are left alone.
-	 *
-	 * @throws MCPRequestRejectedException
-	 */
-	private static function rejectUnlessBodyIsJson(): void
-	{
-		if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-			return;
-		}
-
-		if (MCPHttp::IsJsonMediaType($_SERVER['CONTENT_TYPE'] ?? null)) {
-			return;
-		}
-
-		throw new MCPRequestRejectedException(
-			'A POST to the MCP endpoint must carry Content-Type: '.MCPHttp::JSON_MEDIA_TYPE.'.',
-			MCPRequestRejectedException::HTTP_UNSUPPORTED_MEDIA_TYPE
-		);
-	}
-
-	/**
-	 * Refuses a request that brought no credential of its own.
-	 *
-	 * This is the guard that lets ResetSession() be conditional, and both
-	 * halves of it matter.
-	 *
-	 * The reset destroys whatever iTop session the browser is holding. It is
-	 * unauthenticated, so without this an <img src> on any website is a logout
-	 * for every console user who loads that page - a side effect no MCP client
-	 * ever asked for, on a request that was never going to be served.
-	 *
-	 * Skipping the reset alone would be worse than leaving it: a credential-less
-	 * request would then reach DoLogin() with the browser's iTop cookie intact
-	 * and be authenticated by it, which is the whole endpoint reachable on
-	 * ambient authority. So the answer is not to reset later but to refuse
-	 * earlier - the outcome for such a request is the 401 it already got, minus
-	 * the collateral damage.
-	 *
-	 * What counts as a credential is anything the caller or the webserver put
-	 * there deliberately - see MCPHttp::CarriesACredential(). A cookie is not
-	 * one: the browser attaches it without being asked, which is precisely what
-	 * makes it useless as evidence that this request was meant.
-	 *
-	 * @throws MCPAuthException
-	 */
-	private static function rejectUnlessACredentialWasPresented(): void
-	{
-		if (MCPHttp::CarriesACredential()) {
-			return;
-		}
-
-		throw new MCPAuthException(
-			'No credential was sent. The MCP endpoint needs one on every request: a bearer token in the '
-			.'Authorization header, an Auth-Token header, or a login. A browser session does not count.',
-			MCPResult::UNAUTHORIZED
-		);
-	}
-
-	/**
-	 * Refuses a token sent as a request parameter, before it can log in.
-	 *
-	 * See MCPHttp::CarriesATokenAsAParameter() for why. Refused before the
-	 * session reset for the same reason as the checks above it: nothing that
-	 * is going to be refused anyway should cost a console user their session.
-	 *
-	 * @throws MCPAuthException
-	 */
-	private static function rejectATokenSentAsAParameter(): void
-	{
-		if (!MCPHttp::CarriesATokenAsAParameter()) {
-			return;
-		}
-
-		ErrorReport::Log('Refused an MCP request carrying auth_token as a request parameter. The endpoint reads a token from the Authorization or Auth-Token header only.');
-
-		throw new MCPAuthException(
-			'Send the token in the Authorization header (Bearer) or the Auth-Token header. '
-			.'A token passed as the auth_token request parameter is refused: a URL is written to access logs.',
-			MCPResult::UNAUTHORIZED
-		);
-	}
-
-	/**
-	 * Refuses a token login whose token this module was not shown.
-	 *
-	 * The backstop behind rejectATokenSentAsAParameter(): that one closes the
-	 * hole as it is known today, this one closes it as iTop reports it. See
-	 * TokenScopes::LoginIsAccountedFor().
-	 *
-	 * @throws MCPAuthException
-	 */
-	private static function rejectATokenLoginNotAccountedFor(): void
-	{
-		$mLoginMode = Session::Get('login_mode');
-		if (TokenScopes::LoginIsAccountedFor($mLoginMode)) {
-			return;
-		}
-
-		ErrorReport::Log(sprintf(
-			"Refused an MCP request: iTop logged it in under login mode '%s' with a token this module was not shown, so the token's scopes could not be applied.",
-			is_string($mLoginMode) ? $mLoginMode : gettype($mLoginMode)
-		));
-
-		throw new MCPAuthException(
-			'Send the token in the Authorization header (Bearer) or the Auth-Token header.',
-			MCPResult::UNAUTHORIZED
-		);
-	}
-
-	/**
-	 * Refuses a token a person granted, through altioo-oauth-server, for
-	 * another URL of this endpoint: with one OAuth resource per portal, a
-	 * consent for one portal does not reach another (doc/adr/0007). A token
-	 * no connection owns - one an administrator minted - has no such URL and
-	 * is held by the other rules only; so is every token when that module is
-	 * not installed.
-	 *
-	 * @throws MCPAuthException When the token was granted for another URL; the
-	 *     401's challenge sends the client to consent for this one.
-	 */
-	private static function rejectATokenGrantedForAnotherUrl(): void
-	{
-		$sAudienceClass = OAuthResource::TOKEN_AUDIENCE_CLASS;
-		if (!class_exists($sAudienceClass)) {
-			return;
-		}
-
-		$oToken = TokenScopes::OfCurrentRequestObject();
-		if (!$oToken instanceof DBObject || !is_a($oToken, 'PersonalToken')) {
-			return;
-		}
-
-		$oAudience = call_user_func([$sAudienceClass, 'Of'], (int)$oToken->GetKey());
-		if (!is_object($oAudience) || !method_exists($oAudience, 'IsFor')) {
-			return;
-		}
-
-		$sCalled = OAuthResource::CalledEndpointUrl();
-		if ($oAudience->IsFor($sCalled) === true) {
-			return;
-		}
-
-		ErrorReport::Log(sprintf(
-			"Refused an MCP request: '%s' presented a token granted for the OAuth resource '%s', not for the URL called ('%s').",
-			UserRights::GetUser(),
-			property_exists($oAudience, 'sResourceKey') ? (string)$oAudience->sResourceKey : '?',
-			$sCalled
-		));
-
-		throw new MCPAuthException(
-			'This token was granted for another URL of this endpoint, such as another portal\'s. '
-			.'Connect again from this URL to consent to it.',
-			MCPResult::UNAUTHORIZED
-		);
 	}
 
 	/**

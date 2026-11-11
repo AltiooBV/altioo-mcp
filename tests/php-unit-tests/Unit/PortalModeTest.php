@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\Gate\PortalAdmission;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
@@ -40,6 +41,7 @@ use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -126,15 +128,15 @@ class PortalModeTest extends TestCase
 	 */
 	public function testATokenIsHeldToItsUrlAndTheAuditNamesThePortal(): void
 	{
-		$sHandle = self::bodyOf(MCPController::class, 'handleRequest');
-		$iAccounted = strpos($sHandle, 'self::rejectATokenLoginNotAccountedFor()');
-		$iAudience = strpos($sHandle, 'self::rejectATokenGrantedForAnotherUrl()');
+		$sHandle = RequestPipelineSource::Flattened();
+		$iAccounted = strpos($sHandle, '[[TokenLoginAccountedForGate]]');
+		$iAudience = strpos($sHandle, '[[TokenAudienceGate]]');
 		$iForget = strpos($sHandle, 'MCPHttp::ForgetAuthToken()');
 		$this->assertNotFalse($iAudience, 'a token granted for another portal\'s URL is accepted');
 		$this->assertLessThan($iAudience, $iAccounted);
 		$this->assertLessThan($iForget, $iAudience, 'the audience is asked after the token is dropped');
 
-		$this->assertStringContainsString('OAuthResource::CalledEndpointUrl()', self::bodyOf(MCPController::class, 'rejectATokenGrantedForAnotherUrl'));
+		$this->assertStringContainsString('OAuthResource::CalledEndpointUrl()', self::bodyOf(TokenAudienceGate::class, 'Check'));
 		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(CallLog::class, 'LogIfConfigured'));
 		$this->assertStringContainsString('PortalMode::Requested()', self::bodyOf(PortalAdmission::class, 'Admit'));
 	}
@@ -527,9 +529,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testPortalModeIsDecidedFromTheConsoleRefusalOnly(): void
 	{
-		$oMethod = new ReflectionMethod(MCPController::class, 'handleRequest');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+		$sBody = RequestPipelineSource::Flattened(false);
 
 		$this->assertMatchesRegularExpression(
 			'/if \(\$iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED\) \{\s*\$iRet = PortalAdmission::Admit\(\);\s*\}/',
