@@ -296,7 +296,7 @@ class WriteFailureReportingContractTest extends TestCase
 	public function testTheBulkOutcomeTakesTheIdAsITopReportsIt(): void
 	{
 		$oMethod = new ReflectionMethod(
-			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+			'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 			'outcome'
 		);
 		$sType = (string) $oMethod->getParameters()[0]->getType();
@@ -308,7 +308,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$this->assertStringContainsString(
 			'WritePlan::AsId',
 			$this->methodBody(
-				'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+				'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 				'outcome'
 			),
 			'the widened parameter has to be normalised, or the schema\'s integer id becomes a string'

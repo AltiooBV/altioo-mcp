@@ -107,8 +107,8 @@ checks this for you (see [What registration checks](#what-registration-checks)).
 tools declare `execute()` static; an instance method works equally well.
 
 ```php
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -168,7 +168,7 @@ before any tool runs. What a pack has to offer is the *why*, and there is one sp
 so that a model does not meet three:
 
 ```php
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 
 // In getInputSchema(), beside 'simulate':
 'comment' => ChangeTracking::CommentSchemaProperty('the entry is being added'),
@@ -342,7 +342,7 @@ tool selection from the same instance. Write descriptions in English and leave t
 throwing, so a pack's whole contract suite is one assertion per element:
 
 ```php
-use Altioo\iTop\Extension\MCP\Testing\ElementContract;
+use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 
 self::assertSame([], ElementContract::Violations(new TicketAddLogEntry()));
 ```
@@ -381,8 +381,8 @@ class MyThing extends AbstractMCPResource
 ## 4. Register everything from a service provider
 
 ```php
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 
 class AcmeMCPExtensions implements iMCPServiceProvider
 {

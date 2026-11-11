@@ -74,7 +74,7 @@ class OrmFailureRedactionTest extends TestCase
 		foreach ([
 			// The create, the update and the stimulus convert through it.
 			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WritePlan',
-			'Altioo\\iTop\\Extension\\MCP\\Abstract\\AbstractBulkTool',
+			'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 		] as $sClass) {
 			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());
 			$this->assertStringContainsString(
@@ -152,9 +152,9 @@ class OrmFailureRedactionTest extends TestCase
 	 * author with "refused:" and a reference to a log they are not reading.
 	 *
 	 * Listed by path rather than by directory so that a second file appearing
-	 * under src/Testing/ is scanned like everything else.
+	 * under src/Api/Testing/ is scanned like everything else.
 	 */
-	private const NOT_ON_A_REQUEST_PATH = ['src/Testing/ElementContract.php'];
+	private const NOT_ON_A_REQUEST_PATH = ['src/Api/Testing/ElementContract.php'];
 
 	public function testTheHelperTellsTheCallerTheReferenceAndNothingElse(): void
 	{

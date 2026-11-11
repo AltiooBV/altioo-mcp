@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Abstract;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -17,7 +17,7 @@ use Mcp\Schema\Annotations;
  * @api
  * @since 1.0.0
  */
-abstract class AbstractMCPResourceTemplate
+abstract class AbstractMCPResource
 {
 	protected const URI_SCHEME = 'itop';
 
@@ -39,7 +39,7 @@ abstract class AbstractMCPResourceTemplate
 	 * Human-readable title for display in a UI, localised.
 	 *
 	 * Titles are translated; descriptions are not. See the README, Extending,
-	 * and {@see \Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool::getTitle()}
+	 * and {@see \Altioo\iTop\Extension\MCP\Api\AbstractMCPTool::getTitle()}
 	 * for why the two are treated differently.
 	 *
 	 * The title is resolved through the dictionary. Override
@@ -60,7 +60,7 @@ abstract class AbstractMCPResourceTemplate
 	 */
 	final public function titleDictionaryKey(): string
 	{
-		return 'MCP:resource_template:'.$this->getQualifiedName().':title';
+		return 'MCP:resource:'.$this->getQualifiedName().':title';
 	}
 
 	/**
@@ -92,12 +92,17 @@ abstract class AbstractMCPResourceTemplate
 		return $this->getResourceNamespace();
 	}
 
-	abstract protected function getResourcePath(): string; // contains {variables}
+	abstract protected function getResourcePath(): string; // no {variables}
 
 	/**
 	 * @since 1.0.0
 	 */
-	final public function getUriTemplate(): string
+	abstract public function read(): mixed;
+
+	/**
+	 * @since 1.0.0
+	 */
+	final public function getUri(): string
 	{
 		return self::URI_SCHEME.'://'
 			.$this->getResourceNamespace().'/'
@@ -115,7 +120,23 @@ abstract class AbstractMCPResourceTemplate
 	/**
 	 * @since 1.0.0
 	 */
+	public function getSize(): ?int //the size in bytes, if known and constant
+	{
+		return null;
+	}
+
+	/**
+	 * @since 1.0.0
+	 */
 	public function getAnnotations(): ?Annotations
+	{
+		return null;
+	}
+
+	/**
+	 * @since 1.0.0
+	 */
+	public function getIcons(): ?array //list of icon URLs representing the resource
 	{
 		return null;
 	}

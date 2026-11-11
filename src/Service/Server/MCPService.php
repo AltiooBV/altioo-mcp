@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Server;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;

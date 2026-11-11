@@ -145,7 +145,7 @@ class ObjectActionsContractTest extends TestCase
 
 		$this->assertStringContainsString(
 			'actions',
-			$this->bodyOf(\Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch::class, 'refuseUnattributablePage'),
+			$this->bodyOf(\Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch::class, 'refuseUnattributablePage'),
 			'a page of any size may ask what can be done with every row'
 		);
 	}

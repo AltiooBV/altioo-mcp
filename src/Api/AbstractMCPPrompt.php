@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Abstract;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
@@ -64,7 +64,7 @@ abstract class AbstractMCPPrompt
 	 * Human-readable title for display in a UI, localised.
 	 *
 	 * Titles are translated; descriptions are not. See the README, Extending,
-	 * and {@see \Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool::getTitle()}
+	 * and {@see \Altioo\iTop\Extension\MCP\Api\AbstractMCPTool::getTitle()}
 	 * for why the two are treated differently.
 	 *
 	 * The title is resolved through the dictionary. Override

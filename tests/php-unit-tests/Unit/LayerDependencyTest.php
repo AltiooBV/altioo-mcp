@@ -80,19 +80,6 @@ class LayerDependencyTest extends TestCase
 	 * @var array<string, string>
 	 */
 	private const CLASS_LAYERS = [
-		'Abstract\\AbstractBulkTool' => 'Api', // Api/
-		'Abstract\\AbstractMCPPrompt' => 'Api', // Api/
-		'Abstract\\AbstractMCPResource' => 'Api', // Api/
-		'Abstract\\AbstractMCPResourceTemplate' => 'Api', // Api/
-		'Abstract\\AbstractMCPTool' => 'Api', // Api/
-		'Abstract\\AbstractObjectSearch' => 'Api', // Api/
-		'Contract\\iMCPServiceProvider' => 'Api', // Api/
-		'Testing\\ElementContract' => 'Api', // Api/
-		'Helper\\ToolOutput' => 'Api', // Api/
-		'Registry\\MCPRegistry' => 'Api', // Api/
-		'Registry\\MCPExtensionCollector' => 'Api', // Api/
-		'Helper\\ResourceOutput' => 'Api', // Api/
-		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
 		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
 		'Helper\\JsonPayload' => 'Helper', // Helper/

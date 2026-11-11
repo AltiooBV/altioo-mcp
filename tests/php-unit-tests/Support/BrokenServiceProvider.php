@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Support;
 
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 use RuntimeException;
 
 /**

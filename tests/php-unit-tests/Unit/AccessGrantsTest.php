@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use PHPUnit\Framework\TestCase;
@@ -383,7 +383,7 @@ class AccessGrantsTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'AccessGrants::RefusalFor',
-			$this->body('Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool', 'checkBulkAllowed'),
+			$this->body('Altioo\iTop\Extension\MCP\Api\AbstractBulkTool', 'checkBulkAllowed'),
 			'the bulk tools no longer check the barrier'
 		);
 	}

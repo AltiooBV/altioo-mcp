@@ -6,10 +6,11 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 use JsonException;
 use Mcp\Exception\ResourceReadException;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 
 /**
  * What a resource or a resource template hands back, encoded the way a tool

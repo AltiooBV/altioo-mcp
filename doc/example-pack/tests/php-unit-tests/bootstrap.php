@@ -4,7 +4,7 @@
  *
  * The contract suite needs two autoloaders. This pack's own, for the tools and
  * the prompt; and the base extension's, for
- * Altioo\iTop\Extension\MCP\Testing\ElementContract and the abstracts the tools
+ * Altioo\iTop\Extension\MCP\Api\Testing\ElementContract and the abstracts the tools
  * extend. The base is not a Composer dependency of this pack, for the same
  * reason mcp/sdk is in require-dev - iTop loads the base's datamodel files
  * before this module's, so at runtime everything is already registered, and a
@@ -55,7 +55,7 @@ if ($sBaseRoot === null) {
 	fwrite(STDERR, <<<TXT
 	The base extension was not found.
 
-	This pack's tests use Altioo\iTop\Extension\MCP\Testing\ElementContract,
+	This pack's tests use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract,
 	which ships with altioo-mcp. Put this module beside it under extensions/,
 	or set ALTIOO_MCP_ROOT to where altioo-mcp is.
 

@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
-use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;

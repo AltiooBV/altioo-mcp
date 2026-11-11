@@ -33,7 +33,7 @@ class EditPolicyTest extends TestCase
 	private const WRITE_PATHS = [
 		// The create, the update, the stimulus and the portal's writes share one copy.
 		'src/Service/Write/WritePlan.php',
-		'src/Abstract/AbstractBulkTool.php',
+		'src/Api/AbstractBulkTool.php',
 	];
 
 	/** Where values are Set() and the external keys can then be judged. */

@@ -6,12 +6,13 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 use JsonException;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 
 /**
  * What a tool hands back, in one representation rather than two.

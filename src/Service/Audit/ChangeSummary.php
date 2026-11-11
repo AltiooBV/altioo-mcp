@@ -83,7 +83,7 @@ class ChangeSummary
 	 * The summary, from operations already reduced to plain values.
 	 *
 	 * Pure, and separated from everything that touches iTop, for the same
-	 * reason {@see \Altioo\iTop\Extension\MCP\Helper\ChangeTracking::Compose()} is: the shape of this text is the
+	 * reason {@see \Altioo\iTop\Extension\MCP\Api\ChangeTracking::Compose()} is: the shape of this text is the
 	 * whole feature - it is what an auditor reads after the change rows have
 	 * been purged - and it is the only part of the mechanism that can be
 	 * asserted without a database.

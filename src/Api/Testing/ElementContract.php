@@ -6,10 +6,10 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Testing;
+namespace Altioo\iTop\Extension\MCP\Api\Testing;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Throwable;
 

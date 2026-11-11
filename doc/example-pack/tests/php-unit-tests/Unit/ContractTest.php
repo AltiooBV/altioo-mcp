@@ -11,7 +11,7 @@ namespace Acme\iTop\Extension\ServiceDesk\Test\Unit;
 use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
-use Altioo\iTop\Extension\MCP\Testing\ElementContract;
+use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 use PHPUnit\Framework\TestCase;
 
 /**

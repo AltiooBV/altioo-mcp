@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Contract;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 /**
  * @api

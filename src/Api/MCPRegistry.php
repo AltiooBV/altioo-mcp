@@ -6,12 +6,12 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Registry;
+namespace Altioo\iTop\Extension\MCP\Api;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -147,7 +147,7 @@ final class MCPRegistry
 	 * its own suite against the rules that will actually be applied at boot,
 	 * rather than against a copy of them that drifts from them.
 	 *
-	 * @see \Altioo\iTop\Extension\MCP\Testing\ElementContract, which collects
+	 * @see \Altioo\iTop\Extension\MCP\Api\Testing\ElementContract, which collects
 	 *      the failures instead of stopping at the first one.
 	 *
 	 * @return string The identifier the element would claim.

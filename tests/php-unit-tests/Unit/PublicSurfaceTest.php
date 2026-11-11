@@ -48,12 +48,8 @@ class PublicSurfaceTest extends TestCase
 	 * carry a tag.
 	 */
 	private const SURFACE = [
-		'src/Abstract',
+		'src/Api',
 		'src/Helper',
-		'src/Testing',
-		'src/Registry/MCPRegistry.php',
-		'src/Registry/MCPExtensionCollector.php',
-		'src/Contract/iMCPServiceProvider.php',
 		// Moved out of src/Helper by ADR 0015 and still @api; step 5 decides their tag.
 		'src/Service/Rights/AccessGrants.php',
 		'src/Service/Rights/ExclusionPolicy.php',

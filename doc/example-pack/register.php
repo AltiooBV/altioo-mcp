@@ -14,6 +14,6 @@
  */
 
 use Acme\iTop\Extension\ServiceDesk\AcmeServiceDeskExtensions;
-use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 
 MCPExtensionCollector::RegisterServiceProvider(AcmeServiceDeskExtensions::class);

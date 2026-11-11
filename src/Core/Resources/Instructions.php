@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;

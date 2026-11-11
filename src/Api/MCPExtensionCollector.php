@@ -6,9 +6,9 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Registry;
+namespace Altioo\iTop\Extension\MCP\Api;
 
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery;
 use LogAPI;

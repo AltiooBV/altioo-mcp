@@ -6,12 +6,13 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Helper;
+namespace Altioo\iTop\Extension\MCP\Api;
 
 use CMDBObject;
 use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
 use Psr\Http\Message\MessageInterface;
 use Throwable;
+use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 
 /**
  * What this request says about a change it makes: which tool, and why.

@@ -11,9 +11,9 @@ namespace Acme\iTop\Extension\ServiceDesk;
 use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 
 /**
  * Everything this pack contributes, registered once per MCP request.

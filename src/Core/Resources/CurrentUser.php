@@ -8,9 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
-use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;

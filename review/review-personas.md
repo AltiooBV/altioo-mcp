@@ -43,7 +43,7 @@ release archive.
   for, and an honest account of what was not done?
 - **Open:** each tool's description and input schema as the only documentation the client has;
   each refusal it can return, looking for another tool, parameter or sequence reaching the same
-  result; the bulk tools (`src/Abstract/AbstractBulkTool.php`) for partial application and how it
+  result; the bulk tools (`src/Api/AbstractBulkTool.php`) for partial application and how it
   is reported; the defaults a client gets without asking (`mcp_pagination_limit`, field lists,
   search scope); and the change history a write leaves (README, "Audit trail"), for whether it
   names the person and the client, not only an account.
@@ -81,7 +81,7 @@ release archive.
 - **Open:** what a write through this endpoint looks like on the counterpart's own screens, in
   the console and the portal, never only in the audit table: a case log entry's author line, the
   Activity panel, notifications a write fires, and the mentions it makes. Then what those screens
-  draw on: `src/Helper/ChangeTracking.php` and `doc/security-summary.md`, for what is recorded
+  draw on: `src/Api/ChangeTracking.php` and `doc/security-summary.md`, for what is recorded
   against what is displayed; `mcp_max_mentions`, for who gets notified; and the end-user's own
   account of the write, for whether the two sides can be reconciled.
 - **Blocks:** backlog. Say so as a question for a professional where disclosure to the counterpart
