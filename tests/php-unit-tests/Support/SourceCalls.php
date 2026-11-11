@@ -170,6 +170,22 @@ final class SourceCalls
 	}
 
 	/**
+	 * Is there a call to a method of this name, static on any class or on any
+	 * object? For a gate that is reached through `self::checkBulkAllowed(` in one
+	 * tool and `static::` or `$this->` in another.
+	 */
+	public function HasCallTo(string $sName, ?string $sMethod = null): bool
+	{
+		foreach ($this->Calls($sMethod) as $sCall) {
+			if (preg_match('/(?:::|->)'.preg_quote($sName, '/').'$/i', $sCall) === 1) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Is each call there, and does the first of each come after the first of the
 	 * one before? A call that is absent fails the question.
 	 *
