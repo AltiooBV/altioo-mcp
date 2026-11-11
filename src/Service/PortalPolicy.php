@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 // Same namespace, imported anyway: it extends a portal class, so it can be
 // loaded only where the portal is, and nothing should load it to find out.
 use Altioo\iTop\Extension\MCP\Service\PortalBrickTemplates;

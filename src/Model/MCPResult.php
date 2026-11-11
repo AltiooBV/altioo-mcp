@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Models;
+namespace Altioo\iTop\Extension\MCP\Model;
 
 /**
  * Minimal MCP response structure.

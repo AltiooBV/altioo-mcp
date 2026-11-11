@@ -7,7 +7,6 @@
 namespace Altioo\iTop\Extension\MCP\Helper;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Dict;
 use MetaModel;
 use Throwable;

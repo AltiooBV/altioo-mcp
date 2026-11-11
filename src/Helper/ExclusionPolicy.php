@@ -14,7 +14,6 @@ use AttributeLinkedSet;
 use AttributeLinkedSetIndirect;
 use MetaModel;
 use Throwable;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use UserRights;
 use utils;
 

@@ -95,7 +95,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\ChangeTracking' => 'Api', // Api/
 		'Helper\\MCPHelper' => 'Helper', // Helper/, the rest of it; its version check goes to Api/ (the split decides)
 		'Helper\\MCPHttp' => 'Helper', // Helper/ for now; its response half goes to Controller/ in the split step
-		'Helper\\Identifier' => 'Helper', // Helper/
 		'Helper\\AccessGrants' => 'Service\\Rights', // Service/Rights/
 		'Helper\\ExclusionPolicy' => 'Service\\Rights', // Service/Rights/
 		'Helper\\CurrentUserReader' => 'Service\\Read', // Service/Read/
@@ -115,7 +114,6 @@ class LayerDependencyTest extends TestCase
 		'Helper\\MCPContext' => 'Helper', // Helper/
 		'Helper\\MCPLog' => 'Helper', // Helper/
 		'Helper\\Settings' => 'Helper', // Helper/
-		'Models\\MCPResult' => 'Model', // Model/
 		'Server\\ServerInstructions' => 'Core', // Core/
 		'Server\\Session\\StatelessSessionStore' => 'Service\\Server', // Service/Server/
 		'Service\\MCPService' => 'Service\\Server', // Service/Server/
@@ -127,12 +125,10 @@ class LayerDependencyTest extends TestCase
 		'Service\\PortalAware' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalBrickTemplates' => 'Service\\Portal', // Service/Portal/
 		'Service\\PortalDescription' => 'Service\\Portal', // Service/Portal/
-		'Service\\PortalMode' => 'Helper', // Helper/
 		'Service\\PortalPolicy' => 'Service\\Portal', // Service/Portal/
 		'Service\\AuditRetention' => 'Service\\Audit', // Service/Audit/
 		'Service\\ChangeSummary' => 'Service\\Audit', // Service/Audit/
 		'Service\\ReadSummary' => 'Service\\Audit', // Service/Audit/
-		'Service\\AuditHousekeeping' => 'Hook', // Hook/
 	];
 
 	/**
@@ -146,13 +142,13 @@ Helper\CurrentUserReader → Service\MCPService
 Helper\DocumentAccess → Helper\WritePlan
 Helper\DocumentAccess → Service\ObjectAccess
 Helper\ObjectSerializer → Helper\WritePlan
+Helper\PortalMode → Service\PortalAware
+Helper\PortalMode → Service\PortalPolicy
 Helper\Settings → Helper\ExclusionPolicy
 Helper\WritePlan → Core\Tools\ObjectSearchByOQL
 Helper\WritePlan → Service\ObjectAccess
 Service\PortalAccess → Core\Tools\PortalList
 Service\PortalAccess → Service\ObjectAccess
-Service\PortalMode → Service\PortalAware
-Service\PortalMode → Service\PortalPolicy
 TXT;
 
 	public function testEveryClassHasALayer(): void

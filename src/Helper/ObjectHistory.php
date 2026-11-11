@@ -8,7 +8,6 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Helper;
 
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\ReadSummary;
 use DBObject;
 use DBObjectSearch;

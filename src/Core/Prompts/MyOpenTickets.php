@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Prompts;
 
 use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
 use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 use MetaModel;
 use UserRights;

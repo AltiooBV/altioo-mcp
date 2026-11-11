@@ -578,7 +578,7 @@
       <code><![CDATA[$sAttCode === 'finalclass']]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Models/MCPResult.php">
+  <file src="src/Model/MCPResult.php">
     <MissingOverrideAttribute>
       <code><![CDATA[public function jsonSerialize(): array]]></code>
     </MissingOverrideAttribute>

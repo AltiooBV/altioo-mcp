@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\AuditHousekeeping;
+use Altioo\iTop\Extension\MCP\Hook\AuditHousekeeping;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AltiooEventMCPService;
 use MetaModel;

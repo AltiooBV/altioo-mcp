@@ -6,7 +6,10 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Helper;
+
+use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
 
 /**
  * Whether this request serves a portal-only user, and through which portal.

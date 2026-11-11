@@ -250,7 +250,7 @@ if (MetaModel::IsValidClass(FIXTURE_CLASS)) {
 	check(
 		'cron finds the audit clean-up process after the upgrade',
 		in_array(
-			\Altioo\iTop\Extension\MCP\Service\AuditHousekeeping::class,
+			\Altioo\iTop\Extension\MCP\Hook\AuditHousekeeping::class,
 			\Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery::GetInstance()->FindItopClasses(iBackgroundProcess::class),
 			true
 		)

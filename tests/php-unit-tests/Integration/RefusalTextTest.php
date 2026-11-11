@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Models\MCPResult;
+use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;

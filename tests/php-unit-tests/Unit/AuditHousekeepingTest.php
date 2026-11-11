@@ -84,7 +84,7 @@ class AuditHousekeepingTest extends TestCase
 	 */
 	public function testItIsAnHourlyITopBackgroundProcess(): void
 	{
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/AuditHousekeeping.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php');
 
 		$this->assertMatchesRegularExpression('/final class AuditHousekeeping implements iBackgroundProcess/', $sSource);
 		$this->assertMatchesRegularExpression('/function GetPeriodicity\(\)\s*\{\s*return 3600;/', $sSource);
@@ -100,7 +100,7 @@ class AuditHousekeepingTest extends TestCase
 	{
 		$this->assertEqualsCanonicalizing(['request_params', 'change_comment', 'refusal_text'], AuditRetention::CLEARED_ON_ANONYMISATION);
 
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/AuditHousekeeping.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php');
 		$this->assertStringContainsString('foreach (AuditRetention::CLEARED_ON_ANONYMISATION as $sColumn)', $sSource);
 	}
 

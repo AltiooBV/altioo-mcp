@@ -57,6 +57,15 @@ class PublicSurfaceTest extends TestCase
 	];
 
 	/**
+	 * Files inside a SURFACE directory that are not on the surface. ADR 0015
+	 * moves classes into src/Helper that were never @api; until its step 5
+	 * narrows the surface and replaces the directory entry, they are named here.
+	 */
+	private const NOT_SURFACE = [
+		'src/Helper/PortalMode.php',
+	];
+
+	/**
 	 * @dataProvider surfaceProvider
 	 */
 	public function testASurfaceClassIsMarkedApi(string $sPath): void
@@ -166,7 +175,7 @@ class PublicSurfaceTest extends TestCase
 			}
 			self::assertDirectoryExists(self::ROOT.'/'.$sEntry, $sEntry.' is on the surface list but does not exist');
 			foreach (self::sourceFiles() as $sPath) {
-				if (str_starts_with($sPath, $sEntry.'/')) {
+				if (str_starts_with($sPath, $sEntry.'/') && !in_array($sPath, self::NOT_SURFACE, true)) {
 					$aFiles[] = $sPath;
 				}
 			}

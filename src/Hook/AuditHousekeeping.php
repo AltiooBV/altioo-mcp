@@ -6,11 +6,12 @@
 
 declare(strict_types=1);
 
-namespace Altioo\iTop\Extension\MCP\Service;
+namespace Altioo\iTop\Extension\MCP\Hook;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
+use Altioo\iTop\Extension\MCP\Service\AuditRetention;
 use AltiooEventMCPService;
 use DBObjectSearch;
 use DBObjectSet;
