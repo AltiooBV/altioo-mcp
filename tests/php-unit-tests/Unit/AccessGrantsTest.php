@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRoots;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
@@ -320,7 +321,7 @@ class AccessGrantsTest extends TestCase
 	/** The refusal names the class and says where the change belongs instead. */
 	public function testTheRefusalIsUsable(): void
 	{
-		$sRefusal = sprintf(AccessGrants::GRANT_REFUSAL, 'PersonalToken');
+		$sRefusal = sprintf(AccessGrantRefusals::GRANT_REFUSAL, 'PersonalToken');
 
 		$this->assertStringContainsString('PersonalToken', $sRefusal);
 		$this->assertStringContainsString('console', $sRefusal);
@@ -696,7 +697,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheSettingSaysItIsAnEscalationAndNotAFeature(): void
 	{
-		foreach ([AccessGrants::AUTOMATION_REFUSAL, AccessGrants::DETECTION_REFUSAL] as $sRefusal) {
+		foreach ([AccessGrantRefusals::AUTOMATION_REFUSAL, AccessGrantRefusals::DETECTION_REFUSAL] as $sRefusal) {
 			$this->assertStringContainsString('grant more than the credential it was called with', $sRefusal,
 				'the refusal does not say what turning the setting on actually means');
 			$this->assertStringContainsString('rather than a switch for managing automation', $sRefusal,
@@ -724,17 +725,17 @@ class AccessGrantsTest extends TestCase
 	public function testTheDelegationRefusalsDoNotReadAlike(): void
 	{
 		$aAll = [
-			AccessGrants::GRANT_REFUSAL,
-			AccessGrants::SELF_REFUSAL,
-			AccessGrants::DELEGATION_REFUSAL,
-			AccessGrants::DELEGATED_TARGET_REFUSAL,
-			AccessGrants::DELEGATED_RIGHTS_REFUSAL,
+			AccessGrantRefusals::GRANT_REFUSAL,
+			AccessGrantRefusals::SELF_REFUSAL,
+			AccessGrantRefusals::DELEGATION_REFUSAL,
+			AccessGrantRefusals::DELEGATED_TARGET_REFUSAL,
+			AccessGrantRefusals::DELEGATED_RIGHTS_REFUSAL,
 		];
 
 		$this->assertSame(count($aAll), count(array_unique($aAll)), 'two refusals say the same thing');
-		$this->assertStringContainsString('scope_class', AccessGrants::DELEGATION_REFUSAL);
-		$this->assertStringContainsString('does not write it through something else', AccessGrants::DELEGATED_TARGET_REFUSAL);
-		$this->assertStringContainsString('you could write yourself', AccessGrants::DELEGATED_RIGHTS_REFUSAL);
+		$this->assertStringContainsString('scope_class', AccessGrantRefusals::DELEGATION_REFUSAL);
+		$this->assertStringContainsString('does not write it through something else', AccessGrantRefusals::DELEGATED_TARGET_REFUSAL);
+		$this->assertStringContainsString('you could write yourself', AccessGrantRefusals::DELEGATED_RIGHTS_REFUSAL);
 	}
 
 	/**
@@ -1379,9 +1380,9 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheTwoRefusalsDoNotReadAlike(): void
 	{
-		$this->assertNotSame(AccessGrants::GRANT_REFUSAL, AccessGrants::SELF_REFUSAL);
-		$this->assertStringNotContainsString('mcp_allow_access_administration', AccessGrants::SELF_REFUSAL);
-		$this->assertStringContainsString('yourself', AccessGrants::SELF_REFUSAL);
+		$this->assertNotSame(AccessGrantRefusals::GRANT_REFUSAL, AccessGrantRefusals::SELF_REFUSAL);
+		$this->assertStringNotContainsString('mcp_allow_access_administration', AccessGrantRefusals::SELF_REFUSAL);
+		$this->assertStringContainsString('yourself', AccessGrantRefusals::SELF_REFUSAL);
 	}
 
 	/**

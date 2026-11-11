@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
@@ -38,7 +39,7 @@ class EscalationClassesTest extends TestCase
 	{
 		$sRefusal = AccessGrants::RefusalGiven(false, 'MassUpdateJob', null, [], false, ['MassUpdateJob']);
 
-		$this->assertSame(sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, 'MassUpdateJob'), $sRefusal);
+		$this->assertSame(sprintf(AccessGrantRefusals::OPERATOR_ESCALATION_REFUSAL, 'MassUpdateJob'), $sRefusal);
 		$this->assertStringContainsString('mcp_privilege_escalation_classes', (string)$sRefusal, 'the refusal does not say where the class was listed');
 		$this->assertStringContainsString('mcp_allow_privilege_escalation', (string)$sRefusal, 'the refusal does not name the setting that lifts it');
 	}
@@ -94,7 +95,7 @@ class EscalationClassesTest extends TestCase
 	public function testTheListIsAskedBeforeTheBuiltInGrading(): void
 	{
 		$this->assertSame(
-			sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, 'SynchroDataSource'),
+			sprintf(AccessGrantRefusals::OPERATOR_ESCALATION_REFUSAL, 'SynchroDataSource'),
 			AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => 'Server'], false, ['SynchroDataSource'])
 		);
 	}
@@ -106,11 +107,11 @@ class EscalationClassesTest extends TestCase
 	public function testTheAuditTrailStillComesFirst(): void
 	{
 		$this->assertSame(
-			sprintf(AccessGrants::RECORDING_REFUSAL, 'Event'),
+			sprintf(AccessGrantRefusals::RECORDING_REFUSAL, 'Event'),
 			AccessGrants::RefusalGiven(false, 'Event', null, [], false, ['Event'])
 		);
 		$this->assertSame(
-			sprintf(AccessGrants::RECORDING_REFUSAL, 'Event'),
+			sprintf(AccessGrantRefusals::RECORDING_REFUSAL, 'Event'),
 			AccessGrants::RefusalGiven(false, 'Event', null, [], true, ['Event'])
 		);
 	}

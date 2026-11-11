@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 
@@ -682,7 +683,7 @@ final class DatamodelReader
 				$aRights[$sGate] = 'no';
 			}
 
-			$aRights['restricted'] = sprintf(AccessGrants::RECORDING_REFUSAL, $sClass);
+			$aRights['restricted'] = sprintf(AccessGrantRefusals::RECORDING_REFUSAL, $sClass);
 
 			return $aRights;
 		}
@@ -697,7 +698,7 @@ final class DatamodelReader
 					$aRights[$sGate] = 'no';
 				}
 
-				return $aRights + ['restricted' => sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, $sClass)];
+				return $aRights + ['restricted' => sprintf(AccessGrantRefusals::OPERATOR_ESCALATION_REFUSAL, $sClass)];
 			}
 
 			if (!$bBarred) {
@@ -709,7 +710,7 @@ final class DatamodelReader
 		}
 
 		if ($bDetection && !$bGranting) {
-			$aRights['restricted'] = sprintf(AccessGrants::DETECTION_REFUSAL, $sClass);
+			$aRights['restricted'] = sprintf(AccessGrantRefusals::DETECTION_REFUSAL, $sClass);
 
 			if (!$bEscalationAllowed) {
 				foreach ($aGates as $sGate) {
