@@ -109,10 +109,12 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   implements `PortalAware`, and every other filter (`mcp_disabled_tools`, toolsets, capabilities,
   scopes, exclusions) still applies. A value that is not a list serves no pack element and does not stop
   the endpoint. A pack element answers through `ObjectAccess::Current()`, never `UserRights` alone
-  ([doc/extending.md](doc/extending.md#serving-your-element-in-portal-mode)).
+  ([doc/extending.md](doc/extending.md#serving-your-element-in-portal-mode)). List the class name: an
+  identifier admits any kind that holds it, and an element that took its identifier with `overrides()` is
+  admitted by its class name only. The log reports an entry that serves nothing and says why.
 - **`Testing\ElementContract` warns of a portal-aware pack element whose source never calls
   `ObjectAccess::Current()`.** Read from the PHP tokens, so a comment or a string does not satisfy it; the
-  element's parent classes count. It catches the tool that never asks, not the one that asks and ignores
+  pack's own parent classes count, this module's do not. It catches the tool that never asks, not the one that asks and ignores
   the answer: the operator's listing is the control.
 - **The example pack's `TicketSearchMine` is portal-aware**, the worked example of ADR 0017: it
   implements `PortalAware`, answers through `ObjectAccess::Current()` (`Bounded()`, `Hides()`,
