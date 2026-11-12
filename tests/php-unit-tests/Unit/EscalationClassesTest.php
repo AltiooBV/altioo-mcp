@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
@@ -145,7 +146,7 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheSettingIsReadSoThatAMistakeRefusesMore(mixed $mValue, ?array $aExpected): void
 	{
-		$this->assertSame($aExpected, Settings::EscalationClassesFrom($mValue));
+		$this->assertSame($aExpected, SettingParser::EscalationClassesFrom($mValue));
 	}
 
 	/**

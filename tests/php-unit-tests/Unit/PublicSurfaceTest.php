@@ -60,6 +60,7 @@ class PublicSurfaceTest extends TestCase
 		'src/Helper/JsonPayload.php',
 		'src/Helper/ObjectId.php',
 		'src/Helper/PortalMode.php',
+		'src/Helper/SettingNames.php',
 		'src/Helper/Settings.php',
 		'src/Service/Access/DocumentFetch.php',
 		'src/Service/Access/ObjectAccess.php',

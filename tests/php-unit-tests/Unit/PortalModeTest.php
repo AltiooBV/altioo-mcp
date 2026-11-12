@@ -28,6 +28,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
@@ -365,12 +366,12 @@ class PortalModeTest extends TestCase
 		$sName = 'test_portal_aware_pack_tool';
 
 		foreach (['test_portal_aware_pack_tool', true, 1, null, new \stdClass()] as $mMalformed) {
-			$aListed = Settings::PortalExtensionsFrom($mMalformed);
+			$aListed = SettingParser::PortalExtensionsFrom($mMalformed);
 			$this->assertSame([], $aListed);
 			$this->assertFalse(PortalAccess::Serves($oPack, $sName, $aListed));
 		}
 
-		$this->assertSame([$sName], Settings::PortalExtensionsFrom([$sName, 3, null, ['x'], false]));
+		$this->assertSame([$sName], SettingParser::PortalExtensionsFrom([$sName, 3, null, ['x'], false]));
 
 		// It only widens, so it is not one of the lists whose malformation stops the endpoint.
 		$oMethod = new ReflectionMethod(Settings::class, 'AccessListsAreMalformed');

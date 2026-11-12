@@ -91,7 +91,7 @@ with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the 
 | Write | `Service\Write\DryRun`, `Service\Write\RestValue`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
 | Portal | `Service\Portal\PortalPolicy`, `Service\Portal\PortalBricks`, `Service\Portal\PortalRows`, `Service\Portal\PortalDescription`, `Service\Portal\PortalAware` |
 | Audit | `Service\Audit\ReadSummary` |
-| Helper | `Helper\Settings`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
+| Helper | `Helper\Settings`, `Helper\SettingNames`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
 | Exception | `Exception\MCPDocumentException`, `Exception\MCPPortalException` |
 
 **What stays internal**: the controller and its gates, the server, the background process, the

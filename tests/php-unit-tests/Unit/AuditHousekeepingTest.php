@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
 use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
@@ -28,9 +29,9 @@ class AuditHousekeepingTest extends TestCase
 {
 	public function testZeroKeepsEverythingAndPositiveIntegersAreDays(): void
 	{
-		$this->assertSame(0, Settings::RetentionDaysFrom(0));
-		$this->assertSame(30, Settings::RetentionDaysFrom(30));
-		$this->assertSame(3650, Settings::RetentionDaysFrom(3650));
+		$this->assertSame(0, SettingParser::RetentionDaysFrom(0));
+		$this->assertSame(30, SettingParser::RetentionDaysFrom(30));
+		$this->assertSame(3650, SettingParser::RetentionDaysFrom(3650));
 	}
 
 	/**
@@ -41,7 +42,7 @@ class AuditHousekeepingTest extends TestCase
 	 */
 	public function testAMalformedValueKeepsEverything(mixed $mValue): void
 	{
-		$this->assertSame(0, Settings::RetentionDaysFrom($mValue));
+		$this->assertSame(0, SettingParser::RetentionDaysFrom($mValue));
 	}
 
 	/** @return array<string, array{0: mixed}> */
