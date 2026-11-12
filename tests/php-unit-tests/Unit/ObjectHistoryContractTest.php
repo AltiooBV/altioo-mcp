@@ -13,13 +13,15 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as HistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -64,20 +66,16 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testASecretIsNotReadableThroughTheChangeLog(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(ObjectHistory::class);
 
-		$this->assertStringContainsString('ObjectSerializer::IsSensitive', $sBody, 'the history grades by rights alone');
-		$this->assertStringContainsString('ObjectSerializer::MASK', $sBody, 'a sensitive value is dropped or returned, not masked');
-		$this->assertMatchesRegularExpression(
-			'/!MetaModel::IsValidAttCode.*MASK/s',
-			$sBody,
+		$this->assertTrue($oSource->HasCall(ObjectSerializer::class.'::IsSensitive'), 'the history grades by rights alone');
+		$this->assertTrue($oSource->HasConstant(ObjectSerializer::class.'::MASK'), 'a sensitive value is dropped or returned, not masked');
+		$this->assertTrue(
+			$oSource->UsesInOrder(['MetaModel::IsValidAttCode', ObjectSerializer::class.'::MASK'], 'masked'),
 			'an attribute the datamodel no longer declares is reported in the clear'
 		);
-		$this->assertMatchesRegularExpression(
-			'/self::masked\(.*self::withCaseLogEntry\(/s',
-			$sBody,
+		$this->assertTrue(
+			$oSource->CallsInOrder([ObjectHistory::class.'::masked', ObjectHistory::class.'::withCaseLogEntry'], 'read'),
 			'the case-log text is resolved before the masking can reach it'
 		);
 	}
@@ -100,19 +98,16 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testACaseLogRowCarriesTheEntryThatWasWritten(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\ObjectHistory::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(ObjectHistory::class);
 
-		$this->assertStringContainsString('CMDBChangeOpSetAttributeCaseLog', $sBody, 'the one operation with no value of its own is not recognised');
-		$this->assertStringContainsString('GetAsArray', $sBody, 'the text is not read from the object that holds it');
-		$this->assertStringNotContainsString("Get('lastentry')", $sBody, 'the entry is matched on an index that moves');
-		$this->assertMatchesRegularExpression(
-			'/MayReadAttribute.*withCaseLogEntry/s',
-			$sBody,
+		$this->assertTrue($oSource->HasString('CMDBChangeOpSetAttributeCaseLog'), 'the one operation with no value of its own is not recognised');
+		$this->assertTrue($oSource->HasString('GetAsArray') && $oSource->HasCallTo('GetAsArray'), 'the text is not read from the object that holds it');
+		$this->assertStringNotContainsString("Get('lastentry')", $oSource->Code(), 'the entry is matched on an index that moves');
+		$this->assertTrue(
+			$oSource->CallsInOrder([ObjectSerializer::class.'::MayReadAttribute', ObjectHistory::class.'::withCaseLogEntry'], 'read'),
 			'the text is read before the attribute rights have allowed it'
 		);
-		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'one unreadable entry costs the whole history');
+		$this->assertStringContainsString('catch(\\Throwable', $oSource->Code(), 'one unreadable entry costs the whole history');
 	}
 
 	/**
@@ -129,14 +124,13 @@ class ObjectHistoryContractTest extends TestCase
 	public function testTheChangeLogNeedsNoGrantOfItsOwn(): void
 	{
 		foreach ([[HistoryTool::class, 'execute'], [ObjectHistory::class, 'AttributionFor']] as [$sClass, $sMethod]) {
-			$this->assertStringNotContainsString(
-				"IsActionAllowed('CMDBChangeOp'",
-				$this->bodyOf($sClass, $sMethod),
+			$oSource = SourceCalls::OfClass($sClass);
+			$this->assertFalse(
+				$oSource->HasCallTo('IsActionAllowed', $sMethod) && $oSource->HasString('CMDBChangeOp', $sMethod),
 				"{$sClass}::{$sMethod}() asks for a right the console does not"
 			);
-			$this->assertStringNotContainsString(
-				'IsReadable',
-				$this->bodyOf($sClass, $sMethod),
+			$this->assertFalse(
+				$oSource->HasCallTo('IsReadable', $sMethod),
 				"{$sClass}::{$sMethod}() still gates on a class grant"
 			);
 		}
@@ -151,10 +145,10 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testTheOrderIsByIdBecauseTimestampsRepeat(): void
 	{
-		$sSource = file_get_contents((new ReflectionClass(ObjectHistory::class))->getFileName());
+		$sCode = SourceCalls::OfClass(ObjectHistory::class)->Code();
 
-		$this->assertStringContainsString("['id' => false]", $sSource, 'newest-first is not ordered by id');
-		$this->assertStringNotContainsString("['date' =>", $sSource, 'rows are still ordered by a timestamp several of them share');
+		$this->assertStringContainsString("['id'=>false]", $sCode, 'newest-first is not ordered by id');
+		$this->assertStringNotContainsString("['date'=>", $sCode, 'rows are still ordered by a timestamp several of them share');
 	}
 
 	/**
@@ -164,13 +158,13 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testTheObjectMustBeOneTheCallerCouldHaveRead(): void
 	{
-		$sTool = $this->bodyOf(HistoryTool::class, 'execute');
-		$sGate = $this->bodyOf(ObjectAccess::class, 'Readable');
+		$oTool = SourceCalls::OfClass(HistoryTool::class);
+		$sGate = SourceCalls::OfClass(ObjectAccess::class)->Code('Readable');
 
-		$this->assertStringContainsString('$oAccess->Readable($class, $id)', $sTool);
-		$this->assertStringContainsString('not found.', $sTool, 'a refused object must not be distinguishable from an absent one');
-		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sClass, $iId))', $sGate);
-		$this->assertStringContainsString('UR_ACTION_READ, new DBObjectSet(ObjectQuery::ById($sFinalClass, $iId))', $sGate,
+		$this->assertTrue($oTool->HasCallTo('Readable', 'execute'));
+		$this->assertNotSame([], array_filter($oTool->Strings('execute'), static fn (string $s): bool => str_contains($s, 'not found.')), 'a refused object must not be distinguishable from an absent one');
+		$this->assertStringContainsString('UR_ACTION_READ,newDBObjectSet(ObjectQuery::ById($sClass,$iId))', $sGate);
+		$this->assertStringContainsString('UR_ACTION_READ,newDBObjectSet(ObjectQuery::ById($sFinalClass,$iId))', $sGate,
 			'reading the parent was taken to say something about the leaf');
 	}
 
@@ -184,13 +178,14 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testEveryRowIsFilteredByTodaysAttributeRights(): void
 	{
-		$this->assertStringContainsString(
-			'MayReadAttribute',
-			$this->bodyOf(ObjectHistory::class, 'read'),
+		$oSource = SourceCalls::OfClass(ObjectHistory::class);
+
+		$this->assertTrue(
+			$oSource->HasCall(ObjectSerializer::class.'::MayReadAttribute', 'read'),
 			'rows naming an attribute are served without asking whether this caller may read it'
 		);
 		foreach (['For', 'Within'] as $sWay) {
-			$this->assertStringContainsString('self::read(', $this->bodyOf(ObjectHistory::class, $sWay),
+			$this->assertTrue($oSource->HasCall(ObjectHistory::class.'::read', $sWay),
 				"{$sWay}() reads the log without the gates read() applies");
 		}
 	}
@@ -205,7 +200,7 @@ class ObjectHistoryContractTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'get_class($oObject)',
-			$this->bodyOf(ObjectHistory::class, 'read')
+			SourceCalls::OfClass(ObjectHistory::class)->Code('read')
 		);
 	}
 
@@ -235,8 +230,8 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testASingleObjectReadIsAttributedWithoutBeingAsked(): void
 	{
-		$this->assertStringContainsString('$oAccess->Attribution($oObject)', $this->bodyOf(ObjectGet::class, 'execute'));
-		$this->assertStringContainsString('ObjectHistory::AttributionFor($oObject)', $this->bodyOf(ObjectAccess::class, 'Attribution'));
+		$this->assertTrue(SourceCalls::OfClass(ObjectGet::class)->HasCallTo('Attribution', 'execute'));
+		$this->assertTrue(SourceCalls::OfClass(ObjectAccess::class)->HasCall(ObjectHistory::class.'::AttributionFor', 'Attribution'));
 
 		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
 			$aSchema = (new $sTool())->getInputSchema();
@@ -254,9 +249,8 @@ class ObjectHistoryContractTest extends TestCase
 		$this->assertLessThan(ObjectSearchByOQL::MAX_LIMIT, ObjectHistory::MAX_AUDIT_PAGE);
 
 		foreach ([ObjectSearchByOQL::class, ObjectSearchByClass::class] as $sTool) {
-			$this->assertStringContainsString(
-				'refuseUnattributablePage',
-				$this->bodyOf($sTool, 'execute'),
+			$this->assertTrue(
+				SourceCalls::OfClass($sTool)->HasCallTo('refuseUnattributablePage', 'execute'),
 				$sTool.' serves an unbounded number of attribution reads'
 			);
 		}
@@ -284,9 +278,8 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testNoObjectToolWillTouchTheChangeLog(string $sName, string $sClass): void
 	{
-		$this->assertStringContainsString(
-			'IsReserved',
-			$this->sourceWithParents($sClass),
+		$this->assertTrue(
+			$this->anySourceWithParents($sClass),
 			"{$sName} accepts a class without asking whether it is the change log"
 		);
 	}
@@ -332,59 +325,35 @@ class ObjectHistoryContractTest extends TestCase
 	 */
 	public function testEveryDocumentReadRefusesTheChangeLog(): void
 	{
-		$this->assertStringContainsString(
-			'IsReserved',
-			$this->bodyOf(DocumentAccess::class, 'Fetch'),
-			'DocumentAccess::Fetch() reads a blob without asking whether its class is the change log'
+		$this->assertTrue(
+			SourceCalls::OfClass(DocumentFetch::class)->HasCall(ChangeLogReservation::class.'::IsReserved', 'Fetch'),
+			'DocumentFetch::Fetch() reads a blob without asking whether its class is the change log'
 		);
 	}
 
 	/** Reserved roots cover their subclasses, which is what a list would not. */
 	public function testTheReservationCoversSubclasses(): void
 	{
-		$this->assertTrue(ObjectHistory::IsReserved('CMDBChangeOp'));
-		$this->assertTrue(ObjectHistory::IsReserved('CMDBChange'));
-		$this->assertFalse(ObjectHistory::IsReserved('UserRequest'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('CMDBChangeOp'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('CMDBChange'));
+		$this->assertFalse(ChangeLogReservation::IsReserved('UserRequest'));
 		// Case is not what decides it: OQL is parsed before this is asked.
-		$this->assertTrue(ObjectHistory::IsReserved('cmdbchangeop'));
+		$this->assertTrue(ChangeLogReservation::IsReserved('cmdbchangeop'));
 	}
 
 	/** The source of a class and of every ancestor it inherits a guard from. */
-	private function sourceWithParents(string $sClass): string
-	{
-		$sSource = '';
-		for ($oClass = new ReflectionClass($sClass); $oClass !== false; $oClass = $oClass->getParentClass()) {
-			$sFile = $oClass->getFileName();
-			if ($sFile !== false) {
-				$sSource .= file_get_contents($sFile);
-			}
-		}
-
-		return $sSource;
-	}
-
 	/**
-	 * The body of one method, comments stripped - otherwise a call named only
-	 * in a doc comment would satisfy the search.
+	 * Does the class, or one it extends, call ChangeLogReservation::IsReserved()?
 	 */
-	private function bodyOf(string $sClass, string $sMethod): string
+	private function anySourceWithParents(string $sClass): bool
 	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
+		for ($oClass = new ReflectionClass($sClass); $oClass !== false; $oClass = $oClass->getParentClass()) {
+			if ($oClass->getFileName() !== false
+				&& SourceCalls::OfFile($oClass->getFileName())->HasCall(ChangeLogReservation::class.'::IsReserved')) {
+				return true;
 			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
 		}
 
-		return $sCode;
+		return false;
 	}
 }

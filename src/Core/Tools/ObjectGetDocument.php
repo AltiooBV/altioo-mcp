@@ -8,13 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
@@ -32,6 +33,7 @@ use Mcp\Schema\ToolAnnotations;
  * cannot be taken back once it is in the conversation. Asking for one document
  * by name is the decision, and this is where it is made.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectGetDocument extends AbstractMCPTool implements PortalAware
@@ -132,12 +134,12 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 	{
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is a real way into the change log and not a formality.
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {
-			$oDocument = DocumentAccess::Fetch($class, $id, $att_code);
+			$oDocument = DocumentFetch::Fetch($class, $id, $att_code);
 		} catch (MCPDocumentException $e) {
 			throw new ToolCallException($e->getMessage());
 		}
@@ -145,7 +147,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// The notice first: the file is whatever its author put in it, and the
 		// bytes carry no field to mark.
 		return [
-			new TextContent(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE),
+			new TextContent(UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE),
 			DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
 		];
 	}

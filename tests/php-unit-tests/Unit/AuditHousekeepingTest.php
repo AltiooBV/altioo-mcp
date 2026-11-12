@@ -8,8 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\AuditRetention;
+use Altioo\iTop\Extension\MCP\Service\Audit\AuditRetention;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -27,9 +29,9 @@ class AuditHousekeepingTest extends TestCase
 {
 	public function testZeroKeepsEverythingAndPositiveIntegersAreDays(): void
 	{
-		$this->assertSame(0, Settings::RetentionDaysFrom(0));
-		$this->assertSame(30, Settings::RetentionDaysFrom(30));
-		$this->assertSame(3650, Settings::RetentionDaysFrom(3650));
+		$this->assertSame(0, SettingParser::RetentionDaysFrom(0));
+		$this->assertSame(30, SettingParser::RetentionDaysFrom(30));
+		$this->assertSame(3650, SettingParser::RetentionDaysFrom(3650));
 	}
 
 	/**
@@ -40,7 +42,7 @@ class AuditHousekeepingTest extends TestCase
 	 */
 	public function testAMalformedValueKeepsEverything(mixed $mValue): void
 	{
-		$this->assertSame(0, Settings::RetentionDaysFrom($mValue));
+		$this->assertSame(0, SettingParser::RetentionDaysFrom($mValue));
 	}
 
 	/** @return array<string, array{0: mixed}> */
@@ -84,11 +86,12 @@ class AuditHousekeepingTest extends TestCase
 	 */
 	public function testItIsAnHourlyITopBackgroundProcess(): void
 	{
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/AuditHousekeeping.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php');
 
 		$this->assertMatchesRegularExpression('/final class AuditHousekeeping implements iBackgroundProcess/', $sSource);
 		$this->assertMatchesRegularExpression('/function GetPeriodicity\(\)\s*\{\s*return 3600;/', $sSource);
 		$this->assertStringContainsString('AllowAllData()', $sSource, 'cron runs as nobody; the search must not depend on a user');
+		$this->assertTrue(SourceCalls::OfFile(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php')->HasCallTo('AllowAllData'), 'cron runs as nobody; the search must not depend on a user');
 	}
 
 	/**
@@ -100,7 +103,7 @@ class AuditHousekeepingTest extends TestCase
 	{
 		$this->assertEqualsCanonicalizing(['request_params', 'change_comment', 'refusal_text'], AuditRetention::CLEARED_ON_ANONYMISATION);
 
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/AuditHousekeeping.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Hook/AuditHousekeeping.php');
 		$this->assertStringContainsString('foreach (AuditRetention::CLEARED_ON_ANONYMISATION as $sColumn)', $sSource);
 	}
 

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot

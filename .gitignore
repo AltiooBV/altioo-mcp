@@ -60,3 +60,7 @@ phpunit.xml
 /licenses.json
 /altioo-mcp-*.zip
 /altioo-mcp-*.zip.sha256
+
+# The model-run harness resolves its own dependencies (tools/evals/composer.json).
+/tools/evals/vendor/
+/tools/evals/composer.lock

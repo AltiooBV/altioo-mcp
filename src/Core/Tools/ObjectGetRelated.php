@@ -8,15 +8,17 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSet;
@@ -39,6 +41,7 @@ use UserRights;
  *   direction: "down"
  *   depth:     4
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectGetRelated extends AbstractMCPTool
@@ -146,15 +149,15 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
@@ -181,7 +184,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		if (ExclusionPolicy::IsActive()) {
 			foreach ($aValidRelations as $sRelationCode => $aDirections) {
 				foreach (['down' => true, 'up' => false] as $sWay => $bDown) {
-					if (isset($aDirections[$sWay]) && ExclusionPolicy::RelationQueries($class, (string)$sRelationCode, $bDown) === []) {
+					if (isset($aDirections[$sWay]) && ExclusionSearches::RelationQueries($class, (string)$sRelationCode, $bDown) === []) {
 						unset($aValidRelations[$sRelationCode][$sWay]);
 					}
 				}
@@ -261,7 +264,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			// own answer and keeps its wording.
 			throw $e;
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure(
+			throw new ToolCallException(ErrorReport::OpaqueFailure(
 				"Failed to walk '{$relation}' from {$class}::{$id}",
 				$e
 			));
@@ -303,7 +306,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			$sKey = $sClass.'::'.$oObject->GetKey();
 			$aObjects[$sKey] = [
 				'class'        => $sClass,
-				MetaModel::DBGetKey($sClass)           => WritePlan::AsId($oObject->GetKey()),
+				MetaModel::DBGetKey($sClass)           => ObjectId::Normalise($oObject->GetKey()),
 				'friendlyname' => $oObject->GetName(),
 			];
 
@@ -384,7 +387,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		];
 
 		// The names are what people typed into the objects.
-		$aPayload = ObjectSerializer::MarkRows($aPayload, array_values($aObjects));
+		$aPayload = UntrustedMarker::MarkRows($aPayload, array_values($aObjects));
 
 		if ($aWithheld !== []) {
 			$aPayload['withheld'] = [

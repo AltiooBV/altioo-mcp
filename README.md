@@ -189,7 +189,7 @@ other MCP server in the ecosystem names its tools.
 **Reading without filling a context window.** A tool result is read into one, so the
 reading tools narrow by default. `output_fields` takes a comma-separated list of attribute
 codes, or `*`; searches default to `id, friendlyname` — the same default iTop's REST API
-applies — and `core_object_get` defaults to `*`. Long texts, case logs and link sets are
+applies — and `core_object_get` defaults to `*` on purpose, so an agent need not guess which fields exist; `output_fields` narrows it. Long texts, case logs and link sets are
 cut to a ceiling that the value itself declares, unless you name that attribute in
 `output_fields`, which is the way to read one in full. Paging is stable: every page is
 ordered by `order_by` and then by `id`, so nothing is returned twice or skipped between
@@ -611,6 +611,16 @@ decision, per person, as it is for console users.
   portal of each call, and a refusal at login is a row with method `login` and element
   `portal_admission`.
 
+**Where a person sees and revokes their own token.** This extension has no page for it, by
+decision ([ADR 0003](doc/adr/0003-optional-dependency-on-altioo-oauth-server.md)). A console
+user holding Administrator or a profile in authent-token's `personal_tokens_allowed_profiles`
+finds **My Account → Personal Tokens** in iTop itself, and may list, edit and delete their own
+tokens there (authent-token 2.2.1, shipped with iTop 3.2.2; it is the same setting that lets a
+token log in). A token issued by altioo-oauth-server also appears under *Connected
+applications* in that tab, and in the portal under *My profile*. A portal-only user has iTop's
+screen on neither route unless altioo-oauth-server is installed: iTop's tab is console-only, so
+an administrator revokes the token, or disables the account.
+
 **Giving a portal user a token.** It has to be a personal token. An application token
 (`UserToken`) has no expiry date to check — the class defines no `expiration_date`
 (authent-token's datamodel, verified on iTop 3.2.2) — so portal mode reads it as a token that
@@ -619,7 +629,7 @@ for every portal token. A token issued by altioo-oauth-server is a personal toke
 qualifies. With altioo-oauth-server installed, they connect their client themselves, and see and
 disconnect it under *My profile → Connected applications* in the portal. Without it an
 administrator mints a personal token, as below, and the user has no page of their own to see or
-revoke it. Two things iTop decides, not this extension, on either route:
+revoke it: ask an administrator (*User management → Personal tokens*). Two things iTop decides, not this extension, on either route:
 
 - A personal token logs in only if its owner holds a profile listed in authent-token's
   `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the
@@ -680,7 +690,7 @@ portal is served as customised:
   A file is added only where the portal's upload field would be editable: the object in the user's write scope, its
   state not read-only for the portals (`readonly_states` of `itop-attachments`), and an edit form with a field the user
   can change. The stock `Portal user` profile holds no right to create an `Attachment` and none is needed, as the
-  portal needs none; no profile is widened. A portal-added file leaves what the portal's leaves: the history line and
+  portal needs none; no profile is widened. An added file leaves what iTop's own console and the portal leave, in either mode: the history line and
   the attachment module's event. Dry run by default, the file's type checked against its bytes,
   `mcp_max_document_bytes` applied, and the file's content and name are marked as text to report, never to follow.
   **Deleting an attachment stays in the portal**; a document attribute cannot be set from portal mode.
@@ -906,6 +916,7 @@ $MyModuleSettings = array(
         'mcp_allowed_origins' => array(),
         'mcp_disabled_tools' => array(),
         'mcp_portals' => array('*'),
+        'mcp_portal_extensions' => array(),
         'mcp_portal_token_max_days' => 90,
         'mcp_enabled_toolsets' => array(),
         'mcp_capabilities' => array(),
@@ -923,6 +934,7 @@ $MyModuleSettings = array(
         'mcp_protected_resource_metadata' => '',
         'mcp_source_url' => '',
         'mcp_audit_retention_days' => 0,
+        'mcp_max_writes_per_hour' => 0,
         'log_mcp_service' => true,
         'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
         'log_mcp_level' => 'info',
@@ -944,6 +956,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_allowed_origins` | *(empty)* | Browser origins allowed to read MCP responses. Empty sends no `Access-Control-Allow-Origin` header at all, which is what a token-authenticated endpoint called from a backend wants. Add entries only for browser-based clients you control, and never use `*`. A listed origin gets the header on every response and on the `OPTIONS` preflight, which is answered before authentication because a preflight carries no credential. The MCP SDK also refuses, with `403`, a request whose `Origin` is neither listed here nor the endpoint's own — so a desktop client that sends one has to be listed too, and so does the endpoint's own `https://` origin behind a proxy that terminates TLS without setting `HTTPS` for PHP |
 | `mcp_disabled_tools` | *(empty)* | Kill switch. List qualified tool or prompt names, resource URIs, or **class names** — e.g. `array('core_object_delete', 'itop://core/current-user', 'Acme\\Tools\\TicketAddLogEntry')`. Anything listed is neither advertised nor callable, whichever extension registered it. The class form is what resolves a name clash between two packs, where the name no longer tells them apart. **It withdraws exactly the entries listed, not the job they do:** `core_object_delete` leaves `core_object_bulk_delete` callable, and the same holds for `core_object_create` and `core_object_update` beside their bulk siblings. `log/error.log` names the sibling left on, at every request, until it is listed too. To stop a kind of operation rather than one tool, use `mcp_capabilities` — it grades every tool by what it declares, a pack's included |
 | `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **what their portal offers, read and written as the portal does**. Needs iTop 3.2.2 or later |
+| `mcp_portal_extensions` | *(empty)* | Elements of a tool pack that portal mode may serve, by identifier or **class name**, as `mcp_disabled_tools` takes them — e.g. `array('Acme\\Tickets\\Tools\\TicketAddLogEntry')`. **Prefer the class name:** an identifier admits an element of any kind holding it, and never one that took it with `overrides()`, which only its class name admits. Empty serves none: portal mode serves only this extension's own tools. **Your consent, element by element:** a pack element is served to portal users only if it is listed here *and* declares that it answers by the portal's rules (`PortalAware`); every other filter still applies. List only an element you have read: iTop's `Portal user` profile reads every class, so one that checks `UserRights` alone would show a portal user the whole CMDB. Any other value than an array serves no pack element and is reported; the endpoint keeps running. See [ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md) |
 | `mcp_portal_token_max_days` | `90` | Portal mode accepts a token only if it expires within this many days from now; one that never expires is refused, since a portal user may have minted it themselves. `0` lifts the bound. Any other value than a non-negative integer is reported and read as 90 |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
@@ -954,7 +967,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_excluded_classes` | *(empty)* | Classes this channel never serves, with their subclasses — e.g. `array('Person')`. For **everyone**, in both modes, Administrator and Basic authentication included: no profile or token scope lifts it. An excluded class is **absent**, not "excluded": every tool answers as it would for a class the datamodel does not have, and it is missing from listings, schemas, searches, counts, relations, history, documents and writes. What points at it goes with it: a field resolving to one of its attributes, a key or link set whose target it is, the files filed under its objects, and what is reachable only through it in a relation. **This narrows the channel, not the account**: the same account reads the same data in the console, and what already reached a model is not recalled ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)) |
 | `mcp_excluded_attributes` | *(empty)* | Attributes this channel never serves, per class and inherited by its subclasses — e.g. `array('Person' => array('phone', 'mobile_phone'))`. Absent in the same sense: not in a read, a field list, a filter, a sort, a group, a count, an OQL query (which is refused in the checker's own words for an unknown field), a history entry, a schema, a write's `changes` or `after`, or a full-text search. A mandatory attribute excluded makes creating that class impossible here, and the refusal says this setting is why. **A value that cannot be honoured makes the endpoint serve nothing to anyone**, and `log/error.log` says why: not a list, a name the datamodel does not have, an attribute that is not on its class, or one that is part of its class's friendly name (the friendly name would still serve its value) — a typo must not leave a field flowing. A class that has an excluded subclass cannot appear in a join or sub-query of OQL, since the rows of the subclass cannot be told apart there |
 | `mcp_exclusion_exempt_profiles` | *(empty)* | Profiles whose holders are served what the two settings above exclude ([ADR 0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md)) — e.g. `array('MCP Exempt')`. **A whole exemption**: no per-class or per-attribute lifting. Decided **by the account** and nothing else: never by a token's scope (a portal user can mint personal tokens with any scope), never by the name a client declares, never by an OAuth client — none of which you control — and **never in portal mode**, even for an account holding the profile. **The way to give one client the exemption is a dedicated service account that holds the profile**, with a token of the narrowest grade it needs: the account is then what you can revoke, list and audit. **Fail closed**: a value that is not a list, or a profile name this instance does not have, stops the endpoint for everyone like a malformed exclusion, and `log/error.log` says why — a typo must never exempt anybody. Every exempt call is marked on its audit row (*Exempt* = Yes), so you can list them all |
-| `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in |
+| `mcp_max_document_bytes` | `5242880` | Largest document served or accepted, in bytes. 5 MB of file is about 6.7 MB of JSON once base64-encoded, which is most of a context window spent on one document. PHP's `upload_max_filesize` and `post_max_size` still apply on the way in. **Over HTTP an upload stops near 3 MB, whatever this is set to:** the file travels base64-encoded (a third larger) inside a JSON-RPC request, and the MCP SDK's HTTP transport refuses a request body over 4 MiB with a 413 (`StreamableHttpTransport::DEFAULT_MAX_BODY_BYTES`, `vendor/mcp/sdk`), a limit this module does not pass a value for and an operator cannot configure. Reading is not affected, so a larger document can be served than uploaded |
 | `mcp_max_mentions` | `5` | Distinct objects one call may @mention in the case-log entries it writes. A mention is markup iTop turns into a notification, and here the caller types that markup directly, where the console offers it one autocomplete pick at a time. Mentions are also held to the classes in iTop's `mentions.allowed_classes` and to objects the caller can see; a value breaking any of the three is refused, and says which. `0` turns mentions off for this endpoint |
 | `mcp_refuse_formula_values` | `true` | Refuse a text value that starts — after any leading spaces — with `=`, `+`, `-`, `@`, a tab or a carriage return — what a spreadsheet runs as a formula (CSV injection) once the data is exported by iTop, returned by REST, or turned into a CSV by an assistant. A value that is only a sign, or a sign followed by digits, spaces and `( ) . / -`, passes, so phone numbers, negative numbers and dates are unaffected. Case logs and secret attributes are not checked. Values that reach iTop some other way are not checked either — see [SECURITY.md](SECURITY.md#hardening-the-deployment) for finding them. Anything but an explicit `false` keeps it on |
 | `mcp_pagination_limit` | `200` | Elements per `tools/list` page. This module sets it on every request, so the SDK's own default of 50 never applies. What is past the limit is paged behind a cursor, which a client that ignores `nextCursor` never asks for — those elements then exist, are callable, and are advertised to nobody |
@@ -962,6 +975,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `mcp_audit_retention_days` | `0` | Days an audit row is kept before an hourly background process deletes it, oldest first. `0` keeps everything, as before. **iTop has no retention of its own for its event log**, so without this the table only grows. A value that is not a non-negative integer reads as `0` and is logged to `log/error.log`. The process also brings the rows of an anonymised person in step with iTop's history (see [Data flow and privacy](#data-flow-and-privacy)) whether this is on or not; it needs iTop's cron to be running |
+| `mcp_max_writes_per_hour` | `0` | The most objects one credential may create, change, delete, move through a stimulus or attach to in a rolling hour; `0` is no cap, so nothing changes on upgrade. A credential is a personal token (an `altioo-oauth-server` grant is one), an application token, or, for a console session or Basic, the user's own calls. A bulk call counts its objects and is refused whole before it starts; a dry run never counts. It counts from the audit rows (`written_objects`), so it needs `log_mcp_service` on, `tools/call` in `log_mcp_method` and `log_mcp_level` below `error`: **when it cannot count, or the value is not a non-negative integer, every write is refused** (reads are served) and `log/error.log` says why. The refusal names the cap and when room frees up, never another credential's count. Calls at the very same moment can overshoot it, so it complements rate limiting at the web server ([SECURITY.md](SECURITY.md#hardening-the-deployment)); it does not replace it. [ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md) |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
 | `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and, for a call a tool refused, the tool's own text (*Refusal text*), and is a troubleshooting setting, not a standing one |
 
@@ -1393,7 +1407,7 @@ is for, and the terms are agreed there rather than promised here.
 ## Versioning and compatibility
 
 The extension follows [semver](https://semver.org/). The running version is
-`MCPHelper::VERSION` — the same string the server sends clients in `serverInfo`, and the same
+`MCPModule::VERSION` — the same string the server sends clients in `serverInfo`, and the same
 string in `extension.xml` and the module declaration.
 
 **What a major version means for you.** Three things this extension promises to keep stable
@@ -1414,7 +1428,7 @@ When a later version changes one of those, the changelog entry for it is where t
 identifier or the changed default is named, along with what an administrator has to do about it.
 
 **On `mcp/sdk`.** The MCP SDK this module vendors is pinned to one minor in `composer.json`,
-published as `MCPHelper::SDK_CONSTRAINT`: a pre-1.0 package, whose API can change between minor
+published as `MCPModule::SDK_CONSTRAINT`: a pre-1.0 package, whose API can change between minor
 versions. The module pins the minor it was tested against, ships
 it inside the archive, and treats an SDK upgrade as a release of its own with the test suite as
 the gate. Nothing on an installed instance moves until you install a new version of this
@@ -1460,9 +1474,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
   are clipped, but `core_object_get` returns every readable attribute unless `output_fields`
   says otherwise; a deliberately wide `output_fields => *` over thousands of objects is still
   your cost to pay.
-- **No rate limit.** Each call is bounded, but calls are not counted: one valid token can keep
-  the instance busy for everyone else. Throttle at the web server — see
-  [SECURITY.md](SECURITY.md#hardening-the-deployment).
+- **No call rate limit; an opt-in write cap.** Calls are not counted: one valid token can keep
+  the instance busy for everyone else, so throttle calls at the web server — see
+  [SECURITY.md](SECURITY.md#hardening-the-deployment). What the module does count, when you set
+  `mcp_max_writes_per_hour` (off by default), is the objects one credential commits in an hour.
 - **The audit trail grows.** One `AltiooEventMCPService` row per audited call. iTop has no retention
   for its event log, so set `mcp_audit_retention_days` (off by default) — it needs iTop's cron.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.

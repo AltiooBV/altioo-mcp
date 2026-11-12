@@ -8,8 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\Dictionary;
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__).'/bootstrap.php';
@@ -21,18 +22,18 @@ class VersionGuardTest extends TestCase
 {
 	public function testAnOlderRequirementIsSatisfied(): void
 	{
-		$this->assertTrue(MCPHelper::AtLeast('1.0.0'));
-		$this->assertTrue(MCPHelper::AtLeast(MCPHelper::VERSION), 'The running version satisfies itself.');
+		$this->assertTrue(MCPModule::AtLeast('1.0.0'));
+		$this->assertTrue(MCPModule::AtLeast(MCPModule::VERSION), 'The running version satisfies itself.');
 	}
 
 	public function testANewerRequirementIsNot(): void
 	{
-		$this->assertFalse(MCPHelper::AtLeast('99.0.0'));
+		$this->assertFalse(MCPModule::AtLeast('99.0.0'));
 	}
 
 	public function testRequireVersionPassesQuietlyWhenSatisfied(): void
 	{
-		MCPHelper::RequireVersion('1.0.0', 'acme-servicedesk');
+		MCPModule::RequireVersion('1.0.0', 'acme-servicedesk');
 
 		$this->expectNotToPerformAssertions();
 	}
@@ -40,19 +41,19 @@ class VersionGuardTest extends TestCase
 	public function testRequireVersionNamesThePackTheVersionsAndTheWayOut(): void
 	{
 		$this->expectException(MCPRegistrationException::class);
-		$this->expectExceptionMessage('acme-servicedesk requires '.MCPHelper::MODULE_NAME.' 99.0.0 or later');
+		$this->expectExceptionMessage('acme-servicedesk requires '.MCPModule::MODULE_NAME.' 99.0.0 or later');
 
-		MCPHelper::RequireVersion('99.0.0', 'acme-servicedesk');
+		MCPModule::RequireVersion('99.0.0', 'acme-servicedesk');
 	}
 
 	public function testRequireVersionReadsSensiblyWithoutAName(): void
 	{
 		try {
-			MCPHelper::RequireVersion('99.0.0');
+			MCPModule::RequireVersion('99.0.0');
 			$this->fail('Expected a refusal.');
 		} catch (MCPRegistrationException $e) {
 			$this->assertStringStartsWith('This tool pack requires', $e->getMessage());
-			$this->assertStringContainsString('this instance runs '.MCPHelper::VERSION, $e->getMessage());
+			$this->assertStringContainsString('this instance runs '.MCPModule::VERSION, $e->getMessage());
 		}
 	}
 
@@ -65,7 +66,7 @@ class VersionGuardTest extends TestCase
 	{
 		$this->assertSame(
 			'Add a log entry to a ticket',
-			MCPHelper::Translate('MCP:tool:acme_ticket_add_log_entry:title', 'Add a log entry to a ticket')
+			Dictionary::Translate('MCP:tool:acme_ticket_add_log_entry:title', 'Add a log entry to a ticket')
 		);
 	}
 }

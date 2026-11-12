@@ -8,15 +8,17 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -85,7 +87,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	protected function tearDown(): void
 	{
 		UserRights::Deimpersonate();
-		PortalMode::Forget();
+		RequestScope::Close();
 		$this->configure([], [], []);
 		parent::tearDown();
 	}
@@ -98,9 +100,9 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	private function configure(mixed $aClasses, mixed $aAttributes, mixed $aExempt): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_EXEMPT_PROFILES, $aExempt);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_EXEMPT_PROFILES, $aExempt);
 		ExclusionPolicy::Forget();
 		PortalPolicy::Forget();
 	}
@@ -129,7 +131,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 	/** The profile is the whole of it: an account is not exempt because it asks to be, or because of what it carries. */
 	public function testNothingButTheAccountDecidesIt(): void
 	{
-		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Helper/ExclusionPolicy.php');
+		$sSource = (string)file_get_contents(dirname(__DIR__, 3).'/src/Service/Rights/ExclusionPolicy.php');
 		foreach (['TokenScopes', 'MCPContext', 'clientInfo', 'OAuthServer', 'RequestCarriesAToken'] as $sNot) {
 			$this->assertStringNotContainsString($sNot, $sSource, "the exemption reads {$sNot}, which the caller chooses");
 		}
@@ -146,7 +148,7 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 
 		$this->configure(['Team'], ['Person' => ['phone'], 'UserRequest' => ['description']], ['Portal user']);
 		UserRights::Login($this->sPortalUser);
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		PortalPolicy::Forget();
 
 		$this->assertFalse(ExclusionPolicy::IsExempt(), 'portal mode is never exempt, though the account holds a profile listed as exempt');
@@ -172,10 +174,10 @@ class ExclusionExemptionTest extends ItopDataTestCaseAlias
 		$this->configure(['Team'], ['Person' => ['phone']], $mExempt);
 		UserRights::Login($this->sExempt);
 
-		$this->assertTrue(Settings::AccessSettingsAreMalformed());
+		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
 		$this->assertFalse(ExclusionPolicy::IsExempt(), 'an account was exempted by a setting that cannot be honoured');
 		foreach (['objects', 'datamodel'] as $sToolset) {
-			$this->assertFalse(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset($sToolset), "{$sToolset} is served");
+			$this->assertFalse(ServedElements::AccessPolicyOfCurrentRequest()->allowsToolset($sToolset), "{$sToolset} is served");
 		}
 	}
 

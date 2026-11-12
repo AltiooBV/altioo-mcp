@@ -22,6 +22,7 @@ use Exception;
  * It may also carry the RFC 6750 error code the WWW-Authenticate challenge
  * names, for a refusal a client can act on without reading the message.
  *
+ * @internal
  * @since 1.0.0
  */
 class MCPAuthException extends Exception

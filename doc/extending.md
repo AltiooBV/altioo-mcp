@@ -26,17 +26,17 @@ In your own `module.<your-extension>.php`:
 
 ```php
 'dependencies' => array(
-    'altioo-mcp/1.0.0',
+    'altioo-mcp/2.0.0',
 ),
 ```
 
 This is the version check that matters: the setup refuses the install and tells the
 administrator why, which is a better place to find out than a log entry on the first request.
 For the case that gets past it — a base extension downgraded under a pack already installed —
-call `MCPHelper::RequireVersion('1.0.0', 'your-pack')` at the top of your provider. It throws,
+call `MCPModule::RequireVersion('2.0.0', 'your-pack')` at the top of your provider. It throws,
 and a provider that throws is logged and skipped on its own, so the failure mode is "this pack
 is missing and the log says why" rather than a fatal error taking the endpoint down for every
-other pack. `MCPHelper::AtLeast()` is the same question without the exception, for a pack that
+other pack. `MCPModule::AtLeast()` is the same question without the exception, for a pack that
 would rather hide one element through `isAvailable()` and serve the rest.
 
 **Your autoloader has to produce a classmap.** Not the composer default, and the failure is
@@ -61,34 +61,82 @@ autoloaded. Two copies in one process resolve to whichever autoloader answered f
 Installing it and deleting `vendor/mcp` before packaging does **not** work:
 `classmap-authoritative` has already written those classes into `autoload_classmap.php`, so the
 entries outlive the files and the first call fatals on a missing include. Pin the same
-constraint this module vendors, published as `MCPHelper::SDK_CONSTRAINT`, so that what you
+constraint this module vendors, published as `MCPModule::SDK_CONSTRAINT`, so that what you
 compile against is what will be loaded. The types that are part of the contract described here
 are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`
 and `Mcp\Exception\ResourceReadException`.
 
 **Versioning, and what it applies to.** The extension follows semver over the surface a pack
-touches — and that surface is defined in the source rather than in this paragraph. **A class
+touches, and that surface is defined in the source rather than in this paragraph. **A class
 you may depend on carries `@api` on its class docblock**, with an `@since` saying which version
-it first appeared in. Everything else under `src/` is internal and may change in a patch.
+it first appeared in. **Every other class says `@internal`**, and may change in a patch, move
+folder, or disappear.
 
 ```bash
 grep -rl '@api' src/          # the definitive list, in the copy you have
 ```
 
-In shape it is the element base classes you extend, the registry and the collector, the
-provider interface, the helpers, and the contract checker — but read the tags rather than that
-sentence, because the tags are what a test enforces and the sentence is not.
+It is everything under `src/Api/`, and outside it every class the core tools, resources,
+templates and prompts under `src/Core/` depend on, plus the types those classes' public
+signatures hand you ([ADR 0016](adr/0016-what-the-core-tools-use-is-public.md)). A pack may build
+with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the classes outside
+`Api`, and a test fails when `src/Core` starts to use a class that is not on it:
+
+| Folder | On the surface |
+|---|---|
+| `Api\*` | the element base classes you extend, `iMCPServiceProvider`, `MCPRegistry` and `MCPExtensionCollector`, `MCPModule`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, and `Testing\ElementContract` |
+| Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess`, `Service\Rights\WriteCap` |
+| Access | `Service\Access\ObjectAccess`, `Service\Access\DocumentFetch` |
+| Read | `Service\Read\ObjectQuery`, `Service\Read\ObjectSerializer`, `Service\Read\OutputFields`, `Service\Read\UntrustedMarker`, `Service\Read\ObjectHistory`, `Service\Read\ObjectGrades`, `Service\Read\DocumentAccess`, `Service\Read\DatamodelReader`, `Service\Read\ClassCatalog`, `Service\Read\AttributeDescription`, `Service\Read\CurrentUserReader` |
+| Write | `Service\Write\DryRun`, `Service\Write\RestValue`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
+| Portal | `Service\Portal\PortalPolicy`, `Service\Portal\PortalBricks`, `Service\Portal\PortalRows`, `Service\Portal\PortalDescription`, `Service\Portal\PortalAware` |
+| Audit | `Service\Audit\ReadSummary` |
+| Helper | `Helper\Settings`, `Helper\SettingNames`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
+| Exception | `Exception\MCPDocumentException`, `Exception\MCPPortalException` |
+
+**What stays internal**: the controller and its gates, the server, the background process, the
+core tools themselves (subclass one, as below; do not call it), and every class not listed. A
+member of a surface class marked `@internal` is internal too: the `Remember()` and `Forget()`
+methods that hold a request's state belong to `Service\Server\RequestScope`, and a pack never
+calls them. Read the tags rather than this table: the tags are what a test enforces.
+
+**Use the checks a core tool uses, in your own source** ([ADR 0014](adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)):
+
+- **Exclusions.** The operator's `mcp_excluded_classes` and `mcp_excluded_attributes` apply to your
+  routes as to the core's ([ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md)),
+  and nothing applies them for you. A pack that returns object data asks
+  `ExclusionPolicy::Serves($sClass)` before it answers for a class, drops what
+  `ExclusionPolicy::ExcludesAttribute()` names, and narrows a search with
+  `ExclusionSearches::Narrowed()`. Reading through `ObjectSerializer`, or extending
+  `AbstractObjectSearch` as the example pack does, already does the attribute half.
+- **Access-granting classes and the change log.** A write asks `AccessGrants::RefusalFor()` and
+  `ChangeLogReservation::IsReserved()`, as every core write does.
+- **The write cap.** When the operator sets `mcp_max_writes_per_hour` ([ADR 0019](adr/0019-an-operator-can-cap-committed-writes-per-credential.md)),
+  a write tool asks `WriteCap::RefusalFor($iObjects)` once it knows the call will commit (never for a
+  dry run), with the number of objects it is about to create, change, delete or attach to, and
+  throws the string it gets back as a `ToolCallException`. A bulk tool asks once for the whole batch.
+  What a call wrote is counted from the change iTop recorded, so a tool that does not ask is still
+  counted, and the credential's next call is refused; asking is what keeps it from going over.
+- **The caller's view of an object.** `ObjectAccess::Current()` answers in the mode the request is
+  served in; `Readable()`, `Hides()` and the `RefusalTo…()` methods are what the core tools ask
+  instead of `UserRights` alone.
+
+Portal mode serves a pack's element only when it implements `PortalAware` and the operator lists
+it: see [Serving your element in portal mode](#serving-your-element-in-portal-mode).
 
 A breaking change to a tagged class is a major bump. A new optional hook with a default
-implementation is a minor one. Removal comes at least one minor after a documented
-`@deprecated` naming the replacement, and it appears in [the changelog](../CHANGELOG.md).
+implementation is a minor one. A tagged class or member that is to go is marked `@deprecated`
+naming its replacement for at least one minor first, and the change appears in
+[the changelog](../CHANGELOG.md). 2.0.0 moved most classes and kept no aliases for the old
+names: the changelog's 2.0.0 entry maps each to its new one.
+
 **Tool, resource and prompt identifiers are part of the same surface**: a client
 configuration that allow-lists a tool by name, and any `mcp_disabled_tools` entry, breaks when
 a name changes, so a rename is a major bump too.
 
-The running version is `MCPHelper::VERSION` — the same string the server sends to clients in
+The running version is `MCPModule::VERSION` — the same string the server sends to clients in
 `serverInfo`, and the same string in `extension.xml` and the module declaration. Guard against
-an older base with `MCPHelper::RequireVersion()` or `MCPHelper::AtLeast()`, above.
+an older base with `MCPModule::RequireVersion()` or `MCPModule::AtLeast()`, above.
 
 ## 2. Write a tool
 
@@ -107,8 +155,8 @@ checks this for you (see [What registration checks](#what-registration-checks)).
 tools declare `execute()` static; an instance method works equally well.
 
 ```php
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -168,7 +216,7 @@ before any tool runs. What a pack has to offer is the *why*, and there is one sp
 so that a model does not meet three:
 
 ```php
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 
 // In getInputSchema(), beside 'simulate':
 'comment' => ChangeTracking::CommentSchemaProperty('the entry is being added'),
@@ -238,7 +286,7 @@ yourself.
 Writing values back to iTop, from a tool of your own:
 
 ```php
-use Altioo\iTop\Extension\MCP\Helper\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 
 $realValue = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
 ```
@@ -265,6 +313,38 @@ one stops early and silently. `AbstractBulkTool` knows that `UR_ACTION_BULK_MODI
 separate grant from `UR_ACTION_MODIFY`, and that the class-level answer is never the end of it.
 A bulk tool that checks the class once and then loops is an escalation with a progress counter,
 and it passes every test written by a developer whose own account holds both rights.
+
+## Serving your element in portal mode
+
+By default portal mode serves only this module's own tools. Your element is a console element:
+iTop's "Portal user" profile reads every class through `UserRights`, so a tool that checks access
+with `UserRights` alone would show a portal user the whole CMDB. It reaches the portal only when
+both of these hold ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)):
+
+1. **Your element implements `Service\Portal\PortalAware`** and answers by the portal's rules. For
+   every object it reads or writes it asks `ObjectAccess::Current()`, which in portal mode is the
+   portal's access and in console mode the console's, so one code path serves both:
+   `Readable()`, `Bounded()`, `Hides()`, `RefusalToSet()` and the other `RefusalTo…()` methods, never
+   `UserRights` alone. A portal attachment is read and added, never deleted
+   (`ObjectAccess::RefusalToAttach()`, ADR 0011).
+2. **The operator lists it** in `mcp_portal_extensions`, by identifier or class name. The default is
+   empty. Implementing the interface without being listed serves nothing, and being listed without
+   implementing it serves nothing. Every other filter (`mcp_disabled_tools`, toolsets, capabilities,
+   token scopes, exclusions) still applies.
+
+**Tell your users to list the class name.** It is the precise form. An identifier is a name, not a
+pack's property: one entry admits a `PortalAware` element of *any kind* (tool, prompt, resource,
+template) that holds that identifier, whichever pack it came from. An element that took its
+identifier with `overrides()` is never admitted by the identifier, so the operator's consent to
+`acme_ticket_search` does not pass to a later pack that replaces it; it is admitted by its own class
+name only. The log says when an entry serves nothing, and why.
+
+`ElementContract::Violations()` warns when a portal-aware element's own source never calls
+`ObjectAccess::Current()`. A parent class of yours counts, but this module's own classes do not: a
+subclass of a core tool that replaces `execute()` is held to asking for itself, and one that leaves
+`execute()` to core passes. That catches the tool that never asks, not the one that asks and
+ignores the answer, so the listing is the control and the check is your help. Tell your users to
+list the element; do not list it for them.
 
 ## Augmenting a core tool
 
@@ -308,6 +388,15 @@ treating your class and the core one as an accidental clash and withdrawing the 
 And `parent::execute()` returns a `TextContent`, not an array — post-processing means decoding
 it, which `ToolOutput::Decode()` does.
 
+**In portal mode, an override removes the core tool from portal users until it is listed.** Your
+class takes the identifier, and portal mode serves a pack element only when the operator lists it,
+so an unlisted `core_object_get` override leaves portal users with no `core_object_get` at all
+(console users are unaffected). What serves it is its **class name** in `mcp_portal_extensions`;
+neither `core_object_get` (an override is not admitted by the identifier it took) nor your own
+identifier does. Whatever your tool adds must itself go through `ObjectAccess::Current()`:
+`ElementContract` does not take core's `parent::execute()` as your answer, and warns
+until your own code asks, as in [Serving your element in portal mode](#serving-your-element-in-portal-mode).
+
 What this does not give you is a change applied across *every* tool — redaction, an extra audit
 field, a rate limit. There is no middleware pipeline; see [Limitations](../README.md#limitations).
 
@@ -342,7 +431,7 @@ tool selection from the same instance. Write descriptions in English and leave t
 throwing, so a pack's whole contract suite is one assertion per element:
 
 ```php
-use Altioo\iTop\Extension\MCP\Testing\ElementContract;
+use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 
 self::assertSame([], ElementContract::Violations(new TicketAddLogEntry()));
 ```
@@ -381,8 +470,8 @@ class MyThing extends AbstractMCPResource
 ## 4. Register everything from a service provider
 
 ```php
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 
 class AcmeMCPExtensions implements iMCPServiceProvider
 {
@@ -468,5 +557,6 @@ exactly this reason — the identifier no longer tells the two apart, and the cl
 - Your element is registered only if it honours the contract above, and only if the operator
   has not disabled it through `mcp_disabled_tools`.
 
-What it does **not** do for you: enforce your business rules. Check `UserRights` for anything
-you read or write, and mask what should not be shown.
+What it does **not** do for you: enforce your business rules, or the operator's exclusions on
+data you read yourself. Check `UserRights` for anything you read or write, ask the checks under
+"Use the checks a core tool uses" above, and mask what should not be shown.

@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
 
@@ -56,7 +56,7 @@ class AuditedMethodsTest extends TestCase
 	 */
 	public function testTheExceptionPseudoMethodIsAudited(): void
 	{
-		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, Settings::DEFAULT_LOG_METHODS);
+		$this->assertContains(MCPMethod::EXCEPTION, Settings::DEFAULT_LOG_METHODS);
 	}
 
 	/**
@@ -65,8 +65,8 @@ class AuditedMethodsTest extends TestCase
 	 */
 	public function testTheConnectionMethodIsAudited(): void
 	{
-		$this->assertSame('initialize', MCPHelper::MCP_METHOD_INITIALIZE);
-		$this->assertContains(MCPHelper::MCP_METHOD_INITIALIZE, Settings::DEFAULT_LOG_METHODS);
+		$this->assertSame('initialize', MCPMethod::INITIALIZE);
+		$this->assertContains(MCPMethod::INITIALIZE, Settings::DEFAULT_LOG_METHODS);
 	}
 
 	public function testEveryDefaultIsANonEmptyString(): void

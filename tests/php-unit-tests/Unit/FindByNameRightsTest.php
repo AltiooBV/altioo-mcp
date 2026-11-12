@@ -9,11 +9,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -40,11 +39,11 @@ class FindByNameRightsTest extends TestCase
 	 */
 	public function testWithheldClassesAreCounted(): void
 	{
-		$sBody = str_replace(' ', '', $this->methodBody(ObjectFindByName::class, 'searchableClasses'));
+		$oSource = SourceCalls::OfClass(ObjectFindByName::class);
+		$sBody = $oSource->Code('searchableClasses');
 
-		$this->assertStringContainsString(
-			'UR_ACTION_BULK_READ',
-			$sBody,
+		$this->assertTrue(
+			$oSource->HasConstant('UR_ACTION_BULK_READ', 'searchableClasses'),
 			'The bulk read check is what separates a searchable class from a readable one.'
 		);
 		$this->assertStringContainsString(
@@ -60,9 +59,8 @@ class FindByNameRightsTest extends TestCase
 	 */
 	public function testTheCountIsReported(): void
 	{
-		$this->assertStringContainsString(
-			"'classes_withheld'",
-			$this->methodBody(ObjectFindByName::class, 'execute'),
+		$this->assertTrue(
+			SourceCalls::OfClass(ObjectFindByName::class)->HasString('classes_withheld', 'execute'),
 			'Counting withheld classes and not returning the count leaves the caller'
 			.' exactly where it started.'
 		);
@@ -76,7 +74,7 @@ class FindByNameRightsTest extends TestCase
 	{
 		$this->assertStringContainsString(
 			'Bulk read access denied',
-			$this->methodBody(ObjectFindByName::class, 'searchableClasses'),
+			SourceCalls::OfClass(ObjectFindByName::class)->Code('searchableClasses'),
 			'A named class the caller may read one object at a time but not search'
 			.' must say so, the way core_object_search_by_class already does.'
 		);
@@ -95,12 +93,12 @@ class FindByNameRightsTest extends TestCase
 
 		$this->assertStringContainsString(
 			$sExpected,
-			$this->methodBody(ObjectFindByName::class, 'searchableClasses'),
+			SourceCalls::OfClass(ObjectFindByName::class)->Code('searchableClasses'),
 			'core_object_find_by_name must use the shared wording.'
 		);
 		$this->assertStringContainsString(
 			$sSibling,
-			$this->methodBody(ObjectSearchByClass::class, 'execute'),
+			SourceCalls::OfClass(ObjectSearchByClass::class)->Code('execute'),
 			'core_object_search_by_class is where that wording comes from; if it'
 			.' changed, find_by_name has drifted away from it.'
 		);
@@ -126,45 +124,20 @@ class FindByNameRightsTest extends TestCase
 	 */
 	public function testAnUnreadableClassIsStillIndistinguishableFromAnAbsentOne(): void
 	{
-		$sBody = $this->methodBody(ObjectFindByName::class, 'searchableClasses');
+		$oSource = SourceCalls::OfClass(ObjectFindByName::class);
 
 		$this->assertSame(
 			2,
-			substr_count($sBody, 'MCPHelper::UnreadableClassRefusal'),
+			count(array_filter($oSource->Calls('searchableClasses'), static fn (string $sCall): bool => strcasecmp($sCall, ClassRefusal::class.'::Unreadable') === 0)),
 			'Both the invalid class and the unreadable one must answer with the one helper;'
 			.' splitting them hands an unprivileged caller a class enumerator.'
 		);
 
 		// And the helper itself must not give the two cases away.
-		$sRefusal = MCPHelper::UnreadableClassRefusal('SomeClass');
+		$sRefusal = ClassRefusal::Unreadable('SomeClass');
 		$this->assertStringContainsString('either this datamodel has no such class, or this account may not read it', $sRefusal,
 			'the refusal settles which of the two happened, which is the oracle this rule closes');
 		$this->assertStringNotContainsString('exists', $sRefusal,
 			'the refusal confirms the class exists');
-	}
-
-	/**
-	 * The body of one method, comments stripped - otherwise a phrase appearing
-	 * only in a doc comment would satisfy the search.
-	 */
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 }

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -31,56 +32,23 @@ require_once __DIR__.'/../bootstrap.php';
 class RequestPipelineOrderTest extends TestCase
 {
 	/**
-	 * The body of handleRequest(), comments stripped.
+	 * What a request runs, in order: the gates of MCPController::GATES, each behind a
+	 * marker, then the body of handleRequest(), comments stripped.
 	 *
 	 * Stripped because the comments in that method explain the very ordering
 	 * being asserted, and would otherwise satisfy every one of these searches
 	 * on their own.
 	 */
-	private function pipeline(): string
-	{
-		$oMethod = new ReflectionMethod(MCPController::class, 'handleRequest');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
-	}
-
 	private function assertComesBefore(string $sFirst, string $sSecond, string $sWhy): void
 	{
-		$sCode = $this->pipeline();
+		$sFirstSpec = RequestPipelineSource::Spec($sFirst);
+		$sSecondSpec = RequestPipelineSource::Spec($sSecond);
 
-		$iFirst = strpos($sCode, $sFirst);
-		$iSecond = strpos($sCode, $sSecond);
-
-		$this->assertIsInt($iFirst, "handleRequest() no longer calls {$sFirst}");
-		$this->assertIsInt($iSecond, "handleRequest() no longer calls {$sSecond}");
-		$this->assertLessThan($iSecond, $iFirst, $sWhy);
+		$this->assertTrue(RequestPipelineSource::Has($sFirstSpec), "the request pipeline no longer calls {$sFirst}");
+		$this->assertTrue(RequestPipelineSource::Has($sSecondSpec), "the request pipeline no longer calls {$sSecond}");
+		$this->assertTrue(RequestPipelineSource::InOrder([$sFirstSpec, $sSecondSpec]), $sWhy);
 	}
 
-	/**
-	 * The session reset is what stops a browser cookie being a credential for
-	 * this endpoint, for every request that gets as far as it. Without it a
-	 * logged-in user's session would authenticate the call, so it must run
-	 * before the login that would otherwise accept that cookie.
-	 *
-	 * It reads as redundant next to the credential check that now guards it,
-	 * which is exactly why it needs a test: the two are belt and braces, and
-	 * either one alone leaves a hole - see
-	 * testNothingIsResetForARequestThatBroughtNoCredential().
-	 */
 	public function testTheSessionIsResetBeforeAnythingCanAuthenticateWithIt(): void
 	{
 		$this->assertComesBefore(
@@ -108,9 +76,9 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheCredentialIsIdentifiedBeforeItIsDropped(): void
 	{
 		$this->assertComesBefore(
-			'RememberIdentity',
+			'RequestScope::Open',
 			'ForgetAuthToken',
-			'RememberIdentity() must run before ForgetAuthToken(), or the audit row cannot name the credential'
+			'RequestScope::Open() (which remembers the identity) must run before ForgetAuthToken(), or the audit row cannot name the credential'
 		);
 	}
 
@@ -138,7 +106,7 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheHostIsCheckedBeforeTheSessionIsReset(): void
 	{
 		$this->assertComesBefore(
-			'rejectUnlessHostIsServed',
+			'[[HostIsServedGate]]',
 			'ResetSession',
 			'the host check must run before ResetSession(), or a cross-origin request can log a user out'
 		);
@@ -152,7 +120,7 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheContentTypeIsCheckedBeforeTheSessionIsReset(): void
 	{
 		$this->assertComesBefore(
-			'rejectUnlessBodyIsJson',
+			'[[BodyIsJsonGate]]',
 			'ResetSession',
 			'the Content-Type check must run before ResetSession()'
 		);
@@ -169,7 +137,7 @@ class RequestPipelineOrderTest extends TestCase
 	public function testNothingIsResetForARequestThatBroughtNoCredential(): void
 	{
 		$this->assertComesBefore(
-			'rejectUnlessACredentialWasPresented',
+			'[[CredentialPresentedGate]]',
 			'ResetSession',
 			'the credential check must run before ResetSession(), or a credential-less request still ends a console session'
 		);
@@ -184,7 +152,7 @@ class RequestPipelineOrderTest extends TestCase
 	{
 		$this->assertComesBefore(
 			'PromoteBearerToAuthToken',
-			'rejectUnlessACredentialWasPresented',
+			'MCPHttp::CarriesACredential',
 			'the bearer must be promoted before the credential check reads for one'
 		);
 	}
@@ -228,7 +196,7 @@ class RequestPipelineOrderTest extends TestCase
 	public function testTheSessionIsDiscardedBetweenTheToolsAndTheAnswer(): void
 	{
 		$this->assertComesBefore('MCPService::run', 'discardRequestSession', 'the session must outlive the tools');
-		$this->assertComesBefore('discardRequestSession', 'emitResponse', 'the session must go before the answer is written');
+		$this->assertComesBefore('discardRequestSession', 'EmitResponse', 'the session must go before the answer is written');
 	}
 
 	/**
@@ -237,15 +205,39 @@ class RequestPipelineOrderTest extends TestCase
 	 */
 	public function testTheErrorPathDiscardsItAsWell(): void
 	{
-		$sCode = $this->pipeline();
-		$sCatch = (string) substr($sCode, (int) strpos($sCode, 'catch ('));
+		$aCatch = RequestPipelineSource::ErrorPath();
+		$sDiscard = strtolower(RequestPipelineSource::Spec('discardRequestSession'));
+		$sOutput = strtolower(RequestPipelineSource::Spec('OutputJsonResultException'));
+		$aLowered = array_map('strtolower', $aCatch);
 
-		$iDiscard = strpos($sCatch, 'discardRequestSession');
-		$iOutput = strpos($sCatch, 'outputJsonResultException');
+		$this->assertContains($sDiscard, $aLowered, 'the exception path no longer discards the session');
+		$this->assertContains($sOutput, $aLowered, 'the exception path no longer answers');
+		$this->assertLessThan(array_search($sOutput, $aLowered, true), array_search($sDiscard, $aLowered, true), 'the session must go before the error is written');
+	}
 
-		$this->assertIsInt($iDiscard, 'the exception path no longer discards the session');
-		$this->assertIsInt($iOutput, 'the exception path no longer answers');
-		$this->assertLessThan($iOutput, $iDiscard, 'the session must go before the error is written');
+	/**
+	 * The gates, and the order a request passes them in. Every other test in this
+	 * file asks one pair of them; this one pins the list, so a gate cannot be
+	 * dropped, added or moved without a test saying so.
+	 */
+	public function testTheGatesAreTheseAndRunInThisOrder(): void
+	{
+		$sNamespace = 'Altioo\\iTop\\Extension\\MCP\\Controller\\Gate\\';
+
+		$this->assertSame(
+			array_map(static fn (string $sName): string => $sNamespace.$sName, [
+				'PreflightGate',
+				'HostIsServedGate',
+				'BodyIsJsonGate',
+				'CredentialPresentedGate',
+				'TokenNotAParameterGate',
+				'LoginGate',
+				'McpProfileGate',
+				'TokenLoginAccountedForGate',
+				'TokenAudienceGate',
+			]),
+			RequestPipelineSource::Gates()
+		);
 	}
 
 	/**

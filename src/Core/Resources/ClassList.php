@@ -8,14 +8,15 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class ClassList extends AbstractMCPResource
@@ -62,6 +63,6 @@ class ClassList extends AbstractMCPResource
 	 */
 	public function read(): mixed
 	{
-		return ResourceOutput::Json(DatamodelReader::ClassListPayload());
+		return ResourceOutput::Json(ClassCatalog::ClassListPayload());
 	}
 }

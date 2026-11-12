@@ -8,8 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;
@@ -131,8 +132,8 @@ class RelatedGraphTest extends ItopDataTestCaseAlias
 	private function exclude(array $aClasses, array $aAttributes): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
 		ExclusionPolicy::Forget();
 	}
 }

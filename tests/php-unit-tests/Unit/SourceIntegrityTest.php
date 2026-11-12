@@ -232,7 +232,7 @@ class SourceIntegrityTest extends TestCase
 	/**
 	 * Nothing under src/ is a program.
 	 *
-	 * LICENSE and three of these shipped 100755 - MCPHelper, MCPLog and
+	 * LICENSE and three of these shipped 100755 - MCPLog and
 	 * MCPService - into a directory a web server is pointed at. Nothing
 	 * executes them and no exploit follows from the bit alone; it is a claim
 	 * the file makes about itself that is not true, on a tree whose whole

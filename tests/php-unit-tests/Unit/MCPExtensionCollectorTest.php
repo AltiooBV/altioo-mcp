@@ -8,9 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
-use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Test\Support\BrokenServiceProvider;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureServiceProvider;
 use InvalidArgumentException;

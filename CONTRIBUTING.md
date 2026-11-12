@@ -81,6 +81,35 @@ tool pack extends — carry versioning consequences. [CHANGELOG.md](CHANGELOG.md
 this project treats as breaking, and [doc/extending.md](doc/extending.md) is the contract from
 the other side.
 
+## Fixing a pre-2.0 line
+
+[SECURITY.md](SECURITY.md) promises a patch of every minor from 1.0 to 1.3 for five years, and 2.0
+moved every class under `src/`, so a patch for `main` does not apply to those lines as written. The
+decision is [ADR 0018](doc/adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md).
+
+- **Which branch.** Each supported minor has its own maintenance branch, `release/1.0` to
+  `release/1.3`, cut at the 2.0.0 tag from the latest tag of that minor. Branch your fix (`fix/…`)
+  from the branch it is for and open the pull request against that branch, not against `main`.
+- **Which first.** A defect in code that 2.0 shares is fixed on `main` first and carried back. One that
+  exists only in the 1.x code is fixed on the oldest minor it affects and carried up each `release/1.N`,
+  ending on `main` with the test that proves it is absent there.
+- **Carrying between 1.x minors is a cherry-pick.** They share the 1.x layout. Only the step to or
+  from `main` crosses the break: rename every class and member through the 1.3 → 2.0 tables under
+  **Classes** in the [CHANGELOG.md](CHANGELOG.md) 2.0.0 entry and re-read the result, since a moved class
+  may now call something in another layer and a security check that lived in a helper may now live in
+  the tool's own source ([ADR 0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
+  `git cherry-pick` conflicts on every moved file across that break; resolve by hand against the table.
+  The pull request names the commit it was carried from.
+- **Test each branch against its own matrix.** The tree you branched is what CI runs, so its
+  `.github/itop-support.json` and workflows are the claim: at 1.3.0 that is iTop 3.2 and 3.3 each on
+  PHP 8.2 and 8.4; 1.0 claimed iTop 3.2 only. Read the tag you branched from rather than this
+  sentence. Do not run 2.0's workflows or `vendor/` against a 1.x tree; `composer install` from its own lock
+  first. The fix comes with its test, written for that branch's names.
+- **One entry per patch.** Each branch's patch has its own [CHANGELOG.md](CHANGELOG.md) entry on that
+  branch, its own version in the three files, and its own tag.
+- **Signing and trailers as usual.** Signed commits, the trailer from
+  [AI-assisted contributions](#ai-assisted-contributions), explicit pathspecs.
+
 ## Before a pull request
 
 ```bash
@@ -103,6 +132,22 @@ packaged release, adds the harness from the matching tag, and installs this modu
 iTop's unattended setup — the same script CI uses. [doc/ci-itop-matrix.md](doc/ci-itop-matrix.md) has the commands.
 
 New behaviour comes with a test. A fix comes with the test that would have caught it.
+
+**If you reword a tool description or change a schema, an annotation or the server
+instructions, the integration suite fails on purpose.** `ToolSurfaceSnapshotTest` compares what
+a client is served with the copies under `tests/php-unit-tests/Integration/Snapshots/`, and
+prints one line per changed path. Read it, and if the change is meant, regenerate the copies and
+commit them with the change:
+
+```bash
+MCP_UPDATE_SNAPSHOTS=1 tools/ci/local/run.sh integration   # or MCP_UPDATE_SNAPSHOTS=1 with composer test:integration
+```
+
+An `mcp/sdk` bump that shows up there is a change an agent can see, whatever this repository's
+text says. What an agent then does with the new surface is the maintainer's to check, by hand,
+with `tools/evals/run.php` and his own `ANTHROPIC_API_KEY` against a disposable instance; without
+a key it skips, and `--dry-run` only checks the scenario files. The usage is in its header and the
+decision in [ADR 0008](doc/adr/0008-agent-behaviour-is-tested-with-a-model.md).
 
 Run the linter too. It is Combodo's coding standard, and the configuration is in the
 repository, so there is nothing to decide:

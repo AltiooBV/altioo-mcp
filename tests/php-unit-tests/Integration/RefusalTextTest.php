@@ -8,10 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Controller\CallLog;
+use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Models\MCPResult;
+use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -36,15 +37,15 @@ class RefusalTextTest extends ItopDataTestCaseAlias
 
 	private function refusedRow(string $sLevel): \AltiooEventMCPService
 	{
-		MetaModel::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, $sLevel);
+		MetaModel::GetConfig()->SetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, $sLevel);
 		$sName = 'refusal-text-'.bin2hex(random_bytes(4));
 
-		$oResult = new MCPResult(MCPResult::TOOL_REFUSED, MCPController::TOOL_REFUSED_MESSAGE);
+		$oResult = new MCPResult(MCPResult::TOOL_REFUSED, MCPResponse::TOOL_REFUSED_MESSAGE);
 		$oResult->mcpMethod = 'tools/call';
 		$oResult->mcpName = $sName;
 		$oResult->toolText = "Value '".self::QUOTED."' is not allowed for 'email'.";
 		$oResult->requestParams = '{"name":"'.$sName.'"}';
-		(new ReflectionMethod(MCPController::class, 'logIfConfigured'))->invoke(null, $oResult);
+		(new ReflectionMethod(CallLog::class, 'LogIfConfigured'))->invoke(null, $oResult);
 
 		$oSearch = new DBObjectSearch('AltiooEventMCPService');
 		$oSearch->AddCondition('mcp_name', $sName, '=');
@@ -62,7 +63,7 @@ class RefusalTextTest extends ItopDataTestCaseAlias
 		$oRow = $this->refusedRow($sLevel);
 
 		$this->assertSame('error', $oRow->Get('status'));
-		$this->assertSame(MCPController::TOOL_REFUSED_MESSAGE, $oRow->Get('message'));
+		$this->assertSame(MCPResponse::TOOL_REFUSED_MESSAGE, $oRow->Get('message'));
 		$this->assertSame('', (string)$oRow->Get('refusal_text'));
 		foreach (['message', 'refusal_text', 'request_params', 'changed_objects', 'read_objects', 'change_comment', 'userinfo'] as $sAttribute) {
 			$this->assertStringNotContainsString(self::QUOTED, (string)$oRow->Get($sAttribute), $sAttribute);
@@ -79,7 +80,7 @@ class RefusalTextTest extends ItopDataTestCaseAlias
 	{
 		$oRow = $this->refusedRow('debug');
 
-		$this->assertSame(MCPController::TOOL_REFUSED_MESSAGE, $oRow->Get('message'), 'the message stays fixed');
+		$this->assertSame(MCPResponse::TOOL_REFUSED_MESSAGE, $oRow->Get('message'), 'the message stays fixed');
 		$this->assertStringContainsString(self::QUOTED, (string)$oRow->Get('refusal_text'));
 	}
 }

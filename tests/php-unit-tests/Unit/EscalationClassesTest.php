@@ -8,9 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -38,7 +42,7 @@ class EscalationClassesTest extends TestCase
 	{
 		$sRefusal = AccessGrants::RefusalGiven(false, 'MassUpdateJob', null, [], false, ['MassUpdateJob']);
 
-		$this->assertSame(sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, 'MassUpdateJob'), $sRefusal);
+		$this->assertSame(sprintf(AccessGrantRefusals::OPERATOR_ESCALATION_REFUSAL, 'MassUpdateJob'), $sRefusal);
 		$this->assertStringContainsString('mcp_privilege_escalation_classes', (string)$sRefusal, 'the refusal does not say where the class was listed');
 		$this->assertStringContainsString('mcp_allow_privilege_escalation', (string)$sRefusal, 'the refusal does not name the setting that lifts it');
 	}
@@ -50,7 +54,7 @@ class EscalationClassesTest extends TestCase
 	public function testTheNameIsMatchedWhateverItsCase(): void
 	{
 		$this->assertNotNull(AccessGrants::RefusalGiven(false, 'MASSUPDATEJOB', null, [], false, ['MassUpdateJob']));
-		$this->assertTrue(AccessGrants::IsOperatorListed('massupdatejob', ['MassUpdateJob']));
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('massupdatejob', ['MassUpdateJob']));
 	}
 
 	/**
@@ -59,14 +63,14 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testASubclassOfAListedClassIsRefused(): void
 	{
-		$this->assertTrue(AccessGrants::IsOperatorListed('RuntimeException', ['Exception']));
-		$this->assertFalse(AccessGrants::IsOperatorListed('Exception', ['RuntimeException']), 'a parent is not covered by listing its child');
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('RuntimeException', ['Exception']));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Exception', ['RuntimeException']), 'a parent is not covered by listing its child');
 	}
 
 	public function testAClassNotListedIsLeftAlone(): void
 	{
-		$this->assertFalse(AccessGrants::IsOperatorListed('Organization', ['MassUpdateJob']));
-		$this->assertFalse(AccessGrants::IsOperatorListed('Organization', []));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Organization', ['MassUpdateJob']));
+		$this->assertFalse(AccessGrantFamilies::IsOperatorListed('Organization', []));
 		$this->assertNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], false, ['MassUpdateJob']));
 	}
 
@@ -81,7 +85,7 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testAMalformedListRefusesEveryClass(): void
 	{
-		$this->assertTrue(AccessGrants::IsOperatorListed('Organization', null));
+		$this->assertTrue(AccessGrantFamilies::IsOperatorListed('Organization', null));
 		$this->assertNotNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], false, null));
 		$this->assertNull(AccessGrants::RefusalGiven(false, 'Organization', null, [], true, null));
 	}
@@ -94,7 +98,7 @@ class EscalationClassesTest extends TestCase
 	public function testTheListIsAskedBeforeTheBuiltInGrading(): void
 	{
 		$this->assertSame(
-			sprintf(AccessGrants::OPERATOR_ESCALATION_REFUSAL, 'SynchroDataSource'),
+			sprintf(AccessGrantRefusals::OPERATOR_ESCALATION_REFUSAL, 'SynchroDataSource'),
 			AccessGrants::RefusalGiven(true, 'SynchroDataSource', null, ['scope_class' => 'Server'], false, ['SynchroDataSource'])
 		);
 	}
@@ -106,11 +110,11 @@ class EscalationClassesTest extends TestCase
 	public function testTheAuditTrailStillComesFirst(): void
 	{
 		$this->assertSame(
-			sprintf(AccessGrants::RECORDING_REFUSAL, 'Event'),
+			sprintf(AccessGrantRefusals::RECORDING_REFUSAL, 'Event'),
 			AccessGrants::RefusalGiven(false, 'Event', null, [], false, ['Event'])
 		);
 		$this->assertSame(
-			sprintf(AccessGrants::RECORDING_REFUSAL, 'Event'),
+			sprintf(AccessGrantRefusals::RECORDING_REFUSAL, 'Event'),
 			AccessGrants::RefusalGiven(false, 'Event', null, [], true, ['Event'])
 		);
 	}
@@ -142,7 +146,7 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheSettingIsReadSoThatAMistakeRefusesMore(mixed $mValue, ?array $aExpected): void
 	{
-		$this->assertSame($aExpected, Settings::EscalationClassesFrom($mValue));
+		$this->assertSame($aExpected, SettingParser::EscalationClassesFrom($mValue));
 	}
 
 	/**
@@ -151,31 +155,12 @@ class EscalationClassesTest extends TestCase
 	 */
 	public function testTheWritePathAndTheSchemaBothAskTheSetting(): void
 	{
-		$this->assertStringContainsString('Settings::GetEscalationClasses()', $this->body(AccessGrants::class, 'RefusalFor'));
+		$this->assertTrue(SourceCalls::OfClass(AccessGrants::class)->HasCall(Settings::class.'::GetEscalationClasses', 'RefusalFor'));
+		$oRights = SourceCalls::OfClass(ClassRights::class);
+		$this->assertTrue($oRights->HasCall(AccessGrantFamilies::class.'::IsOperatorListed', 'narrowedByTheBarrier'));
 		$this->assertStringContainsString(
-			'AccessGrants::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
-			$this->body(DatamodelReader::class, 'narrowedByTheBarrier')
+			'AccessGrantFamilies::IsOperatorListed($sClass,Settings::GetEscalationClasses())',
+			$oRights->Code('narrowedByTheBarrier')
 		);
-	}
-
-	private function body(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines  = file((string)$oMethod->getFileName());
-		$sBody   = implode('', array_slice(
-			(array)$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT, T_WHITESPACE], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 }

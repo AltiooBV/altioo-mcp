@@ -10,9 +10,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -61,13 +61,15 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testArchiveModeExplainsItselfRatherThanNamingAState(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\CurrentUserReader::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(CurrentUserReader::class);
 
-		$this->assertStringContainsString("'enabled' => utils::IsArchiveMode()", $sBody, 'the flag is no longer the datum');
-		$this->assertStringContainsString('never makes the instance read-only', $sBody, 'the reading that would stop a write is not ruled out');
-		$this->assertStringNotContainsString("? 'archive' : 'active'", $sBody, 'the two ambiguous words are still the whole answer');
+		$this->assertStringContainsString("'enabled'=>utils::IsArchiveMode()", $oSource->Code('Payload'), 'the flag is no longer the datum');
+		// The sentence is an output string, read from the string literals so a comment cannot hold it up.
+		$this->assertTrue(
+			$oSource->HasStringContaining('never makes the instance read-only', 'Payload'),
+			'the reading that would stop a write is not ruled out'
+		);
+		$this->assertStringNotContainsString("?'archive':'active'", $oSource->Code(), 'the two ambiguous words are still the whole answer');
 	}
 
 	/**
@@ -75,9 +77,8 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testThePayloadDoesNotUseTheSiloScopedAccessor(): void
 	{
-		$this->assertStringNotContainsString(
-			'UserRights::GetContactFriendlyname()',
-			$this->methodBody('Payload'),
+		$this->assertFalse(
+			$this->reader()->HasCall('UserRights::GetContactFriendlyname', 'Payload'),
 			'GetContactFriendlyname() reads the contact under the caller\'s silo and'
 			.' raises CoreException when it falls outside it, which fails the whole'
 			.' payload. The caller\'s own contact is not read that way.'
@@ -96,16 +97,13 @@ class CurrentUserContactTest extends TestCase
 	public function testTheContactIdComesFromTheCallersOwnUserRecord(): void
 	{
 		// Contact() is the one lookup; the name and the organisation are read off it.
-		$sBody = str_replace(' ', '', $this->methodBody('Contact'));
-
-		$this->assertStringContainsString(
-			'UserRights::GetContactId()',
-			$sBody,
+		$this->assertTrue(
+			$this->reader()->HasCall('UserRights::GetContactId', 'Contact'),
 			'The id must come from the caller\'s own user record.'
 		);
 		$this->assertStringContainsString(
 			"MetaModel::GetObject('Contact',\$iContactId,false,true)",
-			$sBody,
+			$this->reader()->Code('Contact'),
 			'The contact is fetched by that id alone, with $bMustBeFound false so a'
 			.' dangling contactid answers null, and $bAllowAllData true because the'
 			.' caller\'s own identity is not something it holds a right on.'
@@ -140,10 +138,10 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testAnUnresolvableContactDegradesToNull(): void
 	{
-		$sBody = $this->methodBody('Contact');
+		$sBody = $this->reader()->Code('Contact');
 
 		$this->assertStringContainsString(
-			'return null;',
+			'returnnull;',
 			$sBody,
 			'A user with no contact linked answers null.'
 		);
@@ -168,16 +166,14 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testEverySurfaceDelegatesToTheReader(string $sClass, string $sMethod): void
 	{
-		$sBody = $this->bodyOf($sClass, $sMethod);
+		$oSource = SourceCalls::OfClass($sClass);
 
-		$this->assertStringContainsString(
-			'CurrentUserReader::Payload()',
-			$sBody,
+		$this->assertTrue(
+			$oSource->HasCall(CurrentUserReader::class.'::Payload', $sMethod),
 			"{$sClass}::{$sMethod}() must answer out of the shared reader."
 		);
-		$this->assertStringNotContainsString(
-			'UserRights::',
-			$sBody,
+		$this->assertFalse(
+			$oSource->HasCallOn('UserRights', $sMethod),
 			"{$sClass}::{$sMethod}() reads the identity itself, which is how the two"
 			.' surfaces start answering differently.'
 		);
@@ -204,9 +200,8 @@ class CurrentUserContactTest extends TestCase
 	 */
 	public function testTheIdentityFieldsAreStillReadDirectly(string $sCall): void
 	{
-		$this->assertStringContainsString(
-			$sCall,
-			$this->methodBody('Payload'),
+		$this->assertTrue(
+			$this->reader()->HasCall($sCall, 'Payload'),
 			"Payload() must still answer {$sCall}: it does not go through the contact."
 		);
 	}
@@ -217,42 +212,14 @@ class CurrentUserContactTest extends TestCase
 	public function independentFieldProvider(): array
 	{
 		return [
-			'user id'  => ['UserRights::GetUserId()'],
-			'language' => ['UserRights::GetUserLanguage()'],
-			'contact id' => ['UserRights::GetContactId()'],
+			'user id'  => ['UserRights::GetUserId'],
+			'language' => ['UserRights::GetUserLanguage'],
+			'contact id' => ['UserRights::GetContactId'],
 		];
 	}
 
-	/**
-	 * The body of one method, comments stripped - otherwise a call named only
-	 * in a doc comment would satisfy the search.
-	 */
-	private function methodBody(string $sMethod): string
+	private function reader(): SourceCalls
 	{
-		return $this->bodyOf(CurrentUserReader::class, $sMethod);
-	}
-
-	/**
-	 * The same, for a method of any of the classes under test.
-	 */
-	private function bodyOf(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
+		return SourceCalls::OfClass(CurrentUserReader::class);
 	}
 }

@@ -9,10 +9,17 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\RecipientQueries;
+use Altioo\iTop\Extension\MCP\Service\Rights\DelegatedWrites;
+use Altioo\iTop\Extension\MCP\Service\Rights\CallersOwnAccess;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRefusals;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantRoots;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -79,7 +86,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAGrantingClassIsRefused(string $sClass): void
 	{
-		$this->assertTrue(AccessGrants::IsGranting($sClass), "{$sClass} can be written through the endpoint");
+		$this->assertTrue(AccessGrantFamilies::IsGranting($sClass), "{$sClass} can be written through the endpoint");
 	}
 
 	/**
@@ -107,7 +114,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnOrdinaryClassIsUntouched(string $sClass): void
 	{
-		$this->assertFalse(AccessGrants::IsGranting($sClass), "{$sClass} can no longer be written");
+		$this->assertFalse(AccessGrantFamilies::IsGranting($sClass), "{$sClass} can no longer be written");
 	}
 
 	/**
@@ -116,10 +123,10 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheMatchIgnoresCase(): void
 	{
-		$this->assertTrue(AccessGrants::IsGranting('personaltoken'));
-		$this->assertTrue(AccessGrants::IsGranting('PERSONALTOKEN'));
-		$this->assertTrue(AccessGrants::IsGranting('urp_profiles'));
-		$this->assertTrue(AccessGrants::IsGranting('uSeR'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('personaltoken'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('PERSONALTOKEN'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('urp_profiles'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('uSeR'));
 	}
 
 	/**
@@ -129,7 +136,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnUnknownMemberOfTheRightsFamilyIsRefused(): void
 	{
-		$this->assertTrue(AccessGrants::IsGranting('URP_SomethingAddedLater'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('URP_SomethingAddedLater'));
 	}
 
 	/**
@@ -144,7 +151,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('no iTop datamodel is loaded, so User has no subclasses here.');
 		}
 
-		$this->assertTrue(AccessGrants::IsGranting('UserLocal'), 'a subclass of User is writable');
+		$this->assertTrue(AccessGrantFamilies::IsGranting('UserLocal'), 'a subclass of User is writable');
 	}
 
 	/**
@@ -157,16 +164,15 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheBarrierMatchesDescendantsRatherThanNames(): void
 	{
-		$sBody = $this->body(AccessGrants::class, 'IsNamedGranting');
+		$oSource = SourceCalls::OfClass(AccessGrantFamilies::class);
 
-		$this->assertStringContainsString(
-			'is_a(',
-			$sBody,
-			'AccessGrants::IsGranting() matches names only, so a subclass of PersonalToken is writable'
+		$this->assertTrue(
+			$oSource->HasCall('is_a', 'IsNamedGranting'),
+			'AccessGrantFamilies::IsGranting() matches names only, so a subclass of PersonalToken is writable'
 		);
 		$this->assertStringContainsString(
 			',true)',
-			$sBody,
+			$oSource->Code('IsNamedGranting'),
 			'is_a() must be passed $allow_string, or a class name that was never instantiated matches nothing'
 		);
 	}
@@ -184,11 +190,9 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheNamesAreAFloorRatherThanADefault(): void
 	{
-		$sBody = $this->body(AccessGrants::class, 'IsGranting');
-
 		$this->assertStringContainsString(
 			'self::IsNamedGranting($sClass)||self::IsDeclaredGranting($sClass)',
-			$sBody,
+			SourceCalls::OfClass(AccessGrantFamilies::class)->Code('IsGranting'),
 			'the two halves are no longer a union, so the datamodel can narrow what the names refuse'
 		);
 	}
@@ -204,21 +208,18 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheDatamodelIsAskedAboutAClassTheNamesDoNotCover(): void
 	{
-		$sBody = $this->body(AccessGrants::class, 'IsDeclaredGranting');
+		$oSource = SourceCalls::OfClass(AccessGrantFamilies::class);
 
-		$this->assertStringContainsString(
-			'TokenScopes::GradesThisEndpoint',
-			$sBody,
+		$this->assertTrue(
+			$oSource->HasCall(TokenScopes::class.'::GradesThisEndpoint', 'IsDeclaredGranting'),
 			'a class that can carry an MCP scope is only refused if someone remembered to name it here'
 		);
-		$this->assertStringContainsString(
-			'MetaModel::GetClasses',
-			$sBody,
+		$this->assertTrue(
+			$oSource->HasCall('MetaModel::GetClasses', 'IsDeclaredGranting'),
 			'the rights model is matched by spelling alone'
 		);
-		$this->assertStringContainsString(
-			'ListAttributeDefs',
-			$sBody,
+		$this->assertTrue(
+			$oSource->HasCall('MetaModel::ListAttributeDefs', 'IsDeclaredGranting'),
 			'a class holding a credential is only refused if someone remembered to name it here'
 		);
 	}
@@ -235,14 +236,14 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('no iTop datamodel is loaded, so no class declares a password here.');
 		}
 
-		$this->assertTrue(AccessGrants::IsGranting('UserLocal'));
-		$this->assertTrue(AccessGrants::IsGranting('PersonalToken'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('UserLocal'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('PersonalToken'));
 
 		// The signal has to stay narrow, or it stops being about credentials:
 		// SynchroDataSource is why iTop's own addon/authentication category
 		// was not used for this.
-		$this->assertFalse(AccessGrants::IsGranting('SynchroDataSource'));
-		$this->assertFalse(AccessGrants::IsGranting('UserRequest'));
+		$this->assertFalse(AccessGrantFamilies::IsGranting('SynchroDataSource'));
+		$this->assertFalse(AccessGrantFamilies::IsGranting('UserRequest'));
 	}
 
 	/**
@@ -262,18 +263,20 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheRecoverableSecretTypesAreDeliberatelyNotMatched(): void
 	{
-		$sSource = (string)file_get_contents((new ReflectionClass(AccessGrants::class))->getFileName());
-		$sCode = $this->stripComments($sSource);
+		$aStrings = array_merge(
+			SourceCalls::OfClass(AccessGrants::class)->Strings(),
+			SourceCalls::OfClass(AccessGrantRoots::class)->Strings()
+		);
 
 		foreach (['AttributePassword', 'AttributeEncryptedString', 'AttributeEncryptedPassword'] as $sType) {
-			$this->assertStringNotContainsString(
-				"'".$sType."'",
-				$sCode,
+			$this->assertNotContains(
+				$sType,
+				$aStrings,
 				"{$sType} holds a secret something else has to read back - a mailbox password, an API client secret - so matching it refuses writes that say nothing about who may call this endpoint"
 			);
 		}
 
-		$this->assertStringContainsString("'AttributeOneWayPassword'", $sCode, 'the credential signal is gone');
+		$this->assertContains('AttributeOneWayPassword', $aStrings, 'the credential signal is gone');
 	}
 
 	/**
@@ -306,19 +309,19 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheAnswerIsStableAndForgettable(): void
 	{
-		$this->assertTrue(AccessGrants::IsGranting('PersonalToken'));
-		$this->assertTrue(AccessGrants::IsGranting('PersonalToken'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('PersonalToken'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('PersonalToken'));
 
-		AccessGrants::Forget();
+		AccessGrantFamilies::Forget();
 
-		$this->assertTrue(AccessGrants::IsGranting('PersonalToken'));
-		$this->assertFalse(AccessGrants::IsGranting('UserRequest'));
+		$this->assertTrue(AccessGrantFamilies::IsGranting('PersonalToken'));
+		$this->assertFalse(AccessGrantFamilies::IsGranting('UserRequest'));
 	}
 
 	/** The refusal names the class and says where the change belongs instead. */
 	public function testTheRefusalIsUsable(): void
 	{
-		$sRefusal = sprintf(AccessGrants::GRANT_REFUSAL, 'PersonalToken');
+		$sRefusal = sprintf(AccessGrantRefusals::GRANT_REFUSAL, 'PersonalToken');
 
 		$this->assertStringContainsString('PersonalToken', $sRefusal);
 		$this->assertStringContainsString('console', $sRefusal);
@@ -364,11 +367,11 @@ class AccessGrantsTest extends TestCase
 	public function testEveryWritingToolReachesTheBarrier(): void
 	{
 		foreach ($this->writingTools() as [$sName, $oTool]) {
-			$sSource = (string)file_get_contents((new ReflectionClass($oTool))->getFileName());
+			$oSource = SourceCalls::OfClass($oTool);
 
 			$this->assertTrue(
-				str_contains($sSource, 'AccessGrants::RefusalFor')
-				|| str_contains($sSource, 'checkBulkAllowed('),
+				$oSource->HasCall(AccessGrants::class.'::RefusalFor')
+				|| $oSource->HasCallTo('checkBulkAllowed'),
 				"{$sName} can write the classes that decide what it may write"
 			);
 		}
@@ -381,9 +384,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheSharedBulkGateChecksIt(): void
 	{
-		$this->assertStringContainsString(
-			'AccessGrants::RefusalFor',
-			$this->body('Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool', 'checkBulkAllowed'),
+		$this->assertTrue(
+			SourceCalls::OfClass('Altioo\iTop\Extension\MCP\Api\AbstractBulkTool')->HasCall(AccessGrants::class.'::RefusalFor', 'checkBulkAllowed'),
 			'the bulk tools no longer check the barrier'
 		);
 	}
@@ -403,9 +405,13 @@ class AccessGrantsTest extends TestCase
 			$sFile = dirname(__DIR__, 3).'/src/Core/Tools/'.$sTool.'.php';
 
 			$this->assertFileExists($sFile);
-			$this->assertStringNotContainsString(
-				'AccessGrants',
-				(string)file_get_contents($sFile),
+			$oSource = SourceCalls::OfFile($sFile);
+			$this->assertSame(
+				[],
+				array_merge(
+					array_filter($oSource->Imports(), static fn (string $sClass): bool => str_contains($sClass, 'AccessGrants')),
+					array_filter($oSource->Calls(), static fn (string $sCall): bool => str_contains($sCall, 'AccessGrants'))
+				),
 				"{$sTool} refuses to read a token, which was never the point of the barrier"
 			);
 		}
@@ -432,8 +438,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testASynchronisationClassIsRecognised(string $sClass): void
 	{
-		$this->assertTrue(AccessGrants::IsDelegating($sClass));
-		$this->assertTrue(AccessGrants::IsBarred($sClass));
+		$this->assertTrue(AccessGrantFamilies::IsDelegating($sClass));
+		$this->assertTrue(AccessGrantFamilies::IsBarred($sClass));
 	}
 
 	/**
@@ -463,15 +469,13 @@ class AccessGrantsTest extends TestCase
 	public function testTheFamilyIsNotMatchedByItsSpelling(): void
 	{
 		$this->assertFalse(
-			AccessGrants::IsDelegating('SynchroWidget'),
+			AccessGrantFamilies::IsDelegating('SynchroWidget'),
 			'a class is in the family for being named like one, so a customer class is read-only by coincidence'
 		);
 
-		$sSource = (string) file_get_contents(
-			dirname(__DIR__, 3).'/src/Helper/AccessGrants.php'
-		);
-		$this->assertStringNotContainsString("DELEGATING_PREFIX", $sSource, 'the prefix match is still there');
-		$this->assertStringContainsString('IsExternalKey', $sSource, 'nothing asks the datamodel what hangs off a data source');
+		$oSource = SourceCalls::OfClass(AccessGrantFamilies::class);
+		$this->assertFalse($oSource->HasConstant('self::DELEGATING_PREFIX') || $oSource->HasConstant(AccessGrantFamilies::class.'::DELEGATING_PREFIX'), 'the prefix match is still there');
+		$this->assertTrue($oSource->HasCallTo('IsExternalKey'), 'nothing asks the datamodel what hangs off a data source');
 	}
 
 	/**
@@ -487,7 +491,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('no iTop datamodel is loaded, so nothing can be asked what it points at.');
 		}
 
-		$this->assertTrue(AccessGrants::IsDelegating('SynchroAttExtKey'));
+		$this->assertTrue(AccessGrantFamilies::IsDelegating('SynchroAttExtKey'));
 	}
 
 	/**
@@ -576,26 +580,27 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAMechanismIsGradedAgainstTheDirectCall(): void
 	{
-		$sRule = $this->body(AccessGrants::class, 'CouldNotDoItDirectly');
+		$oSource = SourceCalls::OfClass(DelegatedWrites::class);
+		$sRule = $oSource->Code('CouldNotDoItDirectly');
 
 		// A target the barrier itself refuses is refused here, by the same
 		// rule rather than by a second list - which is what makes a source
 		// pointed at Event, or at AsyncTask, refused without either being
 		// named again.
-		$this->assertStringContainsString('IsBarred', $sRule,
+		$this->assertTrue($oSource->HasCall(AccessGrantFamilies::class.'::IsBarred', 'CouldNotDoItDirectly'),
 			'the mechanism is graded only on rights, so it can be pointed at a class the barrier refuses outright');
 
 		foreach (['UR_ACTION_READ', 'UR_ACTION_BULK_READ'] as $sAction) {
-			$this->assertStringContainsString($sAction, $sRule,
+			$this->assertTrue($oSource->HasString($sAction, 'CouldNotDoItDirectly'),
 				"a mechanism is not graded on {$sAction}, so it can carry out data the caller may not read");
 		}
 		foreach (['UR_ACTION_CREATE', 'UR_ACTION_MODIFY', 'UR_ACTION_DELETE', 'UR_ACTION_BULK_MODIFY', 'UR_ACTION_BULK_DELETE'] as $sAction) {
-			$this->assertStringContainsString($sAction, $sRule, "a writing mechanism is not graded on {$sAction}");
+			$this->assertTrue($oSource->HasString($sAction, 'CouldNotDoItDirectly'), "a writing mechanism is not graded on {$sAction}");
 		}
 
 		// Per attribute, not only per class: a grant the caller does not hold
 		// on one attribute is one the mechanism would have got round.
-		$this->assertStringContainsString('AttributesTheCallerMayNot', $sRule,
+		$this->assertTrue($oSource->HasCall(DelegatedWrites::class.'::AttributesTheCallerMayNot', 'CouldNotDoItDirectly'),
 			'only the class is graded, so a per-attribute grant is reachable through the mechanism');
 
 		// And on both write actions. UR_ACTION_CREATE and UR_ACTION_MODIFY are
@@ -608,7 +613,7 @@ class AccessGrantsTest extends TestCase
 			'the per-attribute write check asks only one of the two actions the engine performs'
 		);
 
-		$this->assertStringNotContainsString('AllowsAccessAdministration', $sRule,
+		$this->assertFalse($oSource->HasCallTo('AllowsAccessAdministration', 'CouldNotDoItDirectly'),
 			'an ordinary CMDB source is still gated on the access-administration setting');
 	}
 
@@ -694,7 +699,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheSettingSaysItIsAnEscalationAndNotAFeature(): void
 	{
-		foreach ([AccessGrants::AUTOMATION_REFUSAL, AccessGrants::DETECTION_REFUSAL] as $sRefusal) {
+		foreach ([AccessGrantRefusals::AUTOMATION_REFUSAL, AccessGrantRefusals::DETECTION_REFUSAL] as $sRefusal) {
 			$this->assertStringContainsString('grant more than the credential it was called with', $sRefusal,
 				'the refusal does not say what turning the setting on actually means');
 			$this->assertStringContainsString('rather than a switch for managing automation', $sRefusal,
@@ -722,17 +727,17 @@ class AccessGrantsTest extends TestCase
 	public function testTheDelegationRefusalsDoNotReadAlike(): void
 	{
 		$aAll = [
-			AccessGrants::GRANT_REFUSAL,
-			AccessGrants::SELF_REFUSAL,
-			AccessGrants::DELEGATION_REFUSAL,
-			AccessGrants::DELEGATED_TARGET_REFUSAL,
-			AccessGrants::DELEGATED_RIGHTS_REFUSAL,
+			AccessGrantRefusals::GRANT_REFUSAL,
+			AccessGrantRefusals::SELF_REFUSAL,
+			AccessGrantRefusals::DELEGATION_REFUSAL,
+			AccessGrantRefusals::DELEGATED_TARGET_REFUSAL,
+			AccessGrantRefusals::DELEGATED_RIGHTS_REFUSAL,
 		];
 
 		$this->assertSame(count($aAll), count(array_unique($aAll)), 'two refusals say the same thing');
-		$this->assertStringContainsString('scope_class', AccessGrants::DELEGATION_REFUSAL);
-		$this->assertStringContainsString('does not write it through something else', AccessGrants::DELEGATED_TARGET_REFUSAL);
-		$this->assertStringContainsString('you could write yourself', AccessGrants::DELEGATED_RIGHTS_REFUSAL);
+		$this->assertStringContainsString('scope_class', AccessGrantRefusals::DELEGATION_REFUSAL);
+		$this->assertStringContainsString('does not write it through something else', AccessGrantRefusals::DELEGATED_TARGET_REFUSAL);
+		$this->assertStringContainsString('you could write yourself', AccessGrantRefusals::DELEGATED_RIGHTS_REFUSAL);
 	}
 
 	/**
@@ -744,7 +749,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testASynchronisationClassIsStillReadable(): void
 	{
-		$sBlock = $this->body('Altioo\\iTop\\Extension\\MCP\\Helper\\DatamodelReader', 'narrowedByTheBarrier');
+		$sBlock = $this->body('Altioo\\iTop\\Extension\\MCP\\Service\\Rights\\ClassRights', 'narrowedByTheBarrier');
 
 		$this->assertStringContainsString(
 			'Readingisunaffected',
@@ -777,8 +782,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnAutomationClassIsRefusedWithoutItsOwnSetting(string $sClass): void
 	{
-		$this->assertTrue(AccessGrants::IsAutomation($sClass));
-		$this->assertTrue(AccessGrants::IsBarred($sClass));
+		$this->assertTrue(AccessGrantFamilies::IsAutomation($sClass));
+		$this->assertTrue(AccessGrantFamilies::IsBarred($sClass));
 
 		$sRefusal = AccessGrants::RefusalGiven(true, $sClass, 1, [], false);
 
@@ -819,7 +824,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped("no iTop datamodel is loaded, so {$sClass} is not known to descend from its root here.");
 		}
 
-		$this->assertTrue(AccessGrants::IsAutomation($sClass));
+		$this->assertTrue(AccessGrantFamilies::IsAutomation($sClass));
 		$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
 	}
 
@@ -868,7 +873,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('no iTop datamodel is loaded, so nothing can be asked what it points at.');
 		}
 
-		$this->assertTrue(AccessGrants::IsAutomation('lnkTriggerAction'));
+		$this->assertTrue(AccessGrantFamilies::IsAutomation('lnkTriggerAction'));
 		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'lnkTriggerAction', 1, [], false));
 	}
 
@@ -887,8 +892,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnotherAccountsPreferencesAreRefused(): void
 	{
-		$this->assertTrue(AccessGrants::IsPersonal('appUserPreferences'));
-		$this->assertTrue(AccessGrants::IsBarred('appUserPreferences'));
+		$this->assertTrue(AccessGrantFamilies::IsPersonal('appUserPreferences'));
+		$this->assertTrue(AccessGrantFamilies::IsBarred('appUserPreferences'));
 
 		// A row named by id, with no UserRights to establish whose it is, and
 		// the access setting off: refused.
@@ -980,11 +985,11 @@ class AccessGrantsTest extends TestCase
 			// The class itself, then up the chain the file declares, then the
 			// parent it stops at - which is iTop's, and is where a root like
 			// Event is matched by name.
-			$bConsidered = AccessGrants::IsBarred($sClass);
+			$bConsidered = AccessGrantFamilies::IsBarred($sClass);
 			$sUp = $sParent;
 			$iGuard = 0;
 			while (!$bConsidered && $sUp !== '' && $iGuard++ < 20) {
-				$bConsidered = AccessGrants::IsBarred($sUp);
+				$bConsidered = AccessGrantFamilies::IsBarred($sUp);
 				$sUp = $aDeclared[$sUp] ?? '';
 			}
 
@@ -1016,8 +1021,8 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheEndpointsOwnAuditTrailIsNotWritableThroughIt(): void
 	{
-		$this->assertTrue(AccessGrants::IsRecording('Event'));
-		$this->assertTrue(AccessGrants::IsBarred('Event'));
+		$this->assertTrue(AccessGrantFamilies::IsRecording('Event'));
+		$this->assertTrue(AccessGrantFamilies::IsBarred('Event'));
 
 		foreach ([[false, false], [true, true]] as [$bAdministration, $bAutomation]) {
 			$sRefusal = AccessGrants::RefusalGiven($bAdministration, 'Event', 1, [], $bAutomation);
@@ -1037,7 +1042,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('no iTop datamodel is loaded, so the module class is not known to descend from Event here.');
 		}
 
-		$this->assertTrue(AccessGrants::IsRecording('AltiooEventMCPService'));
+		$this->assertTrue(AccessGrantFamilies::IsRecording('AltiooEventMCPService'));
 		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'AltiooEventMCPService', 1, [], true));
 	}
 
@@ -1053,7 +1058,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheDeferredWorkQueueIsGated(): void
 	{
-		$this->assertTrue(AccessGrants::IsAutomation('AsyncTask'));
+		$this->assertTrue(AccessGrantFamilies::IsAutomation('AsyncTask'));
 		$this->assertNotNull(AccessGrants::RefusalGiven(true, 'AsyncTask', null, [], false));
 		$this->assertNull(AccessGrants::RefusalGiven(false, 'AsyncTask', null, [], true));
 	}
@@ -1072,7 +1077,7 @@ class AccessGrantsTest extends TestCase
 	public function testOutboundCredentialStoresAreGated(): void
 	{
 		foreach (['Oauth2Client', 'OAuthClient'] as $sClass) {
-			$this->assertTrue(AccessGrants::IsAutomation($sClass), "{$sClass} holds outbound credentials and is ungated");
+			$this->assertTrue(AccessGrantFamilies::IsAutomation($sClass), "{$sClass} holds outbound credentials and is ungated");
 			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false));
 		}
 	}
@@ -1098,25 +1103,25 @@ class AccessGrantsTest extends TestCase
 	public function testALiveOutboundTokenIsMaskedEvenInAPlainTextAttribute(): void
 	{
 		foreach (['client_secret', 'refresh_token', 'access_token', 'token'] as $sAttCode) {
-			$this->assertTrue(AccessGrants::IsOutboundSecret('OAuthClient', $sAttCode), "OAuthClient::{$sAttCode} is reported in clear");
-			$this->assertTrue(AccessGrants::IsOutboundSecret('Oauth2Client', $sAttCode));
+			$this->assertTrue(AccessGrantFamilies::IsOutboundSecret('OAuthClient', $sAttCode), "OAuthClient::{$sAttCode} is reported in clear");
+			$this->assertTrue(AccessGrantFamilies::IsOutboundSecret('Oauth2Client', $sAttCode));
 		}
 
 		// The expiry is not the secret, and masking it would mask the answer.
-		$this->assertFalse(AccessGrants::IsOutboundSecret('OAuthClient', 'refresh_token_expiration'));
-		$this->assertFalse(AccessGrants::IsOutboundSecret('Oauth2Client', 'scope'));
+		$this->assertFalse(AccessGrantFamilies::IsOutboundSecret('OAuthClient', 'refresh_token_expiration'));
+		$this->assertFalse(AccessGrantFamilies::IsOutboundSecret('Oauth2Client', 'scope'));
 
 		// And the rule is scoped to those classes, not to the attribute name.
-		$this->assertFalse(AccessGrants::IsOutboundSecret('UserRequest', 'token'));
+		$this->assertFalse(AccessGrantFamilies::IsOutboundSecret('UserRequest', 'token'));
 
 		// The same gap in a sibling hierarchy the OAuth-only list did not reach:
 		// RemoteiTopConnectionToken (combodo-webhook-integration) keeps the
 		// outbound token in an AttributeString. The floor is the connection
 		// base; the descendant resolves only where the datamodel is loaded, so
 		// the base name is what a pure unit run can pin.
-		$this->assertTrue(AccessGrants::IsOutboundSecret('RemoteApplicationConnection', 'token'));
+		$this->assertTrue(AccessGrantFamilies::IsOutboundSecret('RemoteApplicationConnection', 'token'));
 		// token_type is "Bearer", not a secret, and the exact match leaves it.
-		$this->assertFalse(AccessGrants::IsOutboundSecret('RemoteApplicationConnection', 'token_type'));
+		$this->assertFalse(AccessGrantFamilies::IsOutboundSecret('RemoteApplicationConnection', 'token_type'));
 	}
 
 	/**
@@ -1129,7 +1134,7 @@ class AccessGrantsTest extends TestCase
 			$this->markTestSkipped('needs combodo-webhook-integration in a loaded datamodel; belongs to the integration suite');
 		}
 
-		$this->assertTrue(AccessGrants::IsOutboundSecret('RemoteiTopConnectionToken', 'token'),
+		$this->assertTrue(AccessGrantFamilies::IsOutboundSecret('RemoteiTopConnectionToken', 'token'),
 			'the outbound token on the webhook connection is reported in clear');
 	}
 
@@ -1226,14 +1231,15 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnEmailActionsRecipientsAreGradedAsAReadOfThatClass(): void
 	{
-		$sRule = $this->body(AccessGrants::class, 'ReadRefusalForRecipients');
+		$oSource = SourceCalls::OfClass(RecipientQueries::class);
+		$sRule = 'ReadRefusalForRecipients';
 
-		$this->assertStringContainsString('IsBarred', $sRule,
+		$this->assertTrue($oSource->HasCall(AccessGrantFamilies::class.'::IsBarred', $sRule),
 			'a recipient query can select a class the barrier refuses outright');
-		$this->assertStringContainsString('UR_ACTION_READ', $sRule, 'the selected class is not graded for reading');
-		$this->assertStringContainsString('UR_ACTION_BULK_READ', $sRule,
+		$this->assertTrue($oSource->HasConstant('UR_ACTION_READ', $sRule), 'the selected class is not graded for reading');
+		$this->assertTrue($oSource->HasConstant('UR_ACTION_BULK_READ', $sRule),
 			'a query returning many rows is not graded as a bulk read');
-		$this->assertStringContainsString('AttributeEmailAddress', $sRule,
+		$this->assertTrue($oSource->HasCallTo('IsActionAllowedOnAttribute', $sRule),
 			'the attribute the address is actually taken from is not graded');
 
 		// With no UserRights here, a query that names a class fails closed.
@@ -1260,7 +1266,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAWebhookCallLogIsNotWritableEither(): void
 	{
-		$this->assertTrue(AccessGrants::IsRecording('EventWebhook'));
+		$this->assertTrue(AccessGrantFamilies::IsRecording('EventWebhook'));
 
 		foreach ([[false, false], [true, true]] as [$bAdministration, $bAutomation]) {
 			$sRefusal = AccessGrants::RefusalGiven($bAdministration, 'EventWebhook', 1, [], $bAutomation);
@@ -1285,7 +1291,7 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testAnEditLockIsOnlyEverYourOwn(): void
 	{
-		$this->assertTrue(AccessGrants::IsPersonal('iTopOwnershipToken'));
+		$this->assertTrue(AccessGrantFamilies::IsPersonal('iTopOwnershipToken'));
 
 		$this->assertNotNull(
 			AccessGrants::RefusalGiven(false, 'iTopOwnershipToken', null, ['user_id' => 999], false),
@@ -1332,7 +1338,7 @@ class AccessGrantsTest extends TestCase
 	public function testTheDataQualityAuditIsGated(): void
 	{
 		foreach (['AuditRule', 'AuditCategory', 'AuditDomain'] as $sClass) {
-			$this->assertTrue(AccessGrants::IsDetection($sClass));
+			$this->assertTrue(AccessGrantFamilies::IsDetection($sClass));
 			$this->assertNotNull(AccessGrants::RefusalGiven(true, $sClass, 1, [], false),
 				"{$sClass} was writable with the automation setting off");
 			// With the override on, a *new* one is allowed; an existing row is
@@ -1377,9 +1383,9 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheTwoRefusalsDoNotReadAlike(): void
 	{
-		$this->assertNotSame(AccessGrants::GRANT_REFUSAL, AccessGrants::SELF_REFUSAL);
-		$this->assertStringNotContainsString('mcp_allow_access_administration', AccessGrants::SELF_REFUSAL);
-		$this->assertStringContainsString('yourself', AccessGrants::SELF_REFUSAL);
+		$this->assertNotSame(AccessGrantRefusals::GRANT_REFUSAL, AccessGrantRefusals::SELF_REFUSAL);
+		$this->assertStringNotContainsString('mcp_allow_access_administration', AccessGrantRefusals::SELF_REFUSAL);
+		$this->assertStringContainsString('yourself', AccessGrantRefusals::SELF_REFUSAL);
 	}
 
 	/**
@@ -1415,19 +1421,18 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheSettingCannotReachTheSelfGuard(): void
 	{
-		$sDecision = $this->body(AccessGrants::class, 'RefusalGiven');
-		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+		$oDecision = SourceCalls::OfClass(AccessGrants::class);
+		$oGuard = SourceCalls::OfClass(CallersOwnAccess::class);
 
-		$this->assertStringContainsString('ReachesTheCaller', $sDecision, 'the self-guard is no longer consulted');
-		$this->assertStringContainsString('SELF_REFUSAL', $sDecision);
-		$this->assertStringNotContainsString(
-			'AllowsAccessAdministration',
-			$sGuard,
+		$this->assertTrue($oDecision->HasCall(CallersOwnAccess::class.'::ReachesTheCaller', 'RefusalGiven'), 'the self-guard is no longer consulted');
+		$this->assertTrue($oDecision->HasConstant(AccessGrantRefusals::class.'::SELF_REFUSAL', 'RefusalGiven'));
+		$this->assertFalse(
+			$oGuard->HasCallTo('AllowsAccessAdministration', 'ReachesTheCaller'),
 			'the self-guard reads the setting, so an instance can switch off the one rule that has no switch'
 		);
 		$this->assertStringNotContainsString(
 			'$bAdministrationAllowed',
-			$sGuard,
+			$oGuard->Code('ReachesTheCaller'),
 			'the self-guard was handed the setting, which is the same thing one argument later'
 		);
 	}
@@ -1445,12 +1450,12 @@ class AccessGrantsTest extends TestCase
 	 */
 	public function testTheGuardIsAskedOfTheRowIncludingOnACreate(): void
 	{
-		$sGuard = $this->body(AccessGrants::class, 'ReachesTheCaller');
+		$oGuard = SourceCalls::OfClass(CallersOwnAccess::class);
 
-		$this->assertStringContainsString('user_id', $sGuard, 'the owner of a token is not consulted');
-		$this->assertStringContainsString('userid', $sGuard, 'the user named by a rights link is not consulted');
-		$this->assertStringContainsString('$aFields', $sGuard, 'a create has only the values to go on and they are not read');
-		$this->assertStringContainsString('ProfileOf', $sGuard, 'the profile a row decides about is not consulted');
+		$this->assertTrue($oGuard->HasString('user_id', 'ReachesTheCaller'), 'the owner of a token is not consulted');
+		$this->assertTrue($oGuard->HasString('userid', 'ReachesTheCaller'), 'the user named by a rights link is not consulted');
+		$this->assertStringContainsString('$aFields', $oGuard->Code('ReachesTheCaller'), 'a create has only the values to go on and they are not read');
+		$this->assertTrue($oGuard->HasCallTo('ProfileOf', 'ReachesTheCaller'), 'the profile a row decides about is not consulted');
 	}
 
 	/**
@@ -1467,34 +1472,19 @@ class AccessGrantsTest extends TestCase
 		foreach (['ObjectBulkCreate', 'ObjectBulkUpdate', 'ObjectBulkDelete'] as $sTool) {
 			$sFile = dirname(__DIR__, 3).'/src/Core/Tools/'.$sTool.'.php';
 
-			$this->assertStringContainsString(
-				'AccessGrants::RefusalFor',
-				(string)file_get_contents($sFile),
+			$this->assertTrue(
+				SourceCalls::OfFile($sFile)->HasCall(AccessGrants::class.'::RefusalFor'),
 				"{$sTool} checks the class and never the rows, so one row naming the caller goes through with the batch"
 			);
 		}
 	}
 
 	/**
-	 * The body of one method, comments stripped - they discuss the very call
-	 * being searched for and would satisfy the search on their own - and
-	 * whitespace with them, so that a reindent does not fail the test.
+	 * The body of one method, comments and whitespace stripped, for the checks
+	 * of wording that are not calls.
 	 *
 	 * @param class-string $sClass
 	 */
-	private function stripComments(string $sSource): string
-	{
-		$sCode = '';
-		foreach (token_get_all($sSource) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT, T_WHITESPACE], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
-	}
-
 	private function body(string $sClass, string $sMethod): string
 	{
 		$oMethod = new ReflectionMethod($sClass, $sMethod);

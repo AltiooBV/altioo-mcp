@@ -8,13 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalDescription;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
@@ -22,11 +23,12 @@ use Mcp\Schema\ToolAnnotations;
  * The readable classes of the datamodel, as a tool.
  *
  * Same list as itop://core/classes, narrowable - see
- * {@see \Altioo\iTop\Extension\MCP\Helper\DatamodelReader} for why the schema
+ * {@see \Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader} for why the schema
  * is exposed on both surfaces. Narrowing is what the resource cannot offer: a
  * stock iTop declares several hundred classes, and the handful a model needs
  * are almost always one category ('bizmodel') or one word ('ticket') away.
  *
+ * @internal
  * @since 1.0.0
  */
 class ClassList extends AbstractMCPTool implements PortalAware
@@ -99,8 +101,8 @@ class ClassList extends AbstractMCPTool implements PortalAware
 				'may'      => [
 					'type'        => 'string',
 					'description' => 'Keep only the classes this caller may act on through the named gate, and report every gate on each one. Empty (the default) means no such narrowing and no rights reported. "*" reports the gates without narrowing on any of them, which is the one call that answers "what may I do across all of these". A class the named gate refuses outright is dropped; one graded "depends" is kept, because that is the datamodel asking for the object rather than refusing the class. The gates are the ones the tools check: '
-						.implode(', ', DatamodelReader::RightsKeys()).'.',
-					'enum'        => DatamodelReader::MayValues(),
+						.implode(', ', GateGrades::RightsKeys()).'.',
+					'enum'        => GateGrades::MayValues(),
 					'default'     => '',
 				],
 			],
@@ -131,27 +133,27 @@ class ClassList extends AbstractMCPTool implements PortalAware
 		$sFilter = trim($filter);
 		$sMay = trim($may);
 
-		if ($sCategory !== '' && !in_array($sCategory, DatamodelReader::Categories(), true)) {
+		if ($sCategory !== '' && !in_array($sCategory, ClassCatalog::Categories(), true)) {
 			// Naming the valid ones costs one line and saves the model a round of guessing.
 			throw new ToolCallException(sprintf(
 				"Unknown category '%s'. Valid categories: %s.",
 				$sCategory,
-				implode(', ', DatamodelReader::Categories())
+				implode(', ', ClassCatalog::Categories())
 			));
 		}
 
-		if ($sMay !== '' && !in_array($sMay, DatamodelReader::MayValues(), true)) {
+		if ($sMay !== '' && !in_array($sMay, GateGrades::MayValues(), true)) {
 			// Same courtesy as the category above: the valid ones cost one line.
 			throw new ToolCallException(sprintf(
 				"Unknown gate '%s'. Valid gates: %s. Pass '%s' to report them all without narrowing.",
 				$sMay,
-				implode(', ', DatamodelReader::RightsKeys()),
-				DatamodelReader::RIGHTS_ALL
+				implode(', ', GateGrades::RightsKeys()),
+				GateGrades::RIGHTS_ALL
 			));
 		}
 
-		// The envelope itself is DatamodelReader's, so that itop://core/classes
+		// The envelope itself is ClassCatalog's, so that itop://core/classes
 		// answers with the same shape for the same data.
-		return ToolOutput::Json(DatamodelReader::ClassListPayload($sCategory, $sFilter, $sMay));
+		return ToolOutput::Json(ClassCatalog::ClassListPayload($sCategory, $sFilter, $sMay));
 	}
 }

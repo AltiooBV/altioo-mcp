@@ -8,10 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
+use Altioo\iTop\Extension\MCP\Service\Server\SettingsWarnings;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\UnavailableTool;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -41,7 +43,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		// No setAccessible(): it has been a no-op since PHP 8.1 and is
 		// deprecated in 8.5, which this suite treats as a failure.
-		$oMethod = new ReflectionMethod(MCPService::class, 'isHidden');
+		$oMethod = new ReflectionMethod(ServedElements::class, 'isHidden');
 
 		return $oMethod->invoke(
 			null,
@@ -60,7 +62,7 @@ class MCPServiceGatingTest extends TestCase
 	 */
 	private function matchingNothing(array $aConfigured, array $aKnown): array
 	{
-		$oMethod = new ReflectionMethod(MCPService::class, 'entriesMatchingNothing');
+		$oMethod = new ReflectionMethod(SettingsWarnings::class, 'entriesMatchingNothing');
 
 		return $oMethod->invoke(null, $aConfigured, array_fill_keys($aKnown, true));
 	}
@@ -210,7 +212,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
-		$this->assertStringContainsString('isHidden', $sBody, 'the served set is not decided the way registration decides it');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCallTo('isHidden', 'ServedAccess'), 'the served set is not decided the way registration decides it');
 		$this->assertStringNotContainsString('$oPolicy->toolsets()', $sBody, 'the permitted list is being reported as the reachable one');
 	}
 
@@ -224,8 +226,10 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
+		$oSource = SourceCalls::OfClass(ServedElements::class);
 		$this->assertStringContainsString('!self::isHidden', $sBody, 'toolsets are collected without asking whether the element is served');
-		$this->assertStringNotContainsString('GetKnownToolsets', $sBody);
+		$this->assertTrue($oSource->HasCallTo('isHidden', 'ServedAccess'), 'toolsets are collected without asking whether the element is served');
+		$this->assertFalse($oSource->HasCallTo('GetKnownToolsets', 'ServedAccess'));
 	}
 
 	/**
@@ -247,8 +251,10 @@ class MCPServiceGatingTest extends TestCase
 		$this->assertStringContainsString("'prompts'", $sBody, 'the identity block never mentions prompts');
 
 		$sNames = $this->bodyOf('servedPromptNames');
-		$this->assertStringContainsString('GetPrompts', $sNames);
+		$oSource = SourceCalls::OfClass(ServedElements::class);
+		$this->assertTrue($oSource->HasCallTo('GetPrompts', 'servedPromptNames'));
 		$this->assertStringContainsString('!self::isHidden', $sNames, 'a withheld prompt would be advertised');
+		$this->assertTrue($oSource->HasCallTo('isHidden', 'servedPromptNames'), 'a withheld prompt would be advertised');
 	}
 
 	/**
@@ -275,7 +281,7 @@ class MCPServiceGatingTest extends TestCase
 	{
 		$sBody = $this->bodyOf('ServedAccess');
 
-		$this->assertStringContainsString('CapabilityOf(', $sBody, 'the capabilities are not read off the served tools');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCallTo('CapabilityOf', 'ServedAccess'), 'the capabilities are not read off the served tools');
 		$this->assertStringContainsString('$aServedGrades', $sBody);
 		$this->assertMatchesRegularExpression('/in_array\(\$sGrade, \$aGranted, true\) && isset\(\$aServedGrades\[\$sGrade\]\)/', $sBody, 'a grade is reported without being both granted and served');
 	}
@@ -290,12 +296,13 @@ class MCPServiceGatingTest extends TestCase
 		$sBody = $this->bodyOf('ServedAccess');
 
 		$this->assertStringContainsString('AccessPolicy::Current() ??', $sBody, 'the report is recomputed after the token is gone');
+		$this->assertTrue(SourceCalls::OfClass(ServedElements::class)->HasCall(AccessPolicy::class.'::Current', 'ServedAccess'), 'the report is recomputed after the token is gone');
 	}
 
 	/** The body of one MCPService method, comments stripped. */
 	private function bodyOf(string $sMethod): string
 	{
-		$oMethod = new ReflectionMethod(MCPService::class, $sMethod);
+		$oMethod = new ReflectionMethod(ServedElements::class, $sMethod);
 		$aLines = file($oMethod->getFileName());
 		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 

@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 use LogAPI;
 
 /**
- * @api
+ * @internal
  * @since 1.0.0
  */
 class MCPLog extends LogAPI

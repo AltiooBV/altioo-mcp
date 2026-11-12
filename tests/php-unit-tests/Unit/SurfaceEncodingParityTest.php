@@ -9,8 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
-use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Mcp\Exception\ResourceReadException;
 use PHPUnit\Framework\TestCase;
 

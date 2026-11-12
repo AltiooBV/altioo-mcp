@@ -85,7 +85,7 @@ Settings agent skills read here.
   anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Also: classes and attributes an operator excludes are **absent** on every route, in both modes, for every grade, never refused
   with a different word, and a setting that cannot be honoured stops the endpoint ([0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)):
-  a new tool or surface that returns object data asks `ExclusionPolicy`. The one lift is an account holding an exempt profile,
+  a new tool or surface that returns object data asks `Service\Rights\ExclusionPolicy`. The one lift is an account holding an exempt profile,
   never a token scope, a client name or a portal user ([0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md)).
   Also: `core_my_activity` is the one thing portal mode serves that the portal has no screen for — an account's own trail, not
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).
@@ -93,3 +93,17 @@ Settings agent skills read here.
   `Attachment`, and never a delete ([0011](doc/adr/0011-portal-mode-reads-and-adds-attachments.md)).
   Also: a tool's security checks stay in its own source, where the contract tests read them; shared code carries plumbing
   only, and a core tool's signatures never narrow, since packs subclass them ([0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
+  Also: `src/` follows Combodo's layer folders and `LayerDependencyTest` holds the one-way order, with an empty baseline: a
+  class imports only the layers below it ([0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md)).
+  Also: `@api` is `src/Api/` plus every class `src/Core` depends on and the types their public signatures name, listed in
+  `PublicSurfaceTest::EXTRA_SURFACE`; a new dependency of a core element goes on that list with `@api`, never around it,
+  and every other class says `@internal` ([0016](doc/adr/0016-what-the-core-tools-use-is-public.md)).
+  Also: a fix for a supported pre-2.0 minor is a patch on each `release/1.N` branch it applies to (cut from that minor's latest tag on
+  the 2.0.0 tag day), carried with the CHANGELOG name table across the break and never written afresh; each tree is tested by its
+  own matrix, and no minor's fix is folded into 1.3.x alone ([0018](doc/adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md)).
+  Also: the write cap `mcp_max_writes_per_hour` is off by default, counts objects per credential from the audit rows' `written_objects`, and
+  refuses every write (never reads) when it cannot be honoured; each writing tool asks `WriteCap::RefusalFor()` in its own source and a gateway
+  is still recommended for call volume ([0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)).
+  Also: portal mode serves a pack's element only when it implements `PortalAware` **and** the operator lists it in
+  `mcp_portal_extensions` (empty by default; a malformed value opens nothing); a portal-aware element asks
+  `ObjectAccess::Current()`, never `UserRights` alone ([0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).

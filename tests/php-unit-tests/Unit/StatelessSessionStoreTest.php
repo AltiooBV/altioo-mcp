@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionProperty;

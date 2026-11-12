@@ -1,8 +1,8 @@
 # 0008 — What an agent does with the tools is tested with a model, beside the suites that test the server
 
-- Date: 2026-10-30, revised 2026-11-04
-- Decided by: not yet
-- Status: proposed
+- Date: 2026-10-30, revised 2026-11-04, accepted 2026-11-12
+- Decided by: Guy Couronne, 2026-11-12, with the scope under "Accepted" below
+- Status: accepted
 
 The unit and integration suites check what the server answers. Nothing checks what a client
 makes of it: [ci-itop-matrix.md](../ci-itop-matrix.md), "What this does not check", leaves a real
@@ -45,7 +45,7 @@ harness that drives a real model against a disposable iTop and checks what it di
     it.
 - **A grader model**, from another family than the one under test, is used only where the answer
   is prose. That includes the failure this harness exists for: the server dry-runs unless told
-  otherwise (`WritePlan`), so an agent that stops there and reports the ticket resolved leaves the
+  otherwise (`Service\Write\DryRun`), so an agent that stops there and reports the ticket resolved leaves the
   instance unchanged, and only its message is wrong. The grader gets the narrowest question the
   end state leaves open: nothing landed, so does this message claim it did?
 - **Red cases** come from the hostile-agent pass in `review/review-personas.md` (named, not
@@ -95,21 +95,52 @@ with every model update, which is the drift the harness exists to survive.
 Rejected, for now: Promptfoo, which Docusign extended rather than forked. It would bring a Node
 toolchain into a PHP repository for a loop this small. Reconsider it if the runner outgrows that.
 
-Open before accepting:
+## Accepted
 
-- which models, and whose key pays for runs. One dated model that clients here actually use, and
-  one grader from another family, to start: more multiply the cost before anyone knows which
-  cases earn it;
-- the cost of a run, cases × repeats × models, estimated before the key question is answered;
-- where the last accepted run's results are kept;
-- whether one committed copy of the surface holds across the iTop branches the matrix runs, or
-  each branch needs its own;
-- the first cases. Proposed, six: dry run then commit; dry run only, reported honestly; a partial
-  bulk result; a refusal that must not be routed around; an instruction planted in a case log, on
-  a write-capable token; a portal task starting from `core_class_list`, the surface 0006 changed
-  most;
-- how many runs per case, and how far a case may move from its baseline, both set from the
-  variance the first runs show rather than guessed now.
+Decided by Guy Couronne on 2026-11-12, on a smaller scope than the proposal: the part that needs
+no key now, and a small harness that runs only with the maintainer's own key. What is and is not
+automated:
 
-Enforced by: not yet — proposed. Once accepted: the surface check in the integration suite, the
-step in `release-checklist.md`, and the harness itself.
+- **Automated, on every pull request, no key: the surface check.**
+  `tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php` builds the server for each token
+  grade (`MCP`, `MCP-read`, `MCP-write`, `MCP-delete`) and for portal mode, and compares what a
+  client is served (the handshake, server instructions included, `tools/list`, the resources,
+  resource templates and prompts) with `tests/php-unit-tests/Integration/Snapshots/surface-<grade>.json`.
+  It compares this module's own elements only, sorted by name, so a pack on the instance and the
+  registry's scan order do not move it. One copy holds on iTop 3.2 and 3.3 (checked on both, which
+  answers the question below), so there is no per-branch copy. A difference fails with one line per
+  changed path and the command that regenerates the copy; the diff is what a person reads and accepts.
+  `CONTRIBUTING.md` says how.
+- **By hand, with a key: the harness.** `tools/evals/`, a small PHP runner that plays scenario
+  files (`tools/evals/scenarios/*.json`) against a Claude model and an endpoint named by the
+  environment, records every tool call and checks them. Three scenarios: a write rehearsed before
+  it is committed, a read-only question that stays read-only, and a portal user's task that starts
+  from `core_portal_list`. It skips, exit 0, without `ANTHROPIC_API_KEY`. It is not a gate, runs in
+  no workflow, and nothing here has yet been run against a model: its model-free parts (scenario
+  parsing, the expectation checks, the skip) are under `EvalScenariosTest`.
+- **Not built, from the proposal above:** the `evals` subcommand of `run.sh` (the maintainer points
+  the runner at a disposable instance himself, and the data a scenario expects is described in the
+  scenario, not loaded), restoring a dump between cases, repeated runs and the comparison with a
+  last accepted run, the red and purple cases, the validity check that a case can fail, and the step
+  in `release-checklist.md`. Each stays as proposed above, to be built when a run shows it earns its
+  cost; until then a person reads the report.
+
+The four items the proposal left open, answered:
+
+- **Which models.** Claude, a current id. The runner defaults to `claude-sonnet-5-5` and takes
+  `--model` or `MCP_EVAL_MODEL`. No grader model.
+- **Whose key.** The maintainer's, from his environment, typed nowhere and committed nowhere. Not in
+  CI, unless he adds a secret and a workflow himself.
+- **The grader.** Deterministic checks on the tool calls (allowed set, step budget, required calls,
+  forbidden calls, first call, order). The proposal's grader model for prose answers is not built:
+  what the agent told the user is read from the report by a person.
+- **Where baselines live.** In the scenario files, and in the surface snapshots. There is no
+  stored result of a past run to compare with.
+
+Still open, and set from what the first runs show: how many runs per case, how far a case may move,
+and the cost of a run (three scenarios, one run each, are small; the figure belongs here once there
+is one).
+
+Enforced by: `ToolSurfaceSnapshotTest` (the surface check, in the integration suite, so on every
+pull request that runs it), and `EvalScenariosTest` (the harness's own parts). The harness's runs
+and the `release-checklist.md` step are not enforced by anything.

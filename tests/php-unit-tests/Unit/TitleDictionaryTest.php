@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 

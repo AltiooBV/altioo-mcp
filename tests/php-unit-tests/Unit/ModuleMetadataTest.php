@@ -8,9 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Controller\Gate\AllowedProfiles;
 use Altioo\iTop\Extension\MCP\Helper\MCPContext;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -53,7 +54,7 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/**
-	 * MCPHelper::VERSION is what the server announces to clients in
+	 * MCPModule::VERSION is what the server announces to clients in
 	 * serverInfo; the other two are what the iTop setup reads. Nothing makes
 	 * them agree by construction, so they are checked instead.
 	 */
@@ -62,7 +63,7 @@ class ModuleMetadataTest extends TestCase
 		$oXml = simplexml_load_file(self::ROOT.'/extension.xml');
 		$this->assertNotFalse($oXml, 'extension.xml is not well-formed XML');
 
-		$this->assertSame(MCPHelper::VERSION, (string)$oXml->version);
+		$this->assertSame(MCPModule::VERSION, (string)$oXml->version);
 	}
 
 	public function testModuleDeclarationCarriesTheSameVersionAsTheCode(): void
@@ -71,15 +72,15 @@ class ModuleMetadataTest extends TestCase
 
 		$this->assertSame(
 			1,
-			preg_match("/'".preg_quote(MCPHelper::MODULE_NAME, '/')."\/([0-9]+\.[0-9]+\.[0-9]+)'/", $sSource, $aMatch),
+			preg_match("/'".preg_quote(MCPModule::MODULE_NAME, '/')."\/([0-9]+\.[0-9]+\.[0-9]+)'/", $sSource, $aMatch),
 			'module.altioo-mcp.php does not declare a <module>/<x.y.z> id'
 		);
-		$this->assertSame(MCPHelper::VERSION, $aMatch[1]);
+		$this->assertSame(MCPModule::VERSION, $aMatch[1]);
 	}
 
 	public function testVersionIsSemver(): void
 	{
-		$this->assertSame(1, preg_match('/^[0-9]+\.[0-9]+\.[0-9]+$/', MCPHelper::VERSION));
+		$this->assertSame(1, preg_match('/^[0-9]+\.[0-9]+\.[0-9]+$/', MCPModule::VERSION));
 	}
 
 	/**
@@ -95,7 +96,7 @@ class ModuleMetadataTest extends TestCase
 			$aMethods[] = (string)$oItem;
 		}
 
-		$this->assertContains(MCPHelper::MCP_METHOD_EXCEPTION, $aMethods);
+		$this->assertContains(MCPMethod::EXCEPTION, $aMethods);
 	}
 
 	/**
@@ -136,12 +137,12 @@ class ModuleMetadataTest extends TestCase
 			$aShipped[] = (string)$oItem;
 		}
 
-		$oConstant = new ReflectionClassConstant(MCPController::class, 'DEFAULT_ALLOWED_PROFILES');
+		$oConstant = new ReflectionClassConstant(AllowedProfiles::class, 'DEFAULT_ALLOWED_PROFILES');
 
 		$this->assertSame(
 			$aShipped,
 			$oConstant->getValue(),
-			'MCPController::DEFAULT_ALLOWED_PROFILES no longer matches mcp_allowed_profiles in the datamodel'
+			'AllowedProfiles::DEFAULT_ALLOWED_PROFILES no longer matches mcp_allowed_profiles in the datamodel'
 		);
 	}
 
@@ -542,7 +543,7 @@ class ModuleMetadataTest extends TestCase
 		$this->assertSame(
 			[],
 			$aOffenders,
-			'these ship in the archive and grant a licence other than '.MCPHelper::LICENSE
+			'these ship in the archive and grant a licence other than '.MCPModule::LICENSE
 			.'; list them in exclude.txt: '.implode(', ', $aOffenders)
 		);
 	}
@@ -592,7 +593,7 @@ class ModuleMetadataTest extends TestCase
 	public function testTheChangelogDocumentsTheCurrentVersion(): void
 	{
 		$this->assertStringContainsString(
-			'## ['.MCPHelper::VERSION.']',
+			'## ['.MCPModule::VERSION.']',
 			file_get_contents(self::ROOT.'/CHANGELOG.md'),
 			'CHANGELOG.md has no entry for the version the module declares'
 		);
@@ -667,8 +668,8 @@ class ModuleMetadataTest extends TestCase
 
 		$this->assertSame(
 			rtrim((string)$oXml->more_info_url, '/'),
-			rtrim(MCPHelper::SOURCE_URL, '/'),
-			'MCPHelper::SOURCE_URL disagrees with extension.xml more_info_url'
+			rtrim(MCPModule::SOURCE_URL, '/'),
+			'MCPModule::SOURCE_URL disagrees with extension.xml more_info_url'
 		);
 	}
 
@@ -681,7 +682,7 @@ class ModuleMetadataTest extends TestCase
 	{
 		$aComposer = self::composer();
 
-		$this->assertSame($aComposer['license'] ?? '', MCPHelper::LICENSE);
+		$this->assertSame($aComposer['license'] ?? '', MCPModule::LICENSE);
 	}
 
 	/**

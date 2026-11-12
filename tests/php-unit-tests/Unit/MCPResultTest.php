@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Models\MCPResult;
+use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -58,7 +58,7 @@ class MCPResultTest extends TestCase
 	}
 
 	/**
-	 * MCPController::outputJsonResultException() json_encodes the result
+	 * MCPResponse::OutputJsonResultException() json_encodes the result
 	 * directly, so the public shape is part of the wire contract.
 	 */
 	public function testSerialisesToJsonWithPublicProperties(): void

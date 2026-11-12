@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObject;
 use DBObjectSet;

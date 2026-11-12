@@ -8,19 +8,25 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -39,6 +45,7 @@ use DBObjectSet;
  *   fields:   { "agent_id": 3, "team_id": 12 }
  *   comment:  "Assigned via MCP"
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
@@ -74,7 +81,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
+		return WriteOutcome::OutcomeSchema([
 			'stimulus'      => [
 				'type'        => 'string',
 				'description' => 'The stimulus that was applied.',
@@ -87,10 +94,10 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'type'        => 'string',
 				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
 			],
-			'after'         => WritePlan::AfterSchemaProperty(),
-			'changes'       => WritePlan::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
-			'overridden'    => WritePlan::OverriddenSchemaProperty(),
-			'defaulted'     => WritePlan::DefaultedSchemaProperty(),
+			'after'         => WriteOutcome::AfterSchemaProperty(),
+			'changes'       => WriteOutcome::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
+			'overridden'    => WriteOutcome::OverriddenSchemaProperty(),
+			'defaulted'     => WriteOutcome::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -112,11 +119,11 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 					'description' => 'Stimulus code to apply (e.g. ev_assign, ev_resolve, ev_close). Call core_class_schema for the stimuli valid in the current state.',
 				],
 				'fields'   => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Optional attribute values to set before applying the stimulus (e.g. agent_id, team_id for ev_assign).',
 					'additionalProperties' => true,
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('apply the stimulus'),
+				'simulate' => DryRun::SimulateSchemaProperty('apply the stimulus'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the transition is being applied'),
 			],
 			'required' => ['class', 'id', 'stimulus'],
@@ -157,14 +164,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		int     $id,
 		string  $stimulus,
 		array   $fields = [],
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		// Validate input parameters
 		if ($id < 1) {
@@ -175,18 +182,18 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id, $fields);
 		if ($sAccessRefusal !== null) {
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
@@ -285,7 +292,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// Every rule a value has to pass is in one place, shared with the
 		// update and the portal; the stimulus is what lets a transition set
 		// what its target state prompts for.
-		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, $oInstanceSet, $stimulus);
+		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, $oInstanceSet, $stimulus);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to apply stimulus due to fields : ".json_encode($aIssues));
 		}
@@ -294,7 +301,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			try {
 				$oObject->Set($sAttCode, $realValue);
 			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
+				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
@@ -356,7 +363,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// iTop's own pre-write check, on top of the target-state check above:
 		// that one knows what the transition requires, this one knows what the
 		// class and its extensions require of any write.
-		WritePlan::Check($oObject, "{$class}::{$id}");
+		DryRun::Check($oObject, "{$class}::{$id}");
 
 		// What the check threw away, and whether it was legal in the first
 		// place. DoCheckToWrite() never asked - by the time it looked, the
@@ -364,7 +371,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
 		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "{$class}::{$id}");
 
-		$aChanges = WritePlan::Changes($oObject, $class);
+		$aChanges = WriteOutcome::Changes($oObject, $class);
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
@@ -391,23 +398,30 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			}
 
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
 					'simulated'     => true,
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
-					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
+
 		ChangeTracking::Explain($comment);
 
 		// All validations passed, apply the stimulus
@@ -415,7 +429,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		try {
 			$bApplied = $oObject->ApplyStimulus($stimulus);
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
 		}
 		// ApplyStimulus returns false if the state transition did not happen (e.g. due to a condition on the transition that is not met), but no exception is thrown in this case, so we need to check the return value to provide a helpful error message.
 		if (!$bApplied) {
@@ -423,7 +437,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		}
 
 		return ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,
 				'simulated'     => false,
@@ -434,11 +448,11 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-				'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]);
 	}
 	/**

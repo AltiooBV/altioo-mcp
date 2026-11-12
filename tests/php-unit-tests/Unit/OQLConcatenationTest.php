@@ -27,7 +27,7 @@ require_once __DIR__.'/../bootstrap.php';
  * Scoped to `.`-concatenation, deliberately not interpolation. Interpolating
  * a class name into `FromOQL()`'s `FROM` clause is unavoidable - OQL takes no
  * bind parameter there - and every current call site does exactly that
- * (src/Helper/ObjectQuery.php, src/Core/Tools/ObjectSearchByClass.php). A
+ * (src/Service/Read/ObjectQuery.php, src/Core/Tools/ObjectSearchByClass.php). A
  * rule that also matched interpolation would fail all of them; measured
  * against this codebase, that shape produced five false positives where none
  * were real. testScannerIsConcatenationOnly below pins that distinction so it
@@ -76,7 +76,7 @@ class OQLConcatenationTest extends TestCase
 			$aLines,
 			sprintf(
 				'%s: FromOQL() called with the query text built by concatenation on line(s) %s. '.
-				'Bind the value instead (see src/Helper/ObjectQuery.php); a class or key name that '.
+				'Bind the value instead (see src/Service/Read/ObjectQuery.php); a class or key name that '.
 				'must sit in the FROM/WHERE clause itself belongs interpolated and validated '.
 				'(MetaModel::IsValidClass() / MetaModel::DBGetKey()), never concatenated in.',
 				self::relative($sPath),

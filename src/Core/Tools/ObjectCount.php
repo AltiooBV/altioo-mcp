@@ -8,16 +8,20 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use AttributeBoolean;
 use AttributeDate;
 use AttributeDateTime;
@@ -54,6 +58,7 @@ use UserRights;
  * from a page, as {@see AbstractObjectSearch} explains for `total`, so a count
  * can exceed what the account could list. The answer says so.
  *
+ * @internal
  * @since 1.3.0
  */
 class ObjectCount extends AbstractObjectSearch implements PortalAware
@@ -155,7 +160,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 					'description' => 'iTop class name, from core_class_list. A parent class counts its children too. Not with oql.',
 				],
 				'filters' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Attribute code => value, combined with AND, each an equality. Omit for the whole class; an empty one is {}, never [].',
 					'additionalProperties' => true,
 					'default'              => new \stdClass(),
@@ -206,7 +211,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		} catch (\OQLException $oException) {
 			throw new ToolCallException('Invalid filter condition. '.$oException->getMessage());
 		} catch (Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to count', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to count', $oException));
 		}
 	}
 
@@ -247,8 +252,8 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			if ($sClass !== '' || $aFilters !== []) {
 				throw new ToolCallException('Give class and filters, or oql, not both.');
 			}
-			ObjectSearchByOQL::CheckQuery($sOql);
-			$sUnproved = ExclusionPolicy::OqlRefusal($sOql);
+			ObjectQuery::CheckQuery($sOql);
+			$sUnproved = ExclusionSearches::OqlRefusal($sOql);
 			if ($sUnproved !== null) {
 				throw new ToolCallException($sUnproved);
 			}
@@ -256,7 +261,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			$sClass = $oSearch->GetClass();
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 			}
 			$oSearch = DBObjectSearch::FromOQL("SELECT {$sClass}");
 		}
@@ -264,10 +269,10 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		// One answer for every reason a class may not be counted: reserved, not
 		// readable, no bulk read. A refusal that said which would say that the
 		// class exists, and what is hidden about it.
-		if (ObjectHistory::IsReserved($sClass)
+		if (ChangeLogReservation::IsReserved($sClass)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 		}
 
 		self::applyArchived($oSearch, $sClass, $sArchived);
@@ -291,7 +296,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		return self::answer(
 			$sClass,
-			ExclusionPolicy::Narrowed($oSearch, $sClass),
+			ExclusionSearches::Narrowed($oSearch, $sClass),
 			$aGroupBy,
 			static fn (string $sTarget, int $iId): ?string => self::consoleLabel($sTarget, $iId),
 			null,
@@ -437,7 +442,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		// Labels are the objects' own text.
 		if ($aGroupBy !== []) {
-			$aAnswer['untrusted_text'] = ['fields' => ['groups[].label'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+			$aAnswer['untrusted_text'] = ['fields' => ['groups[].label'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
 		}
 
 		return ToolOutput::Json($aAnswer);
@@ -517,7 +522,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	private static function consoleLabel(string $sTarget, int $iId): ?string
 	{
 		if (!ExclusionPolicy::Serves($sTarget)
-			|| ObjectHistory::IsReserved($sTarget)
+			|| ChangeLogReservation::IsReserved($sTarget)
 			|| !UserRights::IsActionAllowed($sTarget, UR_ACTION_READ)) {
 			return null;
 		}
@@ -529,7 +534,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	/** The portal's: a target its scopes show this user, which UserRights does not decide. */
 	private static function portalLabel(PortalPolicy $oPolicy, string $sTarget, int $iId): ?string
 	{
-		if (!ExclusionPolicy::Serves($sTarget) || ObjectHistory::IsReserved($sTarget)) {
+		if (!ExclusionPolicy::Serves($sTarget) || ChangeLogReservation::IsReserved($sTarget)) {
 			return null;
 		}
 		$oQuery = $oPolicy->ReadSet($sTarget);

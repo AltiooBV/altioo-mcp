@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Registry\MCPExtensionCollector;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;

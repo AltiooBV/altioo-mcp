@@ -8,12 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use DBObject;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -23,7 +23,7 @@ use MetaModel;
  *
  * Only what has no console counterpart is one: the portal's lists. Reading,
  * changing and creating objects are the console's tools, served in portal
- * mode through {@see \Altioo\iTop\Extension\MCP\Service\ObjectAccess}
+ * mode through {@see \Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess}
  * (doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md).
  *
  * Each one answers from {@see PortalPolicy} and nothing else, and none of
@@ -67,7 +67,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	 */
 	protected static function refuseReserved(string $sClass): void
 	{
-		if (ObjectHistory::IsReserved($sClass)) {
+		if (ChangeLogReservation::IsReserved($sClass)) {
 			throw new ToolCallException('This list is the change log: core_object_history gives the history of one object the portal shows you.');
 		}
 	}

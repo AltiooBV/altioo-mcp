@@ -32,7 +32,7 @@ If 90 days pass without a fix or an agreed extension, publish. We will not ask y
 report indefinitely, and a deadline that only one side can move is not coordinated disclosure.
 
 Please do not open a public issue for a suspected vulnerability. Include the iTop version, the
-extension version (`MCPHelper::VERSION`, also sent to clients as `serverInfo`), the PHP version,
+extension version (`MCPModule::VERSION`, also sent to clients as `serverInfo`), the PHP version,
 and the request that reproduces it.
 
 **Out of scope**, because they are decisions rather than defects: iTop's own permissions
@@ -55,7 +55,8 @@ this endpoint is not.
 | 1.0.x | **Supported.** Released 2026-09-20, security fixes until 2031-09-20 |
 
 Fixes are issued as a new patch of every minor still inside its support period below, not only
-of the newest one. The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
+of the newest one. For the 1.x lines the patch of each supported minor is made on its own
+`release/1.N` branch ([how](CONTRIBUTING.md#fixing-a-pre-20-line)). The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
 branch that Combodo has retired is not tested against.
 
 ### Support period
@@ -571,7 +572,7 @@ reference.
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes`. In portal mode it is served only when the portal shows history, for an object the portal shows, the rows its change-log scope holds and the fields its view form shows; nothing in portal mode writes them |
 | An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included, except through `core_object_history` |
 | Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element, the message and the `client` recorded on each row are reduced to one line before they are stored, and the element and the client are cut to their columns. They are still what the caller declared, never verified: they name a well-behaved client, they do not authenticate one |
-| One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted. An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
+| One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted (the optional write cap, `mcp_max_writes_per_hour`, counts committed objects, not calls). An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
 | Mass notification through @mentions — hand-written mention markup in a case-log entry, naming any class and any number of objects, each firing `TriggerOnObjectMention` | Mentions are held to iTop's `mentions.allowed_classes` and to objects the caller can see, and one call may mention at most `mcp_max_mentions` distinct objects (default 5, `0` for none). The parser and the trigger are iTop's; this caps what the endpoint lets through to them |
 | Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |
 | Sending mail from the instance's own identity — phishing internal staff, or spoofing outward at scale | `AsyncTask` (and so `AsyncSendEmail`, the queue the cron drains) and `Action` (and so `ActionEmail`, whose `to`/`cc`/`bcc` are OQL queries) are behind `mcp_allow_privilege_escalation` |
@@ -582,7 +583,7 @@ reference.
 | Data exfiltration through a wide read | Reads go through per-attribute read rights; attributes whose type implements `iAttributeNoGroupBy` are masked; `mcp_disabled_tools` removes an element outright |
 | A malicious or careless third-party tool pack | Packs run with the caller's rights and no more; `mcp_enabled_toolsets` serves only what you list, so a tool added by an update is off until you say otherwise; `mcp_disabled_tools` accepts a class name |
 | Browser-based attack on the endpoint | No `Access-Control-Allow-Origin` is sent unless `mcp_allowed_origins` names an origin; the session is reset per request, so a cookie cannot be used |
-| A portal-only user reading what their portal hides — iTop's `Portal user` profile reads every class, and the portal's scopes and forms, which narrow it, are not consulted by iTop's rights checks | Served in portal mode only, and only with a token that expires within `mcp_portal_token_max_days`, a linked contact and a profile in `mcp_allowed_profiles` whatever `secure_mcp_services` says, in a portal `mcp_portals` serves (every one by default; empty refuses them as before). Portal mode serves only this extension's elements that add the portal's configuration to their own checks (`ObjectAccess` and `PortalPolicy`: the portal's granted bricks, scopes, forms and lifecycle, on top of `UserRights`) — the class tools describing the portal, its lists, object reads, writes and history, the caller's own identity, and the server instructions. Lists run on the server and the client never sends a query; a read is bounded by the read scope, a write by the write scope, the portal's form *and* the console's (doc/adr/0004, 0005), and anything a written value points at by the read scope; a creation is preset by the action's own rules, run by the portal's helper. A pack's element is never served there, even one claiming to be portal-aware. The check comes before every other filter on the surface, so no setting can let one through, and the filters after it still narrow what it admits. A portal that cannot be read — no portal module, an iTop before 3.2.2, a configuration that fails to load — is served nothing, never the scopes or the datamodel without it |
+| A portal-only user reading what their portal hides — iTop's `Portal user` profile reads every class, and the portal's scopes and forms, which narrow it, are not consulted by iTop's rights checks | Served in portal mode only, and only with a token that expires within `mcp_portal_token_max_days`, a linked contact and a profile in `mcp_allowed_profiles` whatever `secure_mcp_services` says, in a portal `mcp_portals` serves (every one by default; empty refuses them as before). Portal mode serves only this extension's elements that add the portal's configuration to their own checks (`ObjectAccess` and `PortalPolicy`: the portal's granted bricks, scopes, forms and lifecycle, on top of `UserRights`) — the class tools describing the portal, its lists, object reads, writes and history, the caller's own identity, and the server instructions. Lists run on the server and the client never sends a query; a read is bounded by the read scope, a write by the write scope, the portal's form *and* the console's (doc/adr/0004, 0005), and anything a written value points at by the read scope; a creation is preset by the action's own rules, run by the portal's helper. A pack's element is served there only if it claims to be portal-aware **and** the operator lists it in `mcp_portal_extensions` (empty by default; a value that is not a list lists nothing), because the claim cannot be verified: the listing is the operator's consent, element by element (doc/adr/0017). The check comes before every other filter on the surface, so no other setting can let an element through, and the filters after it still narrow what it admits. A portal that cannot be read — no portal module, an iTop before 3.2.2, a configuration that fails to load — is served nothing, never the scopes or the datamodel without it |
 | Enumeration of the datamodel by an unauthorised caller | The profile gate runs before anything is advertised; `tools/list` is filtered per caller, and the `initialize` guidance is assembled from the same policy, so it names no tool the caller is not served |
 
 **What is out of scope.** This extension cannot control what the MCP *client* does with data it
@@ -632,7 +633,7 @@ records two). In particular, and specifically relevant here:
   expiry from the posted form (authent-token's `AuthentTokenAjaxController`, iTop 3.2.2): a
   portal user can hold a token graded `MCP-delete`, with no expiry, that no administrator
   issued. What bounds it is on the server, not on the token: in portal mode only what
-  `PortalMode::Serves()` admits is served, whatever the grade; iTop's REST, export, import
+  `PortalAccess::Serves()` admits is served, whatever the grade; iTop's REST, export, import
   and synchro endpoints ask for the console and refuse a portal-only user; and portal mode
   refuses a token that never expires or expires later than `mcp_portal_token_max_days` (90 by
   default), so no token a portal user minted stays usable past that. Every such token is
@@ -644,6 +645,13 @@ records two). In particular, and specifically relevant here:
   contain data your users would not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
+- **Set `mcp_max_writes_per_hour` for any credential that can write.** Off by default; above 0 it caps the
+  objects one credential (a personal token, an application token, or a login) may create, change, delete or
+  attach to in a rolling hour, so a steered agent holding a write-grade token has a ceiling the model does not
+  have to obey. A dry run never counts, a bulk call is refused whole, and when the module cannot count (audit
+  logging off, `log_mcp_level` at `error`) or the value is malformed it refuses every write and still serves
+  reads ([ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)). **It does not replace
+  the limit below:** it counts committed objects, not calls, and calls that overlap can overshoot it.
 - **Rate-limit and cap concurrency in the web server or proxy in front of the endpoint.** The
   module counts nothing, and it is the wrong place to: by the time its first line runs, iTop has
   already loaded its datamodel, so a limiter there would still pay most of the cost of every call

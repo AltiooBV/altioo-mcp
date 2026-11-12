@@ -12,10 +12,11 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetDocument;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -96,12 +97,12 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$sLogin = 'portal-attach-'.$sSuffix;
 		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Portal-Attach-'.$sSuffix.'-1!', $this->iContact);
 		UserRights::Login($sLogin);
-		PortalMode::Remember(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		RequestScope::Close();
 		MetaModel::GetConfig()->SetModuleSetting('altioo-mcp', DocumentAccess::MODULE_SETTING_MAX_BYTES, DocumentAccess::DEFAULT_MAX_BYTES);
 		MetaModel::GetConfig()->SetModuleSetting('itop-attachments', 'readonly_states', null);
 
@@ -113,7 +114,7 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$aContents = ObjectGetDocument::execute('Attachment', $this->iInjected, 'contents');
 
 		$this->assertInstanceOf(TextContent::class, $aContents[0]);
-		$this->assertSame(ObjectSerializer::UNTRUSTED_DOCUMENT_NOTICE, $aContents[0]->text);
+		$this->assertSame(UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE, $aContents[0]->text);
 		$this->assertCount(2, $aContents);
 	}
 
@@ -232,7 +233,7 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 	{
 		$this->assertFalse((bool)UserRights::IsActionAllowed('Attachment', UR_ACTION_CREATE), 'the stock Portal user profile holds no such right');
 
-		PortalMode::Forget();
+		RequestScope::Close();
 		try {
 			ObjectAttach::execute('UserRequest', $this->iOwn, 'x.txt', base64_encode('x'), 'text/plain', null, false);
 			$this->fail('the console let a user without the right create an attachment');

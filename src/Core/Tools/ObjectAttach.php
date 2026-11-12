@@ -8,19 +8,22 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
@@ -35,7 +38,7 @@ use UserRights;
  *
  * Its own tool rather than a `fields` entry on core_object_create, although
  * that route technically works - RestUtils understands `{data, mimetype,
- * filename}` and {@see \Altioo\iTop\Extension\MCP\Helper\RestValue} hands it the
+ * filename}` and {@see \Altioo\iTop\Extension\MCP\Service\Write\RestValue} hands it the
  * shape it expects. Two reasons not to leave it there.
  *
  * The first is the ceiling. A base64 payload buried in an open-ended attribute
@@ -52,6 +55,7 @@ use UserRights;
  * the model was reading, from inside the network iTop sits in, with iTop's
  * credentials on the wire. The bytes come from the caller or they do not come.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectAttach extends AbstractMCPTool implements PortalAware
@@ -114,7 +118,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
+		return WriteOutcome::OutcomeSchema([
 			'attached_to' => [
 				'type'        => 'object',
 				'description' => 'The object the document lands on: its class and id.',
@@ -180,7 +184,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'type'        => 'string',
 					'description' => 'Blob attribute to set on the object itself, replacing what it holds. Leave it out to add an Attachment instead, which is what the console\'s Attachments tab does and what a ticket usually wants.',
 				],
-				'simulate'       => WritePlan::SimulateSchemaProperty('store the file'),
+				'simulate'       => DryRun::SimulateSchemaProperty('store the file'),
 				'comment'        => ChangeTracking::CommentSchemaProperty('the file is being attached'),
 			],
 			'required' => ['class', 'id', 'filename', 'content_base64'],
@@ -208,14 +212,14 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		string  $content_base64,
 		?string $mimetype = null,
 		?string $att_code = null,
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		$bPortal = PortalMode::Current() !== null;
 		if ($bPortal && $att_code !== null && $att_code !== '') {
@@ -246,11 +250,11 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException('Invalid ID. Please specify a valid object ID.');
 		}
 		if (!ExclusionPolicy::Serves($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 
-		if (ObjectHistory::IsReserved($sClass)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+		if (ChangeLogReservation::IsReserved($sClass)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
 		if ($sAccessRefusal !== null) {
@@ -404,11 +408,11 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		$oAttachment->Set('temp_id', '');
 		$oAttachment->Set('contents', $oDocument);
 
-		WritePlan::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
+		DryRun::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, null)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, null)
 				+ [
 					'simulated'   => true,
 					'valid'       => true,
@@ -416,6 +420,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'document'    => DocumentAccess::Describe($oDocument, self::ATTACHMENT_CLASS, 0, 'contents'),
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
+		}
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -431,12 +442,10 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// move on that answer is to attach the file again.
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
-			if ($bPortal) {
-				self::leavePortalTrace($oTarget, $oAttachment);
-			}
+			self::leaveHistoryTrace($oTarget, $oAttachment);
 
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,
@@ -448,9 +457,9 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// Committed or not, asked the same way core_object_create asks: an
 			// unsaved object carries a negative temporary key, so a positive
 			// one means the row reached the database.
-			$iCommittedId = WritePlan::CommittedId($oAttachment);
+			$iCommittedId = WriteOutcome::CommittedId($oAttachment);
 			if ($iCommittedId === null) {
-				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to attach the document', $e));
+				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to attach the document', $e));
 			}
 
 			// Stored, and the description of it is what failed. Reported as the
@@ -458,13 +467,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// for it - the file is not attached twice because the answer was
 			// hard to build.
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
-				+ WritePlan::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
+				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,
 					'attached_to' => ['class' => $sClass, 'id' => $iId],
 					'document'    => ['filename' => $oDocument->GetFileName(), 'mimetype' => $oDocument->GetMimeType()],
-					'warning'     => MCPHelper::OpaqueFailure(
+					'warning'     => ErrorReport::OpaqueFailure(
 						"The document was attached as {$iCommittedId}, but the call failed while describing it",
 						$e
 					),
@@ -474,11 +483,20 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
-	 * What the portal leaves when a file is added: the history line, and the
-	 * event the attachment module raises (ObjectFormManager::FinalizeAttachments).
-	 * The line is written once the file is attached, never for a dry run.
+	 * What iTop leaves when a file is added, in either mode: the history line
+	 * and the event the attachment module raises.
+	 *
+	 * The console's own upload does the same in AttachmentPlugIn::UpdateAttachments()
+	 * (itop-attachments/main.itop-attachments.php:303-377): a
+	 * CMDBChangeOpAttachmentAdded (GetActionChangeOp(), :576-583, recorded by
+	 * RecordHistory(), :561-569) and EVENT_ADD_ATTACHMENT_TO_OBJECT (:361). The
+	 * portal does it in ObjectFormManager::FinalizeAttachments. This is the same
+	 * row and the same event, so the console shows the file in the object's
+	 * history whoever attached it. The line is written once the file is
+	 * attached, never for a dry run, and CMDBChange.userinfo stays iTop's own
+	 * (doc/adr/0009).
 	 */
-	private static function leavePortalTrace(DBObject $oTarget, DBObject $oAttachment): void
+	private static function leaveHistoryTrace(DBObject $oTarget, DBObject $oAttachment): void
 	{
 		$oDocument = $oAttachment->Get('contents');
 		$oChangeOp = new \CMDBChangeOpAttachmentAdded();
@@ -524,11 +542,11 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$oTarget->Set($sAttCode, $oDocument);
 
-		WritePlan::Check($oTarget, "{$sClass}::{$iId}");
+		DryRun::Check($oTarget, "{$sClass}::{$iId}");
 
 		if ($bSimulate) {
 			return ToolOutput::Structured(['class' => $sClass]
-				+ WritePlan::Identity($sClass, $iId)
+				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => true,
 					'valid'       => true,
@@ -536,6 +554,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
+		}
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -549,7 +574,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			$oTarget->DBUpdate();
 
 			return ToolOutput::Structured(['class' => $sClass]
-				+ WritePlan::Identity($sClass, $iId)
+				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => false,
 					'valid'       => true,
@@ -558,7 +583,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
 		} catch (\Throwable $e) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to store the document', $e));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the document', $e));
 		}
 	}
 }

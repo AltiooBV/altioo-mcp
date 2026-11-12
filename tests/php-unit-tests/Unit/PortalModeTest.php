@@ -8,10 +8,15 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\CallLog;
+use Altioo\iTop\Extension\MCP\Controller\Gate\PortalAdmission;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
+use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
@@ -19,17 +24,34 @@ use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalForms;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalLoader;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalReach;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResourceTemplate;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -50,16 +72,17 @@ class PortalModeTest extends TestCase
 {
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		RequestScope::Close();
 	}
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aPortalListed mcp_portal_extensions; a unit run has no configuration to read it from.
 	 */
-	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null): bool
+	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null, array $aPortalListed = []): bool
 	{
-		return (new ReflectionMethod(MCPService::class, 'isHidden'))
-			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted());
+		return (new ReflectionMethod(ServedElements::class, 'isHidden'))
+			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted(), $aPortalListed);
 	}
 
 	/**
@@ -116,17 +139,19 @@ class PortalModeTest extends TestCase
 	 */
 	public function testATokenIsHeldToItsUrlAndTheAuditNamesThePortal(): void
 	{
-		$sHandle = self::bodyOf(MCPController::class, 'handleRequest');
-		$iAccounted = strpos($sHandle, 'self::rejectATokenLoginNotAccountedFor()');
-		$iAudience = strpos($sHandle, 'self::rejectATokenGrantedForAnotherUrl()');
-		$iForget = strpos($sHandle, 'MCPHttp::ForgetAuthToken()');
-		$this->assertNotFalse($iAudience, 'a token granted for another portal\'s URL is accepted');
-		$this->assertLessThan($iAudience, $iAccounted);
-		$this->assertLessThan($iForget, $iAudience, 'the audience is asked after the token is dropped');
+		$aMarkers = ['[[TokenLoginAccountedForGate]]', '[[TokenAudienceGate]]'];
+		$this->assertTrue(RequestPipelineSource::Has($aMarkers[1]), 'a token granted for another portal\'s URL is accepted');
+		$this->assertTrue(RequestPipelineSource::InOrder($aMarkers));
+		$this->assertTrue(
+			RequestPipelineSource::InOrder([$aMarkers[1], RequestPipelineSource::Spec('ForgetAuthToken')]),
+			'the audience is asked after the token is dropped'
+		);
 
-		$this->assertStringContainsString('MCPHelper::CalledEndpointUrl()', self::bodyOf(MCPController::class, 'rejectATokenGrantedForAnotherUrl'));
-		$this->assertStringContainsString("\$oLog->Set('portal', PortalMode::Current() ?? '')", self::bodyOf(MCPController::class, 'logIfConfigured'));
-		$this->assertStringContainsString('MCPHelper::RequestedPortal()', self::bodyOf(MCPController::class, 'admitInPortalMode'));
+		$this->assertTrue(SourceCalls::OfClass(TokenAudienceGate::class)->HasCall(OAuthResource::class.'::CalledEndpointUrl', 'Check'));
+		$oLog = SourceCalls::OfClass(CallLog::class);
+		$this->assertTrue($oLog->HasCall(PortalMode::class.'::Current', 'LogIfConfigured'));
+		$this->assertStringContainsString("\$oLog->Set('portal',PortalMode::Current()??'')", $oLog->Code('LogIfConfigured'));
+		$this->assertTrue(SourceCalls::OfClass(PortalAdmission::class)->HasCall(PortalMode::class.'::Requested', 'Admit'));
 	}
 
 	/**
@@ -205,7 +230,7 @@ class PortalModeTest extends TestCase
 			$this->assertFalse($this->isHidden($oElement, $sIdentifier), get_class($oElement).' should be served to a console user');
 		}
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aElements as $sIdentifier => $oElement) {
 			$this->assertTrue($this->isHidden($oElement, $sIdentifier), get_class($oElement).' must not be served in portal mode');
@@ -222,13 +247,13 @@ class PortalModeTest extends TestCase
 		$aTools = ['core_class_list' => new ClassList(), 'core_class_schema' => new ClassSchema()];
 		$aConsole = array_map(static fn ($oTool): string => (string)$oTool->getDescription(), $aTools);
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aTools as $sName => $oTool) {
-			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} answers from the portal's description and says so");
+			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} answers from the portal's description and says so");
 			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
 			$this->assertNotSame($aConsole[$sName], (string)$oTool->getDescription(), "{$sName} describes the datamodel to a portal user");
-			$this->assertStringContainsString('PortalDescription::', self::bodyOf(get_class($oTool), 'execute'));
+			$this->assertTrue(SourceCalls::OfClass($oTool)->HasCallOn(PortalDescription::class, 'execute'), "{$sName} does not describe the portal");
 		}
 	}
 
@@ -240,9 +265,9 @@ class PortalModeTest extends TestCase
 	{
 		$oTool = new PortalList();
 		$this->assertTrue($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list is not for a console user');
-		$this->assertTrue(PortalMode::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
+		$this->assertTrue(PortalAccess::Serves($oTool), 'core_portal_list enforces the portal\'s rules and says so');
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_portal_list'), 'core_portal_list to a portal user');
 		$this->assertFalse($this->isHidden($oTool, 'core_portal_list', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_portal_list to a read-only token');
@@ -257,7 +282,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_current_user'));
 		$this->assertFalse($this->isHidden($oResource, 'itop://core/current-user'));
@@ -276,7 +301,7 @@ class PortalModeTest extends TestCase
 		$oResource = new InstructionsResource();
 		$sConsoleDescription = (string)$oTool->getDescription();
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_instructions'));
 		$this->assertFalse($this->isHidden($oResource, 'itop://core/instructions'));
@@ -287,17 +312,72 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * A pack cannot declare itself portal-aware yet. PortalPolicy is not on
-	 * the surface it may build on, so the declaration would be a console tool
-	 * reaching the portal - the one thing portal mode exists to prevent.
+	 * A pack element declaring itself portal-aware is still a console element
+	 * until the operator lists it (ADR 0017); the declaration alone is not
+	 * consent.
 	 */
-	public function testAPackElementDeclaringItselfPortalAwareIsNotServed(): void
+	public function testASpoofedCoreNamespaceIsNotServedUnlessListed(): void
 	{
-		PortalMode::Remember('itop-portal');
+		require_once dirname(__DIR__).'/Support/SpoofedCorePortalTool.php';
 
-		$this->assertFalse(PortalMode::Serves(new PortalAwarePackTool()));
-		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
-		$this->assertTrue(PortalMode::Serves(new ClassList()));
+		$oSpoof = new \Altioo\iTop\Extension\MCP\Core\Spoof\SpoofedCorePortalTool();
+		$this->assertFalse(PortalAccess::Serves($oSpoof, 'test_spoofed_core_portal_tool', []), 'the namespace is not consent');
+		$this->assertTrue(PortalAccess::Serves($oSpoof, 'test_spoofed_core_portal_tool', ['test_spoofed_core_portal_tool']), 'listed, it is a pack element like another');
+	}
+
+	public function testAPackElementDeclaringItselfPortalAwareIsNotServedUnlessListed(): void
+	{
+		RequestScope::EnterPortal('itop-portal');
+
+		$oPack = new PortalAwarePackTool();
+		$this->assertFalse(PortalAccess::Serves($oPack, 'test_portal_aware_pack_tool', []));
+		$this->assertTrue($this->isHidden($oPack, 'test_portal_aware_pack_tool'));
+		$this->assertFalse($this->isHidden($oPack, 'test_portal_aware_pack_tool', [], null, ['test_portal_aware_pack_tool']), 'listed by identifier');
+		$this->assertTrue($this->isHidden($oPack, 'test_portal_aware_pack_tool', ['test_portal_aware_pack_tool'], null, ['test_portal_aware_pack_tool']), 'mcp_disabled_tools still wins');
+		$this->assertTrue(PortalAccess::Serves(new ClassList(), 'core_class_list', []));
+	}
+
+	/**
+	 * What PortalAccess::Serves() admits: the declaration and the operator's
+	 * listing together, or the declaration and this module's own namespace.
+	 */
+	public function testServesNeedsTheDeclarationAndTheListingOrTheCoreNamespace(): void
+	{
+		$oPack = new PortalAwarePackTool();
+		$sName = 'test_portal_aware_pack_tool';
+
+		$this->assertFalse(PortalAccess::Serves($oPack, $sName, []), 'unlisted');
+		$this->assertTrue(PortalAccess::Serves($oPack, $sName, [$sName]), 'listed by identifier');
+		$this->assertTrue(PortalAccess::Serves($oPack, $sName, [PortalAwarePackTool::class]), 'listed by class name');
+		$this->assertFalse(PortalAccess::Serves($oPack, $sName, ['another_tool']), 'another element listed');
+		$this->assertFalse(PortalAccess::Serves($oPack, '', [$sName]), 'an identifier not given matches nothing');
+		$this->assertFalse(PortalAccess::Serves(new FixtureTool(), 'test_fixture_tool', ['test_fixture_tool', FixtureTool::class]), 'listed but not PortalAware');
+		$this->assertTrue(PortalAccess::Serves(new ClassList(), 'core_class_list', []), 'a core element needs no listing');
+	}
+
+	/**
+	 * A setting that is not a list lists nothing, and an entry that is not a
+	 * string is dropped: failing closed here means no pack element, not a
+	 * stopped endpoint.
+	 */
+	public function testAMalformedListingServesNoPackElement(): void
+	{
+		$oPack = new PortalAwarePackTool();
+		$sName = 'test_portal_aware_pack_tool';
+
+		foreach (['test_portal_aware_pack_tool', true, 1, null, new \stdClass()] as $mMalformed) {
+			$aListed = SettingParser::PortalExtensionsFrom($mMalformed);
+			$this->assertSame([], $aListed);
+			$this->assertFalse(PortalAccess::Serves($oPack, $sName, $aListed));
+		}
+
+		$this->assertSame([$sName], SettingParser::PortalExtensionsFrom([$sName, 3, null, ['x'], false]));
+
+		// It only widens, so it is not one of the lists whose malformation stops the endpoint.
+		$oMethod = new ReflectionMethod(Settings::class, 'AccessListsAreMalformed');
+		$sBody = implode('', array_slice((array)file((string)$oMethod->getFileName()), $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+		$this->assertStringNotContainsString('PORTAL_EXTENSIONS', $sBody);
+		$this->assertStringNotContainsString('GetPortalExtensions', $sBody);
 	}
 
 	/**
@@ -306,7 +386,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testTheUsualFiltersStillNarrowWhatPortalModeServes(): void
 	{
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		$oList = new ClassList();
 
 		$this->assertTrue($this->isHidden($oList, 'core_class_list', ['core_class_list']), 'by identifier');
@@ -328,7 +408,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testAFormFieldWrittenReadOnlyIsReadOnly(): void
 	{
-		$aForm = PortalPolicy::WithReadOnlyHonoured([
+		$aForm = PortalForms::WithReadOnlyHonoured([
 			'type'   => 'custom_list',
 			'fields' => [
 				'title'       => ['readonly' => true],
@@ -347,7 +427,7 @@ class PortalModeTest extends TestCase
 	{
 		$aForm = ['type' => 'zlist', 'fields' => 'details'];
 
-		$this->assertSame($aForm, PortalPolicy::WithReadOnlyHonoured($aForm));
+		$this->assertSame($aForm, PortalForms::WithReadOnlyHonoured($aForm));
 	}
 
 	/**
@@ -365,10 +445,10 @@ class PortalModeTest extends TestCase
 
 		$this->assertSame(
 			['ongoing-tickets', 'all-tickets', 'services'],
-			PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Ticket', 'UserRequest'])
+			PortalReach::BricksReaching($aReach, ['cmdbAbstractObject', 'Ticket', 'UserRequest'])
 		);
-		$this->assertSame(['ongoing-tickets', 'all-tickets'], PortalPolicy::BricksReaching($aReach, ['Ticket', 'Incident']));
-		$this->assertSame([], PortalPolicy::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
+		$this->assertSame(['ongoing-tickets', 'all-tickets'], PortalReach::BricksReaching($aReach, ['Ticket', 'Incident']));
+		$this->assertSame([], PortalReach::BricksReaching($aReach, ['cmdbAbstractObject', 'Organization']));
 	}
 
 	/** The id becomes a file name that iTop then requires, so nothing else passes for one. */
@@ -405,10 +485,10 @@ class PortalModeTest extends TestCase
 	 */
 	public function testEachPortalCompilesUnderALockOfItsOwn(): void
 	{
-		$sOne = PortalPolicy::CompileLockPath('/cache/portals/', 'itop-portal');
+		$sOne = PortalLoader::CompileLockPath('/cache/portals/', 'itop-portal');
 
 		$this->assertSame('/cache/portals/itop-portal.compile.lock', $sOne);
-		$this->assertNotSame($sOne, PortalPolicy::CompileLockPath('/cache/portals/', 'partner-portal'));
+		$this->assertNotSame($sOne, PortalLoader::CompileLockPath('/cache/portals/', 'partner-portal'));
 	}
 
 	/**
@@ -419,13 +499,13 @@ class PortalModeTest extends TestCase
 	 */
 	public function testTheStockBrickTypesAreReadAndNothingElse(): void
 	{
-		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\ManageBrick'));
-		$this->assertSame(PortalPolicy::BRICK_BROWSE, PortalPolicy::BrickKind('\\Combodo\\iTop\\Portal\\Brick\\BrowseBrick'));
-		$this->assertSame(PortalPolicy::BRICK_CREATE, PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\CreateBrick'));
+		$this->assertSame(PortalBricks::BRICK_MANAGE, PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\ManageBrick'));
+		$this->assertSame(PortalBricks::BRICK_BROWSE, PortalBricks::BrickKind('\\Combodo\\iTop\\Portal\\Brick\\BrowseBrick'));
+		$this->assertSame(PortalBricks::BRICK_CREATE, PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\CreateBrick'));
 
-		$this->assertNull(PortalPolicy::BrickKind('Acme\\Portal\\Brick\\MyTicketsBrick'), 'a class that extends none of them');
-		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\FilterBrick'), 'a brick that holds no data of its own');
-		$this->assertNull(PortalPolicy::BrickKind('Combodo\\iTop\\Portal\\Brick\\UserProfileBrick'));
+		$this->assertNull(PortalBricks::BrickKind('Acme\\Portal\\Brick\\MyTicketsBrick'), 'a class that extends none of them');
+		$this->assertNull(PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\FilterBrick'), 'a brick that holds no data of its own');
+		$this->assertNull(PortalBricks::BrickKind('Combodo\\iTop\\Portal\\Brick\\UserProfileBrick'));
 	}
 
 	/**
@@ -437,7 +517,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testACreateActionIsKeptWhetherItsClassIsNamedOrChosen(): void
 	{
-		$aNamed = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+		$aNamed = PortalBricks::CreateActionOf('services/1/1/1/create_from_this', [
 			'type'    => 'create_from_this',
 			'factory' => ['type' => 'class', 'value' => 'UserRequest'],
 			'rules'   => ['contact-to-userrequest'],
@@ -446,7 +526,7 @@ class PortalModeTest extends TestCase
 		$this->assertNull($aNamed['factory_method']);
 		$this->assertSame(['contact-to-userrequest'], $aNamed['rules']);
 
-		$aChosen = PortalPolicy::CreateActionOf('services/1/1/1/create_from_this', [
+		$aChosen = PortalBricks::CreateActionOf('services/1/1/1/create_from_this', [
 			'type'    => 'create_from_this',
 			'factory' => ['type' => 'method', 'value' => '\\Ticket::CreateFromServiceSubcategory'],
 		], 'ServiceSubcategory', 'New request');
@@ -454,8 +534,8 @@ class PortalModeTest extends TestCase
 		$this->assertSame('\\Ticket::CreateFromServiceSubcategory', $aChosen['factory_method']);
 		$this->assertSame('ServiceSubcategory', $aChosen['from']);
 
-		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'view'], 'Service', ''), 'not a create action');
-		$this->assertNull(PortalPolicy::CreateActionOf('x', ['type' => 'create_from_this', 'factory' => ['type' => 'method', 'value' => '']], 'Service', ''));
+		$this->assertNull(PortalBricks::CreateActionOf('x', ['type' => 'view'], 'Service', ''), 'not a create action');
+		$this->assertNull(PortalBricks::CreateActionOf('x', ['type' => 'create_from_this', 'factory' => ['type' => 'method', 'value' => '']], 'Service', ''));
 	}
 
 	/**
@@ -468,12 +548,12 @@ class PortalModeTest extends TestCase
 	{
 		$aPinned = ['UserRequest', 'Incident'];
 
-		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['UserRequest']));
-		$this->assertFalse(PortalPolicy::CanHold($aPinned, [], ['Change']));
-		$this->assertTrue(PortalPolicy::CanHold($aPinned, [], ['Change', 'Incident']), 'one concrete class the scope allows is enough');
-		$this->assertFalse(PortalPolicy::CanHold(null, ['Change', 'Problem'], ['Change']), 'excluded by NOT IN');
-		$this->assertTrue(PortalPolicy::CanHold(null, [], ['Change']), 'no condition, no conclusion');
-		$this->assertFalse(PortalPolicy::CanHold(null, [], []), 'a class with no concrete class holds nothing');
+		$this->assertTrue(PortalReach::CanHold($aPinned, [], ['UserRequest']));
+		$this->assertFalse(PortalReach::CanHold($aPinned, [], ['Change']));
+		$this->assertTrue(PortalReach::CanHold($aPinned, [], ['Change', 'Incident']), 'one concrete class the scope allows is enough');
+		$this->assertFalse(PortalReach::CanHold(null, ['Change', 'Problem'], ['Change']), 'excluded by NOT IN');
+		$this->assertTrue(PortalReach::CanHold(null, [], ['Change']), 'no condition, no conclusion');
+		$this->assertFalse(PortalReach::CanHold(null, [], []), 'a class with no concrete class holds nothing');
 	}
 
 	/**
@@ -482,9 +562,9 @@ class PortalModeTest extends TestCase
 	 */
 	public function testThePortalIsToldWhatItIsServed(): void
 	{
-		PortalMode::Remember('partner-portal');
+		RequestScope::EnterPortal('partner-portal');
 
-		$sText = MCPService::InstructionsFor(AccessPolicy::Unrestricted());
+		$sText = ServerInstructions::ForCaller(AccessPolicy::Unrestricted());
 
 		$this->assertSame(ServerInstructions::PortalText('partner-portal'), $sText);
 		$this->assertStringContainsString('"partner-portal"', $sText);
@@ -517,22 +597,22 @@ class PortalModeTest extends TestCase
 	 */
 	public function testPortalModeIsDecidedFromTheConsoleRefusalOnly(): void
 	{
-		$oMethod = new ReflectionMethod(MCPController::class, 'handleRequest');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
-
-		$this->assertMatchesRegularExpression(
-			'/if \(\$iRet === LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED\) \{\s*\$iRet = self::admitInPortalMode\(\);\s*\}/',
-			$sBody,
-			'admitInPortalMode() must run only on EXIT_CODE_PORTALUSERNOTAUTHORIZED'
+		$this->assertStringContainsString(
+			'if($iRet===LoginWebPage::EXIT_CODE_PORTALUSERNOTAUTHORIZED){$iRet=PortalAdmission::Admit();}',
+			RequestPipelineSource::Code(),
+			'PortalAdmission::Admit() must run only on EXIT_CODE_PORTALUSERNOTAUTHORIZED'
 		);
-		$this->assertSame(1, substr_count($sBody, 'admitInPortalMode'), 'admitInPortalMode() is called from one place');
-
-		$iLogin = strpos($sBody, 'DoLogin(');
-		$iAdmit = strpos($sBody, 'admitInPortalMode');
-		$iPolicy = strpos($sBody, 'AccessPolicyOfCurrentRequest');
-		$this->assertLessThan($iAdmit, $iLogin);
-		$this->assertLessThan($iPolicy, $iAdmit);
+		$sAdmit = PortalAdmission::class.'::Admit';
+		$this->assertCount(
+			1,
+			array_filter(RequestPipelineSource::Sequence(), static fn (string $sCall): bool => strcasecmp($sCall, $sAdmit) === 0),
+			'PortalAdmission::Admit() is called from one place'
+		);
+		$this->assertTrue(RequestPipelineSource::InOrder([
+			RequestPipelineSource::Spec('DoLogin'),
+			$sAdmit,
+			RequestPipelineSource::Spec('AccessPolicyOfCurrentRequest'),
+		]));
 	}
 
 	/**
@@ -553,17 +633,19 @@ class PortalModeTest extends TestCase
 			'core_object_create'         => ['$oAccess->Prepared(trim($action), $from_id)', '$oAccess->RefusalToSet($oObject, $fields)', '$oAccess->RefusalsForReach('],
 		];
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		foreach ($aWrites as $sName => $oTool) {
-			$this->assertTrue(PortalMode::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
+			$this->assertTrue(PortalAccess::Serves($oTool), "{$sName} enforces the portal through ObjectAccess and says so");
 			$this->assertFalse($this->isHidden($oTool, $sName), "{$sName} to a portal user");
 			$this->assertTrue($this->isHidden($oTool, $sName, [], AccessPolicy::FromScopes(['MCP-read'])), "{$sName} writes, and a read-only token may not");
 			$this->assertStringNotContainsString('core_class_schema', (string)$oTool->getDescription(), 'a console tool is named to a portal user');
 
-			$sBody = self::bodyOf(get_class($oTool), 'execute');
+			$oSource = SourceCalls::OfClass($oTool);
 			foreach ($aNeedles[$sName] as $sNeedle) {
-				$this->assertStringContainsString($sNeedle, $sBody, "{$sName} skips {$sNeedle}");
+				preg_match('/->(\w+)\(/', $sNeedle, $aMatch);
+				$this->assertTrue($oSource->HasCall('->'.$aMatch[1], 'execute'), "{$sName} skips {$sNeedle}");
+				$this->assertStringContainsString(str_replace(' ', '', $sNeedle), $oSource->Code('execute'), "{$sName} skips {$sNeedle}");
 			}
 		}
 	}
@@ -579,15 +661,15 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
-		$this->assertTrue(PortalMode::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
+		$this->assertTrue(PortalAccess::Serves($oTool), 'core_object_get enforces the portal through ObjectAccess and says so');
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get'));
 		$this->assertFalse($this->isHidden($oTool, 'core_object_get', [], AccessPolicy::FromScopes(['MCP-read'])));
 		$this->assertStringContainsString('core_object_search_by_class', $sConsoleDescription);
 		$this->assertStringNotContainsString('core_object_search', (string)$oTool->getDescription(), 'a console search is named to a portal user');
 		$this->assertStringContainsString('core_portal_list', (string)$oTool->getDescription());
-		$this->assertStringContainsString('ObjectAccess::Current()', self::bodyOf(ObjectGetTool::class, 'execute'));
+		$this->assertTrue(SourceCalls::OfClass(ObjectGetTool::class)->HasCall(ObjectAccess::class.'::Current', 'execute'));
 	}
 
 	/**
@@ -601,7 +683,7 @@ class PortalModeTest extends TestCase
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
 
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
 		$this->assertFalse($this->isHidden($oTool, 'core_object_history'));
 		$this->assertTrue($this->isHidden($oTool, 'core_object_history', ['core_object_history']), 'the instance can still turn it off');
@@ -620,22 +702,27 @@ class PortalModeTest extends TestCase
 	 */
 	public function testTheChangeLogIsServedByTheHistoryToolOnlyAndNeverWritten(): void
 	{
-		$this->assertMatchesRegularExpression(
-			'/^[^{]*\{\s*if \(ObjectHistory::IsReserved\(\$sClass\)\) \{\s*return null;\s*\}/',
-			self::bodyOf(PortalPolicy::class, 'WriteSet'),
+		$oPolicy = SourceCalls::OfClass(PortalPolicy::class);
+		$this->assertTrue($oPolicy->HasCall(ChangeLogReservation::class.'::IsReserved', 'WriteSet'));
+		$this->assertStringStartsWith(
+			'if(ChangeLogReservation::IsReserved($sClass)){returnnull;}',
+			$oPolicy->Code('WriteSet'),
 			'WriteSet() must refuse the change log before anything else'
 		);
 		// execute() and the count tool both resolve a list through Resolve(), which refuses it.
-		$this->assertStringContainsString('self::Resolve(', self::bodyOf(PortalList::class, 'execute'));
-		$this->assertStringContainsString('refuseReserved', self::bodyOf(PortalList::class, 'Resolve'));
+		$oList = SourceCalls::OfClass(PortalList::class);
+		$this->assertTrue($oList->HasCall(PortalList::class.'::Resolve', 'execute'));
+		$this->assertTrue($oList->HasCall(PortalRows::class.'::ListQuery', 'Resolve'), 'the list is no longer bounded through the portal');
+		$this->assertTrue($oList->HasCallTo('refuseReserved', 'Resolve'));
 
-		$sHistory = self::bodyOf(ObjectHistoryTool::class, 'execute');
-		foreach (['ShowsHistory()', '->Readable($class, $id)', '->Bounded(', 'HistoryReader::Within('] as $sNeedle) {
-			$this->assertStringContainsString($sNeedle, $sHistory, "the portal-mode history skips {$sNeedle}");
+		$oHistory = SourceCalls::OfClass(ObjectHistoryTool::class);
+		foreach (['ShowsHistory', 'Readable', 'Bounded'] as $sCall) {
+			$this->assertTrue($oHistory->HasCallTo($sCall, 'execute'), "the portal-mode history skips {$sCall}()");
 		}
-		$this->assertLessThan(
-			strpos($sHistory, 'UserRights::IsActionAllowed('),
-			strpos($sHistory, 'ShowsHistory()'),
+		$this->assertTrue($oHistory->HasCall(HistoryReader::class.'::Within', 'execute'), 'the portal-mode history skips HistoryReader::Within()');
+		$this->assertStringContainsString('->Readable($class,$id)', $oHistory->Code('execute'));
+		$this->assertTrue(
+			$oHistory->CallsInOrder(['->ShowsHistory', 'UserRights::IsActionAllowed'], 'execute'),
 			'the portal answers before UserRights, so its refusals are its own'
 		);
 	}
@@ -646,16 +733,15 @@ class PortalModeTest extends TestCase
 	 */
 	public function testThePortalAccessNarrowsTheConsolesAndNeverReplacesIt(): void
 	{
-		$sReadable = self::bodyOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, 'Readable');
-		$this->assertLessThan(
-			strpos($sReadable, '$this->oPolicy->Readable('),
-			(int)strpos($sReadable, 'parent::Readable('),
+		$oReadable = SourceCalls::OfClass(PortalAccess::class);
+		$this->assertTrue(
+			$oReadable->CallsInOrder([ObjectAccess::class.'::Readable', '->Readable'], 'Readable'),
 			'the portal is asked instead of UserRights, or before it'
 		);
-		$this->assertStringContainsString('IsReserved', $sReadable, 'the change log is read as an object in portal mode');
+		$this->assertTrue($oReadable->HasCall(ChangeLogReservation::class.'::IsReserved', 'Readable'), 'the change log is read as an object in portal mode');
 
-		$oConsole = \Altioo\iTop\Extension\MCP\Service\ObjectAccess::Current();
-		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
+		$oConsole = \Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess::Current();
+		$this->assertNotInstanceOf(\Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::class, $oConsole, 'a console request is given the portal\'s access');
 		$this->assertTrue($oConsole->ShowsHistory());
 	}
 
@@ -666,7 +752,7 @@ class PortalModeTest extends TestCase
 	 */
 	public function testEveryToolRegistersInPortalMode(): void
 	{
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		MCPRegistry::Clear();
 		try {
 			CoreExtensions::RegisterServiceProvider();
@@ -703,7 +789,7 @@ class PortalModeTest extends TestCase
 	 * or describes them asks the portal - through the mode-aware access, the
 	 * portal's description, or the portal's policy - and never answers from
 	 * UserRights alone, which grants "Portal user" read on every class.
-	 * DocumentAccess::Fetch() is the one helper that asks it on a tool's behalf.
+	 * DocumentFetch::Fetch() is the one helper that asks it on a tool's behalf.
 	 */
 	public function testEveryPortalAwareObjectToolAsksThePortal(): void
 	{
@@ -717,19 +803,20 @@ class PortalModeTest extends TestCase
 
 		$iChecked = 0;
 		foreach ($aTools as $sName => $oTool) {
-			if (!PortalMode::Serves($oTool) || $oTool->getToolset() === 'server') {
+			if (!PortalAccess::Serves($oTool) || $oTool->getToolset() === 'server') {
 				continue;
 			}
 
-			$sSource = '';
-			for ($oClass = new \ReflectionClass($oTool); $oClass !== false; $oClass = $oClass->getParentClass()) {
-				$sSource .= (string)file_get_contents((string)$oClass->getFileName());
+			$bAsks = false;
+			for ($oClass = new \ReflectionClass($oTool); $oClass !== false && !$bAsks; $oClass = $oClass->getParentClass()) {
+				$oSource = SourceCalls::OfFile((string)$oClass->getFileName());
+				$bAsks = $oSource->HasCall(ObjectAccess::class.'::Current')
+					|| $oSource->HasCallOn(PortalDescription::class)
+					|| $oSource->HasCall(PortalPolicy::class.'::ForCurrentRequest')
+					|| $oSource->HasCall(PortalList::class.'::Resolve')
+					|| $oSource->HasCall(DocumentFetch::class.'::Fetch');
 			}
-			$this->assertMatchesRegularExpression(
-				'/ObjectAccess::Current\(\)|PortalDescription::|PortalPolicy::ForCurrentRequest\(\)|PortalList::Resolve\(|DocumentAccess::Fetch\(/',
-				$sSource,
-				"{$sName} is served in portal mode without asking the portal"
-			);
+			$this->assertTrue($bAsks, "{$sName} is served in portal mode without asking the portal");
 			$iChecked++;
 		}
 
@@ -742,18 +829,38 @@ class PortalModeTest extends TestCase
 	public function testAReadOnlyTokenCannotAttachInPortalMode(): void
 	{
 		$oTool = new \Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach();
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 
-		$this->assertTrue(PortalMode::Serves($oTool));
+		$this->assertTrue(PortalAccess::Serves($oTool));
 		$this->assertFalse($this->isHidden($oTool, 'core_object_attach'), 'core_object_attach to a portal user with a write token');
 		$this->assertTrue($this->isHidden($oTool, 'core_object_attach', [], AccessPolicy::FromScopes(['MCP-read'])), 'core_object_attach writes, and a read-only token may not');
 	}
 
-	private static function bodyOf(string $sClass, string $sMethod): string
+	/**
+	 * Portal mode remembered without its access entered is refused, never served
+	 * the console's rules: ObjectAccess::Current() fails closed (ADR 0015).
+	 */
+	public function testPortalModeWithoutItsAccessIsRefused(): void
 	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
+		RequestScope::Close();
+		PortalMode::Remember('itop-portal');
+		try {
+			$this->expectException(MCPPortalException::class);
+			ObjectAccess::Current();
+		} finally {
+			RequestScope::Close();
+		}
+	}
 
-		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+	/**
+	 * The tab counts are of the rows the tab lists, so an excluded subclass is out of both
+	 * (ADR 0012, ADR 0014): the narrowing is in the tool's own source, where the count is made.
+	 */
+	public function testThePortalListNarrowsEveryTabCount(): void
+	{
+		$this->assertTrue(
+			SourceCalls::OfClass(PortalList::class)->HasCall(ExclusionSearches::class.'::Narrowed', 'tabsOf'),
+			'PortalList::tabsOf() counts a tab without leaving out the rows of an excluded subclass'
+		);
 	}
 }

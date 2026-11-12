@@ -40,7 +40,7 @@ body:
     attributes:
       label: Extension version
       description: >-
-        `MCPHelper::VERSION` - the same string the server sends clients as `serverInfo`, and
+        `MCPModule::VERSION` - the same string the server sends clients as `serverInfo`, and
         the one in `extension.xml`.
       placeholder: 1.0.0
     validations:

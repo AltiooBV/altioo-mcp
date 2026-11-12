@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Mcp\Exception\ToolCallException;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -53,13 +55,10 @@ class BulkToolContractTest extends TestCase
 			$this->assertContains($sKey, $aRow['required'], "a bulk-created row reports {$sKey} only sometimes");
 		}
 
-		$sSource = (string) file_get_contents(
-			(new \ReflectionClass(ObjectBulkCreate::class))->getFileName()
-		);
-		$this->assertStringContainsString('suppliedValues(', $sSource);
-		$this->assertStringNotContainsString(
-			'WritePlan::After(',
-			$sSource,
+		$oSource = SourceCalls::OfClass(ObjectBulkCreate::class);
+		$this->assertTrue($oSource->HasCallTo('suppliedValues'));
+		$this->assertFalse(
+			$oSource->HasCall(WriteOutcome::class.'::After'),
 			'the bulk path re-reads a row per object, which is a hundred queries'
 		);
 	}

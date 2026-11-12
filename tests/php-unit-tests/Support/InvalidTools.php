@@ -14,9 +14,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Support;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 
 /** Name carries a character the MCP schema rejects. */
 class BadlyNamedTool extends FixtureTool

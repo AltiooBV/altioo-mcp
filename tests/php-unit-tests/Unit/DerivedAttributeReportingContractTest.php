@@ -14,8 +14,12 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -81,7 +85,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 	{
 		$this->assertSame(
 			['role_code'],
-			WritePlan::Defaulted(
+			WriteOutcome::Defaulted(
 				['contact_id' => 1, 'ticket_id' => 3, 'role_code' => 'manual'],
 				['contact_id', 'ticket_id']
 			),
@@ -90,7 +94,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 
 		$this->assertSame(
 			[],
-			WritePlan::Defaulted(['title' => 'x'], ['title']),
+			WriteOutcome::Defaulted(['title' => 'x'], ['title']),
 			'a write whose every change was asked for reports none'
 		);
 
@@ -187,14 +191,14 @@ class DerivedAttributeReportingContractTest extends TestCase
 			$this->assertContains(
 				'overridden',
 				$aRequired,
-				"{$sName} may omit `overridden`, which makes it two response shapes wearing one schema - the thing WritePlan::OutcomeSchema() exists to prevent"
+				"{$sName} may omit `overridden`, which makes it two response shapes wearing one schema - the thing WriteOutcome::OutcomeSchema() exists to prevent"
 			);
 		}
 	}
 
 	public function testTheDeclarationNamesTheCauseAndTheWayOut(): void
 	{
-		$sDescription = WritePlan::OverriddenSchemaProperty()['description'];
+		$sDescription = WriteOutcome::OverriddenSchemaProperty()['description'];
 
 		// A caller that reads only this one string still has to be able to act
 		// on it, because on a bare tools/list it is the only string it gets.
@@ -213,24 +217,21 @@ class DerivedAttributeReportingContractTest extends TestCase
 	public function testTheRequestIsCapturedBeforeTheCheckAndComparedAfterIt(): void
 	{
 		foreach ($this->toolsTakingFields() as $sName => [$sClass, $sMethod]) {
-			$sBody = $this->methodBody($sClass, $sMethod);
+			$oSource = SourceCalls::OfClass($sClass);
+			$sRequested = WritePlan::class.'::Requested';
+			$sCheck = DryRun::class.'::Check';
+			$sOverridden = WritePlan::class.'::Overridden';
 
-			$iRequested  = strpos($sBody, 'WritePlan::Requested');
-			$iCheck      = strpos($sBody, 'WritePlan::Check(');
-			$iOverridden = strpos($sBody, 'WritePlan::Overridden');
+			$this->assertTrue($oSource->HasCall($sRequested, $sMethod), "{$sName} no longer records what the caller asked for");
+			$this->assertTrue($oSource->HasCall($sCheck, $sMethod), "{$sName} no longer runs iTop's pre-write check");
+			$this->assertTrue($oSource->HasCall($sOverridden, $sMethod), "{$sName} no longer reports what the write would discard");
 
-			$this->assertIsInt($iRequested, "{$sName} no longer records what the caller asked for");
-			$this->assertIsInt($iCheck, "{$sName} no longer runs iTop's pre-write check");
-			$this->assertIsInt($iOverridden, "{$sName} no longer reports what the write would discard");
-
-			$this->assertLessThan(
-				$iCheck,
-				$iRequested,
+			$this->assertTrue(
+				$oSource->CallsInOrder([$sRequested, $sCheck], $sMethod),
 				"{$sName} captures the supplied values after CheckToWrite(), which is after DoComputeValues() has already overwritten them - the comparison then always finds them equal"
 			);
-			$this->assertGreaterThan(
-				$iCheck,
-				$iOverridden,
+			$this->assertTrue(
+				$oSource->CallsInOrder([$sCheck, $sOverridden], $sMethod),
 				"{$sName} compares before CheckToWrite() has had a chance to override anything, so it can never find one"
 			);
 		}
@@ -239,11 +240,8 @@ class DerivedAttributeReportingContractTest extends TestCase
 	public function testEveryToolTakingFieldsValidatesWhatItWouldDiscard(): void
 	{
 		foreach ($this->toolsTakingFields() as $sName => [$sClass, $sMethod]) {
-			$sBody = $this->methodBody($sClass, $sMethod);
-
-			$this->assertStringContainsString(
-				'WritePlan::CheckRequested',
-				$sBody,
+			$this->assertTrue(
+				SourceCalls::OfClass($sClass)->HasCall(WritePlan::class.'::CheckRequested', $sMethod),
 				"{$sName} leaves a discarded value unchecked, so an impossible value comes back valid: DoCheckToWrite() only ever validates the attributes still in the delta"
 			);
 		}
@@ -257,33 +255,32 @@ class DerivedAttributeReportingContractTest extends TestCase
 	 */
 	public function testTheDiscardedValueIsCheckedRatherThanTheComputedOne(): void
 	{
-		$sBody = $this->methodBody(WritePlan::class, 'CheckRequested');
+		$oSource = SourceCalls::OfClass(WritePlan::class);
 
-		$this->assertStringContainsString('CheckValue(', $sBody);
+		$this->assertTrue($oSource->HasCallTo('CheckValue', 'CheckRequested'));
 		$this->assertMatchesRegularExpression(
-			'/CheckValue\(\s*\$sAttCode\s*,/',
-			$sBody,
+			'/CheckValue\(\$sAttCode,/',
+			$oSource->Code('CheckRequested'),
 			'CheckRequested() must pass the supplied value explicitly; the one-argument form reads the attribute back off the object, which no longer holds it'
 		);
 	}
 
 	/**
-	 * Same rule as WritePlan::Changes(): writing an attribute and reading it
+	 * Same rule as WriteOutcome::Changes(): writing an attribute and reading it
 	 * are separate rights, so a plan may name an attribute whose value the
 	 * caller may not see.
 	 */
 	public function testBothSidesOfTheReportApplyTheReadRight(): void
 	{
 		foreach (['Requested', 'Overridden'] as $sMethod) {
-			$sBody = $this->methodBody(WritePlan::class, $sMethod);
+			$oSource = SourceCalls::OfClass(WritePlan::class);
+			$sGate = ObjectSerializer::class.'::MayReadAttribute';
+			$sValue = ObjectSerializer::class.'::Value';
 
-			$iGate  = strpos($sBody, 'MayReadAttribute');
-			$iValue = strpos($sBody, 'ObjectSerializer::Value');
-
-			$this->assertIsInt($iGate, "WritePlan::{$sMethod}() no longer checks the read right before rendering a value");
-			$this->assertIsInt($iValue, "WritePlan::{$sMethod}() no longer renders values");
-			$this->assertLessThan($iValue, $iGate, "WritePlan::{$sMethod}() renders before it checks the read right");
-			$this->assertStringContainsString('ObjectSerializer::MASK', $sBody, "WritePlan::{$sMethod}() must mask an unreadable value rather than drop it");
+			$this->assertTrue($oSource->HasCall($sGate, $sMethod), "WritePlan::{$sMethod}() no longer checks the read right before rendering a value");
+			$this->assertTrue($oSource->HasCall($sValue, $sMethod), "WritePlan::{$sMethod}() no longer renders values");
+			$this->assertTrue($oSource->CallsInOrder([$sGate, $sValue], $sMethod), "WritePlan::{$sMethod}() renders before it checks the read right");
+			$this->assertTrue($oSource->HasConstant(ObjectSerializer::class.'::MASK', $sMethod), "WritePlan::{$sMethod}() must mask an unreadable value rather than drop it");
 		}
 	}
 
@@ -294,7 +291,7 @@ class DerivedAttributeReportingContractTest extends TestCase
 	 */
 	public function testTheComparisonIsStrict(): void
 	{
-		$sBody = $this->methodBody(WritePlan::class, 'Differs');
+		$sBody = SourceCalls::OfClass(WritePlan::class)->Code('Differs');
 
 		$this->assertStringContainsString('!==', $sBody);
 		$this->assertStringNotContainsString('!=$', $sBody, 'a loose comparison reads "2" and 2 as the same value, and an enum override as no override');
@@ -304,24 +301,4 @@ class DerivedAttributeReportingContractTest extends TestCase
 	 * The body of a method, comments stripped, so that a doc comment describing
 	 * a check cannot stand in for the check.
 	 */
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
-		$sSource = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sSource) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
-	}
 }

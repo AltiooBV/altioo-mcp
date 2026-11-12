@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -32,8 +34,8 @@ class EditPolicyTest extends TestCase
 	/** Every tool that turns a caller's fields into attribute values. */
 	private const WRITE_PATHS = [
 		// The create, the update, the stimulus and the portal's writes share one copy.
-		'src/Helper/WritePlan.php',
-		'src/Abstract/AbstractBulkTool.php',
+		'src/Service/Write/WriteValues.php',
+		'src/Api/AbstractBulkTool.php',
 	];
 
 	/** Where values are Set() and the external keys can then be judged. */
@@ -99,16 +101,20 @@ class EditPolicyTest extends TestCase
 	public function testEveryWritePathAsksThePolicy(): void
 	{
 		foreach (self::WRITE_PATHS as $sPath) {
-			$sSource = self::code($sPath);
-			$iMake = strpos($sSource, 'RestUtils::MakeValue(');
-			$this->assertIsInt($iMake, "{$sPath} no longer converts values; update this list");
+			$oSource = SourceCalls::OfFile(self::ROOT.'/'.$sPath);
+			$aMethods = $oSource->MethodsCalling('RestUtils::MakeValue');
+			$this->assertNotSame([], $aMethods, "{$sPath} no longer converts values; update this list");
 
-			$sBefore = substr($sSource, 0, $iMake);
-			$sFunction = substr($sBefore, (int) strrpos($sBefore, 'function '));
-			$this->assertStringContainsString('EditPolicy::RefusalFor(', $sFunction, "{$sPath} converts a value without asking EditPolicy first");
-
-			$sAfter = substr($sSource, $iMake, 1500);
-			$this->assertStringContainsString('EditPolicy::RefusalForLinkSet(', $sAfter, "{$sPath} hands a link set to the ORM without asking EditPolicy");
+			foreach ($aMethods as $sMethod) {
+				$this->assertTrue(
+					$oSource->CallsInOrder([EditPolicy::class.'::RefusalFor', 'RestUtils::MakeValue'], $sMethod),
+					"{$sPath} converts a value without asking EditPolicy first"
+				);
+				$this->assertTrue(
+					$oSource->CallsInOrder(['RestUtils::MakeValue', EditPolicy::class.'::RefusalForLinkSet'], $sMethod),
+					"{$sPath} hands a link set to the ORM without asking EditPolicy"
+				);
+			}
 		}
 	}
 
@@ -119,12 +125,14 @@ class EditPolicyTest extends TestCase
 	public function testEveryWritePathJudgesTheKeysOnceTheValuesAreSet(): void
 	{
 		foreach (self::SETTERS as $sPath) {
-			$sSource = self::code($sPath);
+			$oSource = SourceCalls::OfFile(self::ROOT.'/'.$sPath);
+			$this->assertTrue($oSource->HasCall(EditPolicy::class.'::RefusalsForExternalKeys'), "{$sPath} never judges its external keys against their filter");
+			$this->assertTrue($oSource->HasCall(DryRun::class.'::Check'), "{$sPath} never checks the write");
+			$sSource = $oSource->Code();
 			$iKeys = strpos($sSource, 'EditPolicy::RefusalsForExternalKeys(');
-			$this->assertIsInt($iKeys, "{$sPath} never judges its external keys against their filter");
 
 			$iSet = strpos($sSource, '->Set($sAttCode,');
-			$iCheck = strpos($sSource, 'WritePlan::Check(');
+			$iCheck = strpos($sSource, 'DryRun::Check(');
 			$this->assertIsInt($iSet);
 			$this->assertIsInt($iCheck);
 			$this->assertGreaterThan($iSet, $iKeys, "{$sPath} judges the keys before the values are Set()");
@@ -135,19 +143,5 @@ class EditPolicyTest extends TestCase
 	private static function caseLogRefusal(mixed $value): ?string
 	{
 		return (new ReflectionMethod(EditPolicy::class, 'caseLogRefusal'))->invoke(null, 'public_log', $value);
-	}
-
-	/** The source without its comments, so a mention in a docblock is not a call. */
-	private static function code(string $sPath): string
-	{
-		$sCode = '';
-		foreach (token_get_all((string) file_get_contents(self::ROOT.'/'.$sPath)) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 }

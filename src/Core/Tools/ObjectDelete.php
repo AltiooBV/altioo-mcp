@@ -8,16 +8,21 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -33,6 +38,7 @@ use DeletionPlan;
  * The response includes the deletion plan summary so the caller
  * knows what related objects were also affected.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectDelete extends AbstractMCPTool
@@ -75,8 +81,8 @@ class ObjectDelete extends AbstractMCPTool
 
 	public function getOutputSchema(): ?array
 	{
-		return WritePlan::OutcomeSchema([
-			'deletionPlan' => WritePlan::DeletionPlanSchema(),
+		return WriteOutcome::OutcomeSchema([
+			'deletionPlan' => DeletionCascade::DeletionPlanSchema(),
 		]);
 	}
 
@@ -94,7 +100,7 @@ class ObjectDelete extends AbstractMCPTool
 					'description' => 'The ID of the object to delete.',
 					'minimum'     => 1,
 				],
-				'obsolete_ok' => WritePlan::ObsoleteOkSchemaProperty('delete'),
+				'obsolete_ok' => WriteOutcome::ObsoleteOkSchemaProperty('delete'),
 				'simulate' => [
 					'type'        => 'boolean',
 					'description' => 'true (the default) computes and returns the deletion plan without deleting anything. Show the plan to the user, then call again with simulate=false to delete.',
@@ -128,25 +134,25 @@ class ObjectDelete extends AbstractMCPTool
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		if ($id < 1) {
 			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id);
 		if ($sAccessRefusal !== null) {
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
@@ -220,10 +226,17 @@ class ObjectDelete extends AbstractMCPTool
 		// iTop builds the plan with rights off, so what it came back with may
 		// reach classes this caller was never granted. Refused rather than
 		// filtered, and refused on a dry run as well as on the real call - see
-		// WritePlan::CheckDeletionRights().
-		WritePlan::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
+		// DeletionCascade::CheckDeletionRights().
+		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
 
 		if (!$simulate) {
+			// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+			// tool's own source, once the call is known to commit and before it writes.
+			$sCapRefusal = WriteCap::RefusalFor(1);
+			if ($sCapRefusal !== null) {
+				throw new ToolCallException($sCapRefusal);
+			}
+
 			// Said before the write: a deletion also updates the objects that
 			// pointed at this one, and the reason belongs in their history too.
 			ChangeTracking::Explain($comment);
@@ -245,17 +258,17 @@ class ObjectDelete extends AbstractMCPTool
 				// deletion that happened is reported as one with the failure
 				// attached - and only ever on positive evidence, since the
 				// opposite mistake says a thing is gone when it is not.
-				if (!WritePlan::IsGone($class, $id)) {
-					throw new ToolCallException(MCPHelper::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
+				if (!WriteOutcome::IsGone($class, $id)) {
+					throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
 				}
 
 				return ToolOutput::Structured(['class' => $class]
-					+ WritePlan::Identity($class, $id)
+					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
-						'warning'      => MCPHelper::OpaqueFailure(
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
 						),
@@ -264,11 +277,11 @@ class ObjectDelete extends AbstractMCPTool
 		}
 
 		return ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 			]);
 	}
 
@@ -295,7 +308,7 @@ class ObjectDelete extends AbstractMCPTool
 	{
 		try {
 			$oInstanceSet = null;
-			$aStimuli = ObjectSerializer::StimuliOn($oObject, $sClass, null, $oInstanceSet);
+			$aStimuli = ObjectGrades::StimuliOn($oObject, $sClass, null, $oInstanceSet);
 			if ($aStimuli === null) {
 				return '';
 			}

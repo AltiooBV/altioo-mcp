@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -58,17 +59,15 @@ class ObjectDeleteContractTest extends TestCase
 	 */
 	public function testARefusedDeletionPointsAtTheLifecycle(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class);
 
-		$this->assertStringContainsString('retirementHint', $sBody, 'a refused deletion offers nothing else');
-		$this->assertStringContainsString('StimuliOn', $sBody, 'the transitions are not read from the object');
-		$this->assertStringContainsString("!== 'no'", $sBody, 'a transition this caller may not apply would be offered');
-		$this->assertStringContainsString('core_object_apply_stimulus', $sBody, 'the hint names no tool to use');
+		$this->assertTrue($oSource->HasCallTo('retirementHint'), 'a refused deletion offers nothing else');
+		$this->assertTrue($oSource->HasCallTo('StimuliOn'), 'the transitions are not read from the object');
+		$this->assertStringContainsString("!=='no'", $oSource->Code(), 'a transition this caller may not apply would be offered');
+		$this->assertNotSame([], array_filter($oSource->Strings(), static fn (string $s): bool => str_contains($s, 'core_object_apply_stimulus')), 'the hint names no tool to use');
 		$this->assertMatchesRegularExpression(
-			'/catch \\(\\\\Throwable[^}]*return \x27\x27;/s',
-			$sBody,
+			'/return\x27\x27;/',
+			$oSource->CodeInCatch(),
 			'explaining a refusal can raise over the refusal itself'
 		);
 	}
@@ -95,15 +94,14 @@ class ObjectDeleteContractTest extends TestCase
 	 */
 	public function testAnObsoleteObjectThisAccountHidesIsRefusedWithAWayOut(): void
 	{
-		$sGuard = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Helper\WritePlan::class))->getFileName()
-		);
+		$oGuard = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class);
+		$fMentions = static fn (string $sNeedle): bool => array_filter($oGuard->Strings(), static fn (string $s): bool => str_contains($s, $sNeedle)) !== [];
 
-		$this->assertStringContainsString('function RefuseHiddenObsolete', $sGuard);
-		$this->assertStringContainsString('obsolete_ok=true', $sGuard, 'the refusal does not say how to proceed');
-		$this->assertStringContainsString('core_set_obsolete_data', $sGuard, 'the other way out is not named');
-		$this->assertStringContainsString('ShowObsoleteData()', $sGuard, 'the guard fires on accounts that can see them too');
-		$this->assertStringContainsString('return;', $sGuard, 'a guard that cannot answer must fail open, not refuse');
+		$this->assertTrue($oGuard->HasMethod('RefuseHiddenObsolete'));
+		$this->assertTrue($fMentions('obsolete_ok=true'), 'the refusal does not say how to proceed');
+		$this->assertTrue($fMentions('core_set_obsolete_data'), 'the other way out is not named');
+		$this->assertTrue($oGuard->HasCallTo('ShowObsoleteData', 'RefuseHiddenObsolete'), 'the guard fires on accounts that can see them too');
+		$this->assertStringContainsString('return;', $oGuard->Code('RefuseHiddenObsolete'), 'a guard that cannot answer must fail open, not refuse');
 
 		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate::class] as $sTool) {
 			$oTool = new $sTool();

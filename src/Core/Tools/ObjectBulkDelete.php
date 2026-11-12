@@ -8,12 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
@@ -27,6 +29,7 @@ use Mcp\Schema\ToolAnnotations;
  * iTop deletion cascades, so forty ids can take a great deal more than forty
  * objects with them.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectBulkDelete extends AbstractBulkTool
@@ -68,7 +71,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 	public function getOutputSchema(): ?array
 	{
-		return self::reportSchema(['deletionPlan' => WritePlan::DeletionPlanSchema()]);
+		return self::reportSchema(['deletionPlan' => DeletionCascade::DeletionPlanSchema()]);
 	}
 
 	public function getInputSchema(): ?array
@@ -100,10 +103,17 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_DELETE, UR_ACTION_DELETE, 'delete');
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
 
 		// Once for the batch, before the loop: the objects deleted by one call
 		// are one decision, and they share the one change record.
@@ -123,7 +133,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// An entry that never got as far as a plan still reports one, empty:
 		// the schema promises deletionPlan on every entry.
 		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, [
-			'deletionPlan' => WritePlan::SerializeDeletionPlan(null),
+			'deletionPlan' => DeletionCascade::SerializeDeletionPlan(null),
 		]));
 	}
 
@@ -152,9 +162,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 		// Per object rather than for the batch: the cascade of one id can reach
 		// classes the cascade of the next one does not, and a bulk call reports
-		// each object on its own. See WritePlan::CheckDeletionRights().
+		// each object on its own. See DeletionCascade::CheckDeletionRights().
 		try {
-			WritePlan::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
+			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
 		} catch (ToolCallException $e) {
 			return self::outcome($iId, $iRow, false, $e->getMessage());
 		}
@@ -166,12 +176,12 @@ class ObjectBulkDelete extends AbstractBulkTool
 			} catch (\Throwable $e) {
 				// CheckToDelete() above already reported everything the caller
 				// could act on, with the plan's own wording.
-				return self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
+				return self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
 			}
 		}
 
 		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
-		$aOutcome['deletionPlan'] = WritePlan::SerializeDeletionPlan($oPlan);
+		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan);
 
 		return $aOutcome;
 	}

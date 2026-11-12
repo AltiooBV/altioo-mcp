@@ -1,0 +1,12 @@
+{
+    "description": "A portal user asking for their own tickets starts from core_portal_list, not from the class catalogue (ADR 0006 changed this surface most).",
+    "token": "portal",
+    "prerequisites": "A portal user, linked to a contact, with at least one UserRequest of their own; the token carries the MCP scope and the endpoint serves portal mode.",
+    "prompt": "Which of my requests are still open?",
+    "maxCalls": 5,
+    "firstCallIn": ["core_instructions", "core_current_user", "core_portal_list"],
+    "allowedTools": ["core_instructions", "core_current_user", "core_portal_list", "core_object_get", "core_object_count", "core_my_activity"],
+    "mustCall": [
+        {"tool": "core_portal_list"}
+    ]
+}

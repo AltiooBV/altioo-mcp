@@ -8,16 +8,18 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -84,12 +86,12 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Read-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
-		PortalMode::Remember(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		RequestScope::Close();
 
 		parent::tearDown();
 	}
@@ -258,9 +260,11 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		// Registered per request in production; a test has to do it itself.
 		MCPRegistry::Clear();
 		CoreExtensions::RegisterServiceProvider();
+		ServedElements::RememberServed();
 		try {
 			$aPayload = CurrentUserReader::Payload();
 		} finally {
+			RequestScope::Close();
 			MCPRegistry::Clear();
 		}
 

@@ -22,8 +22,8 @@ SetupWebPage::AddModule(
 			// to find out than a log entry on the first MCP request.
 			//
 			// A dependency with no operator means ">=", so this reads
-			// "altioo-mcp 1.0.0 or later".
-			'altioo-mcp/1.0.0',
+			// "altioo-mcp 2.0.0 or later".
+			'altioo-mcp/2.0.0',
 
 			// Whatever your own tools need. This pack reads tickets, so it
 			// declares the ticketing module rather than discovering at runtime

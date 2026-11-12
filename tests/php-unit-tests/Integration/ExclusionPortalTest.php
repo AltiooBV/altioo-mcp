@@ -8,17 +8,19 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -62,22 +64,22 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$sLogin = 'excl-portal-'.$sSuffix;
 		$this->CreateUser($sLogin, self::profileId('Portal user'), 'Excl-Portal-'.$sSuffix.'-1!', $iContact);
 		UserRights::Login($sLogin);
-		PortalMode::Remember(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 		$this->exclude([], []);
 	}
 
 	protected function tearDown(): void
 	{
 		$this->exclude([], []);
-		PortalMode::Forget();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 
 	private function exclude(mixed $aClasses, mixed $aAttributes): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
 		ExclusionPolicy::Forget();
 		// The portal's policy is read once per request, with the settings that request has.
 		PortalPolicy::Forget();
@@ -145,6 +147,19 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$this->assertNotContains('UserRequest', array_column(ToolOutput::Decode(ClassList::execute())['classes'] ?? [], 'class'));
 		$this->expectException(ToolCallException::class);
 		ObjectGet::execute('UserRequest', $this->iOwn);
+	}
+
+	/** A tab's count is the number of rows the tab lists: an excluded subclass is in neither (doc/adr/0012). */
+	public function testTheTabCountsLeaveOutAnExcludedSubclass(): void
+	{
+		$aBefore = ToolOutput::Decode(PortalList::execute(self::ONGOING));
+		$this->assertGreaterThan(0, array_sum(array_column($aBefore['tabs'], 'count')), 'the control: the tabs count the request');
+
+		$this->exclude(['UserRequest'], []);
+
+		$aAfter = ToolOutput::Decode(PortalList::execute(self::ONGOING));
+		$this->assertSame(0, array_sum(array_column($aAfter['tabs'], 'count')), 'a tab still counts a row of the excluded subclass');
+		$this->assertSame(0, $aAfter['total']);
 	}
 
 	private static function profileId(string $sName): int

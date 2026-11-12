@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -62,27 +64,6 @@ class DeletionRightsContractTest extends TestCase
 	 *
 	 * @param class-string $sClass
 	 */
-	private function body(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines  = file($oMethod->getFileName());
-		$sBody   = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sBody) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT, T_WHITESPACE], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
-	}
-
 	/**
 	 * @dataProvider deletingMethodProvider
 	 *
@@ -90,9 +71,8 @@ class DeletionRightsContractTest extends TestCase
 	 */
 	public function testTheCascadeIsChecked(string $sClass, string $sMethod): void
 	{
-		$this->assertStringContainsString(
-			'WritePlan::CheckDeletionRights',
-			$this->body($sClass, $sMethod),
+		$this->assertTrue(
+			SourceCalls::OfClass($sClass)->HasCall(DeletionCascade::class.'::CheckDeletionRights', $sMethod),
 			'this tool deletes without checking the rights on what the cascade reaches, which iTop does not check either'
 		);
 	}
@@ -104,16 +84,13 @@ class DeletionRightsContractTest extends TestCase
 	 */
 	public function testItIsCheckedBeforeAnythingIsDeleted(string $sClass, string $sMethod): void
 	{
-		$sCode = $this->body($sClass, $sMethod);
+		$oSource = SourceCalls::OfClass($sClass);
+		$sCheck = DeletionCascade::class.'::CheckDeletionRights';
 
-		$iCheck  = strpos($sCode, 'WritePlan::CheckDeletionRights');
-		$iDelete = strpos($sCode, 'DBDelete');
-
-		$this->assertIsInt($iCheck, 'the cascade check is gone');
-		$this->assertIsInt($iDelete, 'this method no longer deletes, so the ordering below means nothing');
-		$this->assertLessThan(
-			$iDelete,
-			$iCheck,
+		$this->assertTrue($oSource->HasCall($sCheck, $sMethod), 'the cascade check is gone');
+		$this->assertTrue($oSource->HasCallTo('DBDelete', $sMethod), 'this method no longer deletes, so the ordering below means nothing');
+		$this->assertTrue(
+			$oSource->CallsInOrder([$sCheck, '->DBDelete'], $sMethod),
 			'the cascade is checked after the objects are already gone, which is not a check'
 		);
 	}
@@ -129,9 +106,9 @@ class DeletionRightsContractTest extends TestCase
 	 */
 	public function testTheDryRunIsHeldToTheSameRule(string $sClass, string $sMethod): void
 	{
-		$sCode = $this->body($sClass, $sMethod);
+		$sCode = SourceCalls::OfClass($sClass)->Code($sMethod);
 
-		$iCheck    = strpos($sCode, 'WritePlan::CheckDeletionRights');
+		$iCheck    = strpos($sCode, 'DeletionCascade::CheckDeletionRights');
 		$iSimulate = strpos($sCode, 'if(!$simulate)');
 		if ($iSimulate === false) {
 			$iSimulate = strpos($sCode, 'if(!$bSimulate)');

@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Test\Support\AlsoClashingTool;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamespacedTool;
@@ -252,6 +252,21 @@ class MCPRegistryContractTest extends TestCase
 		$this->expectExceptionMessageMatches('/belongs to the base extension/');
 
 		MCPRegistry::RegisterTool(new SquattingTool());
+	}
+
+	/**
+	 * The PHP namespace Core\ is not what makes an element this module's own:
+	 * a pack can declare a class there. The file does (Helper\CoreElement).
+	 */
+	public function testRejectsASpoofedCoreClassClaimingTheReservedNamespace(): void
+	{
+		require_once dirname(__DIR__).'/Support/SpoofedCorePortalTool.php';
+		require_once dirname(__DIR__).'/Support/SpoofedCoreTool.php';
+
+		$this->expectException(MCPRegistrationException::class);
+		$this->expectExceptionMessageMatches('/belongs to the base extension/');
+
+		MCPRegistry::RegisterTool(new \Altioo\iTop\Extension\MCP\Core\Spoof\SpoofedCoreTool());
 	}
 
 	public function testRejectsANamespaceThatIsNotUsableInAnIdentifier(): void

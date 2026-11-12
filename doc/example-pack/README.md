@@ -15,8 +15,8 @@ in the order you would meet it.
 | `register.php` | One line, declaring the provider. Listed in the module's `datamodel` array |
 | `datamodel.acme-servicedesk.xml` | The `MCP-toolset-acme-servicedesk` token scope, and the title dictionary |
 | `src/AcmeServiceDeskExtensions.php` | The provider: the version guard, the registrations, the server instructions |
-| `src/Tools/TicketAddLogEntry.php` | A write tool: annotations, dry run, `RestValue`, per-object `UserRights` |
-| `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free |
+| `src/Tools/TicketAddLogEntry.php` | A write tool: annotations, dry run, `RestValue`, per-object `UserRights`, the operator's exclusions |
+| `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free, and the one element that implements `PortalAware`: see below |
 | `src/Prompts/TriageMyQueue.php` | A prompt, and `isAvailable()` keeping it off instances where it would fail |
 | `tests/php-unit-tests/Unit/ContractTest.php` | The whole contract suite, needing neither iTop nor a database |
 | `phpunit.xml.dist` | PHPUnit 9, matching what iTop pins. Points the suite at `tests/php-unit-tests/`, which is where iTop's own Extensions testsuite looks |
@@ -77,7 +77,31 @@ first. Installing it and deleting `vendor/mcp` before packaging does **not** wor
 — `classmap-authoritative` has already written those classes into
 `autoload_classmap.php`, so the entries outlive the files and the first call
 fatals on a missing include. Pin the same constraint the base vendors,
-`MCPHelper::SDK_CONSTRAINT`.
+`MCPModule::SDK_CONSTRAINT`.
+
+## Serving it in portal mode
+
+Portal mode serves a pack's element only when two things hold
+([ADR 0017](../adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).
+`TicketSearchMine` is the worked example of the first; the second is the operator's:
+
+1. **The element implements `PortalAware` and asks `ObjectAccess::Current()`.** `TicketSearchMine`
+   narrows its query with `Bounded()`, drops a row `Hides()` and reports only the attributes
+   `VisibleFields()` allows, so one code path serves the console and the portal.
+   `AbstractObjectSearch` does not do this for you: it asks `UserRights`, which grants the "Portal
+   user" profile read on every class. `TicketAddLogEntry` and `TriageMyQueue` do not implement it,
+   so portal users never see them.
+2. **The operator lists it** in the `mcp_portal_extensions` setting (empty by default), by identifier
+   or by class name. Either form serves it:
+
+   ```php
+   'mcp_portal_extensions' => array('acme_ticket_search_mine'),
+   // or, by class name
+   'mcp_portal_extensions' => array('Acme\\iTop\\Extension\\ServiceDesk\\Tools\\TicketSearchMine'),
+   ```
+
+   Until it is listed, a portal user's tool list does not contain it. Tell your users to list it;
+   do not list it for them. See [`doc/extending.md`](../extending.md#serving-your-element-in-portal-mode).
 
 ## Testing it
 
@@ -91,3 +115,10 @@ composer package   # back to the production dump before any setup run
 them instead of throwing, so the pack's whole contract suite is one assertion per
 element. It pulls in no dev dependency of the base extension — that is why it
 ships in the production autoload rather than under `tests/`.
+
+## What it calls
+
+Only the `@api` surface: everything under `Api\`, and `ObjectQuery`, `ObjectSerializer`,
+`RestValue` and `DryRun`. The base extension's unit suite reads this pack's `use` lines
+against that list, so a pack that needs more is a reason to widen the list on purpose. The
+surface is described in [`doc/extending.md`](../extending.md#1-depend-on-the-base-module).

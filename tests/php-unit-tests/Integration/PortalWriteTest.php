@@ -14,9 +14,10 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Test\Support\CallsToolsOnTheWire;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
 use DBObjectSet;
@@ -111,12 +112,12 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Write-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
-		PortalMode::Remember(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		RequestScope::Close();
 
 		parent::tearDown();
 	}

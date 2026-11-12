@@ -12,7 +12,8 @@ use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResourc
 use Altioo\iTop\Extension\MCP\Core\Resources\Version;
 use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Enum\Role;
@@ -48,7 +49,7 @@ class CoreInstructionsTest extends TestCase
 {
 	protected function tearDown(): void
 	{
-		AccessPolicy::Forget();
+		RequestScope::Close();
 		parent::tearDown();
 	}
 

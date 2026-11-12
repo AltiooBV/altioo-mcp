@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <files psalm-version="6.18.1@79465b8dc674127f442ae31ea114c11bc4dd7ed6">
-  <file src="src/Abstract/AbstractBulkTool.php">
+  <file src="src/Api/AbstractBulkTool.php">
     <RedundantFunctionCall>
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>
   </file>
-  <file src="src/Abstract/AbstractObjectSearch.php">
+  <file src="src/Api/AbstractObjectSearch.php">
     <MissingOverrideAttribute>
       <code><![CDATA[public function getAnnotations(): ?ToolAnnotations]]></code>
     </MissingOverrideAttribute>
@@ -151,21 +151,21 @@
   <file src="src/Core/Tools/ObjectApplyStimulus.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
 					'simulated'     => true,
 					'valid'         => true,
 					'state'         => $sCurrentState,
 					'would_move_to' => $sTargetState,
-					'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,
 				'simulated'     => false,
@@ -176,11 +176,11 @@
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'       => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-				'overridden'    => WritePlan::Map($aOverridden),
-					'defaulted'     => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'       => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'overridden'    => WriteOutcome::Map($aOverridden),
+					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -261,22 +261,22 @@
   <file src="src/Core/Tools/ObjectDelete.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-					+ WritePlan::Identity($class, $id)
+					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
-						'warning'      => MCPHelper::OpaqueFailure(
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
 						),
 					])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-			+ WritePlan::Identity($class, $id)
+			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => WritePlan::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
 			])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -359,7 +359,7 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByClass.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
+      <code><![CDATA[ToolOutput::Json(UntrustedMarker::MarkRows([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
 				'filters' => $filters,
@@ -409,7 +409,7 @@
   </file>
   <file src="src/Core/Tools/ObjectSearchByOQL.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Json(ObjectSerializer::MarkRows([
+      <code><![CDATA[ToolOutput::Json(UntrustedMarker::MarkRows([
 				'class' => $class,
 				'oql'       => $oql,
 				'total'     => $iTotal,
@@ -440,26 +440,26 @@
   <file src="src/Core/Tools/ObjectUpdate.php">
     <InvalidReturnStatement>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
       <code><![CDATA[ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $id)
+				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -499,24 +499,34 @@
       <code><![CDATA[(int)$this->getCode()]]></code>
     </RedundantCast>
   </file>
-  <file src="src/Helper/DatamodelReader.php">
-    <RedundantCondition>
-      <code><![CDATA[!empty($aRelated)]]></code>
-      <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
-      <code><![CDATA[empty($aRelated)]]></code>
-    </RedundantCondition>
-    <RedundantFunctionCall>
-      <code><![CDATA[array_values]]></code>
-    </RedundantFunctionCall>
+  <file src="src/Service/Read/AttributeDescription.php">
     <TypeDoesNotContainType>
       <code><![CDATA[$oAttDef instanceof AttributeCaseLog]]></code>
+    </TypeDoesNotContainType>
+  </file>
+  <file src="src/Service/Read/AttributeFormat.php">
+    <RedundantCondition>
+      <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
+    </RedundantCondition>
+    <TypeDoesNotContainType>
       <code><![CDATA[$oAttDef instanceof AttributeDate]]></code>
       <code><![CDATA[$oAttDef instanceof AttributeDateTime]]></code>
       <code><![CDATA[$oAttDef instanceof AttributeEmailAddress]]></code>
       <code><![CDATA[$oAttDef instanceof AttributeURL]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/DocumentAccess.php">
+  <file src="src/Service/Read/ClassCatalog.php">
+    <RedundantFunctionCall>
+      <code><![CDATA[array_values]]></code>
+    </RedundantFunctionCall>
+  </file>
+  <file src="src/Service/Read/DatamodelReader.php">
+    <RedundantCondition>
+      <code><![CDATA[!empty($aRelated)]]></code>
+      <code><![CDATA[empty($aRelated)]]></code>
+    </RedundantCondition>
+  </file>
+  <file src="src/Service/Read/DocumentAccess.php">
     <InvalidOperand>
       <code><![CDATA[round($iBytes / 1024, 1)]]></code>
       <code><![CDATA[round($iBytes / 1048576, 1)]]></code>
@@ -539,7 +549,7 @@
       <code><![CDATA[null]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/ObjectSerializer.php">
+  <file src="src/Service/Read/ObjectSerializer.php">
     <RedundantCondition>
       <code><![CDATA[$oAttDef instanceof AttributeExternalField]]></code>
     </RedundantCondition>
@@ -551,7 +561,7 @@
       <code><![CDATA[$oAttDef instanceof iAttributeNoGroupBy]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/ToolOutput.php">
+  <file src="src/Api/ToolOutput.php">
     <RedundantCondition>
       <code><![CDATA[$mResult->content]]></code>
     </RedundantCondition>
@@ -559,7 +569,7 @@
       <code><![CDATA[[]]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Helper/WritePlan.php">
+  <file src="src/Service/Write/WriteOutcome.php">
     <InvalidArrayOffset>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>
       <code><![CDATA[$aChanges[$sAttCode]]]></code>
@@ -578,12 +588,12 @@
       <code><![CDATA[$sAttCode === 'finalclass']]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Models/MCPResult.php">
+  <file src="src/Model/MCPResult.php">
     <MissingOverrideAttribute>
       <code><![CDATA[public function jsonSerialize(): array]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Server/Session/StatelessSessionStore.php">
+  <file src="src/Service/Server/Session/StatelessSessionStore.php">
     <MissingOverrideAttribute>
       <code><![CDATA[public function destroy(Uuid $id): bool]]></code>
       <code><![CDATA[public function exists(Uuid $id): bool]]></code>
@@ -592,15 +602,17 @@
       <code><![CDATA[public function write(Uuid $id, string $data): bool]]></code>
     </MissingOverrideAttribute>
   </file>
-  <file src="src/Service/MCPService.php">
+  <file src="src/Service/Server/MCPService.php">
     <InvalidArgument>
       <code><![CDATA[MCPLog::class]]></code>
     </InvalidArgument>
+  </file>
+  <file src="src/Service/Server/ServedElements.php">
     <TypeDoesNotContainType>
       <code><![CDATA[is_array($aSerialized)]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="src/Service/TokenScopes.php">
+  <file src="src/Service/Rights/TokenScopes.php">
     <RedundantFunctionCall>
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>

@@ -1,0 +1,562 @@
+<?php
+/**
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Altioo\iTop\Extension\MCP\Service\Write;
+
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\Identifier;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+
+use DBObject;
+use MetaModel;
+use Throwable;
+use utils;
+
+/**
+ * What a write reports: the shape of its result, the pieces that fill it, and how it names the object it acted on - including
+ * after a failure that arrived with the row already committed or gone.
+ *
+ * @api
+ * @since 2.0.0
+ */
+final class WriteOutcome
+{
+	/**
+	 * The interface iTop marks a class whose objects are a credential with.
+	 *
+	 * PersonalToken and UserToken implement it, and so would a later one.
+	 * Asked rather than named, for the reason every other rule here is asked.
+	 */
+	private const CREDENTIAL_INTERFACE = 'Combodo\\iTop\\AuthentToken\\Model\\iToken';
+
+	/**
+	 * What a caller has to be told when it creates a credential here, because
+	 * the answer it would otherwise draw is wrong.
+	 *
+	 * A token's usable value never exists as an attribute. iTop generates it
+	 * in AfterInsert() - AbstractPersonalToken::CreateNewToken() - keeps it on
+	 * the object as a plain property, stores only its *hash* in auth_token,
+	 * and hands the plaintext to the console through a session message. Three
+	 * consequences, none of them visible from the response:
+	 *
+	 *  - a value the caller supplied for auth_token is overwritten, always.
+	 *    Set('auth_token', $oPassword) runs after the insert whatever was sent,
+	 *    so a caller that chose its own secret does not have the credential it
+	 *    thinks it has.
+	 *  - auth_token comes back masked, and there is nothing behind the mask
+	 *    worth having. It is a salted hash. The attribute's own description -
+	 *    "Readable only at generation time" - describes the console's session
+	 *    message, not a value an API can read.
+	 *  - a session message is not something a stateless endpoint can deliver.
+	 *
+	 * So a create here leaves a usable row and no usable credential, and the
+	 * masked field invites the caller to go looking for a way to unmask it.
+	 * Saying so is the difference between a gap and a documented decision.
+	 *
+	 * Deliberately not the credential itself. Handing a live, portable secret
+	 * back through a tool result puts it in a model's context, in the
+	 * transport, and in this endpoint's own audit row where request_params are
+	 * kept - and a token works against iTop's other APIs, outside every gate
+	 * on this one. That is a decision for an operator to take knowingly, not a
+	 * convenience to add quietly.
+	 *
+	 * @return string|null Null for every class that is not one.
+	 * @since 1.0.0
+	 */
+	public static function CredentialNote(string $sClass): ?string
+	{
+		if (!is_a($sClass, self::CREDENTIAL_INTERFACE, true)) {
+			return null;
+		}
+
+		return 'The credential itself is not in this answer and is not in the object. iTop generates it after the insert, '
+			.'stores only its hash in auth_token - overwriting any value you supplied for that attribute - and shows the '
+			.'plaintext once, as a console message this endpoint has no way to deliver. So this row exists and you cannot '
+			.'authenticate with it: open the token in the iTop console and use the value it shows, or regenerate it there. '
+			.'Tell the user that, rather than trying to read auth_token back.';
+	}
+
+	/**
+	 * The result shape every single-object write reports.
+	 *
+	 * Declared as an output schema, which the reading tools deliberately do not
+	 * declare: what a read returns depends on the class and on output_fields,
+	 * so no fixed schema could describe it, and structuredContent would double
+	 * the payload of the largest responses this server sends. A write answers
+	 * with a handful of scalars whose shape never varies, so both objections
+	 * fall away - see {@see ToolOutput::Structured()}.
+	 *
+ * One shape, whatever `simulate` was. Every property is always present and
+	 * always required, and it is the *values* that vary: `id` is null until there
+	 * is one, `simulated` says which call this was, `changes` is empty rather than
+	 * absent. A field that appears and disappears is a second interface hiding
+	 * inside the first.
+	 *
+	 * The alternative - `valid` on a dry run only, `id` on a real write only, and
+	 * a schema declaring the union of the two with `required` narrowed to their
+	 * intersection - describes neither response. Nothing validating it could catch
+	 * a create that came back without an id, and the consumer that actually
+	 * matters here reads the schema as prose and cannot tell which fields to
+	 * expect when.
+	 *
+	 * `changes` is not in the core set, and that is not a relapse: a tool
+	 * declares it through {@see ChangesSchemaProperty()} and then always
+	 * reports it. Forcing it on every tool would make core_object_attach
+	 * enumerate the attributes of an Attachment, one of which is the file, and
+	 * a write outcome is not the place to send a document back. Different tools
+	 * may describe different things; what none of them may do is describe
+	 * different things on different calls.
+	 *
+	 * @param array<string, array<string, mixed>> $aProperties Properties this particular tool adds. They are required too - a tool that declares a property must always report it.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function OutcomeSchema(array $aProperties = []): array
+	{
+		$aCore = [
+			'class'     => [
+				'type'        => 'string',
+				'description' => 'Final class of the object the call acted on.',
+			],
+			'id'        => [
+				'type'        => ['integer', 'null'],
+				'description' => 'Identifier of the object, or null when there is not one yet - a create dry run has not created anything.',
+			],
+			'simulated' => [
+				'type'        => 'boolean',
+				'description' => 'true when the call validated everything and wrote nothing.',
+			],
+			'valid'     => [
+				'type'        => 'boolean',
+				'description' => 'Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape.',
+			],
+		];
+
+		return [
+			'type'       => 'object',
+			'properties' => $aCore + $aProperties,
+			'required'   => array_values(array_merge(array_keys($aCore), array_keys($aProperties))),
+			// A link class reports its identifier a second time under its own
+			// key attribute, 'link_id'. Two stock classes do that and the rest
+			// name it 'id', so it cannot be a declared property - see
+			// {@see Identity()}.
+			'additionalProperties' => true,
+		];
+	}
+
+	/**
+	 * The escape hatch for the guard below, spelled once.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function ObsoleteOkSchemaProperty(string $sWhatItDoes): array
+	{
+		return [
+			'type'        => 'boolean',
+			'description' => 'Set true to '.$sWhatItDoes.' an object that counts as obsolete while your account does not show obsolete objects. Off by default: such an object is absent from your own searches, so acting on it is usually a stale id rather than a decision.',
+			'default'     => false,
+		];
+	}
+
+	/**
+	 * The `obsolescence` property, for a tool that changes an object's fields.
+	 *
+	 * The case it exists for: an agent sets a status the datamodel counts as
+	 * obsolete, the write succeeds, and the object then vanishes from its own
+	 * searches - because "show obsolete data" is off for that account, which is
+	 * the default. Nothing in the write said so, and the agent's next move is
+	 * to search for what it just wrote, find nothing, and conclude the write
+	 * failed.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function AfterSchemaProperty(): array
+	{
+		return [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'description'          => 'The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet.',
+		];
+	}
+
+	/**
+	 * That block, filled in.
+	 *
+	 * The flag is not a stored column: AttributeObsolescenceFlag answers
+	 * IsBasedOnOQLExpression, so the database evaluates the class's condition
+	 * when the object is queried. A dry run therefore cannot know what the
+	 * write would make of it - nothing has evaluated anything - which is why
+	 * the condition is reported beside the flag rather than instead of it: on a
+	 * dry run the flag is what the object carries now, and the condition is
+	 * what the caller can read to see where its own values would land.
+	 *
+	 * On a real write the object is asked again, which costs one read of one
+	 * row and only on a class that has the notion at all.
+	 *
+	 * The attributes re-read are the ones the *caller supplied*, not the ones
+	 * the write changed. On a create those are not the same list at all:
+	 * `changes` holds every attribute of the new object, so echoing that back
+	 * here returned a seventy-attribute object twice in one answer, and the
+	 * block meant to say "here is what became of what you sent" said "here is
+	 * everything". What a caller wants confirmed is what it asked for.
+	 *
+	 * @param DBObject           $oObject   The object the write acted on.
+	 * @param array<int, string> $aAttCodes The attributes the caller supplied, re-read so that what a hook changed is visible.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function After(DBObject $oObject, string $sClass, array $aAttCodes, bool $bSimulated): array
+	{
+		$aAfter = [
+			'friendlyname' => null,
+			'applied'      => self::Map([]),
+			'obsolescence' => ['flag' => null, 'condition' => null, 'hidden_from_searches' => false],
+		];
+
+		try {
+			$iId = ObjectId::Normalise($oObject->GetKey());
+			if (!$bSimulated && $iId !== null) {
+				// One read, for both halves of the answer.
+				//
+				// `changes` is taken before the write and has to be: DBInsert()
+				// clears the pending values, so asking afterwards reports
+				// nothing. What that leaves out is everything the write itself
+				// did - an AfterInsert hook, an event listener, a lifecycle
+				// that filled in a field, the ref a ticket is given - and the
+				// obsolescence flag, which is not a stored column at all but an
+				// expression the database evaluates when the row is queried.
+				$oFresh = MetaModel::GetObject($sClass, $iId, false);
+				$oObject = $oFresh ?? $oObject;
+			}
+
+			$aAfter['friendlyname'] = $oObject->GetName();
+
+			if ($aAttCodes !== []) {
+				// Through the serializer, so per-attribute read rights, the
+				// clipping and the masking all apply exactly as they do on a
+				// read. An attribute the caller may write and may not read
+				// comes back masked rather than echoed.
+				$aSerialized = ObjectSerializer::Serialize($oObject, $sClass, $aAttCodes);
+				$aAfter['applied'] = self::Map(array_intersect_key($aSerialized, array_flip($aAttCodes)));
+			}
+
+			if (MetaModel::IsObsoletable($sClass)) {
+				$aAfter['obsolescence']['condition'] = MetaModel::GetObsolescenceExpression($sClass)->Render();
+				$aAfter['obsolescence']['flag'] = (bool)$oObject->Get('obsolescence_flag');
+				$aAfter['obsolescence']['hidden_from_searches'] = $aAfter['obsolescence']['flag'] && !utils::ShowObsoleteData();
+			}
+		} catch (Throwable $e) {
+			// Describing the write must never cost the write that succeeded.
+			ErrorReport::Log('Could not describe '.$sClass.' after the write: '.$e->getMessage());
+		}
+
+		return $aAfter;
+	}
+
+	/**
+	 * A map that stays a map once it is empty.
+	 *
+	 * `changes`, `overridden` and `applied` are attribute code => value, and
+	 * PHP's empty array is a list as far as json_encode is concerned - so a
+	 * write that changed nothing answered `[]` where one that changed
+	 * something answered `{}`. A caller with a typed reader breaks on the
+	 * emptier of the two answers, which is the one it is least likely to have
+	 * tested against.
+	 *
+	 * The cast is what keeps the keys: an array cast alone does not, since PHP
+	 * folds a numeric-string key straight back to an int - attribute codes are
+	 * never numeric, but the same rule bit the schema's allowed values, and
+	 * doing it the same way here means one habit rather than two.
+	 *
+	 * @param array<string, mixed> $aMap
+	 * @since 1.0.0
+	 */
+	public static function Map(array $aMap): \stdClass
+	{
+		return (object) $aMap;
+	}
+
+	/**
+	 * The `changes` property, for a tool that reports what a write touched.
+	 *
+	 * Declared by the tools that have something legible to say - create,
+	 * update, apply stimulus - and by them on every call, dry run or not. See
+	 * {@see Changes()} for what fills it and why an unreadable attribute is
+	 * masked rather than dropped.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function ChangesSchemaProperty(string $sWhichOnes = 'Every attribute for a creation, only the modified ones for an update.'): array
+	{
+		return [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'description'          => 'Attribute code => the value this write set, or would set. '.$sWhichOnes.' Empty when the write touched nothing. '
+				.'Read before the write, because the write clears it - so an attribute the write itself fills is empty here rather than wrong: a ticket answers "" for ref and friendlyname, which are assigned as the row is inserted. What the object ended up with is in `after`.',
+		];
+	}
+
+	/**
+	 * The `defaulted` property, for a tool that takes caller-supplied fields.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function DefaultedSchemaProperty(): array
+	{
+		return [
+			'type'        => 'array',
+			'items'       => ['type' => 'string'],
+			'description' => 'Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call.',
+		];
+	}
+
+	/**
+	 * Which of the reported changes the caller never asked for.
+	 *
+	 * `changes` answers "what this write sets", and on a creation that is every
+	 * attribute - including the ones nobody mentioned. A link created with a
+	 * contact and a ticket comes back reporting role_code too, and a caller
+	 * reading it cannot tell the default it was given from the value it sent.
+	 *
+	 * `overridden` already draws the neighbouring line - what was asked for and
+	 * not kept - so the third case was the one with no name: not asked for, and
+	 * applied anyway. Codes rather than values, because the value is in
+	 * `changes` already and repeating it would double the block that matters.
+	 *
+	 * @param array<string, mixed> $aChanges  As {@see Changes()} reports them.
+	 * @param array<int, string>   $aSupplied The attribute codes the caller sent.
+	 *
+	 * @return array<int, string>
+	 * @since 1.0.0
+	 */
+	public static function Defaulted(array $aChanges, array $aSupplied): array
+	{
+		return array_values(array_diff(array_keys($aChanges), $aSupplied));
+	}
+
+	/**
+	 * The `overridden` property, for a tool that takes caller-supplied fields.
+	 *
+	 * Declared alongside {@see ChangesSchemaProperty()} and reported on every
+	 * call, empty when there is nothing to say - the same one-shape rule the
+	 * rest of the outcome follows.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function OverriddenSchemaProperty(): array
+	{
+		return [
+			'type'                 => 'object',
+			'additionalProperties' => true,
+			'description'          => 'Attribute code => {requested, effective} for each field you supplied whose value iTop would not keep. '
+				.'Empty on a call where every supplied value survives. A non-empty entry means the write silently ignores what you asked for, usually because the attribute is derived from others - '
+				.'a ticket\'s priority is computed from its urgency and impact, so setting it directly does nothing. Change the attributes it derives from instead.',
+		];
+	}
+
+	/**
+	 * How every write names the object it acted on.
+	 *
+	 * 'id' always, plus the class's own key attribute when that is not simply
+	 * 'id'. Two of the classes a stock iTop declares use 'link_id'; the other
+	 * 173 use 'id', so spelling both unconditionally would write the same key
+	 * twice into one array literal for all but those two. The key attribute is
+	 * emitted exactly when it says something.
+	 *
+	 * Takes what iTop hands back rather than what the signature would prefer.
+	 * DBObject::DBInsert() returns the key it set in DBInsertSingleTable(),
+	 * which assigns it as `"$iNewKey"` - a string. Under strict_types a ?int
+	 * parameter rejects that with a TypeError, thrown *after* the row is
+	 * committed, which is how a create came to write a ticket and answer
+	 * "Error while executing tool". Every create path hands this method an id
+	 * straight out of the ORM, so the normalisation belongs here rather than in
+	 * a cast at each of them - a cast the next such tool would be written
+	 * without.
+	 *
+	 * @param int|string|null $mId The id as iTop reports it. Null before a creation has happened.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0 Accepts the id as a string too; previously ?int only, which iTop's own return value violated.
+	 */
+	public static function Identity(string $sClass, int|string|null $mId): array
+	{
+		$aIdentity = ['id' => ObjectId::Normalise($mId)];
+
+		try {
+			$sKeyField = MetaModel::DBGetKey($sClass);
+		} catch (Throwable $e) {
+			return $aIdentity;
+		}
+
+		if (is_string($sKeyField) && $sKeyField !== '' && $sKeyField !== 'id') {
+			$aIdentity[$sKeyField] = $aIdentity['id'];
+		}
+
+		return $aIdentity;
+	}
+
+	/**
+	 * The id of an object that reached the database, or null if it did not.
+	 *
+	 * For the failure path of a creation, where the question is not "what is
+	 * this object's id" but "is there a row". DBInsert() commits inside
+	 * DBInsertNoReload() and only then walks the loaded attributes calling
+	 * ReadExternalValues(), so a throw from the second half leaves a committed
+	 * row behind an exception - and the object carries its key from the moment
+	 * it does.
+	 *
+	 * Answering "failed" there is the worst thing a create can do: creating is
+	 * not idempotent, nothing in the protocol says a failed write may have
+	 * written, and the reasonable next move on an error is to try again. That
+	 * is a second object.
+	 *
+	 * Guarded, because it runs while an exception is already being reported:
+	 * an object left in a state where even reading its key throws must not
+	 * replace the failure being described with one from the describing.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function CommittedId(?DBObject $oObject): ?int
+	{
+		if ($oObject === null) {
+			return null;
+		}
+
+		try {
+			return ObjectId::Normalise($oObject->GetKey());
+		} catch (Throwable $e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Whether the row a deletion was asked for is gone, when the deletion
+	 * threw.
+	 *
+	 * {@see CommittedId()} asks this question for a creation. A deletion needs
+	 * it for the same structural reason and answers it the other way round:
+	 * DBDelete() removes the row and then runs what follows it - the objects
+	 * that pointed at it, the AfterDelete hooks, iTop's own cleanup for
+	 * classes that own something outside their table - and a throw from any of
+	 * that arrives with the row already gone.
+	 *
+	 * The direction the two fail in is deliberately opposite, because the
+	 * costly mistake is. A creation reported as failed is retried, and that is
+	 * a second object, so a committed row is reported as the success it is. A
+	 * deletion reported as succeeded when the row is still there tells an
+	 * operator that a thing they were removing on purpose - a leaked
+	 * credential, a record somebody staged - is gone when it is not, and a
+	 * retry of a deletion that did work costs nothing. So this answers true
+	 * only on positive evidence of absence: anything it cannot establish is
+	 * reported as the failure it was.
+	 *
+	 * @return bool True only when the object was looked for and is not there.
+	 * @since 1.0.0
+	 */
+	public static function IsGone(string $sClass, int $iId): bool
+	{
+		if (!class_exists('MetaModel')) {
+			return false;
+		}
+
+		try {
+			// Not must-be-found, and with all data allowed: a row this caller
+			// can no longer see is not a row that was deleted, and answering
+			// otherwise would turn a rights change into a deletion report.
+			return MetaModel::GetObject($sClass, $iId, false, true) === null;
+		} catch (Throwable $e) {
+			return false;
+		}
+	}
+
+	/**
+	 * The marker for what a write reports: the free text in `changes`, and
+	 * the friendly name `after` carries, which is built from it.
+	 *
+	 * @param array<string, mixed> $aChanges As {@see Changes()} reports them.
+	 *
+	 * @return array{untrusted_text?: array{fields: array<int, string>, note: string}}
+	 * @since 1.2.0
+	 */
+	public static function Untrusted(string $sClass, array $aChanges): array
+	{
+		$aMarked = UntrustedMarker::UntrustedText($sClass, $aChanges);
+		$aFields = array_map(static fn (string $s): string => 'changes.'.$s, $aMarked['fields'] ?? []);
+		$aFields[] = 'after.friendlyname';
+
+		return ['untrusted_text' => ['fields' => $aFields, 'note' => UntrustedMarker::UNTRUSTED_NOTICE]];
+	}
+
+	/**
+	 * The attributes this write would touch, and what they would become.
+	 *
+	 * ListChanges() reports the pending values - every attribute for an object
+	 * that does not exist yet, only the modified ones for one that does. They
+	 * are rendered the same way a read renders them, so a dry run and the
+	 * object it describes cannot disagree about what a value looks like.
+	 *
+	 * Rendered under the same read rights, too, which is not automatic: the
+	 * masking of sensitive attributes lives in ObjectSerializer::Value(), but
+	 * the read right is applied by Serialize(), and a write plan does not go
+	 * through Serialize(). Writing an attribute and reading it are separate
+	 * rights in iTop, so the set of attributes here is not a subset of what the
+	 * caller may see - and iTop fills in more of them than the caller named,
+	 * because DoComputeValues() and the lifecycle set attributes of their own
+	 * from data the caller may have no right to.
+	 *
+	 * An unreadable attribute is reported as changed, with its value masked,
+	 * rather than dropped: a dry run exists to be shown to someone before they
+	 * approve the write, and one that silently omits part of what the write
+	 * does is worse than one that says "this changes too, and you may not see
+	 * it".
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function Changes(DBObject $oObject, string $sClass): array
+	{
+		$aChanges = [];
+
+		// Built once per object, and only if some attribute answers DEPENDS -
+		// see ObjectSerializer::MayReadAttribute().
+		$oInstanceSet = null;
+
+		foreach (array_keys($oObject->ListChanges()) as $sAttCode) {
+			if (!is_string($sAttCode) || $sAttCode === 'finalclass') {
+				continue;
+			}
+			// iTop fills in attributes the caller never named; an excluded one is not reported (doc/adr/0012).
+			if (ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
+				continue;
+			}
+
+			try {
+				/** @psalm-suppress NoValue */
+				$aChanges[$sAttCode] = ObjectSerializer::MayReadAttribute($oObject, $sClass, $sAttCode, $oInstanceSet)
+					? ObjectSerializer::Value($oObject, $sClass, $sAttCode)
+					: ObjectSerializer::MASK;
+			} catch (Throwable $e) {
+				// Reporting a value is never worth failing the call it
+				// describes.
+				$aChanges[$sAttCode] = null;
+			}
+		}
+
+		return $aChanges;
+	}
+}

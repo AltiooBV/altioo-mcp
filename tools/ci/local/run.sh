@@ -20,6 +20,9 @@
 #   tools/ci/local/run.sh matrix 3.2 8.4        the same branch, on the ceiling
 #   tools/ci/local/run.sh integration           just the integration suite, against
 #                                               the instance matrix already installed
+#   MCP_UPDATE_SNAPSHOTS=1 tools/ci/local/run.sh integration
+#                                               the same, regenerating the committed tool
+#                                               surface into tests/.../Snapshots/
 #   tools/ci/local/run.sh shell 8.2             a prompt inside the runner
 #   tools/ci/local/run.sh down                  remove everything this created
 #
@@ -370,9 +373,20 @@ sTests="$sItopDir/env-production/$sModule/tests/php-unit-tests"
 rsync -a /src/tests/php-unit-tests/ "$sTests/"
 
 cd "$sItopDir/tests/php-unit-tests"
-php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --testdox "$sTests/Integration"
+# MCP_UPDATE_SNAPSHOTS=1 regenerates the committed tool surface
+# (tests/php-unit-tests/Integration/Snapshots/); the copy under test is not the
+# working tree, so the files are carried back below.
+MCP_UPDATE_SNAPSHOTS=${3:-} php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --testdox "$sTests/Integration"
 INNER
-	run_script "$sPhp" integration.sh "/work/itop-$sBranch-$sPhp" "$MODULE_CODE"
+	local iStatus=0
+	run_script "$sPhp" integration.sh "/work/itop-$sBranch-$sPhp" "$MODULE_CODE" "${MCP_UPDATE_SNAPSHOTS:-}" || iStatus=$?
+	if [ "${MCP_UPDATE_SNAPSHOTS:-}" = 1 ]; then
+		say "copying the regenerated surface snapshots into the working tree"
+		mkdir -p "$REPO/tests/php-unit-tests/Integration/Snapshots"
+		docker cp "$(runner_name "$sPhp"):/work/itop-$sBranch-$sPhp/env-production/$MODULE_CODE/tests/php-unit-tests/Integration/Snapshots/." \
+			"$REPO/tests/php-unit-tests/Integration/Snapshots/"
+	fi
+	return "$iStatus"
 }
 
 cmd_shell() {

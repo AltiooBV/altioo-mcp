@@ -8,10 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
-use Altioo\iTop\Extension\MCP\Helper\DocumentAccess;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
+use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
+use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -30,6 +31,7 @@ use Mcp\Schema\Enum\Role;
  * templates is thinner still. A model that cannot reach a document through one
  * door reaches it through the other, and both go through the same checks.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectDocument extends AbstractMCPResourceTemplate
@@ -97,12 +99,12 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is the same way into the change log core_object_get_document
 		// refuses - and the one that was missed when that refusal went in.
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ResourceReadException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ResourceReadException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {
-			$oDocument = DocumentAccess::Fetch($class, (int)$id, $att_code);
+			$oDocument = DocumentFetch::Fetch($class, (int)$id, $att_code);
 		} catch (MCPDocumentException $e) {
 			throw new ResourceReadException($e->getMessage());
 		}

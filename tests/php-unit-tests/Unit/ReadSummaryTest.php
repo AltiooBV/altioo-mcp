@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -29,12 +31,12 @@ class ReadSummaryTest extends TestCase
 {
 	protected function setUp(): void
 	{
-		ReadSummary::Forget();
+		RequestScope::Close();
 	}
 
 	protected function tearDown(): void
 	{
-		ReadSummary::Forget();
+		RequestScope::Close();
 	}
 
 	public function testNothingReadIsAnEmptyLine(): void
@@ -127,13 +129,13 @@ class ReadSummaryTest extends TestCase
 	{
 		$sRoot = dirname(__DIR__, 3).'/src/';
 		foreach ([
-			'Helper/ObjectSerializer.php',
+			'Service/Read/ObjectSerializer.php',
 			'Core/Tools/ObjectGetRelated.php',
-			'Helper/DocumentAccess.php',
-			'Helper/ObjectHistory.php',
-			'Service/PortalAccess.php',
+			'Service/Access/DocumentFetch.php',
+			'Service/Read/ObjectHistory.php',
+			'Service/Portal/PortalAccess.php',
 		] as $sFile) {
-			$this->assertStringContainsString('ReadSummary::Note(', (string)file_get_contents($sRoot.$sFile), $sFile.' returns objects and does not tell the audit row');
+			$this->assertTrue(SourceCalls::OfFile($sRoot.$sFile)->HasCall(ReadSummary::class.'::Note'), $sFile.' returns objects and does not tell the audit row');
 		}
 	}
 }

@@ -8,11 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Support;
 
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 
 /**
- * A pack's tool claiming to enforce the portal's rules, which no pack can do
- * yet: PortalPolicy is not on the surface a pack may build on.
+ * A pack's tool claiming to enforce the portal's rules without ever asking
+ * ObjectAccess::Current(): served in portal mode only if the operator lists it
+ * (ADR 0017), and reported by ElementContract.
  */
 class PortalAwarePackTool extends FixtureTool implements PortalAware
 {

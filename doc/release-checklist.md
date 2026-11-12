@@ -13,7 +13,7 @@ repeat these — *Every release* below is the recurring list.
       resolves anonymously, which is what closes it: the URL is the value of `more_info_url` in
       `extension.xml`, of `homepage` and `support.*` in `composer.json`, of
       `doc.manual_setup` / `doc.more_information` in the module declaration, of the link line at
-      the top of the README, and of `MCPHelper::SOURCE_URL`, which is the AGPL 13 source offer
+      the top of the README, and of `MCPModule::SOURCE_URL`, which is the AGPL 13 source offer
       served to callers. `ModuleMetadataTest` asserts those six agree; being public is what makes
       them resolve.
 - [x] **Enable private vulnerability reporting** — done 2026-09-20, in the same sitting as
@@ -76,7 +76,7 @@ time this repository tests what happens to an instance a client already has.
 
 ## Every release
 
-**Version.** The same `x.y.z` in `MCPHelper::VERSION`, `extension.xml` and
+**Version.** The same `x.y.z` in `MCPModule::VERSION`, `extension.xml` and
 `module.altioo-mcp.php` — `ModuleMetadataTest` fails if they drift — with a
 [CHANGELOG.md](../CHANGELOG.md) entry under a dated heading, not under `[Unreleased]`.
 
@@ -216,3 +216,38 @@ actually changed. It is the page an approver reads instead of the README, and th
 likely to have gone stale are the dependency licences, the footprint, and anything the release
 added to the HTTP surface. It links rather than restates, so in a quiet release there is
 usually nothing to do — confirm that rather than assume it.
+
+## The day 2.0.0 is tagged
+
+Everything in *Every release* applies. This adds the step that exists only once, and cannot be done
+earlier because the branches have nothing to carry before 2.0.0 exists
+([ADR 0018](adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md)).
+
+- [ ] **Create every `release/1.N` branch and push them** — the maintainer pushes. One per supported
+      minor, each from the latest tag of that minor, not from `main`:
+      `git branch release/1.0 v1.0.2`, `release/1.1 v1.1.2`, `release/1.2 v1.2.0`,
+      `release/1.3 v1.3.0`, then `git push origin release/1.0 release/1.1 release/1.2 release/1.3`.
+      Check `git tag -l 'v1.*'` first: if a later patch of a minor exists by then, use it. Confirm each
+      `git rev-parse release/1.N` equals `git rev-parse '<tag>^{commit}'`, so the branch's `.github/` is
+      the one that minor shipped. Protect them as `main` is: no direct pushes, signed commits.
+- [ ] **State where 1.x fixes are made** in [SECURITY.md](../SECURITY.md): one sentence under
+      *Supported versions*. Check it names `release/1.N`, beside the new 2.0.x row (D-8).
+
+## Releasing a 1.x patch
+
+A patch of a pre-2.0 minor, from that minor's `release/1.N` branch, not from `main`. One fix is one
+patch **per minor it applies to**, each released on its own with the checks above and these differences:
+
+1. **Version and changelog** are `1.N.x` in the three files and that branch's `CHANGELOG.md`;
+   `ModuleMetadataTest` and `release.yml` check them as they did at the minor's release. Dates are the
+   day of the tag. SECURITY.md's windows do not move: a patch does not restart a support period.
+2. **CI is that branch's own.** Run `tools/ci/local/run.sh unit` from that tree, read the iTop matrix
+   summary for the branches *its* `itop-support.json` names, and record them in the **Tested on** line
+   of the new entry. Do not borrow another branch's result, or 2.0's.
+3. **Tag `v1.N.x` on the `release/1.N` commit.** `release.yml` builds from the tag's own tree, so the
+   archive carries that tree's workflow, `exclude.txt` and `vendor/`.
+4. **Upgrade path.** Run the upgrade workflow from the previous tag of that minor, as for any patch.
+5. **Did `main` get the fix?** The last patch is not done until the fix is on `main`, or a test shows
+   it was never there, so 2.x does not ship the defect.
+6. **When a minor's window ends** (the date in SECURITY.md), archive its branch: no more tags, and
+   say so in that row.

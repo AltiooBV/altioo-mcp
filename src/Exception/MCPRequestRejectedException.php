@@ -22,6 +22,7 @@ use Exception;
  * The HTTP status travels on the exception rather than being inferred from the
  * message, and is carried as the exception code.
  *
+ * @internal
  * @since 1.0.0
  */
 class MCPRequestRejectedException extends Exception

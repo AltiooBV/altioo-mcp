@@ -7,13 +7,13 @@
 // iTop module definition file
 //
 
-// The version below, the one in extension.xml and MCPHelper::VERSION are the
+// The version below, the one in extension.xml and MCPModule::VERSION are the
 // same string. This file is read by the setup before the module's autoloader
 // exists, so it cannot reference the constant; ModuleMetadataTest fails if the
-// three ever drift apart. MCPHelper::VERSION documents the semver policy.
+// three ever drift apart. MCPModule::VERSION documents the semver policy.
 SetupWebPage::AddModule(
 	__FILE__, // Path to the current file, all other file names are relative to the directory containing this file
-	'altioo-mcp/1.3.0',
+	'altioo-mcp/2.0.0',
 	array(
 		// Identification
 		//
@@ -37,7 +37,7 @@ SetupWebPage::AddModule(
 			// always true - itop-structure is in every installation - so it
 			// never stops an install, but a module named in it that is being
 			// installed is set up first (doc/itop-branch-notes.md, section 4).
-			// The runtime half is MCPHelper::GetProtectedResourceMetadataUrl().
+			// The runtime half is OAuthResource::MetadataUrl().
 			// See doc/adr/0003.
 			'itop-structure/3.2.0 || altioo-oauth-server/0.1.0',
 		),

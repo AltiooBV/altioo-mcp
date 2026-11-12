@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Server\Session\StatelessSessionStore;
+use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Mcp\Server;
 use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
@@ -109,7 +109,7 @@ class ProtocolEraTest extends TestCase
 
 	public function testTheServiceDoesNotInstallThatMiddleware(): void
 	{
-		$sSource = file_get_contents(self::ROOT.'/src/Service/MCPService.php');
+		$sSource = file_get_contents(self::ROOT.'/src/Service/Server/MCPService.php');
 		$this->assertNotFalse($sSource, 'MCPService.php cannot be read');
 
 		$this->assertSame(
@@ -149,7 +149,7 @@ class ProtocolEraTest extends TestCase
 	 *
 	 * Mcp-Param-* is absent on purpose: the SDK validates those when they are
 	 * sent and does not require them, which is what lets the endpoint advertise
-	 * a fixed Access-Control-Allow-Headers list - see MCPController::corsHeaders().
+	 * a fixed Access-Control-Allow-Headers list - see MCPResponse::corsHeaders().
 	 *
 	 * @return array<string, string>
 	 */

@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use AltiooEventMCPService;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\MyActivity;
@@ -28,12 +29,12 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use AltiooEventMCPService;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -109,8 +110,8 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	private function exclude(mixed $aClasses, mixed $aAttributes): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, $aAttributes);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, $aAttributes);
 		ExclusionPolicy::Forget();
 	}
 
@@ -288,10 +289,10 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 			ObjectCreate::execute('Person', ['name' => 'N', 'first_name' => 'F'], false);
 			$this->fail('created');
 		} catch (ToolCallException $e) {
-			$this->assertStringContainsString(ExclusionPolicy::SETTING_ATTRIBUTES, $e->getMessage());
+			$this->assertStringContainsString(ExclusionSettings::SETTING_ATTRIBUTES, $e->getMessage());
 			$this->assertStringNotContainsString('org_id', $e->getMessage());
 		}
-		$this->assertStringContainsString(ExclusionPolicy::SETTING_ATTRIBUTES, (string)ExclusionPolicy::RefusalToCreate('Person'));
+		$this->assertStringContainsString(ExclusionSettings::SETTING_ATTRIBUTES, (string)ExclusionPolicy::RefusalToCreate('Person'));
 	}
 
 	// ------------------------------------------------------------------ the class
@@ -441,8 +442,8 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	{
 		$this->exclude($mClasses, $mAttributes);
 
-		$this->assertTrue(Settings::AccessSettingsAreMalformed());
-		$oPolicy = MCPService::AccessPolicyOfCurrentRequest();
+		$this->assertTrue(AccessPolicy::SettingsAreMalformed());
+		$oPolicy = ServedElements::AccessPolicyOfCurrentRequest();
 		foreach (['objects', 'datamodel', 'history', 'documents'] as $sToolset) {
 			$this->assertFalse($oPolicy->allowsToolset($sToolset), "{$sToolset} is served although the exclusions cannot be honoured");
 		}
@@ -452,8 +453,8 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 	{
 		$this->exclude(['Team'], ['Person' => ['phone']]);
 
-		$this->assertFalse(Settings::AccessSettingsAreMalformed());
-		$this->assertTrue(MCPService::AccessPolicyOfCurrentRequest()->allowsToolset('objects'));
+		$this->assertFalse(AccessPolicy::SettingsAreMalformed());
+		$this->assertTrue(ServedElements::AccessPolicyOfCurrentRequest()->allowsToolset('objects'));
 	}
 
 	// ------------------------------------------------------------------ what an account did
@@ -522,7 +523,7 @@ class ExclusionRoutesTest extends ItopDataTestCaseAlias
 		$oRow->DBInsertNoReload();
 
 		$this->exclude(['EventNotification'], []);
-		$this->assertFalse(Settings::AccessSettingsAreMalformed());
+		$this->assertFalse(AccessPolicy::SettingsAreMalformed());
 
 		UserRights::Login($sLogin);
 		try {

@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
-use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
@@ -19,6 +19,7 @@ use Mcp\Schema\Enum\Role;
  * Served in portal mode too: an identity is the caller's own, read from
  * their own user record, and asks the portal for nothing.
  *
+ * @internal
  * @since 1.0.0
  */
 class CurrentUser extends AbstractMCPResource implements PortalAware
@@ -60,7 +61,7 @@ class CurrentUser extends AbstractMCPResource implements PortalAware
 
 	/**
 	 * @return string The same envelope core_current_user returns: see
-	 *                {@see \Altioo\iTop\Extension\MCP\Helper\CurrentUserReader}
+	 *                {@see \Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader}
 	 *                for why the identity is exposed on both surfaces.
 	 */
 	public function read(): mixed

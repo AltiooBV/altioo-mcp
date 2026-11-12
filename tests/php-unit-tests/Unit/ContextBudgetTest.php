@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Server\ServerInstructions;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -153,19 +155,19 @@ class ContextBudgetTest extends TestCase
 	{
 		MCPRegistry::Clear();
 		CoreExtensions::RegisterServiceProvider();
-		PortalMode::Remember('itop-portal');
+		RequestScope::EnterPortal('itop-portal');
 		try {
 			$iDescriptions = 0;
 			$iSchemas = 0;
 			foreach (MCPRegistry::GetTools() as $oTool) {
-				if (!PortalMode::Serves($oTool)) {
+				if (!PortalAccess::Serves($oTool)) {
 					continue;
 				}
 				$iDescriptions += strlen((string)$oTool->getDescription());
 				$iSchemas += strlen((string)json_encode($oTool->getInputSchema()));
 			}
 		} finally {
-			PortalMode::Forget();
+			RequestScope::Close();
 			MCPRegistry::Clear();
 		}
 

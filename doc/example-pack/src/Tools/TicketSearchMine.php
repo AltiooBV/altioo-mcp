@@ -8,9 +8,11 @@ declare(strict_types=1);
 
 namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -26,8 +28,16 @@ use UserRights;
  * come with it, and they are the parts easy to get subtly wrong. What is left
  * to write is the one thing that makes this tool different from a generic
  * search - the query.
+ *
+ * It is also the worked example of a pack element served in portal mode
+ * (doc/extending.md, "Serving your element in portal mode"). Implementing
+ * PortalAware is the declaration; what backs it is that every read below goes
+ * through ObjectAccess::Current(), which is the portal's access in portal mode
+ * and the console's otherwise. AbstractObjectSearch does not do that for you:
+ * it asks UserRights, and "Portal user" is granted read on every class. The
+ * operator still has to list this tool in mcp_portal_extensions.
  */
-class TicketSearchMine extends AbstractObjectSearch
+class TicketSearchMine extends AbstractObjectSearch implements PortalAware
 {
 	public function getNamespace(): string
 	{
@@ -46,7 +56,7 @@ class TicketSearchMine extends AbstractObjectSearch
 
 	public function getDescription(): ?string
 	{
-		return 'List the tickets currently assigned to the authenticated user, most recently updated first. '
+		return 'List the open tickets assigned to or raised by the authenticated user, most recently updated first. '
 			.'Reach for this before asking the user which ticket they mean: it is usually the shortest path from "my ticket" to an id.';
 	}
 
@@ -108,12 +118,29 @@ class TicketSearchMine extends AbstractObjectSearch
 		}
 
 		// The whole reason this tool exists rather than a documented OQL
-		// string: the model does not have to know the attribute is agent_id,
-		// nor how to name the current user.
+		// string: the model does not have to know the attributes are agent_id
+		// and caller_id, nor how to name the current user. caller_id is there
+		// for the portal, where a user raises tickets and is never the agent.
 		$oSearch = DBObjectSearch::FromOQL(
-			'SELECT UserRequest WHERE agent_id = :current_contact_id AND operational_status != "closed"',
+			'SELECT UserRequest WHERE (agent_id = :current_contact_id OR caller_id = :current_contact_id) AND operational_status != "closed"',
 			['current_contact_id' => UserRights::GetContactId()]
 		);
+
+		// Portal mode: narrow the query to what the portal shows this user.
+		// null is "none of it". The console returns the query unchanged, as
+		// its ORM already applies the caller's rights. A refusal (portal mode
+		// entered by nothing) is reported as a tool error and serves nothing.
+		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
+		$oSearch = self::portalRefusal(static fn () => $oAccess->Bounded($oSearch));
+		if ($oSearch === null) {
+			return ToolOutput::Json([
+				'class'   => 'UserRequest',
+				'total'   => 0,
+				'limit'   => $limit,
+				'offset'  => $offset,
+				'objects' => [],
+			] + self::pagingFooter(0, $limit, $offset));
+		}
 
 		$aOrderBy = self::orderBy('UserRequest', $order_by, $order_direction);
 		$aFields = self::fieldsForPage('UserRequest', $output_fields, $limit);
@@ -126,7 +153,14 @@ class TicketSearchMine extends AbstractObjectSearch
 			if ($sFinalClass === null) {
 				continue;
 			}
-			$aResults[] = self::serializeObject($oTicket, $sFinalClass, $aFields);
+			if (self::portalRefusal(static fn () => $oAccess->Hides($sFinalClass, (int)$oTicket->GetKey()))) {
+				continue; // answered as a ticket that does not exist
+			}
+			// Only the attributes the portal's form shows; null is "every
+			// attribute the rights let through", which is the console.
+			$aVisible = self::portalRefusal(static fn () => $oAccess->VisibleFields($oTicket));
+			$aRowFields = $aVisible === null ? $aFields : array_values($aFields === null ? $aVisible : array_intersect($aFields, $aVisible));
+			$aResults[] = self::serializeObject($oTicket, $sFinalClass, $aRowFields);
 		}
 
 		$iTotal = $oSet->Count();

@@ -11,9 +11,12 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
+use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalLoader;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalTestBrick;
 use DBObjectSearch;
@@ -68,12 +71,12 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		$this->CreateUser($this->sLogin, self::profileId('Portal user'), 'Portal-Policy-'.$sSuffix.'-1!', $this->iContact);
 
 		UserRights::Login($this->sLogin);
-		PortalMode::Remember(self::PORTAL);
+		RequestScope::EnterPortal(self::PORTAL);
 	}
 
 	protected function tearDown(): void
 	{
-		PortalMode::Forget();
+		RequestScope::Close();
 
 		parent::tearDown();
 	}
@@ -196,7 +199,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	 */
 	public function testACustomBrickClassIsReadAsTheStockTypeItExtends(): void
 	{
-		$this->assertSame(PortalPolicy::BRICK_MANAGE, PortalPolicy::BrickKind(PortalTestBrick::class));
+		$this->assertSame(PortalBricks::BRICK_MANAGE, PortalBricks::BrickKind(PortalTestBrick::class));
 	}
 
 	/** Reading a portal takes that portal's lock, not one every portal shares. */
@@ -204,7 +207,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	{
 		PortalPolicy::ForCurrentRequest();
 
-		$this->assertFileExists(PortalPolicy::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
+		$this->assertFileExists(PortalLoader::CompileLockPath(rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/', self::PORTAL));
 	}
 
 	/** An id that is no file name is refused before anything is read or written under it. */
@@ -212,7 +215,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 	{
 		$sId = '../../altioo-mcp-escaped';
 		$sCompiled = rtrim(\utils::GetCachePath(), '/').'/altioo-mcp/portals/';
-		PortalMode::Remember($sId);
+		RequestScope::EnterPortal($sId);
 
 		try {
 			PortalPolicy::ForCurrentRequest();
@@ -220,7 +223,7 @@ class PortalPolicyTest extends ItopDataTestCaseAlias
 		} catch (MCPPortalException $oException) {
 			// A failure while reading the portal is wrapped, with its cause.
 			$this->assertNull($oException->getPrevious(), 'Refused by its shape, before anything tried to read it.');
-			$this->assertFileDoesNotExist(PortalPolicy::CompileLockPath($sCompiled, $sId));
+			$this->assertFileDoesNotExist(PortalLoader::CompileLockPath($sCompiled, $sId));
 			$this->assertFileDoesNotExist($sCompiled.$sId.'.scopes.php');
 		}
 	}

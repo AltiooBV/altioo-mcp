@@ -8,8 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -38,7 +39,7 @@ class SettingsFailSafeTest extends TestCase
 	 */
 	public function testABooleanIsTakenAsWritten(bool $bValue, bool $bSafe): void
 	{
-		$this->assertSame($bValue, Settings::SwitchFrom('a_setting', $bValue, $bSafe));
+		$this->assertSame($bValue, SettingParser::SwitchFrom('a_setting', $bValue, $bSafe));
 	}
 
 	/**
@@ -62,8 +63,8 @@ class SettingsFailSafeTest extends TestCase
 	 */
 	public function testAnythingElseIsReadAsTheSafeAnswer(mixed $mValue): void
 	{
-		$this->assertTrue(Settings::SwitchFrom('a_setting', $mValue, true));
-		$this->assertFalse(Settings::SwitchFrom('a_setting', $mValue, false));
+		$this->assertTrue(SettingParser::SwitchFrom('a_setting', $mValue, true));
+		$this->assertFalse(SettingParser::SwitchFrom('a_setting', $mValue, false));
 	}
 
 	/**

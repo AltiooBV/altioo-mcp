@@ -19,7 +19,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Support;
  * variable is the shape that lets an unvalidated value reach the query text
  * unexamined; concatenating a class constant - a bind parameter *name*, fixed
  * at compile time, as in `"...:".self::ID_PARAMETER`
- * (src/Helper/ObjectQuery.php) - is not that shape. So only a `.` adjacent to
+ * (src/Service/Read/ObjectQuery.php) - is not that shape. So only a `.` adjacent to
  * a variable counts.
  *
  * Scoped to the first argument only (up to the first top-level comma, or the
@@ -135,7 +135,7 @@ final class OQLConcatenationScanner
 	 * paren (end of the call) is examined.
 	 *
 	 * Not every such '.' is the signature risk: `"...:".self::ID_PARAMETER`
-	 * (src/Helper/ObjectQuery.php) concatenates a class constant - a bind
+	 * (src/Service/Read/ObjectQuery.php) concatenates a class constant - a bind
 	 * parameter *name*, fixed at compile time - onto the query text, which is
 	 * no more dynamic than the string literal beside it. What makes
 	 * concatenation dangerous is a variable landing in the query text

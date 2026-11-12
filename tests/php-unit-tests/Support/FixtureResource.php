@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Support;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 
 class FixtureResource extends AbstractMCPResource
 {

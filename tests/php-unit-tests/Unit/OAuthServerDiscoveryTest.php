@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -34,7 +35,7 @@ class OAuthServerDiscoveryTest extends TestCase
 
 	private function url(mixed $mConfigured, bool $bInstalled, string $sModulesRoot = self::MODULES_ROOT, ?string $sForCalledUrl = null): ?string
 	{
-		return (new ReflectionMethod(MCPHelper::class, 'protectedResourceMetadataUrl'))
+		return (new ReflectionMethod(OAuthResource::class, 'metadataUrlFor'))
 			->invoke(null, $mConfigured, $bInstalled, $sModulesRoot, $sForCalledUrl);
 	}
 
@@ -107,7 +108,8 @@ class OAuthServerDiscoveryTest extends TestCase
 			}
 		}
 
-		$sMetadata = $this->bodyOf(MCPHelper::class, 'GetProtectedResourceMetadataUrl');
+		// Read from tokens: a comment that describes the guard does not stand in for it.
+		$sMetadata = SourceCalls::OfClass(OAuthResource::class)->Code('MetadataUrl');
 		$this->assertStringContainsString('class_exists(self::OAUTH_RESOURCE_METADATA_CLASS)', $sMetadata);
 		$this->assertLessThan(
 			strpos($sMetadata, "call_user_func([self::OAUTH_RESOURCE_METADATA_CLASS"),
@@ -115,20 +117,12 @@ class OAuthServerDiscoveryTest extends TestCase
 			'the metadata API is called before asking whether it exists'
 		);
 
-		$sAudience = $this->bodyOf(\Altioo\iTop\Extension\MCP\Controller\MCPController::class, 'rejectATokenGrantedForAnotherUrl');
-		$this->assertMatchesRegularExpression(
-			'/^[^{]*\{\s*\$sAudienceClass = MCPHelper::OAUTH_TOKEN_AUDIENCE_CLASS;\s*if \(!class_exists\(\$sAudienceClass\)\) \{\s*return;\s*\}/',
+		$sAudience = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate::class)->Code('Check');
+		$this->assertStringStartsWith(
+			'$sAudienceClass=OAuthResource::TOKEN_AUDIENCE_CLASS;if(!class_exists($sAudienceClass)){returntrue;}',
 			$sAudience,
 			'the audience check does anything before asking whether the module is there'
 		);
-	}
-
-	private function bodyOf(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((string)$oMethod->getFileName());
-
-		return implode('', array_slice($aLines, $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
 	}
 
 	/**

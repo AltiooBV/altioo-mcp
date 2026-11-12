@@ -8,18 +8,18 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\CurrentUserReader;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Mcp\Schema\ToolAnnotations;
 
 /**
  * Who the caller is, as a tool.
  *
  * Same answer as itop://core/current-user, over the same code - see
- * {@see \Altioo\iTop\Extension\MCP\Helper\CurrentUserReader} for why the
+ * {@see \Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader} for why the
  * identity is exposed on both surfaces. Unlike the class list, the tool form
  * adds no narrowing: there is exactly one identity to report and nothing to
  * pass. What it adds is reachability, which for this particular fact is the
@@ -30,6 +30,7 @@ use Mcp\Schema\ToolAnnotations;
  * Served in portal mode too, where "who am I acting for" is as much the
  * question: the identity is the caller's own and asks the portal for nothing.
  *
+ * @internal
  * @since 1.0.0
  */
 class CurrentUser extends AbstractMCPTool implements PortalAware

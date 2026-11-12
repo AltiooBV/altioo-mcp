@@ -1,0 +1,22 @@
+{
+    "name": "altioo/altioo-mcp-evals",
+    "description": "Runs scenarios against a Claude model and this extension's MCP endpoint (doc/adr/0008). Not part of the module: tools/ stays out of the release archive.",
+    "type": "project",
+    "license": "AGPL-3.0-or-later",
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "anthropic-ai/sdk": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Altioo\\McpEvals\\": "src/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.2"
+        },
+        "sort-packages": true
+    }
+}

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
+use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -236,7 +237,7 @@ class MCPHttpTest extends TestCase
 	 */
 	public function testTheChallengeNamesTheSchemeAndTheRealm(): void
 	{
-		$sChallenge = MCPHttp::BearerChallenge(null);
+		$sChallenge = MCPResponse::BearerChallenge(null);
 
 		$this->assertStringStartsWith('Bearer ', $sChallenge);
 		$this->assertStringContainsString('realm=', $sChallenge);
@@ -249,7 +250,7 @@ class MCPHttpTest extends TestCase
 	 */
 	public function testAConfiguredMetadataDocumentIsAdvertised(): void
 	{
-		$sChallenge = MCPHttp::BearerChallenge('https://sso.example.com/.well-known/oauth-protected-resource');
+		$sChallenge = MCPResponse::BearerChallenge('https://sso.example.com/.well-known/oauth-protected-resource');
 
 		$this->assertStringContainsString(
 			'resource_metadata="https://sso.example.com/.well-known/oauth-protected-resource"',
@@ -264,7 +265,7 @@ class MCPHttpTest extends TestCase
 	 */
 	public function testARefusedTokenIsNamedInTheChallenge(): void
 	{
-		$sChallenge = MCPHttp::BearerChallenge('https://itop.example.com/.well-known/oauth-protected-resource', 'invalid_token');
+		$sChallenge = MCPResponse::BearerChallenge('https://itop.example.com/.well-known/oauth-protected-resource', 'invalid_token');
 
 		$this->assertStringContainsString(', error="invalid_token"', $sChallenge);
 		$this->assertStringContainsString('resource_metadata=', $sChallenge);
@@ -273,12 +274,12 @@ class MCPHttpTest extends TestCase
 	/** A request that presented nothing gets no error code (RFC 6750 section 3.1). */
 	public function testNoErrorIsNamedUnlessOneIsGiven(): void
 	{
-		$this->assertStringNotContainsString('error=', MCPHttp::BearerChallenge(null));
+		$this->assertStringNotContainsString('error=', MCPResponse::BearerChallenge(null));
 	}
 
 	public function testAnErrorThatIsNotACodeIsLeftOut(): void
 	{
-		$this->assertSame(MCPHttp::BearerChallenge(null), MCPHttp::BearerChallenge(null, "invalid_token\", x=\"y"));
+		$this->assertSame(MCPResponse::BearerChallenge(null), MCPResponse::BearerChallenge(null, "invalid_token\", x=\"y"));
 	}
 
 	/**
@@ -289,9 +290,9 @@ class MCPHttpTest extends TestCase
 	 */
 	public function testAnUnusableUrlIsLeftOutRatherThanEmitted(string $sUrl): void
 	{
-		$sChallenge = MCPHttp::BearerChallenge($sUrl);
+		$sChallenge = MCPResponse::BearerChallenge($sUrl);
 
-		$this->assertSame(MCPHttp::BearerChallenge(null), $sChallenge);
+		$this->assertSame(MCPResponse::BearerChallenge(null), $sChallenge);
 	}
 
 	/** @return array<string, array{0: string}> */
@@ -386,7 +387,7 @@ class MCPHttpTest extends TestCase
 	}
 
 	/**
-	 * An empty list is not "allow everything" - MCPHelper never produces one,
+	 * An empty list is not "allow everything" - Settings never produces one,
 	 * and if it ever did the safe reading is that nothing is served.
 	 */
 	public function testAnEmptyListServesNoHost(): void

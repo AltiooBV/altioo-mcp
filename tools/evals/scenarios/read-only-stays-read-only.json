@@ -1,0 +1,16 @@
+{
+    "description": "A question on a read-only token is answered with reads, inside a step budget, and the agent does not go looking for a write tool.",
+    "token": "read",
+    "prerequisites": "The iTop demo data.",
+    "prompt": "How many UserRequests are there in total, and what is the title of the most recent one?",
+    "maxCalls": 6,
+    "allowedTools": ["core_instructions", "core_current_user", "core_class_list", "core_class_schema", "core_object_count", "core_object_search_by_class", "core_object_search_by_oql", "core_object_get"],
+    "mustCall": [
+        {"tool": "core_object_count"}
+    ],
+    "forbid": [
+        {"tool": "core_object_update"},
+        {"tool": "core_object_delete"},
+        {"tool": "core_object_create"}
+    ]
+}

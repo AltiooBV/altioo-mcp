@@ -10,7 +10,13 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
-use Altioo\iTop\Extension\MCP\Helper\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
+use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
+use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -62,19 +68,19 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aSchema = (new ClassList())->getInputSchema();
 
-		$this->assertSame(DatamodelReader::MayValues(), $aSchema['properties']['may']['enum']);
+		$this->assertSame(GateGrades::MayValues(), $aSchema['properties']['may']['enum']);
 
 		// Every offered value is either a key of the block or the sentinel that
 		// asks for the block without narrowing. A ninth gate arriving in one
 		// list and not the other is what this catches.
 		$this->assertSame(
-			DatamodelReader::RightsKeys(),
-			array_values(array_diff(DatamodelReader::MayValues(), [DatamodelReader::RIGHTS_ALL])),
+			GateGrades::RightsKeys(),
+			array_values(array_diff(GateGrades::MayValues(), [GateGrades::RIGHTS_ALL])),
 			'may offers a value that is neither a gate a rights block reports nor the report-them-all sentinel'
 		);
 		$this->assertNotContains(
-			DatamodelReader::RIGHTS_ALL,
-			DatamodelReader::RightsKeys(),
+			GateGrades::RIGHTS_ALL,
+			GateGrades::RightsKeys(),
 			'the report-them-all sentinel has become a gate name, so FilterByRight() would look for it in a rights block'
 		);
 	}
@@ -96,12 +102,12 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertCount(
 			1,
-			DatamodelReader::FilterByRight($aClasses, 'create'),
+			ClassCatalog::FilterByRight($aClasses, 'create'),
 			'a named gate must still drop the classes it refuses'
 		);
 		$this->assertCount(
 			2,
-			DatamodelReader::FilterByRight($aClasses, DatamodelReader::RIGHTS_ALL),
+			ClassCatalog::FilterByRight($aClasses, GateGrades::RIGHTS_ALL),
 			'the sentinel must narrow on nothing: it reports what the caller may do, it does not decide it'
 		);
 	}
@@ -122,13 +128,12 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheSchemaSeparatesWhatCanBeSetFromWhatCannot(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+		$oDescribe = SourceCalls::OfClass(DatamodelReader::class);
 
-		$this->assertStringContainsString("'attributes'", $sBody);
-		$this->assertStringContainsString("'derived'", $sBody);
-		$this->assertStringContainsString(
-			"'readOnly'",
-			$sBody,
+		$this->assertTrue($oDescribe->HasString('attributes', 'Describe'));
+		$this->assertTrue($oDescribe->HasString('derived', 'Describe'));
+		$this->assertTrue(
+			$oDescribe->HasString('readOnly', 'Describe'),
 			'Describe() must split on the datamodel\'s own IsWritable() answer, carried as readOnly, rather than on a list of attribute class names that goes stale when iTop adds one'
 		);
 
@@ -136,7 +141,7 @@ class SchemaToolsContractTest extends TestCase
 		// between them or land in both.
 		$this->assertSame(
 			1,
-			substr_count($sBody, 'self::attributes('),
+			count(array_keys($oDescribe->Calls('Describe'), AttributeDescription::class.'::attributes', true)),
 			'the two blocks must be filtered from a single pass, or an attribute can be enumerated into neither'
 		);
 	}
@@ -148,31 +153,6 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertStringContainsString('derived', $sDescription);
 		$this->assertStringContainsString('_friendlyname', $sDescription);
-	}
-
-	/**
-	 * The body of a method, comments stripped, so that a doc comment describing
-	 * a split cannot stand in for the split.
-	 */
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
-		$sSource = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sSource) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 
 	/**
@@ -232,9 +212,8 @@ class SchemaToolsContractTest extends TestCase
 			'a default that narrows anything makes the unnarrowed call impossible to spell'
 		);
 
-		$this->assertStringContainsString(
-			"'reported'",
-			$this->methodBody(DatamodelReader::class, 'Describe'),
+		$this->assertTrue(
+			SourceCalls::OfClass(DatamodelReader::class)->HasString('reported', 'Describe'),
 			'the answer does not say what it left out'
 		);
 	}
@@ -253,20 +232,17 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheDateHintIsAdviceAndNotAConversion(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'ValueHint');
+		$sBody = SourceCalls::OfClass(AttributeDescription::class)->Code('ValueHint');
 
-		$this->assertStringContainsString('GetInternalFormat', $sBody, 'the format has to be read off the branch');
-		$this->assertStringContainsString('AttributeDateTime', $sBody, 'only a date attribute gets this hint');
-		$this->assertStringContainsString('return \'\';', $sBody, 'anything else has to answer with nothing');
+		// The call is on a late-bound `$oAttDef::`, which is not a call SourceCalls resolves, so the code is read.
+		$this->assertStringContainsString('GetInternalFormat(', $sBody, 'the format has to be read off the branch');
+		$this->assertStringContainsString('instanceofAttributeDateTime', $sBody, 'only a date attribute gets this hint');
+		$this->assertStringContainsString("return'';", $sBody, 'anything else has to answer with nothing');
 
-		// The create, the update and the stimulus convert through WritePlan.
-		foreach (['Helper\\WritePlan'] as $sTool) {
-			$sSource = (string) file_get_contents(
-				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool))->getFileName()
-			);
-			$this->assertStringContainsString(
-				'DatamodelReader::ValueHint',
-				$sSource,
+		// The create, the update and the stimulus convert through WriteValues.
+		foreach (['Service\\Write\\WriteValues'] as $sTool) {
+			$this->assertTrue(
+				SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool)->HasCall(AttributeDescription::class.'::ValueHint'),
 				"{$sTool} refuses a value without saying what would have worked"
 			);
 		}
@@ -284,10 +260,10 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testRequiredOnlyDropsTheBlockNothingCanSet(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+		$sBody = SourceCalls::OfClass(DatamodelReader::class)->Code('Describe');
 
 		$this->assertMatchesRegularExpression(
-			'/BLOCK_DERIVED.*&&\s*!\$bRequiredOnly/s',
+			'/BLOCK_DERIVED.*&&!\$bRequiredOnly/s',
 			$sBody,
 			'required_only still answers with attributes no write can supply'
 		);
@@ -320,11 +296,11 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAnAttributeDerivedFromOthersNamesThem(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'dependsOn');
+		$oDepends = SourceCalls::OfClass(AttributeDescription::class);
 
-		$this->assertStringContainsString('GetPrerequisiteAttributes', $sBody, 'the declaration is not read from the attribute');
-		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'a question about the datamodel must not cost the schema');
-		$this->assertStringNotContainsString('priority', $sBody, 'the answer is hardcoded for one datamodel');
+		$this->assertTrue($oDepends->HasCallTo('GetPrerequisiteAttributes', 'dependsOn'), 'the declaration is not read from the attribute');
+		$this->assertContains('Throwable', $oDepends->CatchTypes('dependsOn'), 'a question about the datamodel must not cost the schema');
+		$this->assertStringNotContainsString('priority', $oDepends->Code('dependsOn'), 'the answer is hardcoded for one datamodel');
 
 		$this->assertStringContainsString(
 			'dependsOn',
@@ -353,18 +329,17 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testACategoryIsListedOnceAndFindsSpacedDeclarations(): void
 	{
-		$sCategories = $this->methodBody(DatamodelReader::class, 'Categories');
+		$oCatalog = SourceCalls::OfClass(ClassCatalog::class);
 
-		$this->assertStringContainsString("array_map('trim'", $sCategories, 'a spaced key is listed as its own category');
-		$this->assertStringContainsString('array_unique', $sCategories, 'the same category can be listed twice');
+		$this->assertStringContainsString("array_map('trim'", $oCatalog->Code('Categories'), 'a spaced key is listed as its own category');
+		$this->assertTrue($oCatalog->HasCall('array_unique', 'Categories'), 'the same category can be listed twice');
 
-		$sLookup = $this->methodBody(DatamodelReader::class, 'classesInCategory');
-
-		$this->assertStringContainsString('HasCategory', $sLookup, 'the classes that declared it spaced stay unreachable');
-		$this->assertStringContainsString('str_contains', $sLookup, '"core" would drag in "core/cmdb"');
+		$this->assertTrue($oCatalog->HasCallTo('HasCategory', 'classesInCategory'), 'the classes that declared it spaced stay unreachable');
+		$this->assertTrue($oCatalog->HasCall('str_contains', 'classesInCategory'), '"core" would drag in "core/cmdb"');
+		$this->assertTrue($oCatalog->HasCall('MetaModel::GetClasses', 'classesInCategory'));
 		$this->assertStringContainsString(
 			'MetaModel::GetClasses($sCategory)',
-			$sLookup,
+			$oCatalog->Code('classesInCategory'),
 			'the exact lookup is no longer the basis of the answer'
 		);
 	}
@@ -416,17 +391,17 @@ class SchemaToolsContractTest extends TestCase
 		];
 
 		// The class name says nothing about tickets; the description does.
-		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'ticket')));
-		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByText($aClasses, 'Serv')));
-		$this->assertSame(['UserRequest'], $this->names(DatamodelReader::FilterByText($aClasses, 'User Req')));
+		$this->assertSame(['UserRequest'], $this->names(ClassCatalog::FilterByText($aClasses, 'ticket')));
+		$this->assertSame(['Server'], $this->names(ClassCatalog::FilterByText($aClasses, 'Serv')));
+		$this->assertSame(['UserRequest'], $this->names(ClassCatalog::FilterByText($aClasses, 'User Req')));
 	}
 
 	public function testFilterIsCaseInsensitive(): void
 	{
 		$aClasses = [['class' => 'UserRequest', 'label' => 'User Request', 'description' => '']];
 
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'USERREQUEST'));
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'userrequest'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'USERREQUEST'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'userrequest'));
 	}
 
 	/**
@@ -436,7 +411,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server', 'label' => 'Server', 'description' => '']];
 
-		$this->assertSame($aClasses, DatamodelReader::FilterByText($aClasses, ''));
+		$this->assertSame($aClasses, ClassCatalog::FilterByText($aClasses, ''));
 	}
 
 	/**
@@ -450,7 +425,7 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'label' => 'Server', 'description' => ''],
 		];
 
-		$aFiltered = DatamodelReader::FilterByText($aClasses, 'Server');
+		$aFiltered = ClassCatalog::FilterByText($aClasses, 'Server');
 
 		$this->assertSame([0], array_keys($aFiltered));
 		$this->assertStringStartsWith('[', json_encode($aFiltered));
@@ -474,7 +449,7 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertSame(
 			['UserRequest', 'Contact'],
-			$this->names(DatamodelReader::FilterByRight($aClasses, 'create'))
+			$this->names(ClassCatalog::FilterByRight($aClasses, 'create'))
 		);
 	}
 
@@ -488,8 +463,8 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'rights' => ['create' => 'yes', 'delete' => 'no']],
 		];
 
-		$this->assertSame(['Server'], $this->names(DatamodelReader::FilterByRight($aClasses, 'create')));
-		$this->assertSame([], $this->names(DatamodelReader::FilterByRight($aClasses, 'delete')));
+		$this->assertSame(['Server'], $this->names(ClassCatalog::FilterByRight($aClasses, 'create')));
+		$this->assertSame([], $this->names(ClassCatalog::FilterByRight($aClasses, 'delete')));
 	}
 
 	/**
@@ -500,7 +475,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server', 'rights' => ['create' => 'no']]];
 
-		$this->assertSame($aClasses, DatamodelReader::FilterByRight($aClasses, ''));
+		$this->assertSame($aClasses, ClassCatalog::FilterByRight($aClasses, ''));
 	}
 
 	/**
@@ -511,7 +486,7 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server']];
 
-		$this->assertCount(1, DatamodelReader::FilterByRight($aClasses, 'create'));
+		$this->assertCount(1, ClassCatalog::FilterByRight($aClasses, 'create'));
 	}
 
 	/**
@@ -525,7 +500,7 @@ class SchemaToolsContractTest extends TestCase
 			['class' => 'Server', 'rights' => ['create' => 'yes']],
 		];
 
-		$aFiltered = DatamodelReader::FilterByRight($aClasses, 'create');
+		$aFiltered = ClassCatalog::FilterByRight($aClasses, 'create');
 
 		$this->assertSame([0], array_keys($aFiltered));
 		$this->assertStringStartsWith('[', json_encode($aFiltered));
@@ -542,18 +517,13 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheGateListMatchesTheBlockItDescribes(): void
 	{
-		$oMethod = new ReflectionMethod(DatamodelReader::class, 'RightsOf');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
+		// Code() has no comment in it, so a key named only in one is not a key.
+		$sBody = SourceCalls::OfClass(ClassRights::class)->Code('RightsOf');
 
-		preg_match_all("/'([A-Za-z]+)'\\s*=>/", $sBody, $aMatches);
+		preg_match_all("/'([A-Za-z]+)'=>/", $sBody, $aMatches);
 
 		$this->assertSame(
-			DatamodelReader::RightsKeys(),
+			GateGrades::RightsKeys(),
 			$aMatches[1],
 			'RightsKeys() and the block rights() returns have come apart'
 		);
@@ -563,8 +533,8 @@ class SchemaToolsContractTest extends TestCase
 	{
 		$aClasses = [['class' => 'Server']];
 
-		$this->assertCount(1, DatamodelReader::FilterByText($aClasses, 'Server'));
-		$this->assertCount(0, DatamodelReader::FilterByText($aClasses, 'ticket'));
+		$this->assertCount(1, ClassCatalog::FilterByText($aClasses, 'Server'));
+		$this->assertCount(0, ClassCatalog::FilterByText($aClasses, 'ticket'));
 	}
 
 	/**
@@ -575,16 +545,16 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testPatternsForTheFormatsITopActuallyUses(): void
 	{
-		$this->assertSame('^\d{4}-\d{2}-\d{2}$', DatamodelReader::PatternFromDateFormat('Y-m-d'));
+		$this->assertSame('^\d{4}-\d{2}-\d{2}$', AttributeFormat::PatternFromDateFormat('Y-m-d'));
 		$this->assertSame(
 			'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$',
-			DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s')
+			AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s')
 		);
 	}
 
 	public function testThePatternAcceptsITopsValuesAndRejectsRfc3339(): void
 	{
-		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+		$sPattern = AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s');
 
 		$this->assertSame(1, preg_match('/'.$sPattern.'/', '2026-09-18 07:53:01'));
 		// The very string a model told "date-time" would send, and the one
@@ -600,7 +570,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testSeparatorsAreLeftUnescaped(): void
 	{
-		$sPattern = DatamodelReader::PatternFromDateFormat('Y-m-d H:i:s');
+		$sPattern = AttributeFormat::PatternFromDateFormat('Y-m-d H:i:s');
 
 		$this->assertStringNotContainsString('\-', $sPattern);
 		$this->assertStringNotContainsString('\:', $sPattern);
@@ -608,7 +578,7 @@ class SchemaToolsContractTest extends TestCase
 
 	public function testRegexSyntaxCharactersInAFormatAreEscaped(): void
 	{
-		$this->assertSame('^\d{4}\.\d{2}$', DatamodelReader::PatternFromDateFormat('Y.m'));
+		$this->assertSame('^\d{4}\.\d{2}$', AttributeFormat::PatternFromDateFormat('Y.m'));
 	}
 
 	/**
@@ -617,9 +587,9 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAnUntranslatableFormatYieldsNoPattern(): void
 	{
-		$this->assertNull(DatamodelReader::PatternFromDateFormat('D, d M Y'), 'D and M are not numeric tokens');
-		$this->assertNull(DatamodelReader::PatternFromDateFormat('\\Y-m-d'), 'a backslash escape is not translated');
-		$this->assertNull(DatamodelReader::PatternFromDateFormat(''));
+		$this->assertNull(AttributeFormat::PatternFromDateFormat('D, d M Y'), 'D and M are not numeric tokens');
+		$this->assertNull(AttributeFormat::PatternFromDateFormat('\\Y-m-d'), 'a backslash escape is not translated');
+		$this->assertNull(AttributeFormat::PatternFromDateFormat(''));
 	}
 
 	/**
@@ -638,7 +608,7 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAllowedValuesKeepTheirCodesThroughTheEncoding(): void
 	{
-		$oCodeKeyed = new ReflectionMethod(DatamodelReader::class, 'codeKeyed');
+		$oCodeKeyed = new ReflectionMethod(AttributeDescription::class, 'codeKeyed');
 
 		$this->assertSame(
 			'{"0":"no","1":"yes"}',

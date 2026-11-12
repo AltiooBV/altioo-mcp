@@ -8,10 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractObjectSearch;
+use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -48,7 +50,7 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testAnOrderByInTheQueryIsToldWhereToPutIt(): void
 	{
-		$oHint = new \ReflectionMethod(ObjectSearchByOQL::class, 'orderByHint');
+		$oHint = new \ReflectionMethod(ObjectQuery::class, 'orderByHint');
 
 		$sHint = (string) $oHint->invoke(null, 'SELECT UserRequest ORDER BY start_date DESC');
 		$this->assertStringContainsString('order_by', $sHint);
@@ -77,16 +79,14 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testAnInvalidFilterValueIsRefusedWithTheValidOnes(): void
 	{
-		$sFile = (string) file_get_contents(
-			(new \ReflectionClass(ObjectSearchByClass::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(ObjectSearchByClass::class);
 
-		$this->assertStringContainsString('refusalForValue', $sFile, 'the filter loop never checks the value');
-		$this->assertStringContainsString('array_keys($aValues)', $sFile, 'the refusal does not name the valid codes');
-		$this->assertStringContainsString('IsExternalKey', $sFile, 'an external key would enumerate its whole target table');
-		$this->assertStringContainsString(
-			'MAX_ALLOWED_VALUES',
-			$sFile,
+		$this->assertTrue($oSource->HasCallTo('refusalForValue'), 'the filter loop never checks the value');
+		$this->assertStringContainsString('array_keys($aValues)', $oSource->Code(), 'the refusal does not name the valid codes');
+		$this->assertTrue($oSource->HasCallTo('IsExternalKey'), 'an external key would enumerate its whole target table');
+		$this->assertNotSame(
+			[],
+			array_filter($oSource->Constants(), static fn (string $sConstant): bool => str_ends_with($sConstant, 'MAX_ALLOWED_VALUES')),
 			'an unbounded enumeration is not one a refusal can list'
 		);
 	}
@@ -130,15 +130,13 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testAskingForOnlyArchivedOnAClassWithNoneIsRefused(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(AbstractObjectSearch::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(AbstractObjectSearch::class);
 
-		$this->assertStringContainsString('has no archived state', $sBody, 'the impossible ask is answered rather than refused');
-		$this->assertStringContainsString('SetArchiveMode', $sBody, 'the choice never reaches the search');
+		$this->assertNotSame([], array_filter($oSource->Strings(), static fn (string $s): bool => str_contains($s, 'has no archived state')), 'the impossible ask is answered rather than refused');
+		$this->assertTrue($oSource->HasCallTo('SetArchiveMode'), 'the choice never reaches the search');
 		$this->assertStringContainsString(
-			"AddCondition(self::ARCHIVE_FLAG, 1, '=')",
-			$sBody,
+			"AddCondition(self::ARCHIVE_FLAG,1,'=')",
+			$oSource->Code(),
 			'"only" widens the search without narrowing it back to the archived ones'
 		);
 	}
@@ -160,22 +158,20 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testTheSearchesHonourTheUsersObsoleteDataPreference(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(AbstractObjectSearch::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(AbstractObjectSearch::class);
 
+		$this->assertTrue($oSource->HasCallTo('SetShowObsoleteData'), 'the set searches decide for themselves what the user already decided');
 		$this->assertStringContainsString(
 			'SetShowObsoleteData(utils::ShowObsoleteData())',
-			$sBody,
+			$oSource->Code(),
 			'the set searches decide for themselves what the user already decided'
 		);
 
-		$sFindByName = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName::class))->getFileName()
-		);
+		$oFindByName = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectFindByName::class);
+		$this->assertTrue($oFindByName->HasCallTo('SetShowObsoleteData'));
 		$this->assertStringContainsString(
 			'SetShowObsoleteData(utils::ShowObsoleteData())',
-			$sFindByName,
+			$oFindByName->Code(),
 			'the three set-returning tools no longer answer the same question three ways'
 		);
 	}
@@ -198,14 +194,27 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testAnUnknownClassIsAnsweredWithASuggestion(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(ObjectSearchByOQL::class))->getFileName()
-		);
+		$oSource = SourceCalls::OfClass(ObjectQuery::class);
+		$sBody = $oSource->Code();
 
-		$this->assertStringContainsString('GetUserFriendlyDescription', $sBody, 'the suggestion iTop already computes is discarded');
-		$this->assertStringContainsString('new \\OqlInterpreter', $sBody, 'the exception is still being thrown away by CheckOQL()');
+		$this->assertTrue($oSource->HasCallTo('GetUserFriendlyDescription'), 'the suggestion iTop already computes is discarded');
+		$this->assertStringContainsString('new\\OqlInterpreter', $sBody, 'the exception is still being thrown away by CheckOQL()');
 		$this->assertStringNotContainsString('CheckOQL($oql', $sBody, 'the message with the full class list is back');
-		$this->assertStringContainsString('catch (\\OQLException', $sBody, 'a parse failure is no longer told apart from a broken datamodel');
+		$this->assertContains('OQLException', $oSource->CatchTypes(), 'a parse failure is no longer told apart from a broken datamodel');
+	}
+
+	/**
+	 * ADR 0014 with ADR 0015: the OQL check moved to Service\Read\ObjectQuery,
+	 * and the tools that take a query still call it in their own source.
+	 */
+	public function testTheToolsThatTakeAQueryCallTheCheckVisibly(): void
+	{
+		foreach (['ObjectSearchByOQL', 'ObjectCount'] as $sTool) {
+			$this->assertTrue(
+				SourceCalls::OfFile(dirname(__DIR__, 3).'/src/Core/Tools/'.$sTool.'.php')->HasCall(ObjectQuery::class.'::CheckQuery'),
+				"{$sTool} takes an OQL query and no longer checks it"
+			);
+		}
 	}
 
 	/**
@@ -221,7 +230,7 @@ class SearchPagingContractTest extends TestCase
 	 */
 	public function testARefusalDoesNotEndInASuggestionOfNothing(): void
 	{
-		$oDrop = new \ReflectionMethod(ObjectSearchByOQL::class, 'withoutEmptySuggestion');
+		$oDrop = new \ReflectionMethod(ObjectQuery::class, 'withoutEmptySuggestion');
 
 		$this->assertSame(
 			"Syntax error - found 'FROM' at 20, expecting {WHERE}",

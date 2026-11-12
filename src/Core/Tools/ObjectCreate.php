@@ -8,18 +8,24 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -32,6 +38,7 @@ use UserRights;
  * Use the itop://core/class/{classname} resource to discover mandatory attributes
  * and their types before calling this tool.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectCreate extends AbstractMCPTool implements PortalAware
@@ -80,23 +87,23 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	{
 		// In portal mode the answer also names the create action that ran.
 		if (PortalMode::Current() !== null) {
-			return WritePlan::OutcomeSchema([
+			return WriteOutcome::OutcomeSchema([
 				'action'     => [
 					'type'        => 'string',
 					'description' => 'The create action used.',
 				],
-				'after'      => WritePlan::AfterSchemaProperty(),
-				'changes'    => WritePlan::ChangesSchemaProperty('Every attribute the new object is given, the ones the portal\'s rules preset included.'),
-				'overridden' => WritePlan::OverriddenSchemaProperty(),
-				'defaulted'  => WritePlan::DefaultedSchemaProperty(),
+				'after'      => WriteOutcome::AfterSchemaProperty(),
+				'changes'    => WriteOutcome::ChangesSchemaProperty('Every attribute the new object is given, the ones the portal\'s rules preset included.'),
+				'overridden' => WriteOutcome::OverriddenSchemaProperty(),
+				'defaulted'  => WriteOutcome::DefaultedSchemaProperty(),
 			]);
 		}
 
-		return WritePlan::OutcomeSchema([
-			'after' => WritePlan::AfterSchemaProperty(),
-			'changes'    => WritePlan::ChangesSchemaProperty('Every attribute of the object being created.'),
-			'overridden' => WritePlan::OverriddenSchemaProperty(),
-			'defaulted'  => WritePlan::DefaultedSchemaProperty(),
+		return WriteOutcome::OutcomeSchema([
+			'after' => WriteOutcome::AfterSchemaProperty(),
+			'changes'    => WriteOutcome::ChangesSchemaProperty('Every attribute of the object being created.'),
+			'overridden' => WriteOutcome::OverriddenSchemaProperty(),
+			'defaulted'  => WriteOutcome::DefaultedSchemaProperty(),
 		]);
 	}
 
@@ -119,11 +126,11 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 						'default'     => 0,
 					],
 					'fields'   => [
-						'type'                 => MCPHelper::MAP_TYPE,
+						'type'                 => JsonPayload::MAP_TYPE,
 						'description'          => 'Attribute code => value for the settable fields of the portal\'s create form for the class.',
 						'additionalProperties' => true,
 					],
-					'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+					'simulate' => DryRun::SimulateSchemaProperty('create the object'),
 					'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
 				],
 				'required'   => ['action', 'fields'],
@@ -138,11 +145,11 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 					'description' => 'iTop class name (e.g. UserRequest, Server). Call core_class_list to find the class name.',
 				],
 				'fields' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Key/value pairs to set. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
-				'simulate' => WritePlan::SimulateSchemaProperty('create the object'),
+				'simulate' => DryRun::SimulateSchemaProperty('create the object'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the object is being created'),
 			],
 			'required' => ['class'],
@@ -162,7 +169,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	public static function execute(
 		string  $class = '',
 		array   $fields = [],
-		bool    $simulate = WritePlan::SIMULATE_BY_DEFAULT,
+		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
 		string  $action = '',
 		int     $from_id = 0,
@@ -171,7 +178,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		// In portal mode the portal's create action decides the class and
 		// presets the object; on the console the class named does
@@ -184,11 +191,11 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		$aAction = $oPrepared === null ? [] : ['action' => trim($action)];
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
-		if (ObjectHistory::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $class));
+		if (ChangeLogReservation::IsReserved($class)) {
+			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		// A field iTop requires is excluded: no create could pass, and the setting is said to be why.
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
@@ -200,7 +207,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
@@ -226,7 +233,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// Validate fields before applying any changes. Every rule a value has
 		// to pass is in one place, shared with the update, the stimulus and
 		// the portal; no instance set, since nothing exists yet.
-		[$aValidatedValues, $aIssues] = WritePlan::ValidatedValues($oObject, $class, $fields, null);
+		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, null);
 		if (!empty($aIssues)) {
 			throw new ToolCallException("Failed to create due to fields : ".implode(', ', $aIssues));
 		}
@@ -236,7 +243,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			try {
 				$oObject->Set($sAttCode, $realValue);
 			} catch (\Throwable $e) {
-				$aIssues[$sAttCode] = MCPHelper::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
+				$aIssues[$sAttCode] = ErrorReport::RejectedValue("Failed to set attribute '{$sAttCode}'", $e);
 			}
 		}
 		if (!empty($aIssues)) {
@@ -259,7 +266,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// iTop's own pre-write check: mandatory attributes, DoCheckToWrite() on
 		// the class and on every extension hooked into it. Without it the
 		// first thing that fails is DBInsert(), from inside the ORM.
-		WritePlan::Check($oObject, "A {$class}");
+		DryRun::Check($oObject, "A {$class}");
 
 		// What the check threw away. On a creation every attribute is in
 		// `changes`, so an overridden one is reported there too - with the
@@ -268,7 +275,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		$aOverridden = WritePlan::Overridden($oObject, $class, $aRequested);
 		WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "A {$class}");
 
-		$aChanges = WritePlan::Changes($oObject, $class);
+		$aChanges = WriteOutcome::Changes($oObject, $class);
 
 		// The portal shows what its view form shows; a write that fills in
 		// more reports no more than a read would (doc/adr/0005).
@@ -278,38 +285,45 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			// id is null rather than absent: a dry run has created nothing, and
 			// saying so is not the same as answering with a different shape.
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, null)
+				+ WriteOutcome::Identity($class, null)
 				+ $aAction
 				+ self::credentialNote($class)
 				+ [
 					'simulated'  => true,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]);
 		}
 
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
+
 		ChangeTracking::Explain($comment);
 
 		try {
 			$iId = $oObject->DBInsert();
 
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $iId)
+				+ WriteOutcome::Identity($class, $iId)
 				+ $aAction
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				]
 				+ self::credentialNote($class));
 		} catch (\Throwable $e) {
@@ -325,27 +339,27 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			// the reasonable next move on an error is to try again. That is a
 			// second ticket. So a committed id is reported as the success it
 			// is, with the failure attached rather than substituted for it.
-			$iCommittedId = WritePlan::CommittedId($oObject);
+			$iCommittedId = WriteOutcome::CommittedId($oObject);
 			if ($iCommittedId === null) {
-				// WritePlan::Check() ran first and refused everything the
+				// DryRun::Check() ran first and refused everything the
 				// caller could have corrected, so what reaches here is the
 				// instance's problem, described in the instance's vocabulary.
-				// MCPHelper explains the split.
-				throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to create the object', $e));
+				// ErrorReport explains the split.
+				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to create the object', $e));
 			}
 
 			return ToolOutput::Structured(['class' => $class]
-				+ WritePlan::Identity($class, $iCommittedId)
+				+ WriteOutcome::Identity($class, $iCommittedId)
 				+ $aAction
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WritePlan::After($oObject, $class, array_keys($aValidatedValues), $simulate),
-					'changes'    => WritePlan::Map($aChanges),
-					'untrusted_text' => WritePlan::Untrusted($class, $aChanges)['untrusted_text'],
-					'overridden' => WritePlan::Map($aOverridden),
-					'defaulted'  => WritePlan::Defaulted($aChanges, array_keys($aValidatedValues)),
-					'warning'    => MCPHelper::OpaqueFailure(
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'changes'    => WriteOutcome::Map($aChanges),
+					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+					'overridden' => WriteOutcome::Map($aOverridden),
+					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
+					'warning'    => ErrorReport::OpaqueFailure(
 						"The {$class} was created and has id {$iCommittedId}, but the call failed after the write",
 						$e
 					),
@@ -363,7 +377,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	 */
 	private static function credentialNote(string $sClass): array
 	{
-		$sNote = WritePlan::CredentialNote($sClass);
+		$sNote = WriteOutcome::CredentialNote($sClass);
 
 		return $sNote === null ? [] : ['note' => $sNote];
 	}

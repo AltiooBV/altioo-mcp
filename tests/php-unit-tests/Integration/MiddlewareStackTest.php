@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Http\Discovery\Psr17Factory;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
@@ -51,7 +51,7 @@ class MiddlewareStackTest extends ItopDataTestCaseAlias
 		parent::setUp();
 
 		foreach ([Settings::MODULE_SETTING_ALLOWED_HOSTS, Settings::MODULE_SETTING_ALLOWED_ORIGINS] as $sSetting) {
-			$this->aSaved[$sSetting] = utils::GetConfig()->GetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, null);
+			$this->aSaved[$sSetting] = utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, $sSetting, null);
 		}
 
 		$this->configure([self::HOST], ['https://client.example.org']);
@@ -60,7 +60,7 @@ class MiddlewareStackTest extends ItopDataTestCaseAlias
 	protected function tearDown(): void
 	{
 		foreach ($this->aSaved as $sSetting => $mValue) {
-			utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, $sSetting, $mValue);
+			utils::GetConfig()->SetModuleSetting(MCPModule::MODULE_NAME, $sSetting, $mValue);
 		}
 
 		parent::tearDown();
@@ -116,8 +116,8 @@ class MiddlewareStackTest extends ItopDataTestCaseAlias
 	 */
 	private function configure(array $aHosts, array $aOrigins): void
 	{
-		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_HOSTS, $aHosts);
-		utils::GetConfig()->SetModuleSetting(MCPHelper::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_ORIGINS, $aOrigins);
+		utils::GetConfig()->SetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_HOSTS, $aHosts);
+		utils::GetConfig()->SetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_ALLOWED_ORIGINS, $aOrigins);
 	}
 
 	/**

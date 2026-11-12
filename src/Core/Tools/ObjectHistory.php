@@ -8,15 +8,16 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory as HistoryReader;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\ObjectAccess;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\PortalMode;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSearch;
@@ -46,6 +47,7 @@ use UserRights;
  * the rows those its change-log scope holds, and the attributes those the
  * object's view form shows. Nothing a console read refuses is served.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectHistory extends AbstractMCPTool implements PortalAware
@@ -155,7 +157,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class));
+			throw new ToolCallException(ClassRefusal::Unreadable($class));
 		}
 
 		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
@@ -165,7 +167,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException('The portal shows no history. Call core_class_list for what it offers.');
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(MCPHelper::UnreadableClassRefusal($class)); // exists, but not for this account to read
+			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		// The object gate before the log is read, so that a history request
@@ -179,7 +181,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
 		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
-			throw new ToolCallException(ObjectSerializer::UnknownAttributes([$sAttCode], $sFinalClass));
+			throw new ToolCallException(OutputFields::UnknownAttributes([$sAttCode], $sFinalClass));
 		}
 
 		$aHistory = HistoryReader::Within(
@@ -194,7 +196,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// Before and after values and case-log entries are what other people
 		// wrote, and a planted instruction later edited out stays readable here.
 		if ($aHistory['entries'] !== []) {
-			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => ObjectSerializer::UNTRUSTED_NOTICE];
+			$aHistory['untrusted_text'] = ['fields' => ['entries'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
 		}
 
 		return ToolOutput::Json($aHistory);

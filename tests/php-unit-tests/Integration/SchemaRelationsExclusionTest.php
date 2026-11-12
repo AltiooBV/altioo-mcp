@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;
 
@@ -47,9 +49,9 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 	private function exclude(array $aClasses): void
 	{
 		$oConfig = MetaModel::GetConfig();
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_CLASSES, $aClasses);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_ATTRIBUTES, []);
-		$oConfig->SetModuleSetting(MCPHelper::MODULE_NAME, ExclusionPolicy::SETTING_EXEMPT_PROFILES, []);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, []);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_EXEMPT_PROFILES, []);
 		ExclusionPolicy::Forget();
 	}
 
@@ -101,7 +103,7 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 			'FunctionalCI_contact' => ['sQueryDown' => 'SELECT Contact AS o WHERE o.id = :this->id', 'sDefinedInClass' => 'FunctionalCI'],
 		];
 
-		$aKept = ExclusionPolicy::FilterRelationQueries($aQueries, true);
+		$aKept = ExclusionSearches::FilterRelationQueries($aQueries, true);
 
 		$this->assertArrayNotHasKey('Server_hypervisor', $aKept, 'a query that selects an excluded class is listed: '.$sQuery);
 		$this->assertArrayHasKey('FunctionalCI_contact', $aKept, 'a query that selects another class was dropped');
@@ -129,7 +131,7 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		];
 
 		$this->exclude(['Contact']);
-		$this->assertSame([], ExclusionPolicy::FilterRelationQueries($aQueries, true));
+		$this->assertSame([], ExclusionSearches::FilterRelationQueries($aQueries, true));
 	}
 
 	public function testTheClassResourceAnswersAsTheToolDoes(): void

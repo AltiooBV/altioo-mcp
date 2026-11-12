@@ -8,10 +8,11 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core;
 
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class CoreExtensions implements iMCPServiceProvider

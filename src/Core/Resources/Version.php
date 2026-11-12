@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
+use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Helper\ResourceOutput;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 use utils;
@@ -19,6 +19,7 @@ use MetaModel;
 use RunTimeEnvironment;
 
 /**
+ * @internal
  * @since 1.0.0
  */
 class Version extends AbstractMCPResource
@@ -79,9 +80,9 @@ class Version extends AbstractMCPResource
 			'buildDate' => ITOP_BUILD_DATE,
 			'edition' => $this->getiTopEdition(),
 			'extension' => [
-				'name' => MCPHelper::MODULE_NAME,
-				'version' => MCPHelper::VERSION,
-				'license' => MCPHelper::LICENSE,
+				'name' => MCPModule::MODULE_NAME,
+				'version' => MCPModule::VERSION,
+				'license' => MCPModule::LICENSE,
 				'source' => Settings::GetSourceUrl(),
 			],
 		]);

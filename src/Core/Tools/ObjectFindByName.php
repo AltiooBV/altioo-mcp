@@ -8,13 +8,16 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ObjectHistory;
-use Altioo\iTop\Extension\MCP\Helper\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -47,6 +50,7 @@ use utils;
  * they cannot read is not reported; and neither is distinguishable in the
  * answer from one that does not exist.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectFindByName extends AbstractMCPTool
@@ -126,7 +130,7 @@ class ObjectFindByName extends AbstractMCPTool
 					'minimum'     => self::MIN_LIMIT,
 					'maximum'     => self::MAX_LIMIT,
 				],
-				'output_fields' => ObjectSerializer::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS),
+				'output_fields' => OutputFields::FieldsSchemaProperty(ObjectSerializer::DEFAULT_LIST_FIELDS),
 			],
 			'required'   => ['name'],
 		];
@@ -183,7 +187,7 @@ class ObjectFindByName extends AbstractMCPTool
 			);
 		}
 
-		return ToolOutput::Json(ObjectSerializer::MarkRows([
+		return ToolOutput::Json(UntrustedMarker::MarkRows([
 			'search'           => $name,
 			'needles'          => $aNeedles,
 			'class'            => $class,
@@ -294,14 +298,14 @@ class ObjectFindByName extends AbstractMCPTool
 			$aCandidates = MetaModel::GetClasses('searchable');
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass));
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 			}
 
-			if (ObjectHistory::IsReserved($sClass)) {
-				throw new ToolCallException(sprintf(ObjectHistory::RESERVED_REFUSAL, $sClass));
+			if (ChangeLogReservation::IsReserved($sClass)) {
+				throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-				throw new ToolCallException(MCPHelper::UnreadableClassRefusal($sClass)); // exists, but not for this account to read
+				throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 			}
 
 			$aCandidates = MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL);
@@ -315,7 +319,7 @@ class ObjectFindByName extends AbstractMCPTool
 			}
 			// Not searchable on a stock install, so this is for the datamodel
 			// that marks it so rather than for the one that ships.
-			if (ObjectHistory::IsReserved($sCandidate)) {
+			if (ChangeLogReservation::IsReserved($sCandidate)) {
 				continue;
 			}
 			if (ExclusionPolicy::ExcludesClass($sCandidate) || !UserRights::IsActionAllowed($sCandidate, UR_ACTION_READ)) {
@@ -387,7 +391,7 @@ class ObjectFindByName extends AbstractMCPTool
 		try {
 			$oFilter = new DBObjectSearch($sClass);
 			foreach ($aNeedles as $sNeedle) {
-				ExclusionPolicy::AddFullText($oFilter, self::literal($sNeedle));
+				ExclusionSearches::AddFullText($oFilter, self::literal($sNeedle));
 			}
 			$oFilter->SetShowObsoleteData(utils::ShowObsoleteData());
 
@@ -399,7 +403,7 @@ class ObjectFindByName extends AbstractMCPTool
 				return []; // hides objects that the caller should not see
 			}
 
-			$aFields  = ObjectSerializer::ParseFieldList($sClass, $sOutputFields);
+			$aFields  = OutputFields::ParseFieldList($sClass, $sOutputFields);
 			$aMatches = [];
 
 			while ($oObject = $oSet->Fetch()) {

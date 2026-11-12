@@ -8,15 +8,15 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Helper\ObjectSerializer;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Service\PortalPolicy;
-use DBObject;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
+use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSet;
 use DBSearch;
-use DBUnionSearch;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
@@ -37,6 +37,7 @@ use MetaModel;
  * must itself be one of the parent level's rows: a path is checked level by
  * level, so a parent the user could not have clicked on lists nothing.
  *
+ * @internal
  * @since 1.2.0
  */
 class PortalList extends AbstractPortalTool
@@ -152,12 +153,12 @@ class PortalList extends AbstractPortalTool
 				$aRows[] = self::serialized($oObject, $aList['columns']);
 			}
 
-			return ToolOutput::Json(ObjectSerializer::MarkRows(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows), $aRows, $sClass)
+			return ToolOutput::Json(UntrustedMarker::MarkRows(self::answer($list, $tab, $parent_id, $sClass, $oSet->Count(), $limit, $offset, $aRows), $aRows, $sClass)
 				+ self::tabsOf($oPolicy, $aList, $sClass));
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 	}
 
@@ -189,129 +190,14 @@ class PortalList extends AbstractPortalTool
 		self::refuseReserved($sClass);
 
 		try {
-			$oQuery = self::listQuery($oPolicy, $aList, trim($tab), $parent_id);
+			$oQuery = PortalRows::ListQuery($oPolicy, $aList, trim($tab), $parent_id);
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(MCPHelper::OpaqueFailure('Failed to run the portal list', $oException));
+			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 
 		return ['policy' => $oPolicy, 'list' => $aList, 'class' => $sClass, 'query' => $oQuery];
-	}
-
-	/**
-	 * One row of a list, when the list holds it for this user: the object a
-	 * create action starts from has to be one the user could have picked.
-	 */
-	public static function RowOf(PortalPolicy $oPolicy, string $sList, int $iId): ?DBObject
-	{
-		$aList = $oPolicy->ListDefinition($sList);
-		if ($aList === null || $iId < 1) {
-			return null;
-		}
-
-		$oQuery = self::listQuery($oPolicy, $aList, '', 0);
-		if ($oQuery === null) {
-			return null;
-		}
-		$oQuery->AddCondition('id', $iId, '=');
-
-		$oObject = (new DBObjectSet($oQuery))->Fetch();
-
-		return $oObject instanceof DBObject ? $oObject : null;
-	}
-
-	/**
-	 * The list's query, bounded by the scope, the tab and the parent; null
-	 * when it can hold nothing.
-	 *
-	 * @param array<string, mixed> $aList As PortalPolicy::ListDefinition() answers.
-	 */
-	private static function listQuery(PortalPolicy $oPolicy, array $aList, string $sTab, int $iParent): ?DBSearch
-	{
-		$sClass = (string)$aList['class'];
-		$oQuery = DBSearch::FromOQL((string)$aList['oql']);
-
-		if ($sTab !== '') {
-			$oQuery = self::tabQuery($oQuery, $aList, $sTab);
-		} elseif ($aList['tabs'] !== []) {
-			// Every tab, as the portal counts its total: the union of their
-			// conditions, which may be narrower than the brick's query.
-			$aTabs = array_map(static fn (string $sOql): DBSearch => DBSearch::FromOQL($sOql), array_values($aList['tabs']));
-			$oQuery = $oQuery->Intersect(count($aTabs) === 1 ? $aTabs[0] : new DBUnionSearch($aTabs));
-		}
-
-		if ($iParent > 0) {
-			$oQuery = self::childrenOf($oPolicy, $oQuery, $aList, $iParent);
-			if ($oQuery === null) {
-				return null;
-			}
-		}
-
-		$oBounded = $oPolicy->Bounded($oQuery, $sClass);
-
-		// A list on a parent class holds the rows of its subclasses: the excluded ones are not among them (doc/adr/0012).
-		/** @psalm-suppress InvalidReturnStatement DBObjectSearch is a DBSearch; Psalm has no iTop checkout to say so. */
-		return $oBounded === null ? null : ExclusionPolicy::Narrowed($oBounded, $sClass);
-	}
-
-	/**
-	 * A ManageBrick tab: one of its groups, by id, or a value of the
-	 * attribute its tabs are made of.
-	 *
-	 * @param array<string, mixed> $aList
-	 */
-	private static function tabQuery(DBSearch $oQuery, array $aList, string $sTab): DBSearch
-	{
-		if (isset($aList['tabs'][$sTab])) {
-			return $oQuery->Intersect(DBSearch::FromOQL((string)$aList['tabs'][$sTab]));
-		}
-
-		$sAttCode = $aList['tabs_by'];
-		if (is_string($sAttCode) && $sAttCode !== '' && MetaModel::IsValidAttCode($oQuery->GetClass(), $sAttCode)) {
-			// A value, bound as one: AddCondition() never parses it as OQL.
-			$oQuery->AddCondition($sAttCode, $sTab, '=');
-
-			return $oQuery;
-		}
-
-		throw new ToolCallException('This list has no such tab. Call core_class_list for its tabs.');
-	}
-
-	/**
-	 * A browse level narrowed to the children of one row of the level above,
-	 * when that row is one the level above lists for this user; null when it
-	 * is not.
-	 *
-	 * @param array<string, mixed> $aList
-	 */
-	private static function childrenOf(PortalPolicy $oPolicy, DBSearch $oQuery, array $aList, int $iParent): ?DBSearch
-	{
-		$sParentList = $aList['parent'];
-		$sParentAtt = $aList['parent_att'];
-		if (!is_string($sParentList) || !is_string($sParentAtt) || $sParentAtt === '') {
-			throw new ToolCallException('parent_id narrows a browse level below the first, and this list is not one.');
-		}
-
-		$aParent = $oPolicy->ListDefinition($sParentList);
-		if ($aParent === null) {
-			return null;
-		}
-
-		// The parent is checked against its own level, which is in turn
-		// bounded by its scope: the path is checked one level at a time.
-		$oParents = self::listQuery($oPolicy, $aParent, '', 0);
-		if ($oParents === null) {
-			return null;
-		}
-		$oParents->AddCondition('id', $iParent, '=');
-		if ((new DBObjectSet($oParents))->Count() === 0) {
-			return null;
-		}
-
-		$oQuery->AddCondition($sParentAtt, $iParent, '=');
-
-		return $oQuery;
 	}
 
 	/**
@@ -365,7 +251,7 @@ class PortalList extends AbstractPortalTool
 	 */
 	private static function order(array $aList, string $sClass): array
 	{
-		if ($aList['kind'] === PortalPolicy::BRICK_BROWSE) {
+		if ($aList['kind'] === PortalBricks::BRICK_BROWSE) {
 			$sFirst = $aList['columns'][0] ?? null;
 			if (is_string($sFirst) && MetaModel::IsValidAttCode($sClass, $sFirst)) {
 				return [$sFirst => true, 'id' => true];
@@ -394,8 +280,9 @@ class PortalList extends AbstractPortalTool
 
 		$aTabs = [];
 		foreach (array_map('strval', array_keys($aConditions)) as $sTab) {
-			$oTab = $oPolicy->Bounded(self::tabQuery(DBSearch::FromOQL((string)$aList['oql']), $aList, $sTab), $sClass);
-			$aTabs[] = ['tab' => $sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet($oTab))->Count()];
+			$oTab = $oPolicy->Bounded(PortalRows::TabQuery(DBSearch::FromOQL((string)$aList['oql']), $aList, $sTab), $sClass);
+			// Counted as the rows are listed: without the rows of an excluded subclass (doc/adr/0012).
+			$aTabs[] = ['tab' => $sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet(ExclusionSearches::Narrowed($oTab, $sClass)))->Count()];
 		}
 
 		return ['tabs' => $aTabs];

@@ -9,13 +9,19 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Testing\ElementContract;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassInheriting;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassNoAsk;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolAsking;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolMentioning;
 use Altioo\iTop\Extension\MCP\Test\Support\UndescribedTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__).'/bootstrap.php';
@@ -110,5 +116,82 @@ class ElementContractCheckerTest extends TestCase
 
 		$this->assertCount(1, $aViolations);
 		$this->assertStringContainsString('AbstractMCPTool', $aViolations[0]);
+	}
+
+	/**
+	 * ADR 0017: a pack element declaring PortalAware is held to answering
+	 * through ObjectAccess::Current(). Reported as a warning, since it
+	 * registers and the operator's listing is what serves it.
+	 */
+	public function testAPortalAwarePackElementThatNeverAsksObjectAccessIsReported(): void
+	{
+		foreach ([new PortalAwarePackTool(), new PortalAwarePackToolMentioning()] as $oElement) {
+			$aPortal = $this->portalFindings($oElement);
+
+			$this->assertCount(1, $aPortal, get_class($oElement));
+			$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+			$this->assertStringContainsString('ObjectAccess::Current()', $aPortal[0]);
+			$this->assertStringContainsString('mcp_portal_extensions', $aPortal[0]);
+		}
+	}
+
+	public function testAPortalAwarePackElementThatCallsObjectAccessCurrentIsNotReported(): void
+	{
+		$this->assertSame([], $this->portalFindings(new PortalAwarePackToolAsking()));
+	}
+
+	public function testAPackElementThatDoesNotDeclarePortalAwareIsNotAskedToServeThePortal(): void
+	{
+		$this->assertSame([], $this->portalFindings(new FixtureTool()));
+	}
+
+	/**
+	 * A class declared in the Core\ PHP namespace by a pack is not this
+	 * module's own, so it gets no exemption.
+	 */
+	public function testASpoofedCoreNamespaceDoesNotExemptAPortalAwareElement(): void
+	{
+		require_once dirname(__DIR__).'/Support/SpoofedCorePortalTool.php';
+
+		$aPortal = $this->portalFindings(new \Altioo\iTop\Extension\MCP\Core\Spoof\SpoofedCorePortalTool());
+
+		$this->assertCount(1, $aPortal);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+	}
+
+	/**
+	 * Red-team F1 (2026-11-12): a core parent's source does not stand in for the
+	 * pack's own. A subclass of a core tool that replaces execute() and reads
+	 * through UserRights alone is reported, as any pack element would be.
+	 */
+	public function testASubclassOfACoreToolThatReplacesExecuteWithoutAskingIsReported(): void
+	{
+		$aPortal = $this->portalFindings(new PortalAwareCoreSubclassNoAsk());
+
+		$this->assertCount(1, $aPortal);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+		$this->assertStringContainsString('ObjectAccess::Current()', $aPortal[0]);
+	}
+
+	/** A subclass that leaves execute() to core runs core's code, which asks. */
+	public function testASubclassOfACoreToolThatKeepsItsExecuteIsNotReported(): void
+	{
+		$this->assertSame([], $this->portalFindings(new PortalAwareCoreSubclassInheriting()));
+	}
+
+	public function testACoreElementIsNotAskedForIt(): void
+	{
+		$this->assertSame([], $this->portalFindings(new ClassList()));
+	}
+
+	/**
+	 * @return array<int, string>
+	 */
+	private function portalFindings(object $oElement): array
+	{
+		return array_values(array_filter(
+			ElementContract::Violations($oElement),
+			static fn (string $sFinding): bool => str_contains($sFinding, 'PortalAware')
+		));
 	}
 }

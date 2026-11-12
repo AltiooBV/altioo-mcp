@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
-use Altioo\iTop\Extension\MCP\Helper\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AttributePassword;
 use AttributeEncryptedString;

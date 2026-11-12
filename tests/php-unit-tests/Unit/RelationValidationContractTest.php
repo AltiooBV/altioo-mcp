@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -41,7 +43,7 @@ class RelationValidationContractTest extends TestCase
 	public function testTheClassIsPassedToEnumRelationsEx(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/EnumRelationsEx\(\s*\$class\s*\)/',
+			'/EnumRelationsEx\(\$class\)/',
 			$this->executeBody(),
 			'EnumRelationsEx($sClass) has a required parameter; calling it bare is an ArgumentCountError.'
 		);
@@ -53,7 +55,7 @@ class RelationValidationContractTest extends TestCase
 		$sBody = $this->executeBody();
 
 		$this->assertStringNotContainsString(
-			'in_array($relation, $aValidRelations',
+			'in_array($relation,$aValidRelations',
 			$sBody,
 			'The map is keyed by relation code; in_array tests the inner arrays and never matches.'
 		);
@@ -86,15 +88,17 @@ class RelationValidationContractTest extends TestCase
 	{
 		$sBody = $this->executeBody();
 
-		$this->assertStringContainsString('catch (\Throwable', $sBody);
-		$this->assertStringContainsString('MCPHelper::OpaqueFailure', $sBody);
+		$oSource = SourceCalls::OfClass(ObjectGetRelated::class);
+
+		$this->assertContains('Throwable', $oSource->CatchTypes('execute'));
+		$this->assertTrue($oSource->HasCall(ErrorReport::class.'::OpaqueFailure', 'execute'));
 	}
 
 	/** This module's own refusals keep their wording rather than being wrapped. */
 	public function testTheModulesOwnRefusalIsNotSwallowed(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/catch \(ToolCallException \$e\)\s*\{[^}]*throw \$e;/s',
+			'/catch\(ToolCallException\$e\)\{[^}]*throw\$e;/',
 			$this->executeBody(),
 			'A withheld-class refusal is an answer, not an ORM failure.'
 		);
@@ -102,13 +106,6 @@ class RelationValidationContractTest extends TestCase
 
 	private function executeBody(): string
 	{
-		$oMethod = new ReflectionMethod(ObjectGetRelated::class, 'execute');
-		$aLines = file((new ReflectionClass(ObjectGetRelated::class))->getFileName());
-
-		return implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
+		return SourceCalls::OfClass(ObjectGetRelated::class)->Code('execute');
 	}
 }

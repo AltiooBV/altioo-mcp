@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Acme\iTop\Extension\ServiceDesk\Prompts;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
 use MetaModel;
 use UserRights;
 

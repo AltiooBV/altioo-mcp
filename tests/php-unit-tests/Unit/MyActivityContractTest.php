@@ -9,9 +9,10 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\MyActivity;
-use Altioo\iTop\Extension\MCP\Service\ChangeSummary;
-use Altioo\iTop\Extension\MCP\Service\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\ReadSummary;
+use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -30,9 +31,9 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class MyActivityContractTest extends TestCase
 {
-	private static function source(): string
+	private static function source(): SourceCalls
 	{
-		return (string)file_get_contents(dirname(__DIR__, 3).'/src/Core/Tools/MyActivity.php');
+		return SourceCalls::OfFile(dirname(__DIR__, 3).'/src/Core/Tools/MyActivity.php');
 	}
 
 	/** There is no way to say whose activity: not in the schema, not in the signature. */
@@ -48,12 +49,12 @@ class MyActivityContractTest extends TestCase
 	/** The filter is the real user's key, taken from iTop and not from the request, and never a login. */
 	public function testTheFilterIsTheRealUsersKeyAndNothingElse(): void
 	{
-		$sSource = self::source();
+		$oSource = self::source();
 
-		$this->assertStringContainsString('CMDBChange::GetCurrentUserId()', $sSource);
-		$this->assertStringContainsString("'SELECT AltiooEventMCPService WHERE user_id = :user'", $sSource);
-		$this->assertStringNotContainsString('userinfo', preg_replace('#/\*.*?\*/#s', '', $sSource) ?? '', 'a login is never matched');
-		$this->assertStringNotContainsString('GetUserId()', str_replace('GetCurrentUserId()', '', $sSource), 'the impersonated user is not the account that acted');
+		$this->assertTrue($oSource->HasCall('CMDBChange::GetCurrentUserId'));
+		$this->assertTrue($oSource->HasString('SELECT AltiooEventMCPService WHERE user_id = :user'));
+		$this->assertStringNotContainsString('userinfo', $oSource->Code(), 'a login is never matched');
+		$this->assertFalse($oSource->HasCallTo('GetUserId'), 'the impersonated user is not the account that acted');
 	}
 
 	/**
@@ -64,9 +65,7 @@ class MyActivityContractTest extends TestCase
 	 */
 	public function testAColumnThatCanQuoteAThirdPartyIsNeverRead(string $sColumn): void
 	{
-		$sCode = preg_replace('#/\*.*?\*/#s', '', self::source()) ?? '';
-
-		$this->assertStringNotContainsString("'".$sColumn."'", $sCode);
+		$this->assertFalse(self::source()->HasString($sColumn));
 	}
 
 	/** @return array<string, array{0: string}> */
@@ -104,11 +103,13 @@ class MyActivityContractTest extends TestCase
 	 */
 	public function testThePortalNarrowingIsThePortalsOwn(): void
 	{
-		$sSource = self::source();
+		$oSource = self::source();
 
-		$this->assertStringContainsString('$oAccess->Readable($sClass, (int)$iId)', $sSource);
-		$this->assertStringContainsString('$oAccess->ShownOf($oObject)', $sSource);
-		$this->assertStringContainsString("Some earlier calls may not be listed.", $sSource);
+		$this->assertTrue($oSource->HasCallTo('Readable'));
+		$this->assertTrue($oSource->HasCallTo('ShownOf'));
+		$this->assertStringContainsString('$oAccess->Readable($sClass,(int)$iId)', $oSource->Code());
+		$this->assertStringContainsString('$oAccess->ShownOf($oObject)', $oSource->Code());
+		$this->assertNotSame([], array_filter($oSource->Strings(), static fn (string $s): bool => str_contains($s, 'Some earlier calls may not be listed.')));
 	}
 
 	public function testItReadsBackWhatChangeSummaryWrites(): void

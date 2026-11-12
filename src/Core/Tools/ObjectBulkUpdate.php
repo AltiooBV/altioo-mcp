@@ -8,13 +8,17 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
-use Altioo\iTop\Extension\MCP\Helper\AccessGrants;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
-use Altioo\iTop\Extension\MCP\Helper\ChangeTracking;
-use Altioo\iTop\Extension\MCP\Helper\ToolOutput;
-use Altioo\iTop\Extension\MCP\Helper\WritePlan;
-use Altioo\iTop\Extension\MCP\Helper\EditPolicy;
-use Altioo\iTop\Extension\MCP\Helper\MCPHelper;
+use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
+use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -27,6 +31,7 @@ use Mcp\Schema\ToolAnnotations;
  * retire these thirty servers - and the one a model otherwise does by calling
  * core_object_update twelve times.
  *
+ * @internal
  * @since 1.0.0
  */
 class ObjectBulkUpdate extends AbstractBulkTool
@@ -73,7 +78,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				'additionalProperties' => true,
 				'description'          => 'Attribute code => the value this write set, or would set.',
 			],
-			'overridden' => WritePlan::OverriddenSchemaProperty(),
+			'overridden' => WriteOutcome::OverriddenSchemaProperty(),
 		]);
 	}
 
@@ -83,7 +88,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			'type'       => 'object',
 			'properties' => self::targetSchemaProperties('apply the change') + [
 				'fields' => [
-					'type'                 => MCPHelper::MAP_TYPE,
+					'type'                 => JsonPayload::MAP_TYPE,
 					'description'          => 'Key/value pairs applied to every listed object. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
@@ -114,7 +119,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		// The advisory scope, before anything reads it: a token pinned to dry
 		// runs rehearses whatever the caller passed, and normalising here means
 		// every branch and every reported `simulated` below is already right.
-		$simulate = WritePlan::Simulated($simulate);
+		$simulate = DryRun::Simulated($simulate);
 
 		if (empty($fields)) {
 			throw new ToolCallException('No fields provided for update.');
@@ -127,6 +132,13 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		// this caller may not write on the class is refused for the whole call
 		// rather than a hundred times over.
 		self::checkAttributesWritable($class, $fields);
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
 
 		// Once for the batch, before the loop: forty objects changed by one
 		// call are one decision, and they share the one change record.
@@ -182,14 +194,14 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// forbids the transition, a DoCheckToWrite() that reads other
 				// attributes - and without this the answer arrives as an
 				// exception from the ORM half way through the batch.
-				WritePlan::Check($mObject, "{$class}::{$iId}");
+				DryRun::Check($mObject, "{$class}::{$iId}");
 
 				$aOverridden = WritePlan::Overridden($mObject, $class, $aRequested);
 				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");
 
 				$aOutcome = self::outcome($iId, $iRow, true, $simulate ? 'Would be updated.' : 'Updated.');
-				$aOutcome['changes']    = WritePlan::Map(WritePlan::Changes($mObject, $class));
-				$aOutcome['overridden'] = WritePlan::Map($aOverridden);
+				$aOutcome['changes']    = WriteOutcome::Map(WriteOutcome::Changes($mObject, $class));
+				$aOutcome['overridden'] = WriteOutcome::Map($aOverridden);
 
 				if (!$simulate) {
 					$mObject->DBUpdate();
@@ -201,12 +213,12 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// other thirty-nine; it is reported as its own failure.
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $e->getMessage());
 			} catch (\Throwable $e) {
-				$aOutcomes[] = self::outcome($iId, $iRow, false, MCPHelper::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
+				$aOutcomes[] = self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("{$class}::{$iId} could not be updated", $e));
 			}
 		}
 
 		// An entry that failed before anything was set still reports changes,
 		// empty: the schema promises it on every entry.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WritePlan::Map([]), 'overridden' => WritePlan::Map([])]));
+		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WriteOutcome::Map([]), 'overridden' => WriteOutcome::Map([])]));
 	}
 }

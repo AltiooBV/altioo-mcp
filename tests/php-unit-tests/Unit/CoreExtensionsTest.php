@@ -8,14 +8,14 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPPrompt;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPResourceTemplate;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
-use Altioo\iTop\Extension\MCP\Contract\iMCPServiceProvider;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
-use Altioo\iTop\Extension\MCP\Registry\MCPRegistry;
-use Altioo\iTop\Extension\MCP\Service\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot

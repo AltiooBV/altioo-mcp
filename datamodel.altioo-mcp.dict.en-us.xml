@@ -35,6 +35,8 @@
         <entry id="Class:AltiooEventMCPService/Attribute:simulate/Value:n/a+" _delta="force"><![CDATA[The call has no dry run to speak of - a read, a handshake, a tool that takes no such argument]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:read_objects" _delta="force"><![CDATA[Objects read]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:read_objects+" _delta="force"><![CDATA[The objects the call returned, as class and id only, never a value. Not written when the module log level skips successful calls]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:written_objects" _delta="force"><![CDATA[Objects written]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:written_objects+" _delta="force"><![CDATA[Objects this call created, changed, deleted or attached to; the write cap adds these up per credential over the last hour]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Duration (ms)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Response size (bytes)]]></entry>

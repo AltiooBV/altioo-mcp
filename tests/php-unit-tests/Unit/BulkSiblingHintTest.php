@@ -8,15 +8,15 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Abstract\AbstractBulkTool;
-use Altioo\iTop\Extension\MCP\Abstract\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
-use Altioo\iTop\Extension\MCP\Service\MCPService;
+use Altioo\iTop\Extension\MCP\Service\Server\SettingsWarnings;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -112,6 +112,6 @@ class BulkSiblingHintTest extends TestCase
 	 */
 	private static function invoke(array $aDisabled, array $aTools): array
 	{
-		return (new ReflectionMethod(MCPService::class, 'bulkSiblingsLeftOn'))->invoke(null, $aDisabled, $aTools);
+		return (new ReflectionMethod(SettingsWarnings::class, 'bulkSiblingsLeftOn'))->invoke(null, $aDisabled, $aTools);
 	}
 }
