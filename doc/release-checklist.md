@@ -216,3 +216,36 @@ actually changed. It is the page an approver reads instead of the README, and th
 likely to have gone stale are the dependency licences, the footprint, and anything the release
 added to the HTTP surface. It links rather than restates, so in a quiet release there is
 usually nothing to do — confirm that rather than assume it.
+
+## The day 2.0.0 is tagged
+
+Everything in *Every release* applies. This adds the one step that exists only once, and that
+cannot be done earlier because the branch has nothing to carry before 2.0.0 exists
+([ADR 0018](adr/0018-a-fix-for-a-1-x-line-is-made-on-release-1-x.md)).
+
+- [ ] **Create `release/1.x` from `v1.3.0` and push it** — the maintainer pushes. Cut from the tag,
+      not from `main` and not from a later 1.x commit: `git branch release/1.x v1.3.0`, then
+      `git push origin release/1.x`. Confirm `git rev-parse release/1.x` equals `git rev-parse 'v1.3.0^{commit}'`,
+      so the branch's `.github/` is the one 1.3.0 shipped. Protect it as `main`
+      is: no direct pushes, signed commits.
+- [ ] **State where 1.x fixes are made** in [SECURITY.md](../SECURITY.md) — already one sentence
+      under *Supported versions*; check it still says `release/1.x`, beside the new 2.0.x row (D-8).
+
+## Releasing a 1.3.x
+
+A patch of the pre-2.0 lines, from `release/1.x`, not from `main`. The checks above apply with
+these differences:
+
+1. **Version and changelog** are `1.3.x` in the three files and the 1.x `CHANGELOG.md`, on
+   `release/1.x`; `ModuleMetadataTest` and `release.yml` check them as they did at 1.3.0. Dates
+   are the day of the tag. SECURITY.md's windows do not move: a patch does not restart a
+   support period.
+2. **CI is that branch's own.** Run `tools/ci/local/run.sh unit` from the 1.x tree, read the
+   iTop matrix summary for the branches *its* `itop-support.json` names, and record them in the
+   **Tested on** line of the new entry. Do not borrow 2.0's result.
+3. **Tag `v1.3.x` on the `release/1.x` commit.** `release.yml` builds from the tag's own tree, so
+   the archive carries the 1.x workflow, `exclude.txt` and `vendor/` of that tree.
+4. **Upgrade path.** Run the upgrade workflow from the previous 1.x tag, as for any patch. A
+   client on 1.0 to 1.2 is told in the changelog that the fix is in 1.3.x.
+5. **Did `main` get the fix?** The release is not closed until the same fix is on `main` (or a
+   test shows it was never there), so the next 2.x does not ship the defect it fixed in 1.3.
