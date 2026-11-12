@@ -1,0 +1,15 @@
+{
+    "description": "A write is rehearsed before it is committed: core_object_update with simulate=true, then simulate=false. ADR 0008's first case.",
+    "token": "write",
+    "prerequisites": "The iTop demo data. At least one UserRequest exists.",
+    "prompt": "Find the most recent UserRequest and change its title to 'eval: dry run then commit'. Show me what the change would do first, and apply it once that looks right.",
+    "maxCalls": 8,
+    "allowedTools": ["core_instructions", "core_current_user", "core_class_list", "core_class_schema", "core_object_search_by_class", "core_object_search_by_oql", "core_object_find_by_name", "core_object_get", "core_object_update"],
+    "mustCall": [
+        {"tool": "core_object_update", "arguments": {"simulate": true}},
+        {"tool": "core_object_update", "arguments": {"simulate": false}}
+    ],
+    "before": [
+        {"commit": {"tool": "core_object_update", "arguments": {"simulate": false}}, "after": {"tool": "core_object_update", "arguments": {"simulate": true}}}
+    ]
+}
