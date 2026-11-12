@@ -96,6 +96,11 @@ set it to `removed`). Its run count and durations do not carry over to the new r
 
 ### Added
 
+- **A test fails when what a client is served changes** ([ADR 0008](doc/adr/0008-agent-behaviour-is-tested-with-a-model.md),
+  accepted by the maintainer): the integration suite compares the handshake and server
+  instructions, `tools/list`, the resources, resource templates and prompts, for each token grade
+  and for portal mode, with a committed copy, so a reworded description or an `mcp/sdk` bump is
+  a diff a person accepts. No change for an installed module; the copies sit under `tests/`.
 - **`mcp_portal_extensions`: portal mode can serve a tool pack's element when the operator lists it**
   ([ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), decided by
   the maintainer). Portal mode served only this module's own elements because a pack could not reach the

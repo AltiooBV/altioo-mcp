@@ -131,6 +131,22 @@ iTop's unattended setup — the same script CI uses. [doc/ci-itop-matrix.md](doc
 
 New behaviour comes with a test. A fix comes with the test that would have caught it.
 
+**If you reword a tool description or change a schema, an annotation or the server
+instructions, the integration suite fails on purpose.** `ToolSurfaceSnapshotTest` compares what
+a client is served with the copies under `tests/php-unit-tests/Integration/Snapshots/`, and
+prints one line per changed path. Read it, and if the change is meant, regenerate the copies and
+commit them with the change:
+
+```bash
+MCP_UPDATE_SNAPSHOTS=1 tools/ci/local/run.sh integration   # or MCP_UPDATE_SNAPSHOTS=1 with composer test:integration
+```
+
+An `mcp/sdk` bump that shows up there is a change an agent can see, whatever this repository's
+text says. What an agent then does with the new surface is the maintainer's to check, by hand,
+with `tools/evals/run.php` and his own `ANTHROPIC_API_KEY` against a disposable instance; without
+a key it skips, and `--dry-run` only checks the scenario files. The usage is in its header and the
+decision in [ADR 0008](doc/adr/0008-agent-behaviour-is-tested-with-a-model.md).
+
 Run the linter too. It is Combodo's coding standard, and the configuration is in the
 repository, so there is nothing to decide:
 
