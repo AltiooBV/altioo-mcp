@@ -326,10 +326,19 @@ both of these hold ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when
    implementing it serves nothing. Every other filter (`mcp_disabled_tools`, toolsets, capabilities,
    token scopes, exclusions) still applies.
 
-`ElementContract::Violations()` warns when a portal-aware element's source, or a parent class's,
-never calls `ObjectAccess::Current()`. That catches the tool that never asks, not the one that asks
-and ignores the answer, so the listing is the control and the check is your help. Tell your users
-to list the element; do not list it for them.
+**Tell your users to list the class name.** It is the precise form. An identifier is a name, not a
+pack's property: one entry admits a `PortalAware` element of *any kind* (tool, prompt, resource,
+template) that holds that identifier, whichever pack it came from. An element that took its
+identifier with `overrides()` is never admitted by the identifier, so the operator's consent to
+`acme_ticket_search` does not pass to a later pack that replaces it; it is admitted by its own class
+name only. The log says when an entry serves nothing, and why.
+
+`ElementContract::Violations()` warns when a portal-aware element's own source never calls
+`ObjectAccess::Current()`. A parent class of yours counts, but this module's own classes do not: a
+subclass of a core tool that replaces `execute()` is held to asking for itself, and one that leaves
+`execute()` to core passes. That catches the tool that never asks, not the one that asks and
+ignores the answer, so the listing is the control and the check is your help. Tell your users to
+list the element; do not list it for them.
 
 ## Augmenting a core tool
 
@@ -372,6 +381,15 @@ model already sends still bind by name. The declared override is what stops the 
 treating your class and the core one as an accidental clash and withdrawing the name from both.
 And `parent::execute()` returns a `TextContent`, not an array — post-processing means decoding
 it, which `ToolOutput::Decode()` does.
+
+**In portal mode, an override removes the core tool from portal users until it is listed.** Your
+class takes the identifier, and portal mode serves a pack element only when the operator lists it,
+so an unlisted `core_object_get` override leaves portal users with no `core_object_get` at all
+(console users are unaffected). What serves it is its **class name** in `mcp_portal_extensions`;
+neither `core_object_get` (an override is not admitted by the identifier it took) nor your own
+identifier does. Whatever your tool adds must itself go through `ObjectAccess::Current()`:
+`ElementContract` does not take core's `parent::execute()` as your answer, and warns
+until your own code asks, as in [Serving your element in portal mode](#serving-your-element-in-portal-mode).
 
 What this does not give you is a change applied across *every* tool — redaction, an extra audit
 field, a rate limit. There is no middleware pipeline; see [Limitations](../README.md#limitations).

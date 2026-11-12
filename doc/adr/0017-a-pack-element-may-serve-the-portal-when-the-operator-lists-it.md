@@ -3,6 +3,13 @@
 - Date: 2026-11-12
 - Decided by: Guy Couronne, 2026-11-12 ("Yes, ADR and code"), on the proposal below
 - Status: accepted
+- Amended: 2026-11-12, after a red-team pass, by the maintainer's "do the whole backlog". (1) An element that took its
+  identifier with `overrides()` is admitted by its **class name** only, never by the identifier: the operator's consent
+  goes to a class, not to whatever holds a name. (2) An identifier entry admits a `PortalAware` element of any kind (tool,
+  prompt, resource, template) that holds that identifier, because a pack's namespace is not owned and the setting is one
+  flat list; the class-name form is the precise one and the README and `doc/extending.md` recommend it. (3) The audit
+  row names the **identifier called** and the portal, not the class that ran (see the last bullet of "What does not
+  change"). (4) `ElementContract` counts only the pack's own source, not this module's parent classes.
 - Supersedes: the point "Portal mode is unchanged" of [ADR 0016](0016-what-the-core-tools-use-is-public.md).
   The rest of 0016 stands.
 
@@ -52,7 +59,10 @@ declaration, and the server cannot verify that a tool keeps it.
   through `ObjectAccess::RefusalToAttach()` like the core's.
 - A portal user still gets no right iTop does not give them. A mistake in a pack element reaches portal
   users only if the operator listed it. The configuration file shows that, and the audit row names
-  the element on every call.
+  the identifier the client called, and the portal, on every call. It does not name the class, so an override of a core
+  identifier reads as the core tool there; the override is written to the log once, when the registry is collected
+  (`MCPExtensionCollector::CollectAll()`, `src/Api/MCPExtensionCollector.php:84`: "<identifier>: <class> replaced <class>, as it declares"),
+  and the class-name listing in the configuration file is what names the class. No column was added.
 
 **Rejected alternatives.**
 
@@ -65,5 +75,6 @@ declaration, and the server cannot verify that a tool keeps it.
 
 **Enforced by:** unit tests of `PortalAccess::Serves()` (core, listed, unlisted, listed without
 `PortalAware`, malformed setting), the `ElementContract` check with a fixture that passes and one that
-fails, and the example pack's suite if it gains a portal-aware element. Whether a listed element
+fails (and, for a subclass of a core tool, one that replaces `execute()` and one that does not),
+`PortalExtensionsListingTest` for the override and kind rules and the log's causes, and the example pack's suite if it gains a portal-aware element. Whether a listed element
 really keeps to the portal's rules is not machine-checkable.
