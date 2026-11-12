@@ -9,6 +9,9 @@
 - Renamed: 2026-11-11, after the work was done on `refactor/2.0`, so the names match the 2.0 code.
   The `@api` list in rule 3 names `Service\Write\DryRun`, not a half of `WritePlan`, and step 6's
   level-2 view exists. The decision and the layer order are unchanged.
+- Amended: 2026-11-12, by Guy Couronne, on rule 4. `Helper\Settings` had grown to 804 lines, past the
+  guide and past what `Helper` is defined to hold, and is split (below). Four other classes past
+  500 lines are accepted as they are, each for the reason given under rule 4. The rule stays a guide.
 
 **Context.** The architecture review of 2026-11-10 found that the code works and is well tested,
 but that someone new to it cannot find their way around. When checked against PHP and iTop
@@ -103,6 +106,28 @@ An iTop developer opening this module should find that shape.
    waiting to happen. Combodo's module files stay under about 600. The six classes above, and
    three more the work found (`ObjectSerializer`, `ExclusionPolicy` and `MCPService`), nine in all, are
    split along the jobs they already do; the code is moved, not rewritten.
+
+   *Amended 2026-11-12.* Counted again when 2.0.0 was complete, five classes were past 500 lines.
+   - **`Helper\Settings`** (804 lines) is split, because `Helper` is for small utilities and it was
+     the largest file in `src`. `SettingNames` (245 lines) holds the catalogue: each parameter's name,
+     default and meaning. `Settings` (469) holds the readers and `extends SettingNames`, so
+     `Settings::MODULE_SETTING_*` and `DEFAULT_*` keep resolving and no caller changes.
+     `SettingParser` (134, `@internal`) holds the four decisions the unit suite exercises on a raw
+     value. A new parameter is declared in `SettingNames` and read in `Settings`.
+   - **`Service\Portal\PortalAccess`** (about 660) stays whole: it is one job, the portal's narrowing
+     of each question `ObjectAccess` answers, one override per question, each asking the console's
+     rule first. Splitting it would separate an override from the base method it must wrap.
+   - **`Api\MCPRegistry`** (about 640) stays whole: it is the one place the contract behind the
+     abstracts is enforced and identifiers are handed out, and it is `@api`. Much of its size is the
+     reasoning in its docblocks.
+   - **`Api\AbstractBulkTool`** (about 600) stays whole: it is the shared checking of the bulk tools,
+     read in one place by ADR 0014's contract tests, and it is the `@api` parent a pack extends.
+   - **`Service\Portal\PortalPolicy`** (about 600) stays whole: the loading, forms and reach were
+     already split out of it in step 4, and what is left is answering questions about one compiled
+     portal.
+
+   Moving an `@api` class after 2.0.0 is a major-version change, which is the reason to accept the
+   two in `Api` as they are rather than to defer the question.
 
 5. **What stays.**
    - Static helpers and static per-request state, as iTop itself uses them (PHP is
