@@ -12,6 +12,7 @@ use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
 use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -50,6 +51,22 @@ class ContractTest extends TestCase
 			static fn (array $a): object => $a[0],
 			self::elementProvider()
 		)));
+	}
+
+	/**
+	 * The one element that declares PortalAware is a search, and
+	 * ElementContract::Violations() also checks its source asks
+	 * ObjectAccess::Current() (hence the first test above passing for it).
+	 * Declaring it is not enough for portal mode to serve it: the operator
+	 * lists it in mcp_portal_extensions. The write tool and the prompt stay
+	 * console-only, which is what leaving the interface off means.
+	 */
+	public function testOnlyTheSearchDeclaresPortalAwareness(): void
+	{
+		$this->assertInstanceOf(PortalAware::class, new TicketSearchMine());
+		$this->assertNotInstanceOf(PortalAware::class, new TicketAddLogEntry());
+		$this->assertNotInstanceOf(PortalAware::class, new TriageMyQueue());
+		$this->assertSame([], ElementContract::Violations(new TicketSearchMine()));
 	}
 
 	/**

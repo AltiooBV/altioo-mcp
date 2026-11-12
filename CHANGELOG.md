@@ -109,6 +109,9 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   `ObjectAccess::Current()`.** Read from the PHP tokens, so a comment or a string does not satisfy it; the
   element's parent classes count. It catches the tool that never asks, not the one that asks and ignores
   the answer: the operator's listing is the control.
+- **The example pack's `TicketSearchMine` is portal-aware**, the worked example of ADR 0017: it
+  implements `PortalAware`, answers through `ObjectAccess::Current()` (`Bounded()`, `Hides()`,
+  `VisibleFields()`), and its README says the operator must list it in `mcp_portal_extensions`.
 
 ### Changed
 
