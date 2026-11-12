@@ -19,12 +19,12 @@ use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AltiooEventMCPService;
-use CMDBChange;
 use CMDBObject;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
+use UserRights;
 
 require_once __DIR__.'/../bootstrap.php';
 
@@ -35,6 +35,19 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 {
+	private int $iOtherUser = 0;
+
+	protected function setUp(): void
+	{
+		parent::setUp();
+		$iOrg = (int)$this->CreateOrganization('CapUsers '.bin2hex(random_bytes(4)))->GetKey();
+		$iProfile = (int)(new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT URP_Profiles WHERE name = "Administrator"')))->Fetch()->GetKey();
+		$sLogin = 'cap-a-'.bin2hex(random_bytes(3));
+		$this->CreateUser($sLogin, $iProfile, 'Cap-A-'.bin2hex(random_bytes(3)).'-1!', (int)$this->CreatePerson(1, $iOrg)->GetKey());
+		$this->iOtherUser = (int)$this->CreateUser('cap-b-'.bin2hex(random_bytes(3)), $iProfile, 'Cap-B-'.bin2hex(random_bytes(3)).'-1!', (int)$this->CreatePerson(2, $iOrg)->GetKey())->GetKey();
+		UserRights::Login($sLogin);
+	}
+
 	protected function tearDown(): void
 	{
 		$this->cap(0);
@@ -56,7 +69,7 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 		try {
 			return $fn();
 		} finally {
-			$oResult = new MCPResult();
+			$oResult = new MCPResult(MCPResult::OK, 'tools/call answered');
 			$oResult->mcpMethod = 'tools/call';
 			$oResult->mcpName = 'core_object_update';
 			$oResult->requestParams = $sParams;
@@ -85,7 +98,7 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 		$this->assertFalse(ToolOutput::Decode($this->update($iOrg, "Cap2 $sTag", false))['simulated']);
 
 		$aWritten = [];
-		$oRows = new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT AltiooEventMCPService WHERE written_objects > 0 AND mcp_name = "core_object_update"'));
+		$oRows = new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT AltiooEventMCPService WHERE written_objects > 0 AND user_id = :user'), [], ['user' => (int)\CMDBChange::GetCurrentUserId()]);
 		while ($oRow = $oRows->Fetch()) {
 			$aWritten[] = (int)$oRow->Get('written_objects');
 		}
@@ -152,7 +165,7 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 		$oRow->Set('message', 'seeded');
 		$oRow->Set('mcp_method', 'tools/call');
 		$oRow->Set('mcp_name', 'core_object_update');
-		$oRow->Set('user_id', CMDBChange::GetCurrentUserId() + 100000);
+		$oRow->Set('user_id', $this->iOtherUser);
 		$oRow->Set('written_objects', 50);
 		$oRow->DBInsertNoReload();
 
