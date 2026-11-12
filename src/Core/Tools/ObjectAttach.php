@@ -434,9 +434,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// move on that answer is to attach the file again.
 		try {
 			$iAttachmentId = $oAttachment->DBInsert();
-			if ($bPortal) {
-				self::leavePortalTrace($oTarget, $oAttachment);
-			}
+			self::leaveHistoryTrace($oTarget, $oAttachment);
 
 			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
 				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
@@ -477,11 +475,20 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
-	 * What the portal leaves when a file is added: the history line, and the
-	 * event the attachment module raises (ObjectFormManager::FinalizeAttachments).
-	 * The line is written once the file is attached, never for a dry run.
+	 * What iTop leaves when a file is added, in either mode: the history line
+	 * and the event the attachment module raises.
+	 *
+	 * The console's own upload does the same in AttachmentPlugIn::UpdateAttachments()
+	 * (itop-attachments/main.itop-attachments.php:303-377): a
+	 * CMDBChangeOpAttachmentAdded (GetActionChangeOp(), :576-583, recorded by
+	 * RecordHistory(), :561-569) and EVENT_ADD_ATTACHMENT_TO_OBJECT (:361). The
+	 * portal does it in ObjectFormManager::FinalizeAttachments. This is the same
+	 * row and the same event, so the console shows the file in the object's
+	 * history whoever attached it. The line is written once the file is
+	 * attached, never for a dry run, and CMDBChange.userinfo stays iTop's own
+	 * (doc/adr/0009).
 	 */
-	private static function leavePortalTrace(DBObject $oTarget, DBObject $oAttachment): void
+	private static function leaveHistoryTrace(DBObject $oTarget, DBObject $oAttachment): void
 	{
 		$oDocument = $oAttachment->Get('contents');
 		$oChangeOp = new \CMDBChangeOpAttachmentAdded();

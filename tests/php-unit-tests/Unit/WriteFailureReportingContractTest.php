@@ -222,13 +222,16 @@ class WriteFailureReportingContractTest extends TestCase
 		$oSource = SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\ObjectAttach');
 		$sSource = $oSource->Code();
 
-		// Both branches: the attachment object, and the blob attribute. The portal's
-		// history line is written between the insert and the answer, inside the same try.
+		// Both branches: the attachment object, and the blob attribute. The history
+		// line is written between the insert and the answer, inside the same try, in both
+		// modes (the console's attach leaves it too, as iTop's console does).
 		$this->assertSame(
 			2,
-			preg_match_all('/try\{(?:\$\w+=)?\$\w+->(?:DBInsert|DBUpdate)\(\);(?:if\(\$bPortal\)\{[^}]*\})?returnToolOutput::Structured/', $sSource),
+			preg_match_all('/try\{(?:\$\w+=)?\$\w+->(?:DBInsert|DBUpdate)\(\);(?:self::leaveHistoryTrace\(\$oTarget,\$oAttachment\);)?returnToolOutput::Structured/', $sSource),
 			'a write is wrapped and the answer describing it is not'
 		);
+		$this->assertStringContainsString('$iAttachmentId=$oAttachment->DBInsert();self::leaveHistoryTrace($oTarget,$oAttachment);', $sSource, 'the attach leaves its history line in every mode');
+		$this->assertStringNotContainsString('leavePortalTrace', $sSource);
 
 		$this->assertTrue(
 			$oSource->HasCall(WriteOutcome::class.'::CommittedId'),

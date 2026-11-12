@@ -680,7 +680,7 @@ portal is served as customised:
   A file is added only where the portal's upload field would be editable: the object in the user's write scope, its
   state not read-only for the portals (`readonly_states` of `itop-attachments`), and an edit form with a field the user
   can change. The stock `Portal user` profile holds no right to create an `Attachment` and none is needed, as the
-  portal needs none; no profile is widened. A portal-added file leaves what the portal's leaves: the history line and
+  portal needs none; no profile is widened. An added file leaves what iTop's own console and the portal leave, in either mode: the history line and
   the attachment module's event. Dry run by default, the file's type checked against its bytes,
   `mcp_max_document_bytes` applied, and the file's content and name are marked as text to report, never to follow.
   **Deleting an attachment stays in the portal**; a document attribute cannot be set from portal mode.

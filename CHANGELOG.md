@@ -120,6 +120,9 @@ set it to `removed`). Its run count and durations do not carry over to the new r
 
 ### Changed
 
+- **A file attached in console mode now appears in the object's history.** `core_object_attach` leaves the
+  `CMDBChangeOpAttachmentAdded` row and raises `EVENT_ADD_ATTACHMENT_TO_OBJECT`, as iTop's own console attach and the
+  portal already do; before, only portal mode did. A dry run leaves neither, and the change line stays iTop's own.
 - **Architecture.** `src/` follows Combodo's layer folders under one dependency order, enforced
   by `LayerDependencyTest` with an empty baseline, and `@api` is enforced by
   `PublicSurfaceTest`. The decision is [ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md); the
