@@ -81,7 +81,8 @@ through `ObjectSerializer`, as [doc/extending.md](doc/extending.md) describes. T
 
 ### For administrators
 
-**Nothing needs doing.** No parameter, default, identifier, table or column changed. The hourly
+**Nothing needs doing.** One parameter is new, `mcp_portal_extensions`, and it defaults to empty, so
+portal mode serves exactly what it served before. No default, identifier, table or column changed. The hourly
 background process is now `Hook\AuditHousekeeping` where it was `Service\AuditHousekeeping`, so
 the first cron run after the upgrade records a new row for it in iTop's background-task table
 (`priv_backgroundtask`, shown by `cron.php --status_only=1`) and runs it at once.
@@ -92,6 +93,22 @@ run, and only `active` tasks are ever run, so the old row is idle, not running t
 deleted, and that is iTop's behaviour for every background process that goes away, so there is
 nothing to clean up (checked on iTop 3.2.3-3: with a row for the old class in place, one cron run
 set it to `removed`). Its run count and durations do not carry over to the new row.
+
+### Added
+
+- **`mcp_portal_extensions`: portal mode can serve a tool pack's element when the operator lists it**
+  ([ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), decided by
+  the maintainer). Portal mode served only this module's own elements because a pack could not reach the
+  portal's rules; ADR 0016 made them public, so a pack can now answer by them. The parameter lists the
+  elements, by identifier or class name, and is empty by default. An element is served only if it also
+  implements `PortalAware`, and every other filter (`mcp_disabled_tools`, toolsets, capabilities,
+  scopes, exclusions) still applies. A value that is not a list serves no pack element and does not stop
+  the endpoint. A pack element answers through `ObjectAccess::Current()`, never `UserRights` alone
+  ([doc/extending.md](doc/extending.md#serving-your-element-in-portal-mode)).
+- **`Testing\ElementContract` warns of a portal-aware pack element whose source never calls
+  `ObjectAccess::Current()`.** Read from the PHP tokens, so a comment or a string does not satisfy it; the
+  element's parent classes count. It catches the tool that never asks, not the one that asks and ignores
+  the answer: the operator's listing is the control.
 
 ### Changed
 

@@ -115,8 +115,8 @@ calls them. Read the tags rather than this table: the tags are what a test enfor
   served in; `Readable()`, `Hides()` and the `RefusalTo…()` methods are what the core tools ask
   instead of `UserRights` alone.
 
-Portal mode serves only this module's own elements, whatever implements `PortalAware`
-(ADR 0016, "What follows"). A pack element is a console element.
+Portal mode serves a pack's element only when it implements `PortalAware` and the operator lists
+it: see [Serving your element in portal mode](#serving-your-element-in-portal-mode).
 
 A breaking change to a tagged class is a major bump. A new optional hook with a default
 implementation is a minor one. A tagged class or member that is to go is marked `@deprecated`
@@ -307,6 +307,29 @@ one stops early and silently. `AbstractBulkTool` knows that `UR_ACTION_BULK_MODI
 separate grant from `UR_ACTION_MODIFY`, and that the class-level answer is never the end of it.
 A bulk tool that checks the class once and then loops is an escalation with a progress counter,
 and it passes every test written by a developer whose own account holds both rights.
+
+## Serving your element in portal mode
+
+By default portal mode serves only this module's own tools. Your element is a console element:
+iTop's "Portal user" profile reads every class through `UserRights`, so a tool that checks access
+with `UserRights` alone would show a portal user the whole CMDB. It reaches the portal only when
+both of these hold ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)):
+
+1. **Your element implements `Service\Portal\PortalAware`** and answers by the portal's rules. For
+   every object it reads or writes it asks `ObjectAccess::Current()`, which in portal mode is the
+   portal's access and in console mode the console's, so one code path serves both:
+   `Readable()`, `Bounded()`, `Hides()`, `RefusalToSet()` and the other `RefusalTo…()` methods, never
+   `UserRights` alone. A portal attachment is read and added, never deleted
+   (`ObjectAccess::RefusalToAttach()`, ADR 0011).
+2. **The operator lists it** in `mcp_portal_extensions`, by identifier or class name. The default is
+   empty. Implementing the interface without being listed serves nothing, and being listed without
+   implementing it serves nothing. Every other filter (`mcp_disabled_tools`, toolsets, capabilities,
+   token scopes, exclusions) still applies.
+
+`ElementContract::Violations()` warns when a portal-aware element's source, or a parent class's,
+never calls `ObjectAccess::Current()`. That catches the tool that never asks, not the one that asks
+and ignores the answer, so the listing is the control and the check is your help. Tell your users
+to list the element; do not list it for them.
 
 ## Augmenting a core tool
 
