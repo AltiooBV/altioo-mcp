@@ -27,8 +27,8 @@ entry itself, not left to be inferred from it.
 `src/` follows Combodo's layer folders (`Controller`, `Hook`, `Core`, `Helper`, `Model`,
 `Exception`, and a feature folder for each responsibility under `Service`) with one chain of
 dependencies that a test holds, and the nine largest classes are split by what they do. The
-module behaves as it did in 1.3.0. What changes is where the code lives, and with it what a
-pack may call ([ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md), decided by the
+module behaves as it did in 1.3.0, except for the three changes item 3 below names. What changes
+otherwise is where the code lives, and with it what a pack may call ([ADR 0015](doc/adr/0015-2-0-lays-out-src-as-itop-does.md), decided by the
 maintainer; the folders and a request's path through them are in
 [doc/architecture.md](doc/architecture.md)).
 
@@ -39,9 +39,14 @@ maintainer; the folders and a request's path through them are in
    `src/Api/` and every class the core tools depend on, and the name table below maps every
    1.3 name to its 2.0 one (under Changed).
 2. **The 1.3 deprecations are gone** (under Removed).
-3. **An administrator changes nothing.** The module's behaviour, parameters, tool and
-   resource identifiers, audit table and defaults are those of 1.3.0. Run the setup as for any
-   upgrade; nothing else needs doing. The old background-task row is left to iTop (under For
+3. **An administrator has nothing to do, and three things change on the instance.** Two
+   parameters are new and both default to what 1.3.0 did (`mcp_portal_extensions`,
+   `mcp_max_writes_per_hour`); the audit table gains a column, `written_objects`, which the setup
+   adds (both under For administrators). And a file attached in console mode now leaves iTop's
+   history row and raises `EVENT_ADD_ATTACHMENT_TO_OBJECT`, as the console's own attach does, so
+   a trigger or action on that event now also fires for an assistant's attachment (under
+   Changed). Tool and resource identifiers and every existing default are those of 1.3.0. Run
+   the setup as for any upgrade. The old background-task row is left to iTop (under For
    administrators).
 
 **Tested on.** iTop **3.2.3-3** and **3.3.0-1**, each on PHP **8.2** and **8.4** — installed
