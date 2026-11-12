@@ -81,8 +81,11 @@ through `ObjectSerializer`, as [doc/extending.md](doc/extending.md) describes. T
 
 ### For administrators
 
-**Nothing needs doing.** One parameter is new, `mcp_portal_extensions`, and it defaults to empty, so
-portal mode serves exactly what it served before. No default, identifier, table or column changed. The hourly
+**Nothing needs doing.** Two parameters are new. `mcp_portal_extensions` defaults to empty, so
+portal mode serves exactly what it served before. `mcp_max_writes_per_hour` defaults to `0`, which is
+off, so no credential is capped until you set it. No default, identifier or table changed; the audit
+table gains one column, `written_objects`, which the setup adds with the datamodel and which reads 0 on
+older rows. The hourly
 background process is now `Hook\AuditHousekeeping` where it was `Service\AuditHousekeeping`, so
 the first cron run after the upgrade records a new row for it in iTop's background-task table
 (`priv_backgroundtask`, shown by `cron.php --status_only=1`) and runs it at once.
@@ -101,6 +104,15 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   instructions, `tools/list`, the resources, resource templates and prompts, for each token grade
   and for portal mode, with a committed copy, so a reworded description or an `mcp/sdk` bump is
   a diff a person accepts. No change for an installed module; the copies sit under `tests/`.
+- **`mcp_max_writes_per_hour`: an opt-in cap on the objects one credential commits in an hour**
+  ([ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md), decided by the maintainer; backlog
+  H-1). Off by default. Counts objects created, changed, deleted, moved through a stimulus or attached to, per personal
+  token, application token or (for a session login or Basic) user; a dry run never counts, and a bulk call is refused
+  whole before it starts. The count comes from the new audit column `written_objects`, filled from what iTop's change
+  recorded. When it cannot count (audit logging off, level `error`, `tools/call` not audited) or the value is malformed,
+  every write is refused and reads are served. Each write tool asks `WriteCap::RefusalFor()` in its own source and a pack
+  asks the same ([doc/extending.md](doc/extending.md)). It complements rate limiting at the web server, which stays
+  recommended for call volume.
 - **`mcp_portal_extensions`: portal mode can serve a tool pack's element when the operator lists it**
   ([ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), decided by
   the maintainer). Portal mode served only this module's own elements because a pack could not reach the

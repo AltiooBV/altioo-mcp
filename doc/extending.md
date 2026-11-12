@@ -85,7 +85,7 @@ with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the 
 | Folder | On the surface |
 |---|---|
 | `Api\*` | the element base classes you extend, `iMCPServiceProvider`, `MCPRegistry` and `MCPExtensionCollector`, `MCPModule`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, and `Testing\ElementContract` |
-| Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess` |
+| Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess`, `Service\Rights\WriteCap` |
 | Access | `Service\Access\ObjectAccess`, `Service\Access\DocumentFetch` |
 | Read | `Service\Read\ObjectQuery`, `Service\Read\ObjectSerializer`, `Service\Read\OutputFields`, `Service\Read\UntrustedMarker`, `Service\Read\ObjectHistory`, `Service\Read\ObjectGrades`, `Service\Read\DocumentAccess`, `Service\Read\DatamodelReader`, `Service\Read\ClassCatalog`, `Service\Read\AttributeDescription`, `Service\Read\CurrentUserReader` |
 | Write | `Service\Write\DryRun`, `Service\Write\RestValue`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
@@ -111,6 +111,12 @@ calls them. Read the tags rather than this table: the tags are what a test enfor
   `AbstractObjectSearch` as the example pack does, already does the attribute half.
 - **Access-granting classes and the change log.** A write asks `AccessGrants::RefusalFor()` and
   `ChangeLogReservation::IsReserved()`, as every core write does.
+- **The write cap.** When the operator sets `mcp_max_writes_per_hour` ([ADR 0019](adr/0019-an-operator-can-cap-committed-writes-per-credential.md)),
+  a write tool asks `WriteCap::RefusalFor($iObjects)` once it knows the call will commit (never for a
+  dry run), with the number of objects it is about to create, change, delete or attach to, and
+  throws the string it gets back as a `ToolCallException`. A bulk tool asks once for the whole batch.
+  What a call wrote is counted from the change iTop recorded, so a tool that does not ask is still
+  counted, and the credential's next call is refused; asking is what keeps it from going over.
 - **The caller's view of an object.** `ObjectAccess::Current()` answers in the mode the request is
   served in; `Readable()`, `Hides()` and the `RefusalTo…()` methods are what the core tools ask
   instead of `UserRights` alone.

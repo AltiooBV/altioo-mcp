@@ -934,6 +934,7 @@ $MyModuleSettings = array(
         'mcp_protected_resource_metadata' => '',
         'mcp_source_url' => '',
         'mcp_audit_retention_days' => 0,
+        'mcp_max_writes_per_hour' => 0,
         'log_mcp_service' => true,
         'log_mcp_method' => array('initialize', 'tools/call', 'resources/read', 'prompts/get', 'exceptions'),
         'log_mcp_level' => 'info',
@@ -974,6 +975,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_source_url` | *(empty)* | Where the `core/version` resource tells a caller to obtain the corresponding source. Empty means upstream, which is correct unless you modified this module — see [License](#license) |
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `mcp_audit_retention_days` | `0` | Days an audit row is kept before an hourly background process deletes it, oldest first. `0` keeps everything, as before. **iTop has no retention of its own for its event log**, so without this the table only grows. A value that is not a non-negative integer reads as `0` and is logged to `log/error.log`. The process also brings the rows of an anonymised person in step with iTop's history (see [Data flow and privacy](#data-flow-and-privacy)) whether this is on or not; it needs iTop's cron to be running |
+| `mcp_max_writes_per_hour` | `0` | The most objects one credential may create, change, delete, move through a stimulus or attach to in a rolling hour; `0` is no cap, so nothing changes on upgrade. A credential is a personal token (an `altioo-oauth-server` grant is one), an application token, or, for a console session or Basic, the user's own calls. A bulk call counts its objects and is refused whole before it starts; a dry run never counts. It counts from the audit rows (`written_objects`), so it needs `log_mcp_service` on, `tools/call` in `log_mcp_method` and `log_mcp_level` below `error`: **when it cannot count, or the value is not a non-negative integer, every write is refused** (reads are served) and `log/error.log` says why. The refusal names the cap and when room frees up, never another credential's count. Calls at the very same moment can overshoot it, so it complements rate limiting at the web server ([SECURITY.md](SECURITY.md#hardening-the-deployment)); it does not replace it. [ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md) |
 | `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
 | `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and, for a call a tool refused, the tool's own text (*Refusal text*), and is a troubleshooting setting, not a standing one |
 
@@ -1472,9 +1474,10 @@ Known and deliberate, so that none of them is a discovery made after installing:
   are clipped, but `core_object_get` returns every readable attribute unless `output_fields`
   says otherwise; a deliberately wide `output_fields => *` over thousands of objects is still
   your cost to pay.
-- **No rate limit.** Each call is bounded, but calls are not counted: one valid token can keep
-  the instance busy for everyone else. Throttle at the web server — see
-  [SECURITY.md](SECURITY.md#hardening-the-deployment).
+- **No call rate limit; an opt-in write cap.** Calls are not counted: one valid token can keep
+  the instance busy for everyone else, so throttle calls at the web server — see
+  [SECURITY.md](SECURITY.md#hardening-the-deployment). What the module does count, when you set
+  `mcp_max_writes_per_hour` (off by default), is the objects one credential commits in an hour.
 - **The audit trail grows.** One `AltiooEventMCPService` row per audited call. iTop has no retention
   for its event log, so set `mcp_audit_retention_days` (off by default) — it needs iTop's cron.
 - **No console UI.** Configuration is the module parameters in `config-itop.php`.

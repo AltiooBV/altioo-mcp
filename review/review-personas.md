@@ -31,7 +31,9 @@ release archive.
   (`src/Service/Rights/TokenScopes.php`), `mcp_read_only` and `mcp_capabilities`, the write barriers in
   `SECURITY.md` ("The rule the write barriers reduce to"), and whether "dry run by default" is
   enforced by the server or only asked of the client. A control that works only if the model
-  obeys a tool description is not a control. Then the exclusions (`mcp_excluded_classes`,
+  obeys a tool description is not a control. Probe the write cap (`mcp_max_writes_per_hour`, ADR 0019): the cap
+  reached by single and bulk writes and not by a dry run, a second token unaffected, and every write refused when
+  the audit trail cannot count or the value is malformed. Then the exclusions (`mcp_excluded_classes`,
   `mcp_excluded_attributes`, ADR 0012): probe them as an oracle, never only as a read — an
   excluded attribute named in a search filter, an OQL condition or `order_by`, a count, a
   related-objects walk, a history or attachment read, an error text that differs from the one for
