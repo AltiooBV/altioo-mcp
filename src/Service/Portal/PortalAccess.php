@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
+use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
@@ -56,7 +57,8 @@ final class PortalAccess extends ObjectAccess
 	 *
 	 * Two things are needed. The element declares that it enforces the
 	 * portal's rules ({@see PortalAware}), and either it is this module's own
-	 * (under Core\) or the operator listed it in mcp_portal_extensions, by its
+	 * (defined in a file under this module's src/Core/, {@see CoreElement::IsOwn()};
+	 * declaring the Core\ namespace is not enough) or the operator listed it in mcp_portal_extensions, by its
 	 * identifier or its class name (ADR 0017). The declaration is not
 	 * verifiable by the server and the listing is the operator's consent, so
 	 * neither is enough alone: an element that is listed but does not declare
@@ -74,7 +76,7 @@ final class PortalAccess extends ObjectAccess
 			return false;
 		}
 
-		if (str_starts_with(get_class($oElement), self::CORE_NAMESPACE)) {
+		if (CoreElement::IsOwn($oElement)) {
 			return true;
 		}
 
@@ -82,9 +84,6 @@ final class PortalAccess extends ObjectAccess
 
 		return ($sIdentifier !== '' && in_array($sIdentifier, $aListed, true)) || in_array(get_class($oElement), $aListed, true);
 	}
-
-	/** Where this module's own elements live. */
-	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
 
 	/**
 	 * The object, if UserRights and the portal's scopes both let the caller

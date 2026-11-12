@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
+use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use ReflectionMethod;
 use ReflectionNamedType;
 
@@ -54,11 +55,12 @@ final class MCPRegistry
 	 */
 	private const TOOLSET_PATTERN = '/^[a-zA-Z0-9-]{1,64}$/';
 
-	/** Reserved for this module, like the core resource URI namespace. */
+	/**
+	 * Reserved for this module, like the core resource URI namespace. Only a
+	 * class defined under this module's own src/Core/ may use it ({@see CoreElement::IsOwn()}):
+	 * a pack declaring a class in the Core\ PHP namespace does not qualify.
+	 */
 	private const RESERVED_NAMESPACE = 'core';
-
-	/** Classes allowed to use the reserved namespace. */
-	private const RESERVED_NAMESPACE_OWNER = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
 
 	/** @var array<string, AbstractMCPTool> */
 	private static array $aTools = [];
@@ -447,7 +449,7 @@ final class MCPRegistry
 			));
 		}
 
-		if ($sNamespace === self::RESERVED_NAMESPACE && !str_starts_with($sClass, self::RESERVED_NAMESPACE_OWNER)) {
+		if ($sNamespace === self::RESERVED_NAMESPACE && !CoreElement::IsOwn($oElement)) {
 			throw new MCPRegistrationException(sprintf(
 				'%s: the "%s" namespace belongs to the base extension. Use your own vendor or module name; to deliberately replace a core element, declare it through overrides().',
 				$sClass,

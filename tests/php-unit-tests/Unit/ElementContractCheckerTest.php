@@ -143,6 +143,20 @@ class ElementContractCheckerTest extends TestCase
 		$this->assertSame([], $this->portalFindings(new FixtureTool()));
 	}
 
+	/**
+	 * A class declared in the Core\ PHP namespace by a pack is not this
+	 * module's own, so it gets no exemption.
+	 */
+	public function testASpoofedCoreNamespaceDoesNotExemptAPortalAwareElement(): void
+	{
+		require_once dirname(__DIR__).'/Support/SpoofedCorePortalTool.php';
+
+		$aPortal = $this->portalFindings(new \Altioo\iTop\Extension\MCP\Core\Spoof\SpoofedCorePortalTool());
+
+		$this->assertCount(1, $aPortal);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+	}
+
 	public function testACoreElementIsNotAskedForIt(): void
 	{
 		$this->assertSame([], $this->portalFindings(new ClassList()));

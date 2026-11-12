@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Api\Testing;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PhpToken;
@@ -64,7 +65,9 @@ use Throwable;
  *    one too, and for the same reason: an element declaring PortalAware whose
  *    source never calls ObjectAccess::Current() registers cleanly, and is
  *    served to portal users only if the operator lists it (ADR 0017), so it
- *    is the author who has to be told, not the registry that can refuse.
+ *    is the author who has to be told, not the registry that can refuse. Only
+ *    this module's own elements, files under its src/Core/, are exempt from
+ *    it; a class declared in the Core\ namespace by a pack is not.
  *
  * @api
  * @since 1.0.0
@@ -76,7 +79,6 @@ final class ElementContract
 	 * both names are public contract, so they cannot move without a major.
 	 */
 	private const PORTAL_AWARE = 'Altioo\\iTop\\Extension\\MCP\\Service\\Portal\\PortalAware';
-	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
 
 	/** Prefix marking a finding that stops the element registering. */
 	public const REFUSAL = 'refused: ';
@@ -147,7 +149,7 @@ final class ElementContract
 			$aWarnings = array_merge($aWarnings, self::toolWarnings($oElement));
 		}
 
-		if (is_a($oElement, self::PORTAL_AWARE) && !str_starts_with(get_class($oElement), self::CORE_NAMESPACE) && !self::asksObjectAccess($oElement)) {
+		if (is_a($oElement, self::PORTAL_AWARE) && !CoreElement::IsOwn($oElement) && !self::asksObjectAccess($oElement)) {
 			$aWarnings[] = self::WARNING.sprintf(
 				'%s declares PortalAware but its source (nor that of its parent classes) never calls ObjectAccess::Current(). In portal mode answer through ObjectAccess::Current() (Readable, Bounded, Hides, RefusalToSet and the other RefusalTo...) for every object read or written, never UserRights alone, which grants a portal user the whole CMDB. The operator must also list the element in mcp_portal_extensions before portal mode serves it.',
 				get_class($oElement)

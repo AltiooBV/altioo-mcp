@@ -280,6 +280,11 @@ installed anywhere:
   `RequestScope::EnterPortal()`. It now throws `MCPPortalException`, so portal mode serves nothing
   rather than the console's reach, as 1.3 did. No path in `src/` does this today; the check holds
   the next one to it.
+- **A class declared in the `Core\` PHP namespace no longer passes for this module's own
+  element.** Portal mode without a listing in `mcp_portal_extensions`, the reserved `core` tool
+  namespace and `ElementContract`'s portal check all trusted that namespace, which any pack can
+  declare. They now ask `Helper\CoreElement::IsOwn()`: the class must be defined in a file under
+  this module's own `src/Core/`.
 
 ## [1.3.0] - 2026-11-11
 

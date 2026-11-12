@@ -41,6 +41,10 @@ declaration, and the server cannot verify that a tool keeps it.
 
 **What does not change.**
 
+- "This module's own" means a class defined in a file under its own `src/Core/`
+  (`Helper\CoreElement::IsOwn()`, amended 2026-11-12), not one that declares the `Core\` PHP namespace:
+  a pack can declare that from its own autoloader. The same test guards the reserved `core` tool
+  namespace and `ElementContract`'s portal check.
 - ADR 0006 and ADR 0010 bind this module's own tools: no `core_portal_*` copy of a console tool, and
   `core_my_activity` stays the one core element with no portal screen behind it. What a listed pack
   element serves is its author's design and the operator's choice for that instance.

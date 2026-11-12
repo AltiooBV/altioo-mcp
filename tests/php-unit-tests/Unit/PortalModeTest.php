@@ -315,6 +315,15 @@ class PortalModeTest extends TestCase
 	 * until the operator lists it (ADR 0017); the declaration alone is not
 	 * consent.
 	 */
+	public function testASpoofedCoreNamespaceIsNotServedUnlessListed(): void
+	{
+		require_once dirname(__DIR__).'/Support/SpoofedCorePortalTool.php';
+
+		$oSpoof = new \Altioo\iTop\Extension\MCP\Core\Spoof\SpoofedCorePortalTool();
+		$this->assertFalse(PortalAccess::Serves($oSpoof, 'test_spoofed_core_portal_tool', []), 'the namespace is not consent');
+		$this->assertTrue(PortalAccess::Serves($oSpoof, 'test_spoofed_core_portal_tool', ['test_spoofed_core_portal_tool']), 'listed, it is a pack element like another');
+	}
+
 	public function testAPackElementDeclaringItselfPortalAwareIsNotServedUnlessListed(): void
 	{
 		RequestScope::EnterPortal('itop-portal');
