@@ -517,6 +517,22 @@ final class SourceCalls
 	}
 
 	/**
+	 * Does any string literal in code contain this text? For a sentence a tool
+	 * says to its caller: it is in a literal, so a comment that quotes it does
+	 * not hold it up, and it may be one piece of a longer message.
+	 */
+	public function HasStringContaining(string $sText, ?string $sMethod = null): bool
+	{
+		foreach ($this->Strings($sMethod) as $sString) {
+			if (str_contains($sString, $sText)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * The code of the method or file as token text with the comments and the
 	 * whitespace gone, for the few questions about shape that are not a call
 	 * (`is_a($x,$y,true)`). Strings are kept: this is code, not a list of calls.

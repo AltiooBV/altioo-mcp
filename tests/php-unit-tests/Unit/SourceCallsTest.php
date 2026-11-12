@@ -173,6 +173,16 @@ PHP;
 		$this->assertTrue($oSource->HasString('AccessGrants::RefusalFor(', 'Guarded'), 'the string itself is still there to be asked about');
 	}
 
+	public function testAStringContainingATextIsFoundInCodeAndNotInAComment(): void
+	{
+		$oSource = $this->source();
+
+		$this->assertTrue($oSource->HasStringContaining('RefusalFor(', 'Guarded'), 'a literal that holds the text');
+		$this->assertTrue($oSource->HasStringContaining('ChangeLogReservation::IsReserved', 'OnlyInAString'), 'one piece of a longer message');
+		$this->assertFalse($oSource->HasStringContaining('RefusalFor', 'OnlyInAComment'), 'a comment is not a string');
+		$this->assertFalse($oSource->HasStringContaining('no such text', 'Guarded'));
+	}
+
 	public function testACommentOrAStringInsideAMethodThatAlsoCallsDoesNotAddACall(): void
 	{
 		$aCalls = $this->source()->Calls('Guarded');

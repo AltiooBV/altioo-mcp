@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\AttributeFormat;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -127,13 +128,12 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheSchemaSeparatesWhatCanBeSetFromWhatCannot(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+		$oDescribe = SourceCalls::OfClass(DatamodelReader::class);
 
-		$this->assertStringContainsString("'attributes'", $sBody);
-		$this->assertStringContainsString("'derived'", $sBody);
-		$this->assertStringContainsString(
-			"'readOnly'",
-			$sBody,
+		$this->assertTrue($oDescribe->HasString('attributes', 'Describe'));
+		$this->assertTrue($oDescribe->HasString('derived', 'Describe'));
+		$this->assertTrue(
+			$oDescribe->HasString('readOnly', 'Describe'),
 			'Describe() must split on the datamodel\'s own IsWritable() answer, carried as readOnly, rather than on a list of attribute class names that goes stale when iTop adds one'
 		);
 
@@ -141,7 +141,7 @@ class SchemaToolsContractTest extends TestCase
 		// between them or land in both.
 		$this->assertSame(
 			1,
-			substr_count($sBody, 'AttributeDescription::attributes('),
+			count(array_keys($oDescribe->Calls('Describe'), AttributeDescription::class.'::attributes', true)),
 			'the two blocks must be filtered from a single pass, or an attribute can be enumerated into neither'
 		);
 	}
@@ -153,31 +153,6 @@ class SchemaToolsContractTest extends TestCase
 
 		$this->assertStringContainsString('derived', $sDescription);
 		$this->assertStringContainsString('_friendlyname', $sDescription);
-	}
-
-	/**
-	 * The body of a method, comments stripped, so that a doc comment describing
-	 * a split cannot stand in for the split.
-	 */
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
-		$sSource = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
-
-		$sCode = '';
-		foreach (token_get_all('<?php '.$sSource) as $mToken) {
-			if (is_array($mToken) && in_array($mToken[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-				continue;
-			}
-			$sCode .= is_array($mToken) ? $mToken[1] : $mToken;
-		}
-
-		return $sCode;
 	}
 
 	/**
@@ -237,9 +212,8 @@ class SchemaToolsContractTest extends TestCase
 			'a default that narrows anything makes the unnarrowed call impossible to spell'
 		);
 
-		$this->assertStringContainsString(
-			"'reported'",
-			$this->methodBody(DatamodelReader::class, 'Describe'),
+		$this->assertTrue(
+			SourceCalls::OfClass(DatamodelReader::class)->HasString('reported', 'Describe'),
 			'the answer does not say what it left out'
 		);
 	}
@@ -258,20 +232,17 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheDateHintIsAdviceAndNotAConversion(): void
 	{
-		$sBody = $this->methodBody(AttributeDescription::class, 'ValueHint');
+		$sBody = SourceCalls::OfClass(AttributeDescription::class)->Code('ValueHint');
 
-		$this->assertStringContainsString('GetInternalFormat', $sBody, 'the format has to be read off the branch');
-		$this->assertStringContainsString('AttributeDateTime', $sBody, 'only a date attribute gets this hint');
-		$this->assertStringContainsString('return \'\';', $sBody, 'anything else has to answer with nothing');
+		// The call is on a late-bound `$oAttDef::`, which is not a call SourceCalls resolves, so the code is read.
+		$this->assertStringContainsString('GetInternalFormat(', $sBody, 'the format has to be read off the branch');
+		$this->assertStringContainsString('instanceofAttributeDateTime', $sBody, 'only a date attribute gets this hint');
+		$this->assertStringContainsString("return'';", $sBody, 'anything else has to answer with nothing');
 
 		// The create, the update and the stimulus convert through WriteValues.
 		foreach (['Service\\Write\\WriteValues'] as $sTool) {
-			$sSource = (string) file_get_contents(
-				(new \ReflectionClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool))->getFileName()
-			);
-			$this->assertStringContainsString(
-				'AttributeDescription::ValueHint',
-				$sSource,
+			$this->assertTrue(
+				SourceCalls::OfClass('Altioo\\iTop\\Extension\\MCP\\'.$sTool)->HasCall(AttributeDescription::class.'::ValueHint'),
 				"{$sTool} refuses a value without saying what would have worked"
 			);
 		}
@@ -289,10 +260,10 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testRequiredOnlyDropsTheBlockNothingCanSet(): void
 	{
-		$sBody = $this->methodBody(DatamodelReader::class, 'Describe');
+		$sBody = SourceCalls::OfClass(DatamodelReader::class)->Code('Describe');
 
 		$this->assertMatchesRegularExpression(
-			'/BLOCK_DERIVED.*&&\s*!\$bRequiredOnly/s',
+			'/BLOCK_DERIVED.*&&!\$bRequiredOnly/s',
 			$sBody,
 			'required_only still answers with attributes no write can supply'
 		);
@@ -325,11 +296,11 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testAnAttributeDerivedFromOthersNamesThem(): void
 	{
-		$sBody = $this->methodBody(AttributeDescription::class, 'dependsOn');
+		$oDepends = SourceCalls::OfClass(AttributeDescription::class);
 
-		$this->assertStringContainsString('GetPrerequisiteAttributes', $sBody, 'the declaration is not read from the attribute');
-		$this->assertStringContainsString('catch (\\Throwable', $sBody, 'a question about the datamodel must not cost the schema');
-		$this->assertStringNotContainsString('priority', $sBody, 'the answer is hardcoded for one datamodel');
+		$this->assertTrue($oDepends->HasCallTo('GetPrerequisiteAttributes', 'dependsOn'), 'the declaration is not read from the attribute');
+		$this->assertContains('Throwable', $oDepends->CatchTypes('dependsOn'), 'a question about the datamodel must not cost the schema');
+		$this->assertStringNotContainsString('priority', $oDepends->Code('dependsOn'), 'the answer is hardcoded for one datamodel');
 
 		$this->assertStringContainsString(
 			'dependsOn',
@@ -358,18 +329,17 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testACategoryIsListedOnceAndFindsSpacedDeclarations(): void
 	{
-		$sCategories = $this->methodBody(ClassCatalog::class, 'Categories');
+		$oCatalog = SourceCalls::OfClass(ClassCatalog::class);
 
-		$this->assertStringContainsString("array_map('trim'", $sCategories, 'a spaced key is listed as its own category');
-		$this->assertStringContainsString('array_unique', $sCategories, 'the same category can be listed twice');
+		$this->assertStringContainsString("array_map('trim'", $oCatalog->Code('Categories'), 'a spaced key is listed as its own category');
+		$this->assertTrue($oCatalog->HasCall('array_unique', 'Categories'), 'the same category can be listed twice');
 
-		$sLookup = $this->methodBody(ClassCatalog::class, 'classesInCategory');
-
-		$this->assertStringContainsString('HasCategory', $sLookup, 'the classes that declared it spaced stay unreachable');
-		$this->assertStringContainsString('str_contains', $sLookup, '"core" would drag in "core/cmdb"');
+		$this->assertTrue($oCatalog->HasCallTo('HasCategory', 'classesInCategory'), 'the classes that declared it spaced stay unreachable');
+		$this->assertTrue($oCatalog->HasCall('str_contains', 'classesInCategory'), '"core" would drag in "core/cmdb"');
+		$this->assertTrue($oCatalog->HasCall('MetaModel::GetClasses', 'classesInCategory'));
 		$this->assertStringContainsString(
 			'MetaModel::GetClasses($sCategory)',
-			$sLookup,
+			$oCatalog->Code('classesInCategory'),
 			'the exact lookup is no longer the basis of the answer'
 		);
 	}
@@ -547,15 +517,10 @@ class SchemaToolsContractTest extends TestCase
 	 */
 	public function testTheGateListMatchesTheBlockItDescribes(): void
 	{
-		$oMethod = new ReflectionMethod(ClassRights::class, 'RightsOf');
-		$aLines = file($oMethod->getFileName());
-		$sBody = implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
+		// Code() has no comment in it, so a key named only in one is not a key.
+		$sBody = SourceCalls::OfClass(ClassRights::class)->Code('RightsOf');
 
-		preg_match_all("/'([A-Za-z]+)'\\s*=>/", $sBody, $aMatches);
+		preg_match_all("/'([A-Za-z]+)'=>/", $sBody, $aMatches);
 
 		$this->assertSame(
 			GateGrades::RightsKeys(),

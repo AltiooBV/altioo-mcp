@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -62,25 +64,20 @@ class OrmFailureRedactionTest extends TestCase
 	 */
 	public function testABadExternalKeyIsAnsweredInItsOwnWords(): void
 	{
-		$sBody = $this->methodBody(
-			\Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy::class,
-			'RefusalFor'
-		);
+		$oPolicy = SourceCalls::OfClass(ExternalKeyPolicy::class);
 
-		$this->assertStringContainsString('IsExternalKey', $sBody, 'the check fires on attributes that are not keys');
-		$this->assertStringContainsString('GetTargetClass', $sBody, 'the refusal does not name the class to search');
-		$this->assertStringContainsString('core_object_find_by_name', $sBody, 'the refusal names no way forward');
-		$this->assertStringNotContainsString('OpaqueFailure', $sBody, 'the plain reason is wrapped in the opaque one');
+		$this->assertTrue($oPolicy->HasCallTo('IsExternalKey', 'RefusalFor'), 'the check fires on attributes that are not keys');
+		$this->assertTrue($oPolicy->HasCallTo('GetTargetClass', 'RefusalFor'), 'the refusal does not name the class to search');
+		$this->assertTrue($oPolicy->HasStringContaining('core_object_find_by_name', 'RefusalFor'), 'the refusal names no way forward');
+		$this->assertFalse($oPolicy->HasCall(ErrorReport::class.'::OpaqueFailure', 'RefusalFor'), 'the plain reason is wrapped in the opaque one');
 
 		foreach ([
 			// The create, the update and the stimulus convert through it.
 			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WriteValues',
 			'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 		] as $sClass) {
-			$sSource = (string) file_get_contents((new \ReflectionClass($sClass))->getFileName());
-			$this->assertStringContainsString(
-				'ExternalKeyPolicy::RefusalFor(',
-				$sSource,
+			$this->assertTrue(
+				SourceCalls::OfClass($sClass)->HasCall(ExternalKeyPolicy::class.'::RefusalFor'),
 				"{$sClass} still defers a bad id to the ORM"
 			);
 		}
@@ -107,27 +104,29 @@ class OrmFailureRedactionTest extends TestCase
 	 */
 	public function testTheOpaqueRefusalPointsAtSomethingThatResolves(): void
 	{
-		$sBody = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ErrorReport::class, 'RejectedValue');
+		$oReport = SourceCalls::OfClass(ErrorReport::class);
 
-		$this->assertStringContainsString('core_class_schema', $sBody, 'the caller is told nothing it can check');
+		$this->assertTrue($oReport->HasStringContaining('core_class_schema', 'RejectedValue'), 'the caller is told nothing it can check');
 		// Said by auditLookup(), which keeps it from a portal user, who may read
 		// neither the class nor be served the tool.
-		$this->assertStringContainsString('self::auditLookup()', $sBody);
-		$sLookup = $this->methodBody(\Altioo\iTop\Extension\MCP\Helper\ErrorReport::class, 'auditLookup');
-		$this->assertStringContainsString('AltiooEventMCPService', $sLookup,
-			'the reference is handed out without naming anything that resolves it');
-		$this->assertStringContainsString('core_object_search_by_class', $sLookup,
-			'nothing tells the reader how to find the row the reference is on');
-		$this->assertStringContainsString('PortalMode::Current()', $sLookup);
-		$this->assertStringNotContainsString('quote that reference', $sBody);
+		$this->assertTrue($oReport->HasCall(ErrorReport::class.'::auditLookup', 'RejectedValue'));
+		$this->assertTrue(
+			$oReport->HasStringContaining('AltiooEventMCPService', 'auditLookup'),
+			'the reference is handed out without naming anything that resolves it'
+		);
+		$this->assertTrue(
+			$oReport->HasStringContaining('core_object_search_by_class', 'auditLookup'),
+			'nothing tells the reader how to find the row the reference is on'
+		);
+		$this->assertTrue($oReport->HasCall(PortalMode::class.'::Current', 'auditLookup'));
+		$this->assertFalse($oReport->HasStringContaining('quote that reference', 'RejectedValue'));
 
 		// And the reference has to reach that row, which is the half that was
 		// missing: minted in the helper, written by the controller.
-		$sController = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Controller\CallLog::class))->getFileName()
+		$this->assertTrue(
+			SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Controller\CallLog::class)->HasCall(ErrorReport::class.'::MintedReferences'),
+			'the audit row records only the controller\'s own reference, so a tool-level one resolves to nothing'
 		);
-		$this->assertStringContainsString('ErrorReport::MintedReferences()', $sController,
-			'the audit row records only the controller\'s own reference, so a tool-level one resolves to nothing');
 	}
 
 	/**
@@ -509,29 +508,5 @@ class OrmFailureRedactionTest extends TestCase
 		// A prefix strip, not a search-and-replace: str_replace would also
 		// eat any later occurrence of the root inside the path.
 		return ltrim(substr($sReal, strlen($sRoot)), '/');
-	}
-
-	/**
-	 * The body of a method, comments stripped.
-	 *
-	 * Stripped because these assertions are about what the code does, and a
-	 * comment explaining why a phrase was removed contains that phrase - which
-	 * is exactly how this test first failed against the fix it was written for.
-	 */
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new \ReflectionMethod($sClass, $sMethod);
-		$aLines = file($oMethod->getFileName());
-
-		$aBody = array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		);
-
-		return implode('', array_filter(
-			$aBody,
-			static fn (string $sLine): bool => !str_starts_with(ltrim($sLine), '//')
-		));
 	}
 }

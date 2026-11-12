@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
@@ -137,9 +138,11 @@ class ActivityDashboardContractTest extends TestCase
 	 */
 	public function testTheRefusedLoginDashletMatchesWhatTheControllerWrites(): void
 	{
-		$sController = (string)file_get_contents(self::ROOT.'/src/Controller/CallLog.php');
-		$this->assertStringContainsString("->Set('mcp_method', 'login')", $sController);
-		$this->assertStringContainsString("->Set('mcp_name', 'portal_admission')", $sController);
+		// Code(), not text: a comment or a docblock that quotes the call does not write the row.
+		$oController = SourceCalls::OfFile(self::ROOT.'/src/Controller/CallLog.php');
+		$this->assertTrue($oController->HasCallTo('Set'), 'CallLog sets no column at all');
+		$this->assertStringContainsString("->Set('mcp_method','login')", $oController->Code());
+		$this->assertStringContainsString("->Set('mcp_name','portal_admission')", $oController->Code());
 
 		$aRefused = self::datamodel()->xpath('//dashlet[title="MCP:Dashboard:RefusedLogins"]');
 		$this->assertCount(1, $aRefused);
@@ -164,6 +167,6 @@ class ActivityDashboardContractTest extends TestCase
 	public function testTheDashboardIsDataAndNotCode(): void
 	{
 		$this->assertFileDoesNotExist(self::ROOT.'/src/Service/ActivityDashboard.php');
-		$this->assertStringNotContainsString('DashletGroupBy', (string)file_get_contents(self::ROOT.'/src/Controller/MCPController.php'));
+		$this->assertStringNotContainsString('DashletGroupBy', SourceCalls::OfFile(self::ROOT.'/src/Controller/MCPController.php')->Code());
 	}
 }

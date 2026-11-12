@@ -9,9 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
-use ReflectionMethod;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
 // autoload this module's test Support classes; this fills that gap and is a
@@ -39,10 +38,14 @@ class RelatedBulkReadContractTest extends TestCase
 {
 	public function testTheGraphAsksForBulkReadAtAll(): void
 	{
-		$this->assertStringContainsString(
-			'UR_ACTION_BULK_READ',
-			$this->gateBody(),
+		// Read from tokens: a comment or a string naming the constant is not the check.
+		$this->assertTrue(
+			$this->source()->HasConstant('UR_ACTION_BULK_READ', 'classesReadInBulkWithoutTheRight'),
 			'A relation walk returns a set; without this check it returns one the search tools would refuse.'
+		);
+		$this->assertTrue(
+			$this->source()->HasCallTo('IsActionAllowed', 'classesReadInBulkWithoutTheRight'),
+			'The constant has to be handed to the rights check.'
 		);
 	}
 
@@ -57,13 +60,9 @@ class RelatedBulkReadContractTest extends TestCase
 	 */
 	public function testAPartialGraphIsFlaggedBesideTheSummary(): void
 	{
-		$sBody = (string) file_get_contents(
-			(new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetRelated::class))->getFileName()
-		);
-
-		$this->assertMatchesRegularExpression(
-			'/truncated.+aWithheld !== /',
-			$sBody,
+		$this->assertStringContainsString(
+			"'truncated'=>\$aWithheld!==[]",
+			$this->serializeBody(),
 			'the flag is not derived from what was actually withheld'
 		);
 		$this->assertStringContainsString(
@@ -80,7 +79,7 @@ class RelatedBulkReadContractTest extends TestCase
 	public function testTheCheckIsMadePerClass(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/foreach\s*\(\s*\$aStats\s+as\s+\$\w+\s*=>\s*\$\w+\s*\)/',
+			'/foreach\(\$aStatsas\$\w+=>\$\w+\)/',
 			$this->gateBody(),
 			'The per-class tally is what the check has to walk.'
 		);
@@ -93,7 +92,7 @@ class RelatedBulkReadContractTest extends TestCase
 	public function testASingleObjectOfAClassIsStillASingleRead(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/\$\w+\s*>\s*1\s*&&/',
+			'/\$\w+>1&&/',
 			$this->gateBody(),
 			'The gate must start at the second object of a class.'
 		);
@@ -105,9 +104,8 @@ class RelatedBulkReadContractTest extends TestCase
 	 */
 	public function testWithheldClassesAreRemovedFromTheObjects(): void
 	{
-		$this->assertStringContainsString(
-			'array_filter',
-			$this->serializeBody(),
+		$this->assertTrue(
+			$this->source()->HasCall('array_filter', 'serializeGraph'),
 			'The objects of a withheld class have to leave the payload, not merely be noted.'
 		);
 	}
@@ -119,7 +117,7 @@ class RelatedBulkReadContractTest extends TestCase
 	public function testEdgesTouchingAWithheldObjectAreDropped(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/if\s*\(!isset\(\$aObjects\[\$sFrom\]\)\s*\|\|\s*!isset\(\$aObjects\[\$sTo\]\)\)/',
+			'/if\(!isset\(\$aObjects\[\$sFrom\]\)\|\|!isset\(\$aObjects\[\$sTo\]\)\)/',
 			$this->serializeBody(),
 			'Both ends of a returned edge must still be in the payload.'
 		);
@@ -133,8 +131,8 @@ class RelatedBulkReadContractTest extends TestCase
 	{
 		$sBody = $this->serializeBody();
 
-		$this->assertStringContainsString("\$aPayload['withheld']", $sBody, 'Silence is the outcome ruled out.');
-		$this->assertStringContainsString("'classes' => \$aWithheld", $sBody, 'The classes are named.');
+		$this->assertStringContainsString("\$aPayload['withheld']=", $sBody, 'Silence is the outcome ruled out.');
+		$this->assertStringContainsString("'classes'=>\$aWithheld", $sBody, 'The classes are named.');
 	}
 
 	/**
@@ -153,42 +151,35 @@ class RelatedBulkReadContractTest extends TestCase
 	/** The gate is reached from the code that assembles the payload. */
 	public function testTheGateIsActuallyCalled(): void
 	{
-		$this->assertStringContainsString(
-			'classesReadInBulkWithoutTheRight',
-			$this->serializeBody(),
+		$this->assertTrue(
+			$this->source()->HasCall(ObjectGetRelated::class.'::classesReadInBulkWithoutTheRight', 'serializeGraph'),
 			'An uncalled gate is not a gate.'
 		);
 	}
 
+	private function source(): SourceCalls
+	{
+		return SourceCalls::OfClass(ObjectGetRelated::class);
+	}
+
 	private function gateBody(): string
 	{
-		return $this->methodBody(ObjectGetRelated::class, 'classesReadInBulkWithoutTheRight');
+		return $this->source()->Code('classesReadInBulkWithoutTheRight');
 	}
 
 	private function serializeBody(): string
 	{
-		return $this->methodBody(ObjectGetRelated::class, 'serializeGraph');
+		return $this->source()->Code('serializeGraph');
 	}
 
 	/** Just the block that builds the withheld report. */
 	private function withheldBlock(): string
 	{
 		$sBody = $this->serializeBody();
-		$iStart = strpos($sBody, "\$aWithheld !== []");
+		// The `if` that builds the report, not the `truncated` flag above it.
+		$iStart = strpos($sBody, 'if($aWithheld!==[]){');
 		$this->assertNotFalse($iStart, 'The withheld report must exist to be checked.');
 
 		return substr($sBody, $iStart);
-	}
-
-	private function methodBody(string $sClass, string $sMethod): string
-	{
-		$oMethod = new ReflectionMethod($sClass, $sMethod);
-		$aLines = file((new ReflectionClass($sClass))->getFileName());
-
-		return implode('', array_slice(
-			$aLines,
-			$oMethod->getStartLine() - 1,
-			$oMethod->getEndLine() - $oMethod->getStartLine() + 1
-		));
 	}
 }
