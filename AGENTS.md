@@ -101,6 +101,9 @@ Settings agent skills read here.
   Also: a fix for a supported pre-2.0 minor is a patch on each `release/1.N` branch it applies to (cut from that minor's latest tag on
   the 2.0.0 tag day), carried with the CHANGELOG name table across the break and never written afresh; each tree is tested by its
   own matrix, and no minor's fix is folded into 1.3.x alone ([0018](doc/adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md)).
+  Also: the write cap `mcp_max_writes_per_hour` is off by default, counts objects per credential from the audit rows' `written_objects`, and
+  refuses every write (never reads) when it cannot be honoured; each writing tool asks `WriteCap::RefusalFor()` in its own source and a gateway
+  is still recommended for call volume ([0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)).
   Also: portal mode serves a pack's element only when it implements `PortalAware` **and** the operator lists it in
   `mcp_portal_extensions` (empty by default; a malformed value opens nothing); a portal-aware element asks
   `ObjectAccess::Current()`, never `UserRights` alone ([0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).
