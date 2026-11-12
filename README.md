@@ -189,7 +189,7 @@ other MCP server in the ecosystem names its tools.
 **Reading without filling a context window.** A tool result is read into one, so the
 reading tools narrow by default. `output_fields` takes a comma-separated list of attribute
 codes, or `*`; searches default to `id, friendlyname` — the same default iTop's REST API
-applies — and `core_object_get` defaults to `*`. Long texts, case logs and link sets are
+applies — and `core_object_get` defaults to `*` on purpose, so an agent need not guess which fields exist; `output_fields` narrows it. Long texts, case logs and link sets are
 cut to a ceiling that the value itself declares, unless you name that attribute in
 `output_fields`, which is the way to read one in full. Paging is stable: every page is
 ordered by `order_by` and then by `id`, so nothing is returned twice or skipped between
@@ -611,6 +611,16 @@ decision, per person, as it is for console users.
   portal of each call, and a refusal at login is a row with method `login` and element
   `portal_admission`.
 
+**Where a person sees and revokes their own token.** This extension has no page for it, by
+decision ([ADR 0003](doc/adr/0003-optional-dependency-on-altioo-oauth-server.md)). A console
+user holding Administrator or a profile in authent-token's `personal_tokens_allowed_profiles`
+finds **My Account → Personal Tokens** in iTop itself, and may list, edit and delete their own
+tokens there (authent-token 2.2.1, shipped with iTop 3.2.2; it is the same setting that lets a
+token log in). A token issued by altioo-oauth-server also appears under *Connected
+applications* in that tab, and in the portal under *My profile*. A portal-only user has iTop's
+screen on neither route unless altioo-oauth-server is installed: iTop's tab is console-only, so
+an administrator revokes the token, or disables the account.
+
 **Giving a portal user a token.** It has to be a personal token. An application token
 (`UserToken`) has no expiry date to check — the class defines no `expiration_date`
 (authent-token's datamodel, verified on iTop 3.2.2) — so portal mode reads it as a token that
@@ -619,7 +629,7 @@ for every portal token. A token issued by altioo-oauth-server is a personal toke
 qualifies. With altioo-oauth-server installed, they connect their client themselves, and see and
 disconnect it under *My profile → Connected applications* in the portal. Without it an
 administrator mints a personal token, as below, and the user has no page of their own to see or
-revoke it. Two things iTop decides, not this extension, on either route:
+revoke it: ask an administrator (*User management → Personal tokens*). Two things iTop decides, not this extension, on either route:
 
 - A personal token logs in only if its owner holds a profile listed in authent-token's
   `personal_tokens_allowed_profiles`, which is `array('Administrator')` by default. Add the

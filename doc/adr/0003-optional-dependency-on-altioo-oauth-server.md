@@ -38,3 +38,8 @@ anyone reading the module's declaration.
 
 Enforced by: `OAuthServerDiscoveryTest` (unit suite) — the advertised URL, the setting winning,
 nothing without the module, and the dependency kept in its always-satisfied form.
+
+Amended 2026-11-12 (Guy Couronne): seeing and revoking one's own token stays with the companion
+(*Connected applications*) and iTop's own *My Account → Personal Tokens*. This module adds no
+page for it, which would be a new HTTP entry point; a portal-only user without the companion
+asks an administrator (README, "Granting access").
