@@ -15,6 +15,8 @@ use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassInheriting;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassNoAsk;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolAsking;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolMentioning;
@@ -155,6 +157,26 @@ class ElementContractCheckerTest extends TestCase
 
 		$this->assertCount(1, $aPortal);
 		$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+	}
+
+	/**
+	 * Red-team F1 (2026-11-12): a core parent's source does not stand in for the
+	 * pack's own. A subclass of a core tool that replaces execute() and reads
+	 * through UserRights alone is reported, as any pack element would be.
+	 */
+	public function testASubclassOfACoreToolThatReplacesExecuteWithoutAskingIsReported(): void
+	{
+		$aPortal = $this->portalFindings(new PortalAwareCoreSubclassNoAsk());
+
+		$this->assertCount(1, $aPortal);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+		$this->assertStringContainsString('ObjectAccess::Current()', $aPortal[0]);
+	}
+
+	/** A subclass that leaves execute() to core runs core's code, which asks. */
+	public function testASubclassOfACoreToolThatKeepsItsExecuteIsNotReported(): void
+	{
+		$this->assertSame([], $this->portalFindings(new PortalAwareCoreSubclassInheriting()));
 	}
 
 	public function testACoreElementIsNotAskedForIt(): void

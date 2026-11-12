@@ -82,7 +82,13 @@ final class PortalAccess extends ObjectAccess
 
 		$aListed ??= Settings::GetPortalExtensions();
 
-		return ($sIdentifier !== '' && in_array($sIdentifier, $aListed, true)) || in_array(get_class($oElement), $aListed, true);
+		// An element registered under an identifier it took with overrides() is
+		// listed by its class name only: the operator's consent went to a name
+		// whose holder was somebody else, and is not handed on to whatever
+		// replaces it (ADR 0017, amended 2026-11-12).
+		$bTookTheName = method_exists($oElement, 'overrides') && $oElement->overrides() !== null;
+
+		return (!$bTookTheName && $sIdentifier !== '' && in_array($sIdentifier, $aListed, true)) || in_array(get_class($oElement), $aListed, true);
 	}
 
 	/**

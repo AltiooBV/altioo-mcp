@@ -141,6 +141,7 @@ final class MCPService
 		SettingsWarnings::warnAboutSettingsThatMatchNothing($aDisabled);
 		SettingsWarnings::warnAboutBulkSiblingsLeftOn($aDisabled);
 		SettingsWarnings::warnAboutEscalationClassesThatMatchNothing();
+		SettingsWarnings::warnAboutPortalExtensionsThatServeNothing();
 
 		return $builder->build();
 	}

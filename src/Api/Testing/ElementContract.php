@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api\Testing;
 
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPPrompt;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
@@ -15,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PhpToken;
 use ReflectionClass;
+use ReflectionMethod;
 use Throwable;
 
 /**
@@ -151,7 +153,7 @@ final class ElementContract
 
 		if (is_a($oElement, self::PORTAL_AWARE) && !CoreElement::IsOwn($oElement) && !self::asksObjectAccess($oElement)) {
 			$aWarnings[] = self::WARNING.sprintf(
-				'%s declares PortalAware but its source (nor that of its parent classes) never calls ObjectAccess::Current(). In portal mode answer through ObjectAccess::Current() (Readable, Bounded, Hides, RefusalToSet and the other RefusalTo...) for every object read or written, never UserRights alone, which grants a portal user the whole CMDB. The operator must also list the element in mcp_portal_extensions before portal mode serves it.',
+				'%s declares PortalAware but its own source (nor that of its parent classes outside this module) never calls ObjectAccess::Current(). In portal mode answer through ObjectAccess::Current() (Readable, Bounded, Hides, RefusalToSet and the other RefusalTo...) for every object read or written, never UserRights alone, which grants a portal user the whole CMDB. The operator must also list the element in mcp_portal_extensions before portal mode serves it.',
 				get_class($oElement)
 			);
 		}
@@ -198,8 +200,14 @@ final class ElementContract
 	}
 
 	/**
-	 * Whether the element's class, or a parent of it, calls
-	 * ObjectAccess::Current() in code.
+	 * Whether the pack's own source calls ObjectAccess::Current() in code: the
+	 * element's class and those of its parents that are not this module's.
+	 *
+	 * A core parent is skipped, so a subclass of a core tool is not satisfied by
+	 * what its parent does (every core portal tool asks): only the pack's code
+	 * counts. The one exception is the subclass that does not replace the
+	 * method that answers (execute(), read() or get()): it runs core's code,
+	 * which asks, so it passes.
 	 *
 	 * Read from the PHP tokens, so a comment, docblock or string naming the
 	 * call does not count, and the class is resolved through the file's `use`
@@ -208,9 +216,15 @@ final class ElementContract
 	 */
 	private static function asksObjectAccess(object $oElement): bool
 	{
+		$sHandler = $oElement instanceof AbstractMCPTool ? 'execute' : ($oElement instanceof AbstractMCPPrompt ? 'get' : 'read');
+		if (method_exists($oElement, $sHandler)
+			&& CoreElement::IsOwn((new ReflectionMethod($oElement, $sHandler))->getDeclaringClass()->getName())) {
+			return true;
+		}
+
 		for ($oClass = new ReflectionClass($oElement); $oClass !== false; $oClass = $oClass->getParentClass()) {
 			$sFile = $oClass->getFileName();
-			if ($sFile === false) {
+			if ($sFile === false || CoreElement::IsOwn($oClass->getName())) {
 				continue;
 			}
 			$sCode = @file_get_contents($sFile);

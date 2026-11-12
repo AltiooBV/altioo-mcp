@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use MetaModel;
 
 /**
@@ -131,6 +132,91 @@ final class SettingsWarnings
 				$aKnownToolsets === [] ? '(none)' : implode(', ', array_keys($aKnownToolsets))
 			));
 		}
+	}
+
+	/**
+	 * Logs each mcp_portal_extensions entry that serves nothing in portal mode.
+	 *
+	 * The list only ever adds, so a stale line is not a leak. It is the opposite
+	 * failure: the operator believes portal users have a tool they do not, and
+	 * nothing says so. Three causes, each named: no registered element answers
+	 * to the entry (a typo, a renamed or uninstalled pack); the element it names
+	 * does not implement PortalAware, which the operator's consent cannot
+	 * replace (ADR 0017); and the entry is an identifier now held by an element
+	 * that took it with overrides(), which is listed by its class name only.
+	 */
+	public static function warnAboutPortalExtensionsThatServeNothing(): void
+	{
+		$aListed = Settings::GetPortalExtensions();
+		if ($aListed === []) {
+			return;
+		}
+
+		$aElements = [];
+		foreach (self::everyRegisteredElement() as $sIdentifier => $oElement) {
+			$aElements[] = [$sIdentifier, $oElement];
+		}
+
+		foreach (self::portalListingProblems($aListed, $aElements) as $sProblem => $aEntries) {
+			if ($aEntries === []) {
+				continue;
+			}
+			ErrorReport::Log(sprintf(
+				"'%s' lists %s that %s: %s.",
+				Settings::MODULE_SETTING_PORTAL_EXTENSIONS,
+				count($aEntries) === 1 ? 'an entry' : 'entries',
+				self::PORTAL_PROBLEMS[$sProblem],
+				implode(', ', $aEntries)
+			));
+		}
+	}
+
+	/** What each problem says about the entries it names. */
+	private const PORTAL_PROBLEMS = [
+		'missing'    => 'no registered element answers to, so portal users are served nothing by it. Check the spelling, or remove an entry for an extension that is no longer installed',
+		'unaware'    => 'names an element that does not implement PortalAware, so portal users are not served it whatever the listing says. The element has to declare that it enforces the portal\'s rules',
+		'overridden' => 'is an identifier held by an element that took it with overrides(), which portal mode serves only when listed by its class name. List the class name instead',
+	];
+
+	/**
+	 * Each listed entry that serves nothing, grouped by why.
+	 *
+	 * An entry matches an element by its identifier or its class name. It serves
+	 * that element when the element is PortalAware and either the entry is the
+	 * class name or the element did not take its identifier with overrides()
+	 * ({@see \Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::Serves()}).
+	 *
+	 * @param array<int, string>                      $aListed
+	 * @param array<int, array{0: string, 1: object}> $aElements Identifier or URI the registry holds each under, and the element.
+	 *
+	 * @return array{missing: array<int, string>, unaware: array<int, string>, overridden: array<int, string>}
+	 */
+	private static function portalListingProblems(array $aListed, array $aElements): array
+	{
+		$aProblems = ['missing' => [], 'unaware' => [], 'overridden' => []];
+
+		foreach (array_values(array_unique($aListed)) as $sEntry) {
+			$bMatched = $bServes = $bUnaware = false;
+			foreach ($aElements as [$sIdentifier, $oElement]) {
+				$bByClass = $sEntry === get_class($oElement);
+				if (!$bByClass && $sEntry !== $sIdentifier) {
+					continue;
+				}
+				$bMatched = true;
+				if (!$oElement instanceof PortalAware) {
+					$bUnaware = true;
+				} elseif ($bByClass || !method_exists($oElement, 'overrides') || $oElement->overrides() === null) {
+					$bServes = true;
+				}
+			}
+
+			if ($bServes) {
+				continue;
+			}
+			$aProblems[!$bMatched ? 'missing' : ($bUnaware ? 'unaware' : 'overridden')][] = $sEntry;
+		}
+
+		return $aProblems;
 	}
 
 	/**
