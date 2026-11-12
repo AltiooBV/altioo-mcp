@@ -247,6 +247,14 @@ installed anywhere:
 - `Settings::AccessSettingsAreMalformed()`, which asked the exclusions' parser from the layer that
   reads settings. The question is `Service\Rights\AccessPolicy::SettingsAreMalformed()`.
 
+### Fixed
+
+- **`core_portal_list` tab counts leave out the classes an operator excluded.** A tab's count was
+  made without the narrowing the list's rows have, so on a list of a parent class (a ticket list)
+  it counted the objects of an excluded subclass that the rows themselves never showed
+  ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)). The defect was in
+  1.3.0 too.
+
 ### Security
 
 - **`ObjectAccess::Current()` refuses a request in portal mode that nothing entered.** Splitting

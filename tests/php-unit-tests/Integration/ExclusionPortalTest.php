@@ -149,6 +149,19 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		ObjectGet::execute('UserRequest', $this->iOwn);
 	}
 
+	/** A tab's count is the number of rows the tab lists: an excluded subclass is in neither (doc/adr/0012). */
+	public function testTheTabCountsLeaveOutAnExcludedSubclass(): void
+	{
+		$aBefore = ToolOutput::Decode(PortalList::execute(self::ONGOING));
+		$this->assertGreaterThan(0, array_sum(array_column($aBefore['tabs'], 'count')), 'the control: the tabs count the request');
+
+		$this->exclude(['UserRequest'], []);
+
+		$aAfter = ToolOutput::Decode(PortalList::execute(self::ONGOING));
+		$this->assertSame(0, array_sum(array_column($aAfter['tabs'], 'count')), 'a tab still counts a row of the excluded subclass');
+		$this->assertSame(0, $aAfter['total']);
+	}
+
 	private static function profileId(string $sName): int
 	{
 		$oSearch = DBObjectSearch::FromOQL_AllData('SELECT URP_Profiles WHERE name = :name');

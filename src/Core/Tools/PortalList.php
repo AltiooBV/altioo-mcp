@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSet;
 use DBSearch;
 use Mcp\Exception\ToolCallException;
@@ -280,7 +281,8 @@ class PortalList extends AbstractPortalTool
 		$aTabs = [];
 		foreach (array_map('strval', array_keys($aConditions)) as $sTab) {
 			$oTab = $oPolicy->Bounded(PortalRows::TabQuery(DBSearch::FromOQL((string)$aList['oql']), $aList, $sTab), $sClass);
-			$aTabs[] = ['tab' => $sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet($oTab))->Count()];
+			// Counted as the rows are listed: without the rows of an excluded subclass (doc/adr/0012).
+			$aTabs[] = ['tab' => $sTab, 'count' => $oTab === null ? 0 : (new DBObjectSet(ExclusionSearches::Narrowed($oTab, $sClass)))->Count()];
 		}
 
 		return ['tabs' => $aTabs];

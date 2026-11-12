@@ -24,6 +24,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet as ObjectGetTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectHistory as ObjectHistoryTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\PortalList;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -791,5 +792,17 @@ class PortalModeTest extends TestCase
 		} finally {
 			RequestScope::Close();
 		}
+	}
+
+	/**
+	 * The tab counts are of the rows the tab lists, so an excluded subclass is out of both
+	 * (ADR 0012, ADR 0014): the narrowing is in the tool's own source, where the count is made.
+	 */
+	public function testThePortalListNarrowsEveryTabCount(): void
+	{
+		$this->assertTrue(
+			SourceCalls::OfClass(PortalList::class)->HasCall(ExclusionSearches::class.'::Narrowed', 'tabsOf'),
+			'PortalList::tabsOf() counts a tab without leaving out the rows of an excluded subclass'
+		);
 	}
 }
