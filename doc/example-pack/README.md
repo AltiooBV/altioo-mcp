@@ -15,7 +15,7 @@ in the order you would meet it.
 | `register.php` | One line, declaring the provider. Listed in the module's `datamodel` array |
 | `datamodel.acme-servicedesk.xml` | The `MCP-toolset-acme-servicedesk` token scope, and the title dictionary |
 | `src/AcmeServiceDeskExtensions.php` | The provider: the version guard, the registrations, the server instructions |
-| `src/Tools/TicketAddLogEntry.php` | A write tool: annotations, dry run, `RestValue`, per-object `UserRights` |
+| `src/Tools/TicketAddLogEntry.php` | A write tool: annotations, dry run, `RestValue`, per-object `UserRights`, the operator's exclusions |
 | `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free, and the one element that implements `PortalAware`: see below |
 | `src/Prompts/TriageMyQueue.php` | A prompt, and `isAvailable()` keeping it off instances where it would fail |
 | `tests/php-unit-tests/Unit/ContractTest.php` | The whole contract suite, needing neither iTop nor a database |

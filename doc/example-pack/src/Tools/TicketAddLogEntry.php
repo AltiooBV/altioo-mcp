@@ -10,6 +10,8 @@ namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
@@ -151,6 +153,19 @@ class TicketAddLogEntry extends AbstractMCPTool
 	{
 		if (trim($message) === '') {
 			throw new ToolCallException('The message is empty.');
+		}
+
+		// What the operator excluded is not this tool's to touch, whatever
+		// UserRights says (ADR 0012). Refused in the words for a class or an
+		// attribute that does not exist, so the refusal cannot be used to find
+		// out what was excluded. A tool that writes any class a caller names
+		// would also ask AccessGrants::RefusalFor() and
+		// ChangeLogReservation::IsReserved(); neither applies to UserRequest.
+		if (!ExclusionPolicy::Serves('UserRequest')) {
+			throw new ToolCallException(ClassRefusal::Unreadable('UserRequest'));
+		}
+		if (ExclusionPolicy::ExcludesAttribute('UserRequest', self::LOG_ATTRIBUTE)) {
+			throw new ToolCallException("Unknown attribute '".self::LOG_ATTRIBUTE."' on class 'UserRequest'.");
 		}
 
 		// Nothing here replaces UserRights. The framework authenticated the
