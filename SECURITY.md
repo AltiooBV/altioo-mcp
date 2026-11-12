@@ -55,8 +55,8 @@ this endpoint is not.
 | 1.0.x | **Supported.** Released 2026-09-20, security fixes until 2031-09-20 |
 
 Fixes are issued as a new patch of every minor still inside its support period below, not only
-of the newest one. For the 1.x lines that patch is a 1.3.x release made on the `release/1.x`
-branch, which contains 1.0 to 1.2 ([how](CONTRIBUTING.md#fixing-a-pre-20-line)). The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
+of the newest one. For the 1.x lines the patch of each supported minor is made on its own
+`release/1.N` branch ([how](CONTRIBUTING.md#fixing-a-pre-20-line)). The extension follows iTop's own branch policy: a version supported here runs on the iTop branches named in the README, and a
 branch that Combodo has retired is not tested against.
 
 ### Support period

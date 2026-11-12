@@ -83,30 +83,32 @@ the other side.
 
 ## Fixing a pre-2.0 line
 
-[SECURITY.md](SECURITY.md) promises fixes for 1.0 to 1.3, and 2.0 moved every class under `src/`, so
-a patch for `main` does not apply to those lines as written. The decision is
-[ADR 0018](doc/adr/0018-a-fix-for-a-1-x-line-is-made-on-release-1-x.md).
+[SECURITY.md](SECURITY.md) promises a patch of every minor from 1.0 to 1.3 for five years, and 2.0
+moved every class under `src/`, so a patch for `main` does not apply to those lines as written. The
+decision is [ADR 0018](doc/adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md).
 
-- **Which branch.** `release/1.x`, cut from `v1.3.0` on the day 2.0.0 is tagged. Branch your fix
-  from it (`fix/…`) and open the pull request against it, not against `main`. A 1.x fix is released
-  as a 1.3.x patch: 1.3 contains 1.0 to 1.2, so there is no branch per minor.
-- **Which first.** A defect in code both lines share is fixed on `main` first and carried back. One that
-  exists only in the 1.x code is fixed on `release/1.x` first, and `main` gets the test that proves it
-  is absent there.
-- **Carry it with the name table.** Never write the fix twice from memory. Take the diff, rename
-  every class and member through the 1.3 → 2.0 tables under **Classes** in the
-  [CHANGELOG.md](CHANGELOG.md) 2.0.0 entry, and re-read the result: the layers changed, so a moved
-  class may call something now in a different place, and a security check that lived in a helper
-  may now live in the tool's own source ([ADR 0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
-  `git cherry-pick` conflicts on every moved file; resolve by hand against the table, don't force it.
-  The pull request says which commit it was carried from.
-- **Test on the 1.x tree, by its own matrix.** The tree you branched is the one CI runs, so what is in
-  its `.github/` is the claim: iTop 3.2 and 3.3 each on PHP 8.2 and 8.4, the unit suite on 8.2 to 8.4.
-  Do not run 2.0's workflows or `vendor/` against it; `composer install` from its own lock first.
-  The fix comes with its test, as above, and the test is written for the 1.x names.
+- **Which branch.** Each supported minor has its own maintenance branch, `release/1.0` to
+  `release/1.3`, cut at the 2.0.0 tag from the latest tag of that minor. Branch your fix (`fix/…`)
+  from the branch it is for and open the pull request against that branch, not against `main`.
+- **Which first.** A defect in code that 2.0 shares is fixed on `main` first and carried back. One that
+  exists only in the 1.x code is fixed on the oldest minor it affects and carried up each `release/1.N`,
+  ending on `main` with the test that proves it is absent there.
+- **Carrying between 1.x minors is a cherry-pick.** They share the 1.x layout. Only the step to or
+  from `main` crosses the break: rename every class and member through the 1.3 → 2.0 tables under
+  **Classes** in the [CHANGELOG.md](CHANGELOG.md) 2.0.0 entry and re-read the result, since a moved class
+  may now call something in another layer and a security check that lived in a helper may now live in
+  the tool's own source ([ADR 0014](doc/adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
+  `git cherry-pick` conflicts on every moved file across that break; resolve by hand against the table.
+  The pull request names the commit it was carried from.
+- **Test each branch against its own matrix.** The tree you branched is what CI runs, so its
+  `.github/itop-support.json` and workflows are the claim: at 1.3.0 that is iTop 3.2 and 3.3 each on
+  PHP 8.2 and 8.4; 1.0 claimed iTop 3.2 only. Read the tag you branched from rather than this
+  sentence. Do not run 2.0's workflows or `vendor/` against a 1.x tree; `composer install` from its own lock
+  first. The fix comes with its test, written for that branch's names.
+- **One entry per patch.** Each branch's patch has its own [CHANGELOG.md](CHANGELOG.md) entry on that
+  branch, its own version in the three files, and its own tag.
 - **Signing and trailers as usual.** Signed commits, the trailer from
-  [AI-assisted contributions](#ai-assisted-contributions), explicit pathspecs. A carried fix is a
-  new commit on `release/1.x`, with its own changelog entry under the 1.3.x heading.
+  [AI-assisted contributions](#ai-assisted-contributions), explicit pathspecs.
 
 ## Before a pull request
 

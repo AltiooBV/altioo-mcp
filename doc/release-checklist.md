@@ -219,33 +219,35 @@ usually nothing to do — confirm that rather than assume it.
 
 ## The day 2.0.0 is tagged
 
-Everything in *Every release* applies. This adds the one step that exists only once, and that
-cannot be done earlier because the branch has nothing to carry before 2.0.0 exists
-([ADR 0018](adr/0018-a-fix-for-a-1-x-line-is-made-on-release-1-x.md)).
+Everything in *Every release* applies. This adds the step that exists only once, and cannot be done
+earlier because the branches have nothing to carry before 2.0.0 exists
+([ADR 0018](adr/0018-a-fix-for-a-1-x-minor-is-made-on-its-own-release-branch.md)).
 
-- [ ] **Create `release/1.x` from `v1.3.0` and push it** — the maintainer pushes. Cut from the tag,
-      not from `main` and not from a later 1.x commit: `git branch release/1.x v1.3.0`, then
-      `git push origin release/1.x`. Confirm `git rev-parse release/1.x` equals `git rev-parse 'v1.3.0^{commit}'`,
-      so the branch's `.github/` is the one 1.3.0 shipped. Protect it as `main`
-      is: no direct pushes, signed commits.
-- [ ] **State where 1.x fixes are made** in [SECURITY.md](../SECURITY.md) — already one sentence
-      under *Supported versions*; check it still says `release/1.x`, beside the new 2.0.x row (D-8).
+- [ ] **Create every `release/1.N` branch and push them** — the maintainer pushes. One per supported
+      minor, each from the latest tag of that minor, not from `main`:
+      `git branch release/1.0 v1.0.2`, `release/1.1 v1.1.2`, `release/1.2 v1.2.0`,
+      `release/1.3 v1.3.0`, then `git push origin release/1.0 release/1.1 release/1.2 release/1.3`.
+      Check `git tag -l 'v1.*'` first: if a later patch of a minor exists by then, use it. Confirm each
+      `git rev-parse release/1.N` equals `git rev-parse '<tag>^{commit}'`, so the branch's `.github/` is
+      the one that minor shipped. Protect them as `main` is: no direct pushes, signed commits.
+- [ ] **State where 1.x fixes are made** in [SECURITY.md](../SECURITY.md): one sentence under
+      *Supported versions*. Check it names `release/1.N`, beside the new 2.0.x row (D-8).
 
-## Releasing a 1.3.x
+## Releasing a 1.x patch
 
-A patch of the pre-2.0 lines, from `release/1.x`, not from `main`. The checks above apply with
-these differences:
+A patch of a pre-2.0 minor, from that minor's `release/1.N` branch, not from `main`. One fix is one
+patch **per minor it applies to**, each released on its own with the checks above and these differences:
 
-1. **Version and changelog** are `1.3.x` in the three files and the 1.x `CHANGELOG.md`, on
-   `release/1.x`; `ModuleMetadataTest` and `release.yml` check them as they did at 1.3.0. Dates
-   are the day of the tag. SECURITY.md's windows do not move: a patch does not restart a
-   support period.
-2. **CI is that branch's own.** Run `tools/ci/local/run.sh unit` from the 1.x tree, read the
-   iTop matrix summary for the branches *its* `itop-support.json` names, and record them in the
-   **Tested on** line of the new entry. Do not borrow 2.0's result.
-3. **Tag `v1.3.x` on the `release/1.x` commit.** `release.yml` builds from the tag's own tree, so
-   the archive carries the 1.x workflow, `exclude.txt` and `vendor/` of that tree.
-4. **Upgrade path.** Run the upgrade workflow from the previous 1.x tag, as for any patch. A
-   client on 1.0 to 1.2 is told in the changelog that the fix is in 1.3.x.
-5. **Did `main` get the fix?** The release is not closed until the same fix is on `main` (or a
-   test shows it was never there), so the next 2.x does not ship the defect it fixed in 1.3.
+1. **Version and changelog** are `1.N.x` in the three files and that branch's `CHANGELOG.md`;
+   `ModuleMetadataTest` and `release.yml` check them as they did at the minor's release. Dates are the
+   day of the tag. SECURITY.md's windows do not move: a patch does not restart a support period.
+2. **CI is that branch's own.** Run `tools/ci/local/run.sh unit` from that tree, read the iTop matrix
+   summary for the branches *its* `itop-support.json` names, and record them in the **Tested on** line
+   of the new entry. Do not borrow another branch's result, or 2.0's.
+3. **Tag `v1.N.x` on the `release/1.N` commit.** `release.yml` builds from the tag's own tree, so the
+   archive carries that tree's workflow, `exclude.txt` and `vendor/`.
+4. **Upgrade path.** Run the upgrade workflow from the previous tag of that minor, as for any patch.
+5. **Did `main` get the fix?** The last patch is not done until the fix is on `main`, or a test shows
+   it was never there, so 2.x does not ship the defect.
+6. **When a minor's window ends** (the date in SECURITY.md), archive its branch: no more tags, and
+   say so in that row.
