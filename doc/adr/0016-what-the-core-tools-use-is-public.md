@@ -3,7 +3,7 @@
 - Date: 2026-11-11
 - Decided by: Guy Couronne, 2026-11-11 ("everything that the core tools depends on, make it public
   so that for extending, it's allowed")
-- Status: accepted
+- Status: accepted; its point "Portal mode is unchanged" superseded by [0017](0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md) on 2026-11-12
 - Supersedes: rule 3 of [ADR 0015](0015-2-0-lays-out-src-as-itop-does.md), "`@api` covers what a pack
   needs and nothing else". The rest of 0015 stands.
 
@@ -41,7 +41,7 @@ with the same classes, rather than reimplement it with iTop's API and miss a che
 - **A pack that returns object data asks `Service\Rights\ExclusionPolicy`**, as a core tool does. The
   rule of ADR 0012, "absent on every route", now applies to a pack's routes too, and
   [doc/extending.md](../extending.md) says how.
-- **Portal mode is unchanged.** `Service\Portal\PortalAware` and `PortalPolicy` are on the surface, but
+- **Portal mode is unchanged** (superseded by [ADR 0017](0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), which lets an operator list pack elements for portal mode). `Service\Portal\PortalAware` and `PortalPolicy` are on the surface, but
   `PortalAccess::Serves()` still serves only this module's own elements in portal mode, whatever
   implements the interface. Serving a pack's element to portal users is a separate decision.
 - **ADR 0014 is unchanged.** A security check stays in the tool's own source. A pack tool calls the same

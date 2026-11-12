@@ -98,3 +98,6 @@ Settings agent skills read here.
   Also: `@api` is `src/Api/` plus every class `src/Core` depends on and the types their public signatures name, listed in
   `PublicSurfaceTest::EXTRA_SURFACE`; a new dependency of a core element goes on that list with `@api`, never around it,
   and every other class says `@internal` ([0016](doc/adr/0016-what-the-core-tools-use-is-public.md)).
+  Also: portal mode serves a pack's element only when it implements `PortalAware` **and** the operator lists it in
+  `mcp_portal_extensions` (empty by default; a malformed value opens nothing); a portal-aware element asks
+  `ObjectAccess::Current()`, never `UserRights` alone ([0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).
