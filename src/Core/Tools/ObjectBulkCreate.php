@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
@@ -160,6 +161,13 @@ class ObjectBulkCreate extends AbstractBulkTool
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
 		if ($sCreateRefusal !== null) {
 			throw new ToolCallException($sCreateRefusal);
+		}
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($objects));
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
 		}
 
 		// Once for the batch, before the loop: the objects created by one call

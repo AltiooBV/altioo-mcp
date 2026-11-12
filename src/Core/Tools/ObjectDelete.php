@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
@@ -229,6 +230,13 @@ class ObjectDelete extends AbstractMCPTool
 		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
 
 		if (!$simulate) {
+			// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+			// tool's own source, once the call is known to commit and before it writes.
+			$sCapRefusal = WriteCap::RefusalFor(1);
+			if ($sCapRefusal !== null) {
+				throw new ToolCallException($sCapRefusal);
+			}
+
 			// Said before the write: a deletion also updates the objects that
 			// pointed at this one, and the reason belongs in their history too.
 			ChangeTracking::Explain($comment);

@@ -18,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
@@ -300,6 +301,13 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
+
 		ChangeTracking::Explain($comment);
 
 		try {

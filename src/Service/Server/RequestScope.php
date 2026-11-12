@@ -21,6 +21,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
 
 /**
@@ -112,6 +113,7 @@ final class RequestScope
 		ReadSummary::Forget();
 		ErrorReport::ForgetReferences();
 		MentionPolicy::ForgetCount();
+		WriteCap::Forget();
 
 		ExclusionPolicy::Forget();
 		AccessGrantFamilies::Forget();

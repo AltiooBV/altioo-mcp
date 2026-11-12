@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
@@ -131,6 +132,13 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		// this caller may not write on the class is refused for the whole call
 		// rather than a hundred times over.
 		self::checkAttributesWritable($class, $fields);
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
 
 		// Once for the batch, before the loop: forty objects changed by one
 		// call are one decision, and they share the one change record.

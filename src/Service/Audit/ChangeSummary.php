@@ -292,4 +292,58 @@ class ChangeSummary
 			return '';
 		}
 	}
+
+	/**
+	 * How many distinct objects a change touched, for the write cap.
+	 *
+	 * Every operation counts, whatever its kind - an attachment's history row
+	 * names its host object and has no verb in {@see Compose()} - so what is
+	 * counted is what iTop recorded, not what a tool reported. Zero for no change
+	 * and for a failure to read it, after logging: the cap then under-counts one
+	 * call, and the audit row is still written.
+	 *
+	 * @since 2.0.0
+	 */
+	public static function ObjectsOfChange(?int $iChangeId): int
+	{
+		if ($iChangeId === null || $iChangeId <= 0) {
+			return 0;
+		}
+
+		try {
+			$oSearch = new DBObjectSearch('CMDBChangeOp');
+			$oSearch->AddCondition('change', $iChangeId, '=');
+			$oSearch->AllowAllData();
+			$oSet = new DBObjectSet($oSearch);
+			$aRows = [];
+			while ($oOperation = $oSet->Fetch()) {
+				$aRows[] = [(string)$oOperation->Get('objclass'), (string)$oOperation->Get('objkey')];
+			}
+
+			return self::CountObjects($aRows);
+		} catch (Throwable $e) {
+			ErrorReport::Log('Could not count the objects of change '.$iChangeId.' ('.get_class($e).').');
+
+			return 0;
+		}
+	}
+
+	/**
+	 * Distinct objects among `[class, key]` pairs. Pure, for the unit suite.
+	 *
+	 * @param array<int, array{0: string, 1: string}> $aObjects
+	 *
+	 * @since 2.0.0
+	 */
+	public static function CountObjects(array $aObjects): int
+	{
+		$aSeen = [];
+		foreach ($aObjects as [$sClass, $sKey]) {
+			if ($sClass !== '') {
+				$aSeen[$sClass.'::'.$sKey] = true;
+			}
+		}
+
+		return count($aSeen);
+	}
 }

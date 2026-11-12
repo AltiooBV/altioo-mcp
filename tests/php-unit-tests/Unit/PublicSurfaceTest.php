@@ -88,6 +88,7 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Rights/ExclusionSearches.php',
 		'src/Service/Rights/GateGrades.php',
 		'src/Service/Rights/ServedAccess.php',
+		'src/Service/Rights/WriteCap.php',
 		'src/Service/Write/DeletionCascade.php',
 		'src/Service/Write/DryRun.php',
 		'src/Service/Write/EditPolicy.php',

@@ -220,6 +220,23 @@ abstract class SettingNames
 	 */
 	const MODULE_SETTING_AUDIT_RETENTION_DAYS = 'mcp_audit_retention_days';
 
+	/**
+	 * The most objects one credential may have created, changed, deleted,
+	 * moved through a stimulus or attached to in a rolling hour. 0, the
+	 * default, is no cap: nothing changes on an instance that never set it.
+	 *
+	 * It restricts, so a value that is not a non-negative integer is not read
+	 * as 0: writes are refused until it is corrected (ADR 0019).
+	 *
+	 * @since 2.0.0
+	 */
+	const MODULE_SETTING_MAX_WRITES_PER_HOUR = 'mcp_max_writes_per_hour';
+
+	const DEFAULT_MAX_WRITES_PER_HOUR = 0;
+
+	/** The window the cap above counts over, in seconds. */
+	const WRITE_CAP_WINDOW_SECONDS = 3600;
+
 	/** The default bound: altioo-oauth-server's own max_grant_days. */
 	const DEFAULT_PORTAL_TOKEN_MAX_DAYS = 90;
 

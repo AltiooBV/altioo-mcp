@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
@@ -421,6 +422,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 				+ self::mimeTypeNote($sMimeTypeNote));
 		}
 
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
+
 		ChangeTracking::Explain($sComment);
 
 		// The answer is built inside the catch, not after it.
@@ -546,6 +554,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 					'document'    => DocumentAccess::Describe($oDocument, $sClass, $iId, $sAttCode),
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
+		}
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = WriteCap::RefusalFor(1);
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
 		}
 
 		ChangeTracking::Explain($sComment);

@@ -131,4 +131,31 @@ final class SettingParser
 
 		return 0;
 	}
+
+	/**
+	 * The decision GetMaxWritesPerHour() makes, given the value it read.
+	 *
+	 * Null, not 0, when the value is not a non-negative integer: the setting
+	 * restricts, and a typo must not read as "no cap" (ADR 0019, after 0012).
+	 * The caller refuses writes on null.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @internal
+	 * @since 2.0.0
+	 */
+	public static function MaxWritesPerHourFrom(mixed $mValue): ?int
+	{
+		if (is_int($mValue) && $mValue >= 0) {
+			return $mValue;
+		}
+
+		ErrorReport::Log(sprintf(
+			"Itop configuration parameter '%s' should be a non-negative integer, not %s. Every write is refused until it is corrected; reads are served.",
+			SettingNames::MODULE_SETTING_MAX_WRITES_PER_HOUR,
+			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue)
+		));
+
+		return null;
+	}
 }

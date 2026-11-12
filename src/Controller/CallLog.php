@@ -260,6 +260,7 @@ final class CallLog
 		}
 
 		$oLog->Set('change_id', $iChangeId);
+		$oLog->Set('written_objects', ChangeSummary::ObjectsOfChange($iChangeId));
 		$oLog->Set('changed_objects', self::truncate(ChangeSummary::OfChange($iChangeId), 65535));
 	}
 

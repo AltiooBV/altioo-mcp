@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
@@ -106,6 +107,13 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 		$aIds = self::checkIds($ids);
 		self::checkBulkAllowed($class, UR_ACTION_BULK_DELETE, UR_ACTION_DELETE, 'delete');
+
+		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
+		// tool's own source, once the call is known to commit and before it writes.
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
+		if ($sCapRefusal !== null) {
+			throw new ToolCallException($sCapRefusal);
+		}
 
 		// Once for the batch, before the loop: the objects deleted by one call
 		// are one decision, and they share the one change record.

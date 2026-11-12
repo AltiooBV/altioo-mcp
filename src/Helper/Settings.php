@@ -467,4 +467,27 @@ final class Settings extends SettingNames
 		return SettingParser::RetentionDaysFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_AUDIT_RETENTION_DAYS, 0));
 	}
 
+	/**
+	 * Committed object writes one credential may make in a rolling hour; 0 for
+	 * no cap, null when the value is malformed (the caller refuses writes).
+	 *
+	 * @since 2.0.0
+	 */
+	public static function GetMaxWritesPerHour(): ?int
+	{
+		return SettingParser::MaxWritesPerHourFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_MAX_WRITES_PER_HOUR, self::DEFAULT_MAX_WRITES_PER_HOUR));
+	}
+
+	/**
+	 * The audit level the write cap counts from: whether a successful call
+	 * leaves a row at all.
+	 *
+	 * @since 2.0.0
+	 */
+	public static function AuditCountsWrites(): bool
+	{
+		return self::LogsCalls()
+			&& in_array(MCPMethod::TOOLS_CALL, self::GetAuditedMethods(), true)
+			&& utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_LOG_LEVEL, self::DEFAULT_LOG_LEVEL) !== self::LOG_LEVEL_ERROR;
+	}
 }

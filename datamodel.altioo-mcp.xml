@@ -345,6 +345,21 @@
           <validation_pattern/>
         </field>
 
+        <!--
+          How many objects this call changed, counted from the change it made
+          (distinct objects among its CMDBChangeOp rows, so an attachment counts
+          its host). 0 for a read and a dry run. This is what the write cap
+          (mcp_max_writes_per_hour, doc/adr/0019) adds up over the last hour per
+          credential, so it is written by the controller from what iTop recorded,
+          never from what a tool said.
+        -->
+        <field id="written_objects" xsi:type="AttributeInteger">
+          <sql>written_objects</sql>
+          <default_value>0</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+        </field>
+
         <!-- Size of the response body, in bytes -->
         <field id="response_bytes" xsi:type="AttributeInteger">
           <sql>response_bytes</sql>
@@ -489,6 +504,9 @@
                     </item>
                     <item id="changed_objects">
                       <rank>20</rank>
+                    </item>
+                    <item id="written_objects">
+                      <rank>22</rank>
                     </item>
                     <item id="change_comment">
                       <rank>25</rank>
@@ -809,6 +827,19 @@
         is logged.
       -->
       <mcp_audit_retention_days type="integer">0</mcp_audit_retention_days>
+      <!--
+        The most objects one credential (a personal token, an application
+        token, or else the user's own login) may create, change, delete, move
+        through a stimulus or attach to in a rolling hour, counted from the
+        audit rows. 0, the default, is no cap: nothing changes on upgrade. A dry
+        run never counts; a bulk call counts its objects and is refused whole.
+        It restricts, so a value that is not a non-negative integer, or an audit
+        trail that does not record successful calls (log_mcp_service off,
+        log_mcp_level error, tools/call not in log_mcp_method), refuses every
+        write and logs why; reads are served. Complements, does not replace,
+        a rate limit in front of the web server (doc/adr/0019).
+      -->
+      <mcp_max_writes_per_hour type="integer">0</mcp_max_writes_per_hour>
       <!--
         Toolsets this instance serves. A toolset is the functional group an
         element declares - the base extension ships "datamodel", "objects",
