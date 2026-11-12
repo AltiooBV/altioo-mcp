@@ -198,14 +198,14 @@ final class ObjectHistory
 	 * {@see For()}, under a portal's rules as well: the portal decides which
 	 * rows of the change log the user may read, and which attributes of the
 	 * object they are shown. Every gate For() applies still applies; these
-	 * only narrow it, so a row is served when both allow it.
+	 * only narrow it, so a row is served when both allow it. core_object_history
+	 * passes the portal's bounds here, and so does a pack element served in
+	 * portal mode (ADR 0017).
 	 *
 	 * @param \Closure(DBObjectSearch): ?DBSearch $fBound The query narrowed to what the user may read of it, null for none.
 	 * @param \Closure(string): bool        $fShows Whether the user is shown that attribute of $oObject.
 	 *
 	 * @return array<string, mixed>
-	 * @internal Portal mode's, as long as portal mode serves this module's own elements only
-	 *           ({@see \Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess::Serves()}, ADR 0016).
 	 */
 	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0): array
 	{
