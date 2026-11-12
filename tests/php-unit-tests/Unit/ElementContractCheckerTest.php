@@ -15,7 +15,11 @@ use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolAsking;
+use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolMentioning;
 use Altioo\iTop\Extension\MCP\Test\Support\UndescribedTool;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__).'/bootstrap.php';
@@ -110,5 +114,48 @@ class ElementContractCheckerTest extends TestCase
 
 		$this->assertCount(1, $aViolations);
 		$this->assertStringContainsString('AbstractMCPTool', $aViolations[0]);
+	}
+
+	/**
+	 * ADR 0017: a pack element declaring PortalAware is held to answering
+	 * through ObjectAccess::Current(). Reported as a warning, since it
+	 * registers and the operator's listing is what serves it.
+	 */
+	public function testAPortalAwarePackElementThatNeverAsksObjectAccessIsReported(): void
+	{
+		foreach ([new PortalAwarePackTool(), new PortalAwarePackToolMentioning()] as $oElement) {
+			$aPortal = $this->portalFindings($oElement);
+
+			$this->assertCount(1, $aPortal, get_class($oElement));
+			$this->assertStringStartsWith(ElementContract::WARNING, $aPortal[0]);
+			$this->assertStringContainsString('ObjectAccess::Current()', $aPortal[0]);
+			$this->assertStringContainsString('mcp_portal_extensions', $aPortal[0]);
+		}
+	}
+
+	public function testAPortalAwarePackElementThatCallsObjectAccessCurrentIsNotReported(): void
+	{
+		$this->assertSame([], $this->portalFindings(new PortalAwarePackToolAsking()));
+	}
+
+	public function testAPackElementThatDoesNotDeclarePortalAwareIsNotAskedToServeThePortal(): void
+	{
+		$this->assertSame([], $this->portalFindings(new FixtureTool()));
+	}
+
+	public function testACoreElementIsNotAskedForIt(): void
+	{
+		$this->assertSame([], $this->portalFindings(new ClassList()));
+	}
+
+	/**
+	 * @return array<int, string>
+	 */
+	private function portalFindings(object $oElement): array
+	{
+		return array_values(array_filter(
+			ElementContract::Violations($oElement),
+			static fn (string $sFinding): bool => str_contains($sFinding, 'PortalAware')
+		));
 	}
 }

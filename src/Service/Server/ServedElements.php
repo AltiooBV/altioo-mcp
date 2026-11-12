@@ -85,18 +85,20 @@ final class ServedElements
 	 * which is exactly the case where one of them has to go.
 	 *
 	 * @param string             $sIdentifier Qualified tool/prompt name, or resource URI, as awarded by the registry.
-	 * @param array<int, string> $aDisabled
+	 * @param array<int, string>      $aDisabled
+	 * @param array<int, string>|null $aPortalListed What mcp_portal_extensions lists; null reads the setting. For tests, which have no configuration.
 	 */
-	public static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy): bool
+	public static function isHidden(string $sIdentifier, object $oElement, array $aDisabled, AccessPolicy $oPolicy, ?array $aPortalListed = null): bool
 	{
-		// Portal mode serves only what enforces the portal's rules itself.
-		// Every other element asks UserRights, which grants "Portal user" read
-		// on every bizmodel class - so an element not written for the portal,
-		// a pack's included, would serve that user the instance. First, so
+		// Portal mode serves only what enforces the portal's rules itself and
+		// is this module's own or listed by the operator (ADR 0017). Every
+		// other element asks UserRights, which grants "Portal user" read on
+		// every bizmodel class - so an element not written for the portal
+		// would serve that user the instance. First, so
 		// that no filter below can be what lets one through; the ones below
 		// still narrow what it lets through, because portal mode widens
 		// nothing.
-		if (PortalMode::Current() !== null && !PortalAccess::Serves($oElement)) {
+		if (PortalMode::Current() !== null && !PortalAccess::Serves($oElement, $sIdentifier, $aPortalListed)) {
 			return true;
 		}
 

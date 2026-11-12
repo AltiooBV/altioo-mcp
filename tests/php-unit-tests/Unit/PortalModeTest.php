@@ -28,6 +28,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\OAuthResource;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
@@ -75,11 +76,12 @@ class PortalModeTest extends TestCase
 
 	/**
 	 * @param array<int, string> $aDisabled
+	 * @param array<int, string> $aPortalListed mcp_portal_extensions; a unit run has no configuration to read it from.
 	 */
-	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null): bool
+	private function isHidden(object $oElement, string $sIdentifier, array $aDisabled = [], ?AccessPolicy $oPolicy = null, array $aPortalListed = []): bool
 	{
 		return (new ReflectionMethod(ServedElements::class, 'isHidden'))
-			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted());
+			->invoke(null, $sIdentifier, $oElement, $aDisabled, $oPolicy ?? AccessPolicy::Unrestricted(), $aPortalListed);
 	}
 
 	/**
@@ -309,17 +311,63 @@ class PortalModeTest extends TestCase
 	}
 
 	/**
-	 * A pack cannot declare itself portal-aware yet. PortalPolicy is not on
-	 * the surface it may build on, so the declaration would be a console tool
-	 * reaching the portal - the one thing portal mode exists to prevent.
+	 * A pack element declaring itself portal-aware is still a console element
+	 * until the operator lists it (ADR 0017); the declaration alone is not
+	 * consent.
 	 */
-	public function testAPackElementDeclaringItselfPortalAwareIsNotServed(): void
+	public function testAPackElementDeclaringItselfPortalAwareIsNotServedUnlessListed(): void
 	{
 		RequestScope::EnterPortal('itop-portal');
 
-		$this->assertFalse(PortalAccess::Serves(new PortalAwarePackTool()));
-		$this->assertTrue($this->isHidden(new PortalAwarePackTool(), 'test_portal_aware_pack_tool'));
-		$this->assertTrue(PortalAccess::Serves(new ClassList()));
+		$oPack = new PortalAwarePackTool();
+		$this->assertFalse(PortalAccess::Serves($oPack, 'test_portal_aware_pack_tool', []));
+		$this->assertTrue($this->isHidden($oPack, 'test_portal_aware_pack_tool'));
+		$this->assertFalse($this->isHidden($oPack, 'test_portal_aware_pack_tool', [], null, ['test_portal_aware_pack_tool']), 'listed by identifier');
+		$this->assertTrue($this->isHidden($oPack, 'test_portal_aware_pack_tool', ['test_portal_aware_pack_tool'], null, ['test_portal_aware_pack_tool']), 'mcp_disabled_tools still wins');
+		$this->assertTrue(PortalAccess::Serves(new ClassList(), 'core_class_list', []));
+	}
+
+	/**
+	 * What PortalAccess::Serves() admits: the declaration and the operator's
+	 * listing together, or the declaration and this module's own namespace.
+	 */
+	public function testServesNeedsTheDeclarationAndTheListingOrTheCoreNamespace(): void
+	{
+		$oPack = new PortalAwarePackTool();
+		$sName = 'test_portal_aware_pack_tool';
+
+		$this->assertFalse(PortalAccess::Serves($oPack, $sName, []), 'unlisted');
+		$this->assertTrue(PortalAccess::Serves($oPack, $sName, [$sName]), 'listed by identifier');
+		$this->assertTrue(PortalAccess::Serves($oPack, $sName, [PortalAwarePackTool::class]), 'listed by class name');
+		$this->assertFalse(PortalAccess::Serves($oPack, $sName, ['another_tool']), 'another element listed');
+		$this->assertFalse(PortalAccess::Serves($oPack, '', [$sName]), 'an identifier not given matches nothing');
+		$this->assertFalse(PortalAccess::Serves(new FixtureTool(), 'test_fixture_tool', ['test_fixture_tool', FixtureTool::class]), 'listed but not PortalAware');
+		$this->assertTrue(PortalAccess::Serves(new ClassList(), 'core_class_list', []), 'a core element needs no listing');
+	}
+
+	/**
+	 * A setting that is not a list lists nothing, and an entry that is not a
+	 * string is dropped: failing closed here means no pack element, not a
+	 * stopped endpoint.
+	 */
+	public function testAMalformedListingServesNoPackElement(): void
+	{
+		$oPack = new PortalAwarePackTool();
+		$sName = 'test_portal_aware_pack_tool';
+
+		foreach (['test_portal_aware_pack_tool', true, 1, null, new \stdClass()] as $mMalformed) {
+			$aListed = Settings::PortalExtensionsFrom($mMalformed);
+			$this->assertSame([], $aListed);
+			$this->assertFalse(PortalAccess::Serves($oPack, $sName, $aListed));
+		}
+
+		$this->assertSame([$sName], Settings::PortalExtensionsFrom([$sName, 3, null, ['x'], false]));
+
+		// It only widens, so it is not one of the lists whose malformation stops the endpoint.
+		$oMethod = new ReflectionMethod(Settings::class, 'AccessListsAreMalformed');
+		$sBody = implode('', array_slice((array)file((string)$oMethod->getFileName()), $oMethod->getStartLine() - 1, $oMethod->getEndLine() - $oMethod->getStartLine() + 1));
+		$this->assertStringNotContainsString('PORTAL_EXTENSIONS', $sBody);
+		$this->assertStringNotContainsString('GetPortalExtensions', $sBody);
 	}
 
 	/**

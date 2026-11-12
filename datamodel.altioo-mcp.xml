@@ -762,6 +762,18 @@
       -->
       <mcp_disabled_tools type="array"/>
       <!--
+        Portal mode: the elements of other extensions (tool packs) it may
+        serve, by identifier (acme_ticket_add_log_entry) or by class name.
+        Empty, the default, serves none of them: portal mode serves only this
+        module's own tools. An element listed here is served only if it also
+        declares Service\Portal\PortalAware, and still goes through every
+        other filter (mcp_disabled_tools, toolsets, capabilities, scopes,
+        exclusions). Listing is the operator's consent that the element
+        answers by the portal's rules rather than by UserRights alone. See
+        doc/adr/0017.
+      -->
+      <mcp_portal_extensions type="array"/>
+      <!--
         Portal mode: the ids of the iTop portals (itop-portal, or a custom
         portal's id) whose users this endpoint may serve although they have no
         console. "*", the default, means every portal: a portal-only user is

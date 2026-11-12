@@ -10,7 +10,10 @@ namespace Altioo\iTop\Extension\MCP\Api\Testing;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use PhpToken;
+use ReflectionClass;
 use Throwable;
 
 /**
@@ -57,13 +60,24 @@ use Throwable;
  *    it works for an administrator, and it is withheld from every scoped token
  *    and from any instance running with mcp_capabilities. The registry cannot
  *    refuse it - an unannotated tool is legal, and is merely graded at the
- *    harshest grade - so it is reported here instead.
+ *    harshest grade - so it is reported here instead. The portal check is
+ *    one too, and for the same reason: an element declaring PortalAware whose
+ *    source never calls ObjectAccess::Current() registers cleanly, and is
+ *    served to portal users only if the operator lists it (ADR 0017), so it
+ *    is the author who has to be told, not the registry that can refuse.
  *
  * @api
  * @since 1.0.0
  */
 final class ElementContract
 {
+	/**
+	 * Named, not imported: Api\ may not import Service\Portal (ADR 0015), and
+	 * both names are public contract, so they cannot move without a major.
+	 */
+	private const PORTAL_AWARE = 'Altioo\\iTop\\Extension\\MCP\\Service\\Portal\\PortalAware';
+	private const CORE_NAMESPACE = 'Altioo\\iTop\\Extension\\MCP\\Core\\';
+
 	/** Prefix marking a finding that stops the element registering. */
 	public const REFUSAL = 'refused: ';
 
@@ -133,6 +147,13 @@ final class ElementContract
 			$aWarnings = array_merge($aWarnings, self::toolWarnings($oElement));
 		}
 
+		if (is_a($oElement, self::PORTAL_AWARE) && !str_starts_with(get_class($oElement), self::CORE_NAMESPACE) && !self::asksObjectAccess($oElement)) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'%s declares PortalAware but its source (nor that of its parent classes) never calls ObjectAccess::Current(). In portal mode answer through ObjectAccess::Current() (Readable, Bounded, Hides, RefusalToSet and the other RefusalTo...) for every object read or written, never UserRights alone, which grants a portal user the whole CMDB. The operator must also list the element in mcp_portal_extensions before portal mode serves it.',
+				get_class($oElement)
+			);
+		}
+
 		$sDescription = method_exists($oElement, 'getDescription') ? $oElement->getDescription() : null;
 		if (!$oElement instanceof AbstractMCPTool && (!is_string($sDescription) || trim($sDescription) === '')) {
 			// Only tools have this refused outright, because only a tool is
@@ -172,5 +193,122 @@ final class ElementContract
 		// assertion this class exists to support.
 
 		return $aWarnings;
+	}
+
+	/**
+	 * Whether the element's class, or a parent of it, calls
+	 * ObjectAccess::Current() in code.
+	 *
+	 * Read from the PHP tokens, so a comment, docblock or string naming the
+	 * call does not count, and the class is resolved through the file's `use`
+	 * lines. Necessary, not sufficient: it catches the element that never
+	 * asks, not the one that asks and ignores the answer.
+	 */
+	private static function asksObjectAccess(object $oElement): bool
+	{
+		for ($oClass = new ReflectionClass($oElement); $oClass !== false; $oClass = $oClass->getParentClass()) {
+			$sFile = $oClass->getFileName();
+			if ($sFile === false) {
+				continue;
+			}
+			$sCode = @file_get_contents($sFile);
+			if ($sCode !== false && self::callsObjectAccessCurrent($sCode)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** @internal Reads one source text: whether it calls ObjectAccess::Current(). */
+	private static function callsObjectAccessCurrent(string $sCode): bool
+	{
+		try {
+			$aAll = PhpToken::tokenize($sCode, TOKEN_PARSE);
+		} catch (Throwable) {
+			return false;
+		}
+
+		$aTokens = array_values(array_filter(
+			$aAll,
+			static fn (PhpToken $oToken): bool => !in_array($oToken->id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_INLINE_HTML, T_OPEN_TAG, T_OPEN_TAG_WITH_ECHO, T_CLOSE_TAG], true)
+		));
+		$aNames = [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED];
+		$sNamespace = '';
+		$aImports = [];
+		$iCount = count($aTokens);
+
+		for ($i = 0; $i < $iCount; $i++) {
+			$oToken = $aTokens[$i];
+
+			if ($oToken->id === T_NAMESPACE && isset($aTokens[$i + 1]) && in_array($aTokens[$i + 1]->id, $aNames, true)) {
+				$sNamespace = $aTokens[$i + 1]->text;
+				continue;
+			}
+
+			if (in_array($oToken->id, [T_CLASS, T_TRAIT, T_INTERFACE], true) && ($i === 0 || $aTokens[$i - 1]->id !== T_DOUBLE_COLON)) {
+				break;
+			}
+
+			if ($oToken->id !== T_USE) {
+				continue;
+			}
+
+			// use A\B [as C], D\E; and the group form use A\{B, C as D};
+			$sPrefix = '';
+			$sName = '';
+			for ($i++; $i < $iCount && $aTokens[$i]->text !== ';'; $i++) {
+				$sText = $aTokens[$i]->text;
+				if ($aTokens[$i]->id === T_FUNCTION || $aTokens[$i]->id === T_CONST) {
+					$sName = '';
+					while ($i < $iCount && $aTokens[$i]->text !== ';') {
+						$i++;
+					}
+					break;
+				}
+				if (in_array($aTokens[$i]->id, $aNames, true)) {
+					$sName = ltrim($sText, '\\');
+					$sAlias = substr($sName, (int)strrpos('\\'.$sName, '\\'));
+					if (isset($aTokens[$i + 1]) && $aTokens[$i + 1]->id === T_AS && isset($aTokens[$i + 2])) {
+						$sAlias = $aTokens[$i + 2]->text;
+						$i += 2;
+					}
+					$aImports[strtolower($sAlias)] = $sPrefix.$sName;
+				} elseif ($sText === '{') {
+					$sPrefix = $sName.'\\';
+					if (str_ends_with($sPrefix, '\\\\')) {
+						$sPrefix = substr($sPrefix, 0, -1);
+					}
+				}
+			}
+		}
+
+		$sTarget = strtolower(ObjectAccess::class);
+		for ($i = 0; $i + 3 < $iCount; $i++) {
+			$oName = $aTokens[$i];
+			if (!in_array($oName->id, $aNames, true) || $aTokens[$i + 1]->id !== T_DOUBLE_COLON || strtolower($aTokens[$i + 2]->text) !== 'current' || $aTokens[$i + 3]->text !== '(') {
+				continue;
+			}
+			if ($i > 0 && in_array($aTokens[$i - 1]->id, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_NEW], true)) {
+				continue;
+			}
+
+			$sText = $oName->text;
+			if ($oName->id === T_NAME_FULLY_QUALIFIED) {
+				$sResolved = ltrim($sText, '\\');
+			} else {
+				$iSlash = strpos($sText, '\\');
+				$sFirst = strtolower($iSlash === false ? $sText : substr($sText, 0, $iSlash));
+				$sResolved = isset($aImports[$sFirst])
+					? $aImports[$sFirst].($iSlash === false ? '' : substr($sText, $iSlash))
+					: ($sNamespace === '' ? '' : $sNamespace.'\\').$sText;
+			}
+
+			if (strtolower($sResolved) === $sTarget) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

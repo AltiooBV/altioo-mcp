@@ -18,10 +18,12 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
  * bizmodel class, so the safe default for anything undeclared is that a
  * portal user never sees it.
  *
- * On the surface because the core elements implement it (ADR 0016), but a
- * pack declaring it gains nothing yet: portal mode serves only this module's
- * own elements, whatever else implements this (PortalAccess::Serves()).
- * Serving a pack's element to portal users is a decision not yet taken.
+ * Necessary, not sufficient. Portal mode serves a declaring element that is
+ * this module's own, or that a pack provides and the operator listed in
+ * mcp_portal_extensions (PortalAccess::Serves(), ADR 0017). A pack element
+ * that declares this answers through ObjectAccess::Current() for every object
+ * it reads or writes, never UserRights alone;
+ * Testing\ElementContract reports one whose source never asks.
  *
  * @api
  * @since 1.2.0

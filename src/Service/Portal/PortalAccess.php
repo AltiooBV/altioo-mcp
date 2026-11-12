@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
+use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -53,18 +54,33 @@ final class PortalAccess extends ObjectAccess
 	 * Whether an element may be served in portal mode at all, before any of
 	 * the filters every element goes through.
 	 *
-	 * Only one that declares it enforces the portal's rules ({@see PortalAware})
-	 * and is this module's own. The namespace is the half a pack cannot
-	 * satisfy by accident. PortalPolicy is on the surface a pack may build on
-	 * (ADR 0016), but whether a pack's element is served to portal users is a
-	 * decision of its own, not taken: until it is, a pack element claiming the
-	 * declaration stays a console element.
+	 * Two things are needed. The element declares that it enforces the
+	 * portal's rules ({@see PortalAware}), and either it is this module's own
+	 * (under Core\) or the operator listed it in mcp_portal_extensions, by its
+	 * identifier or its class name (ADR 0017). The declaration is not
+	 * verifiable by the server and the listing is the operator's consent, so
+	 * neither is enough alone: an element that is listed but does not declare
+	 * is a console element, and one that declares but is not listed is not
+	 * served. A setting that is not a list lists nothing.
+	 *
+	 * @param string                  $sIdentifier Qualified name or URI the registry awarded the element, as the operator may have listed it.
+	 * @param array<int, string>|null $aListed     What mcp_portal_extensions lists; null reads the setting. For tests, which have no configuration.
 	 *
 	 * @since 1.2.0
 	 */
-	public static function Serves(object $oElement): bool
+	public static function Serves(object $oElement, string $sIdentifier = '', ?array $aListed = null): bool
 	{
-		return $oElement instanceof PortalAware && str_starts_with(get_class($oElement), self::CORE_NAMESPACE);
+		if (!$oElement instanceof PortalAware) {
+			return false;
+		}
+
+		if (str_starts_with(get_class($oElement), self::CORE_NAMESPACE)) {
+			return true;
+		}
+
+		$aListed ??= Settings::GetPortalExtensions();
+
+		return ($sIdentifier !== '' && in_array($sIdentifier, $aListed, true)) || in_array(get_class($oElement), $aListed, true);
 	}
 
 	/** Where this module's own elements live. */

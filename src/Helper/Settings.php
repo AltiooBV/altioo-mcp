@@ -183,6 +183,18 @@ final class Settings
 	const MODULE_SETTING_DISABLED = 'mcp_disabled_tools';
 
 	/**
+	 * Pack elements portal mode may serve, by identifier or class name, the two
+	 * forms mcp_disabled_tools accepts. Empty, the default, serves none: the
+	 * operator's consent, element by element, on top of the element declaring
+	 * Service\Portal\PortalAware (ADR 0017). Not part of
+	 * AccessListsAreMalformed(): it only widens, so a malformed value serves no
+	 * pack element and the endpoint keeps running.
+	 *
+	 * @since 2.0.0
+	 */
+	const MODULE_SETTING_PORTAL_EXTENSIONS = 'mcp_portal_extensions';
+
+	/**
 	 * Portals whose users are served in portal mode. Empty means portal mode
 	 * is off, which is the default and the behaviour of every earlier version.
 	 *
@@ -668,6 +680,42 @@ final class Settings
 		}
 
 		return array_values(array_filter($aDisabled, 'is_string'));
+	}
+
+	/**
+	 * Pack elements the operator lets portal mode serve, normalised to a list
+	 * of strings.
+	 *
+	 * A value that is not a list opens nothing: this setting only widens what
+	 * portal mode serves, so the safe reading of a malformed one is the empty
+	 * list, not stopping the endpoint (ADR 0017).
+	 *
+	 * @return array<int, string>
+	 * @since 2.0.0
+	 */
+	public static function GetPortalExtensions(): array
+	{
+		return self::PortalExtensionsFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_PORTAL_EXTENSIONS, []));
+	}
+
+	/**
+	 * What a mcp_portal_extensions value lists: its strings, or nothing when it
+	 * is not a list (logged). Split from the reader so it can be exercised
+	 * without a configuration.
+	 *
+	 * @return array<int, string>
+	 * @since 2.0.0
+	 */
+	public static function PortalExtensionsFrom(mixed $mListed): array
+	{
+		if (!is_array($mListed)) {
+			$sType = gettype($mListed);
+			ErrorReport::Log("Itop configuration parameter '".self::MODULE_SETTING_PORTAL_EXTENSIONS."' should be an array instead of $sType. No pack element is served in portal mode until it is corrected.");
+
+			return [];
+		}
+
+		return array_values(array_filter($mListed, 'is_string'));
 	}
 
 	/**
