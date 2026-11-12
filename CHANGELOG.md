@@ -274,6 +274,9 @@ installed anywhere:
   it counted the objects of an excluded subclass that the rows themselves never showed
   ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)). The defect was in
   1.3.0 too.
+- **The README states the upload ceiling over HTTP.** An upload stops near 3 MB even when
+  `mcp_max_document_bytes` is higher, because the SDK's transport caps the request body at 4 MiB and
+  base64 adds a third; reading is not affected.
 
 ### Security
 
