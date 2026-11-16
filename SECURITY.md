@@ -99,10 +99,21 @@ than replacing it: a reporter still gets an acknowledgement within 5 working day
 | `<archive>.zip.sha256` | "is the file I downloaded the file CI built" |
 | `sbom.cyclonedx.json` | CycloneDX inventory of every production dependency |
 | `licenses.json` | the licence of each of those dependencies |
+| `tools-manifest.json`, `tools-manifest.json.sha256` | the definition of every core tool (name, title, description, input and output schema, annotations) with a SHA-256 each, and the digest of the file; attested, and a copy is inside the archive |
 
 The SBOM is what makes a same-day vulnerability answer possible. When a CVE lands on something
 under `vendor/`, "does this extension ship it, and at which version" has to be answerable in
 minutes. Regenerate both with `composer sbom` and `composer licenses`.
+
+The tool manifest is what a client that pins tool definitions (OWASP MCP03 "rug pull") or an
+operator comparing two releases checks against: a changed hash is a changed definition in that
+release. Regenerate it with `composer tools-manifest` (no iTop needed); the file's own header,
+`tools/tools-manifest.php`, says how a digest is computed. **It is not what `tools/list` returns
+on a live connection.** That list is a subset, filtered per caller: token scope, toolsets,
+`mcp_disabled_tools`, portal mode (some descriptions differ there) and excluded classes. A
+client's pin therefore also changes when an operator changes one of those settings, which is
+expected and is not a rug pull; a pack's tools are not in the manifest. Titles are the code's
+English literals, not a translation.
 
 ## What the extension does, in security terms
 
