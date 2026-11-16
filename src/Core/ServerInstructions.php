@@ -129,7 +129,7 @@ final class ServerInstructions
 			$oPolicy->allowsToolset(self::TOOLSET_DATAMODEL) ? self::PORTAL_OFFERS : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ) ? self::PORTAL_READING : '',
 			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) ? self::PORTAL_HISTORY : '',
-			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) ? self::PORTAL_WRITING : '',
+			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) ? self::PORTAL_WRITING.self::advisoryLine($oPolicy, true) : '',
 			self::PORTAL_LIMITS,
 		];
 
@@ -361,7 +361,8 @@ final class ServerInstructions
 			."\n".'rather than restating the call: "customer confirmed the laptop came back" is'
 			."\n".'worth recording, "updating the ticket" is not.'
 			.self::formulaBullet($bRefusesFormulas)
-			.self::mentionBullet($iMaxMentions, $aMentionClasses);
+			.self::mentionBullet($iMaxMentions, $aMentionClasses)
+			.self::advisoryLine($oPolicy, false);
 
 		if (!$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE)) {
 			return $sText;
@@ -370,6 +371,23 @@ final class ServerInstructions
 		return $sText
 			."\n".'- core_object_delete reports a deletion plan on the dry run: what else iTop would'
 			."\n".'delete or update along with the object. Show the plan, not just the object.';
+	}
+
+	/**
+	 * What an advisory credential is told, which the others are not: its writes are rehearsals.
+	 * Not said to any other, who would be told something false about their own.
+	 */
+	private static function advisoryLine(AccessPolicy $oPolicy, bool $bPortal): string
+	{
+		if (!$oPolicy->isAdvisory()) {
+			return '';
+		}
+
+		return $bPortal
+			? "\n".'- This account may only propose changes: every write is checked and shown but never made,'
+				."\n".'even with simulate=false. Tell the user so, and that someone else has to make it.'
+			: "\n".'- This credential is advisory: every write rehearses even with simulate=false, and the'
+				."\n".'answer says forced_by_credential. Nothing is written; show the result to the user.';
 	}
 
 	/** Whether anything this caller holds can alter an object. */
