@@ -62,6 +62,11 @@ what said so.
   unchanged, byte for byte: `ToolOutput::Structured()` does not add them. A pack may add them by
   answering through the new `ToolOutput::StructuredWrite()` and declaring
   `DryRun::ForcedSchemaProperties()` in its output schema.
+- **The `class` of `itop://core/class/{class}` (and of any template with one) completes.** The
+  server has always advertised completions and always answered with an empty list. It now answers
+  with the classes the caller may read that start with what was typed, at most 100 - never one the
+  operator excluded, and in portal mode only the portal's own classes. No prompt takes a class
+  argument today, so none completes.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
 

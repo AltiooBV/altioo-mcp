@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Server;
 
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\MCPExtensionCollector;
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
@@ -20,6 +21,7 @@ use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Http\Discovery\Psr17Factory;
+use Mcp\Schema\ResourceTemplate;
 use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
@@ -183,6 +185,25 @@ final class MCPService
 	{
 		foreach (MCPRegistry::GetResourceTemplates() as $sUriTemplate => $resourceTemplate) {
 			if (ServedElements::isHidden($sUriTemplate, $resourceTemplate, $aDisabled, $oPolicy)) {
+				continue;
+			}
+
+			// A template with a {class} variable completes it (ClassCompletion), which only the explicit
+			// registration can carry.
+			if (str_contains($sUriTemplate, '{class}') && $resourceTemplate instanceof AbstractMCPResourceTemplate) {
+				$builder = $builder->add(
+					new ResourceTemplate(
+						$sUriTemplate,
+						$resourceTemplate->getQualifiedName(),
+						$resourceTemplate->getTitle(),
+						$resourceTemplate->getDescription(),
+						$resourceTemplate->getMimeType(),
+						$resourceTemplate->getAnnotations(),
+						$resourceTemplate->getMeta(),
+					),
+					new ResourceTemplateAdapter($resourceTemplate),
+					['class' => new ClassCompletion()],
+				);
 				continue;
 			}
 

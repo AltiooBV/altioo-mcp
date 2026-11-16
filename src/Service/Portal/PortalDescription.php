@@ -77,6 +77,19 @@ final class PortalDescription
 	}
 
 	/**
+	 * The names of the classes the portal offers this user, sorted: what a completion may name.
+	 *
+	 * @return array<int, string>
+	 *
+	 * @throws MCPPortalException When the portal cannot be read.
+	 * @since 2.1.0
+	 */
+	public static function OfferedClassNames(PortalPolicy $oPolicy): array
+	{
+		return self::offeredClasses($oPolicy);
+	}
+
+	/**
 	 * Every offered class without its fields, the lists, the create actions
 	 * and whether the portal shows history.
 	 *
