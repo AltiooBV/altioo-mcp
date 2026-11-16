@@ -48,19 +48,19 @@ class AdvisoryAuditIntegrationTest extends ItopDataTestCaseAlias
 	}
 
 	/** One call under $aScopes asking for $bSimulate, answered then audited as the controller does. @return array{0: array<string, mixed>, 1: AltiooEventMCPService} */
-	private function update(array $aScopes, int $iOrg, string $sName, bool $bSimulate): array
+	private function update(array $aScopes, int $iOrg, string $sName, bool $bSimulate, bool $bOmitted = false): array
 	{
 		RequestScope::Close();
 		CMDBObject::SetCurrentChange(null);
 		ChangeTracking::ForRequest(null);
 		AccessPolicy::Remember(AccessPolicy::FromScopes($aScopes));
 		try {
-			$aAnswer = ToolOutput::Decode(ObjectUpdate::execute('Organization', $iOrg, ['name' => $sName], $bSimulate));
+			$aAnswer = ToolOutput::Decode($bOmitted ? ObjectUpdate::execute('Organization', $iOrg, ['name' => $sName]) : ObjectUpdate::execute('Organization', $iOrg, ['name' => $sName], $bSimulate));
 		} finally {
 			$oResult = new MCPResult(MCPResult::OK, 'tools/call answered');
 			$oResult->mcpMethod = 'tools/call';
 			$oResult->mcpName = 'core_object_update';
-			$oResult->requestParams = json_encode(['name' => 'core_object_update', 'arguments' => ['simulate' => $bSimulate]]);
+			$oResult->requestParams = json_encode(['name' => 'core_object_update', 'arguments' => $bOmitted ? new \stdClass() : ['simulate' => $bSimulate]]);
 			CallLog::LogIfConfigured($oResult);
 			CMDBObject::SetCurrentChange(null);
 		}
@@ -101,5 +101,18 @@ class AdvisoryAuditIntegrationTest extends ItopDataTestCaseAlias
 		$this->assertFalse($aAnswer['forced_by_credential']);
 		$this->assertSame('no', $oRow->Get('simulate'));
 		$this->assertSame(1, (int)$oRow->Get('written_objects'), 'a real write must still count');
+	}
+
+	public function testAWriteThatLeavesSimulateOutRehearsedAndIsLoggedYes(): void
+	{
+		$iOrg = (int)$this->CreateOrganization('Adv '.bin2hex(random_bytes(4)))->GetKey();
+		CMDBObject::SetCurrentChange(null);
+
+		[$aAnswer, $oRow] = $this->update(['MCP-write'], $iOrg, 'Omitted', true, true);
+
+		$this->assertTrue($aAnswer['simulated'], 'the tool defaults to a rehearsal');
+		$this->assertFalse($aAnswer['forced_by_credential'], 'the default is not the credential');
+		$this->assertSame('yes', $oRow->Get('simulate'), 'the request carried no simulate, the tool rehearsed');
+		$this->assertSame(0, (int)$oRow->Get('written_objects'));
 	}
 }

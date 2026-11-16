@@ -479,11 +479,12 @@ carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a`
 dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later
 security review of this log could not tell a rehearsal from a write that happened, because the
 parameters themselves are kept only at debug level — and telling those apart is exactly what such
-a review is for. It is read from the call's own arguments rather than carried down from the tool,
-so a pack's tool spelling `simulate` the way the core ones do is graded by it too; absent means
-`n/a` rather than `no`, since a tool defaulting it to true is rehearsing when the caller says
-nothing. `yes` is what ran: a write an advisory credential was forced to rehearse is `yes` even when the
-caller sent `simulate: false` (2.0.1; earlier rows of that kind still say `no` and are not rewritten).
+a review is for. Until 2.0.1 it was read from the call's own arguments, so a rehearsal the
+credential forced read `no` and an omitted argument read `n/a`. Now `yes` is what ran: once a write tool has
+decided, the row says `yes` when it rehearsed - asked, left out (the default) or forced by an advisory
+credential - and `no` when it wrote. Where no tool decided (a read, a handshake, a refusal, a pack's tool that
+does not ask `DryRun`) it is still read from the arguments, so a pack's tool spelling `simulate` as the core
+ones do is graded by it, and absent means `n/a`. Earlier rows are not rewritten.
 
 **How these are meant to be found in future.** The honest description of the barrier is that it
 is a set of named roots matched by descent, plus two questions asked of the datamodel (what

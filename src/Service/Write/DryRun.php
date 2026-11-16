@@ -39,6 +39,9 @@ final class DryRun
 	/** Whether the credential turned this request's write into a rehearsal. See {@see ForcedByCredential()}. */
 	private static bool $bForced = false;
 
+	/** What the write tool decided, once it has: true when it rehearsed, whoever made it. See {@see Decided()}. */
+	private static ?bool $bDecided = null;
+
 	/**
 	 * Whether this call is rehearsing, which is not only the caller's to
 	 * decide.
@@ -69,19 +72,35 @@ final class DryRun
 	public static function Simulated(bool $bRequested): bool
 	{
 		if ($bRequested) {
-			return true;
+			return self::$bDecided = true;
 		}
 
 		$oPolicy = AccessPolicy::Current();
 		if ($oPolicy === null || !$oPolicy->isAdvisory()) {
+			self::$bDecided = false;
+
 			return false;
 		}
+		self::$bDecided = true;
 
 		// The caller asked to write and the credential said no. Remembered, because the audit
 		// row and the answer both have to say so: the argument the caller sent is not what ran.
 		self::$bForced = true;
 
 		return true;
+	}
+
+	/**
+	 * What the write tool actually did this request: true when it rehearsed - asked, defaulted or
+	 * forced - false when it went on to write, null when no tool has decided (a read, a handshake,
+	 * a call refused first). The audit row records this rather than the argument, which a caller
+	 * may have left out or the credential overridden.
+	 *
+	 * @since 2.0.1
+	 */
+	public static function Decided(): ?bool
+	{
+		return self::$bDecided;
 	}
 
 	/**
@@ -168,6 +187,7 @@ final class DryRun
 	public static function Forget(): void
 	{
 		self::$bForced = false;
+		self::$bDecided = null;
 	}
 
 	/**

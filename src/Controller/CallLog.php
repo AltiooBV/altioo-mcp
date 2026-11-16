@@ -313,6 +313,21 @@ final class CallLog
 	}
 
 	/**
+	 * The grade of what the call did rather than of what it asked: once a write tool has decided,
+	 * `yes` when it rehearsed - the caller asked, left `simulate` out so the default applied, or the
+	 * credential forced it (the advisory scope) - and `no` when it went on to write.
+	 *
+	 * When no tool decided (a read, a handshake, a call refused first, a pack's tool that does not
+	 * ask DryRun) the grade is the request's own, `n/a` where it carries no `simulate`.
+	 */
+	private static function effectiveSimulate(string $sRequested): string
+	{
+		$bDecided = DryRun::Decided();
+
+		return $bDecided === null ? $sRequested : ($bDecided ? 'yes' : 'no');
+	}
+
+	/**
 	 * Whether the call being logged was a dry run, as its own parameters say.
 	 *
 	 * Three answers, because there are three cases and collapsing them loses
@@ -324,23 +339,10 @@ final class CallLog
 	 * Read from the parameters rather than carried down from the tool, so it
 	 * stays true for a pack's tool this module has never heard of: any tool
 	 * spelling the argument the way the write tools spell it is graded by it.
-	 * Absent means "n/a" rather than "no", because a tool that declares the
-	 * argument and defaults it to true is rehearsing when the caller says
-	 * nothing - and reporting that as a real write would be the lie this is
-	 * here to prevent.
+	 * This is what the call asked; {@see effectiveSimulate()} replaces it with what
+	 * a write tool decided, which is what makes an omitted argument (the tool
+	 * defaults to a rehearsal) read "yes" rather than "n/a".
 	 */
-	/**
-	 * The grade of what the call did rather than of what it asked: `yes` when the credential turned
-	 * a write the caller asked for into a rehearsal (the advisory scope), whatever `simulate` said.
-	 *
-	 * Only a call whose tool the credential actually rehearsed is changed - DryRun records it when
-	 * it overrides - so a read stays `n/a` and a refused call keeps what it asked.
-	 */
-	private static function effectiveSimulate(string $sRequested): string
-	{
-		return $sRequested === 'no' && DryRun::ForcedByCredential() ? 'yes' : $sRequested;
-	}
-
 	private static function simulateGrade(?string $sRequestParams): string
 	{
 		if ($sRequestParams === null || $sRequestParams === '') {

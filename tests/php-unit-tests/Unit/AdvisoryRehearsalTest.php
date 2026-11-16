@@ -37,14 +37,14 @@ class AdvisoryRehearsalTest extends TestCase
 	}
 
 	/** What the audit row would carry for a tools/call the tool answered under $oPolicy. */
-	private function grade(?AccessPolicy $oPolicy, string $sArguments, bool $bToolAsked): string
+	private function grade(?AccessPolicy $oPolicy, string $sArguments, ?bool $bToolAsked): string
 	{
 		RequestScope::Close();
 		if ($oPolicy !== null) {
 			AccessPolicy::Remember($oPolicy);
 		}
-		if ($bToolAsked) {
-			DryRun::Simulated(false);
+		if ($bToolAsked !== null) {
+			DryRun::Simulated($bToolAsked);
 		}
 		$sParams = '{"name":"core_object_update","arguments":'.$sArguments.'}';
 		$sRequested = (new ReflectionMethod(CallLog::class, 'simulateGrade'))->invoke(null, $sParams);
@@ -55,25 +55,32 @@ class AdvisoryRehearsalTest extends TestCase
 	public function testAdvisoryWithSimulateFalseIsLoggedAsARehearsal(): void
 	{
 		$oAdvisory = AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']);
-		$this->assertSame('yes', $this->grade($oAdvisory, '{"simulate":false}', true));
-		$this->assertSame('yes', $this->grade($oAdvisory, '{"simulate":"false"}', true), 'the string "false" is still a request to write');
+		$this->assertSame('yes', $this->grade($oAdvisory, '{"simulate":false}', false));
+		$this->assertSame('yes', $this->grade($oAdvisory, '{"simulate":"false"}', false), 'the string "false" is still a request to write');
 	}
 
 	public function testAnOrdinaryWriterWithSimulateFalseIsLoggedAsAWrite(): void
 	{
-		$this->assertSame('no', $this->grade(AccessPolicy::FromScopes(['MCP-write']), '{"simulate":false}', true));
+		$this->assertSame('no', $this->grade(AccessPolicy::FromScopes(['MCP-write']), '{"simulate":false}', false));
 		$this->assertSame('yes', $this->grade(AccessPolicy::FromScopes(['MCP-write']), '{"simulate":true}', true));
 	}
 
 	public function testAReadStaysNotApplicableEvenUnderAnAdvisoryCredential(): void
 	{
-		$this->assertSame('n/a', $this->grade(AccessPolicy::FromScopes(['MCP-read', 'MCP-advisory']), '{"class":"Person"}', false));
+		$this->assertSame('n/a', $this->grade(AccessPolicy::FromScopes(['MCP-read', 'MCP-advisory']), '{"class":"Person"}', null));
 	}
 
 	public function testACallThatNeverReachedTheRehearsalKeepsWhatItAsked(): void
 	{
 		// Refused before the write tool decided anything: nothing was forced, so nothing is claimed.
-		$this->assertSame('no', $this->grade(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']), '{"simulate":false}', false));
+		$this->assertSame('no', $this->grade(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']), '{"simulate":false}', null));
+	}
+
+	public function testAWriteThatLeavesSimulateOutIsLoggedAsARehearsal(): void
+	{
+		// The tool defaults to true, so it rehearsed; the request alone would say n/a.
+		$this->assertSame('yes', $this->grade(AccessPolicy::FromScopes(['MCP-write']), '{}', DryRun::SIMULATE_BY_DEFAULT));
+		$this->assertSame('yes', $this->grade(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']), '{}', DryRun::SIMULATE_BY_DEFAULT));
 	}
 
 	public function testTheFlagDoesNotOutliveTheRequest(): void
