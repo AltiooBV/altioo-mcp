@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\FormulaPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
@@ -449,7 +450,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	{
 		return [
 			'type'       => 'object',
-			'properties' => [
+			'properties' => DryRun::ForcedSchemaProperties() + [
 				'class'     => [
 					'type'        => 'string',
 					'description' => 'The class every object in the call belongs to.',
@@ -490,7 +491,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 					],
 				],
 			],
-			'required'   => ['class', 'simulated', 'total', 'succeeded', 'failed', 'objects'],
+			'required'   => ['class', 'simulated', 'forced_by_credential', 'forced_reason', 'total', 'succeeded', 'failed', 'objects'],
 		];
 	}
 

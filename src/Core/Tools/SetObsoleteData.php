@@ -104,7 +104,7 @@ class SetObsoleteData extends AbstractMCPTool
 	{
 		return [
 			'type'       => 'object',
-			'properties' => [
+			'properties' => DryRun::ForcedSchemaProperties() + [
 				'visible'   => [
 					'type'        => 'boolean',
 					'description' => 'The preference as it now stands, or would stand.',
@@ -122,7 +122,7 @@ class SetObsoleteData extends AbstractMCPTool
 					'description' => 'false when the call asked for the value it already had.',
 				],
 			],
-			'required'             => ['visible', 'simulated', 'previous', 'changed'],
+			'required'             => ['visible', 'simulated', 'forced_by_credential', 'forced_reason', 'previous', 'changed'],
 			'additionalProperties' => false,
 		];
 	}

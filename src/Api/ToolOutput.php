@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use JsonException;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
@@ -94,6 +95,9 @@ final class ToolOutput
 	 */
 	public static function Structured(array $aData): CallToolResult
 	{
+		// A write that rehearsed because its credential is advisory says so (DryRun::AnnotateForced).
+		$aData = DryRun::AnnotateForced($aData);
+
 		return new CallToolResult([self::Json($aData)], false, $aData);
 	}
 
