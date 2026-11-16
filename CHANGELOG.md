@@ -153,6 +153,9 @@ set it to `removed`). Its run count and durations do not carry over to the new r
 
 ### Changed
 
+- **`core_object_get_related`'s description no longer writes its key format as `<Class>::<id>`.** It gives an example, `Server::12`,
+  because an angle-bracket placeholder reads as an HTML tag and a client that renders markup can hide it; "flat" is dropped from
+  "a flat list" to stay inside the description budget. The keys returned are as before. The tool manifest digest of this tool changes.
 - **A file attached in console mode now appears in the object's history.** `core_object_attach` leaves the
   `CMDBChangeOpAttachmentAdded` row and raises `EVENT_ADD_ATTACHMENT_TO_OBJECT`, as iTop's own console attach and the
   portal already do; before, only portal mode did. A dry run leaves neither, and the change line stays iTop's own.
