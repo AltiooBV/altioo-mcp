@@ -417,7 +417,7 @@ the revision that dropped the handshake and the session id — is served statele
 itself and is given no `Mcp-Session-Id` at all. A client on an earlier revision still performs
 `initialize` and still receives a session id, because that is what those revisions require; the
 id is real but carries nothing, since this endpoint stores nothing past the request that made
-it. Either way what a request is allowed to do is decided from the credential it brought, not
+it, so an HTTP `DELETE` is answered `405 Method Not Allowed` (`Allow: POST, OPTIONS`): there is no session to end, and none is ever stored. Either way what a request is allowed to do is decided from the credential it brought, not
 from anything a previous request left behind.
 
 ### Sizing the worker pool

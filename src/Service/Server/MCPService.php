@@ -119,6 +119,9 @@ final class MCPService
 			);
 		}
 
+		// Last: a DELETE has been through the Host and Origin checks, and is told there is no session to end.
+		$aMiddleware[] = new NoSessionTeardownMiddleware($factory);
+
 		return $aMiddleware;
 	}
 

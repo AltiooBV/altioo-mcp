@@ -199,6 +199,18 @@ else
   echo "   no DB_HOST/DB_NAME: the change is not read back"
 fi
 
+# The endpoint keeps no session, so ending one is not offered: DELETE is 405 with an Allow header, not
+# a 200 that ended nothing (NoSessionTeardownMiddleware).
+echo "4c2. DELETE is answered 405: there is no session to end"
+DELETE_HEADERS=$(mktemp)
+DELETE_STATUS=$(curl -s -D "$DELETE_HEADERS" -o /dev/null -w '%{http_code}' \
+  -X DELETE "$ENDPOINT" \
+  -H "Authorization: Bearer ${ITOP_TOKEN}" \
+  -H "Mcp-Session-Id: ${SESSION:-4d7e6c1a-2b3f-4c5d-8e9f-0a1b2c3d4e5f}")
+echo "   HTTP ${DELETE_STATUS}"
+[ "$DELETE_STATUS" = "405" ] || fail "DELETE was answered ${DELETE_STATUS}, not 405"
+grep -qi '^allow:.*POST' "$DELETE_HEADERS" || fail "the 405 carries no Allow header naming POST"
+
 # A call a tool refuses is answered with isError - HTTP 200 and a JSON-RPC success, as the protocol
 # says - and recorded as an error. A class that does not exist is refused by core_object_get.
 echo "4d. a refusal by a tool is HTTP 200 and an error on the audit row"
