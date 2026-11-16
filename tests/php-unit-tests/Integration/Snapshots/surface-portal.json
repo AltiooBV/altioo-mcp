@@ -1,6 +1,6 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
-    "generated": "2026-11-12",
+    "generated": "2026-11-16",
     "sdk": "v0.9.0",
     "surface": {
         "protocolVersion": "2025-06-18",
@@ -196,6 +196,14 @@
                             "type": "boolean",
                             "description": "Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape."
                         },
+                        "forced_by_credential": {
+                            "type": "boolean",
+                            "description": "true when simulate=false was asked for and the call rehearsed anyway, because this credential may only propose changes. Nothing was written."
+                        },
+                        "forced_reason": {
+                            "type": "string",
+                            "description": "When forced_by_credential is true, one plain sentence to tell the user why nothing was written; empty otherwise."
+                        },
                         "stimulus": {
                             "type": "string",
                             "description": "The stimulus that was applied."
@@ -236,6 +244,8 @@
                         "id",
                         "simulated",
                         "valid",
+                        "forced_by_credential",
+                        "forced_reason",
                         "stimulus",
                         "state",
                         "would_move_to",
@@ -322,6 +332,14 @@
                             "type": "boolean",
                             "description": "Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape."
                         },
+                        "forced_by_credential": {
+                            "type": "boolean",
+                            "description": "true when simulate=false was asked for and the call rehearsed anyway, because this credential may only propose changes. Nothing was written."
+                        },
+                        "forced_reason": {
+                            "type": "string",
+                            "description": "When forced_by_credential is true, one plain sentence to tell the user why nothing was written; empty otherwise."
+                        },
                         "attached_to": {
                             "type": "object",
                             "description": "The object the document lands on: its class and id.",
@@ -345,6 +363,8 @@
                         "id",
                         "simulated",
                         "valid",
+                        "forced_by_credential",
+                        "forced_reason",
                         "attached_to",
                         "document",
                         "mimetype_note"
@@ -464,6 +484,14 @@
                             "type": "boolean",
                             "description": "Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape."
                         },
+                        "forced_by_credential": {
+                            "type": "boolean",
+                            "description": "true when simulate=false was asked for and the call rehearsed anyway, because this credential may only propose changes. Nothing was written."
+                        },
+                        "forced_reason": {
+                            "type": "string",
+                            "description": "When forced_by_credential is true, one plain sentence to tell the user why nothing was written; empty otherwise."
+                        },
                         "action": {
                             "type": "string",
                             "description": "The create action used."
@@ -496,6 +524,8 @@
                         "id",
                         "simulated",
                         "valid",
+                        "forced_by_credential",
+                        "forced_reason",
                         "action",
                         "after",
                         "changes",
@@ -697,6 +727,14 @@
                             "type": "boolean",
                             "description": "Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape."
                         },
+                        "forced_by_credential": {
+                            "type": "boolean",
+                            "description": "true when simulate=false was asked for and the call rehearsed anyway, because this credential may only propose changes. Nothing was written."
+                        },
+                        "forced_reason": {
+                            "type": "string",
+                            "description": "When forced_by_credential is true, one plain sentence to tell the user why nothing was written; empty otherwise."
+                        },
                         "after": {
                             "type": "object",
                             "additionalProperties": true,
@@ -725,6 +763,8 @@
                         "id",
                         "simulated",
                         "valid",
+                        "forced_by_credential",
+                        "forced_reason",
                         "after",
                         "changes",
                         "overridden",
