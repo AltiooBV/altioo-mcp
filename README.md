@@ -800,6 +800,10 @@ would change, without being able to change anything. It belongs to the credentia
 the call, because a caller that can choose is not restricted; it survives `MCP`, so a token asking
 for everything as a rehearsal gets that; and combining it with anything only ever adds it.
 
+A write that rehearsed only because of it says so: the answer carries `forced_by_credential: true`
+and a plain `forced_reason` for the user, `core_current_user` reports `access.advisory: true`, and
+the call's audit row records `simulate = yes` — what ran, not what the caller sent.
+
 Scopes are **enforced, not labelled**: a tool the resulting policy does not allow is never
 registered on that connection, so it is not merely absent from `tools/list` but absent from the
 session. A token whose scopes cannot be read falls back to read-only rather than to everything.

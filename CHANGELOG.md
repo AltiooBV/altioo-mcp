@@ -21,6 +21,33 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [2.0.1] - Unreleased
+
+**An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`
+has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
+what said so.
+
+### Fixed
+
+- **The audit row's `simulate` column recorded the caller's request, not what ran.** A call with
+  `simulate: false` that the advisory credential turned into a rehearsal was logged `no` and read, to
+  anyone reviewing the log, as a write that happened. It is now `yes`. Only a call whose tool actually
+  rehearsed it for that reason changes: a read is still `n/a`, an ordinary writer's `simulate: false`
+  is still `no`, and the write cap counts exactly what it counted (a forced rehearsal wrote nothing).
+  **Rows written before 2.0.1 keep `no`; nothing migrates them.** To find the ones that were
+  rehearsals, look for rows of a write tool by an advisory token with no changed objects.
+
+### Added
+
+- **A forced rehearsal says why.** Every write tool's answer now carries `forced_by_credential` and a
+  one-line `forced_reason` (empty on every other answer), so a client can tell the user nothing was
+  written and why instead of showing `simulated: true` on a call it asked to commit. For a portal user
+  the sentence names their account, not a scope. No existing key changes. A tool pack whose own output
+  schema forbids extra properties and answers through `ToolOutput::Structured()` with a `simulated`
+  key has to declare the two (`DryRun::ForcedSchemaProperties()`).
+- **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
+  `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
+
 ## [2.0.0] - 2026-11-16
 
 **The source tree is laid out as iTop lays out its own, and a tool pack builds with what the core tools use.**

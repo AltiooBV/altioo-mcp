@@ -162,7 +162,9 @@ no session: this endpoint is stateless, and the token record is the only thing t
 between calls and is read on every one of them anyway. It survives `MCP` (a token asking for
 everything, as a rehearsal) and narrowing only ever adds it. Every write tool routes its argument
 through one decision, and a unit test fails if one reads `simulate` directly — a tool that does is
-a tool the scope does not reach.
+a tool the scope does not reach. Since 2.0.1 that decision also leaves a mark: `DryRun` remembers that it
+overrode the caller, and both the answer (`forced_by_credential`) and the audit row (`simulate = yes`) are
+read from it, so a rehearsal the credential forced is never recorded as a write that happened.
 
 ### The rule the write barriers reduce to
 
@@ -480,7 +482,8 @@ parameters themselves are kept only at debug level — and telling those apart i
 a review is for. It is read from the call's own arguments rather than carried down from the tool,
 so a pack's tool spelling `simulate` the way the core ones do is graded by it too; absent means
 `n/a` rather than `no`, since a tool defaulting it to true is rehearsing when the caller says
-nothing.
+nothing. `yes` is what ran: a write an advisory credential was forced to rehearse is `yes` even when the
+caller sent `simulate: false` (2.0.1; earlier rows of that kind still say `no` and are not rewritten).
 
 **How these are meant to be found in future.** The honest description of the barrier is that it
 is a set of named roots matched by descent, plus two questions asked of the datamodel (what
