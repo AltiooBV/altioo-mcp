@@ -127,7 +127,7 @@ final class MCPController
 			// tool, no parameters and no rehearsal flag for N calls, and N writes read as one.
 			if (BatchRefusal::IsBatch((string)file_get_contents('php://input'))) {
 				$oResult = BatchRefusal::Refuse();
-				$oResult->durationMs = (int)round((microtime(true) - (float)$fStarted) * 1000);
+				$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000.0);
 				CallLog::LogIfConfigured($oResult);
 
 				return;
