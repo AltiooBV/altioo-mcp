@@ -396,6 +396,9 @@ neither `core_object_get` (an override is not admitted by the identifier it took
 identifier does. Whatever your tool adds must itself go through `ObjectAccess::Current()`:
 `ElementContract` does not take core's `parent::execute()` as your answer, and warns
 until your own code asks, as in [Serving your element in portal mode](#serving-your-element-in-portal-mode).
+A pack that subclasses a core tool and overrides a step of `execute()` owns that code: the core
+tool's portal checks do not cover what you replaced, so in portal mode your step must ask
+`ObjectAccess::Current()` itself ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).
 
 What this does not give you is a change applied across *every* tool — redaction, an extra audit
 field, a rate limit. There is no middleware pipeline; see [Limitations](../README.md#limitations).

@@ -131,6 +131,10 @@ The four items the proposal left open, answered:
   `--model` or `MCP_EVAL_MODEL`. No grader model.
 - **Whose key.** The maintainer's, from his environment, typed nowhere and committed nowhere. Not in
   CI, unless he adds a secret and a workflow himself.
+- **Where it points.** At a local disposable instance: the runner refuses an `MCP_EVAL_URL` whose host
+  is not `localhost`, `127.0.0.1`, `[::1]`, `*.localhost` or `*.test`, because what a scenario reads
+  goes to the model provider and some scenarios write. `MCP_EVAL_ALLOW_REMOTE=1` overrides it for a
+  remote instance that is disposable and holds synthetic data.
 - **The grader.** Deterministic checks on the tool calls (allowed set, step budget, required calls,
   forbidden calls, first call, order). The proposal's grader model for prose answers is not built:
   what the agent told the user is read from the report by a person.

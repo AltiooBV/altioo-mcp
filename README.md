@@ -1395,6 +1395,11 @@ Full threat model, hardening notes and how to report a vulnerability:
 licences, provenance, vulnerability process, footprint, data processing — that is
 **[doc/security-summary.md](doc/security-summary.md)**.
 
+Each release publishes a tool manifest (`tools-manifest.json`) with a hash per core tool. A scanner
+that pins tool definitions (a rug-pull check) will report a change on every release, and also whenever
+an operator changes scopes, toolsets or exclusions, because `tools/list` is filtered per caller; that
+is expected. See [SECURITY.md](SECURITY.md#what-ships-beside-the-archive).
+
 In short: the endpoint is a public HTTP entry point. Beyond the gates above, follow
 [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security) —
 in particular serve iTop over HTTPS with HSTS, and set `session.cookie_secure`,

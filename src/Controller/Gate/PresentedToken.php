@@ -38,4 +38,16 @@ final class PresentedToken
 
 		return is_string($mExpiration) && $mExpiration !== '' ? $mExpiration : null;
 	}
+
+	/**
+	 * Whether the token class this request presented can carry an expiry date
+	 * at all: a personal token can, an application token (UserToken) cannot.
+	 * Only chooses the wording of a refusal.
+	 */
+	public static function CanExpire(): bool
+	{
+		$oToken = TokenScopes::OfCurrentRequestObject();
+
+		return $oToken !== null && MetaModel::IsValidAttCode(get_class($oToken), 'expiration_date');
+	}
 }

@@ -77,13 +77,24 @@ final class ConsoleTokenLifetimeGate implements iGate
 			Settings::MODULE_SETTING_TOKEN_MAX_DAYS
 		));
 
-		throw new MCPAuthException(sprintf(
-			'A token must expire within %d days. Ask for a personal token with an '
-			.'expiry date no later than %s, or set one on this token.',
-			$iMaxDays,
-			date('Y-m-d', time() + $iMaxDays * 86400)
-		), MCPResult::UNAUTHORIZED);
+		$sLatest = date('Y-m-d', time() + $iMaxDays * 86400);
 
-		return true;
+		// An application token has no expiry date to set; only a personal one does.
+		throw new MCPAuthException(
+			PresentedToken::CanExpire()
+				? sprintf(
+					'A token must expire within %d days. Ask for a personal token with an '
+					.'expiry date no later than %s, or set one on this token.',
+					$iMaxDays,
+					$sLatest
+				)
+				: sprintf(
+					'An application token has no expiry date, so it cannot be used while tokens must expire '
+					.'within %d days. Ask for a personal token with an expiry date no later than %s.',
+					$iMaxDays,
+					$sLatest
+				),
+			MCPResult::UNAUTHORIZED
+		);
 	}
 }

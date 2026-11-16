@@ -14,6 +14,10 @@
  * and are never printed or written to the report. The model defaults to
  * claude-sonnet-5-5 (override: --model or MCP_EVAL_MODEL).
  *
+ * A URL whose host is not localhost, 127.0.0.1, [::1], *.localhost or *.test is refused, so a
+ * production address pasted by mistake sends nothing there; set MCP_EVAL_ALLOW_REMOTE=1 to
+ * run against a remote disposable instance on purpose.
+ *
  * The endpoint must be a disposable instance holding synthetic data: what a
  * scenario reads is sent to the model provider (README, "Data flow and
  * privacy"), and some scenarios write. Each scenario names the credential it
@@ -103,6 +107,15 @@ $sUrl = (string)getenv('MCP_EVAL_URL');
 $sToken = (string)getenv('MCP_EVAL_TOKEN');
 if ($sUrl === '' || $sToken === '') {
 	fwrite(STDERR, "MCP_EVAL_URL and MCP_EVAL_TOKEN are required (a disposable instance, and a token for it)\n");
+	exit(2);
+}
+$sHost = strtolower((string)parse_url($sUrl, PHP_URL_HOST));
+$bLocalHost = in_array($sHost, ['localhost', '127.0.0.1', '[::1]', '::1'], true)
+	|| str_ends_with($sHost, '.localhost') || str_ends_with($sHost, '.test');
+if (!$bLocalHost && getenv('MCP_EVAL_ALLOW_REMOTE') !== '1') {
+	fwrite(STDERR, "MCP_EVAL_URL points at '".($sHost !== '' ? $sHost : 'no host')."', which is not a local host. "
+		."What a scenario reads goes to the model provider and some scenarios write, so use a disposable local instance, "
+		."or set MCP_EVAL_ALLOW_REMOTE=1 if this remote instance is disposable and holds synthetic data.\n");
 	exit(2);
 }
 $sGrade = getenv('MCP_EVAL_GRADE') ?: 'all';

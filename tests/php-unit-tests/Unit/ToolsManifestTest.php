@@ -17,6 +17,13 @@ use PHPUnit\Framework\TestCase;
  */
 class ToolsManifestTest extends TestCase
 {
+	public static function setUpBeforeClass(): void
+	{
+		if (!is_file(dirname(__DIR__, 3).'/tools/tools-manifest.php')) {
+			self::markTestSkipped('tools/ is not part of the release archive.');
+		}
+	}
+
 	private static function run_manifest(): string
 	{
 		$sScript = dirname(__DIR__, 3).'/tools/tools-manifest.php';

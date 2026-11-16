@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\Gate\ConsoleTokenLifetimeGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\PresentedToken;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\SettingNames;
 use Altioo\iTop\Extension\MCP\Helper\SettingParser;
@@ -76,6 +77,13 @@ class ConsoleTokenLifetimeTest extends TestCase
 		$this->assertTrue($oGate->HasCall(PortalMode::class.'::TokenIsBounded', 'Check'));
 		$this->assertTrue($oGate->HasCall(PortalMode::class.'::Current', 'Check'), 'a portal request is held to its own bound');
 		$this->assertTrue($oGate->HasCall(TokenScopes::class.'::LoginWasAToken', 'Check'), 'a login that was not a token is not this gate\'s');
+	}
+
+	public function testTheRefusalIsWordedForTheKindOfTokenPresented(): void
+	{
+		$oGate = SourceCalls::OfClass(ConsoleTokenLifetimeGate::class);
+
+		$this->assertTrue($oGate->HasCall(PresentedToken::class.'::CanExpire', 'Check'), 'an application token has no expiry to set, so it is told something else');
 	}
 
 	public function testTheGateRunsWhileTheTokenIsStillAtHand(): void

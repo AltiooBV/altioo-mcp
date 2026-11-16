@@ -413,8 +413,6 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				]);
 		}
 
-		// Said before the write, because the change record is built by the
-		// write itself and reads what was last said.
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
 		// tool's own source, once the call is known to commit and before it writes.
 		$sCapRefusal = WriteCap::RefusalFor(1);
@@ -422,6 +420,8 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException($sCapRefusal);
 		}
 
+		// Said before the write, because the change record is built by the
+		// write itself and reads what was last said.
 		ChangeTracking::Explain($comment);
 
 		// All validations passed, apply the stimulus
