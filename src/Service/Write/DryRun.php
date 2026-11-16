@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
@@ -34,6 +35,9 @@ final class DryRun
 {
 	/** Writes rehearse unless the caller asks otherwise; MCP-advisory removes the asking. */
 	public const SIMULATE_BY_DEFAULT = true;
+
+	/** Whether the credential turned this request's write into a rehearsal. See {@see ForcedByCredential()}. */
+	private static bool $bForced = false;
 
 	/**
 	 * Whether this call is rehearsing, which is not only the caller's to
@@ -69,8 +73,101 @@ final class DryRun
 		}
 
 		$oPolicy = AccessPolicy::Current();
+		if ($oPolicy === null || !$oPolicy->isAdvisory()) {
+			return false;
+		}
 
-		return $oPolicy !== null && $oPolicy->isAdvisory();
+		// The caller asked to write and the credential said no. Remembered, because the audit
+		// row and the answer both have to say so: the argument the caller sent is not what ran.
+		self::$bForced = true;
+
+		return true;
+	}
+
+	/**
+	 * Whether this request asked to write and was turned into a rehearsal by its credential.
+	 *
+	 * True only once a write tool has been asked {@see Simulated()} with `false` under an advisory
+	 * policy - so a refused call, a read, and a caller that rehearsed anyway are all false. It is the
+	 * effective value, where the `simulate` argument is only the requested one.
+	 *
+	 * @since 2.0.1
+	 */
+	public static function ForcedByCredential(): bool
+	{
+		return self::$bForced;
+	}
+
+	/**
+	 * The one plain line that goes in an answer rehearsed by force, in words a person who never
+	 * heard of a token scope understands: the portal's user is told about their account, not about
+	 * a scope name.
+	 *
+	 * @since 2.0.1
+	 */
+	public static function ForcedReason(): string
+	{
+		return PortalMode::Current() !== null
+			? 'Nothing was saved: this account may only propose changes here, so every change is checked and shown but not made. A person with the right to make it has to do so.'
+			: 'Nothing was written: this credential is advisory, so every write rehearses whatever simulate was sent. Show the result to the user; a credential that may write has to make the change.';
+	}
+
+	/**
+	 * What every write answer adds to itself, additively: whether this was a rehearsal by force, and
+	 * the one line that says why (empty when it was not).
+	 *
+	 * Always present, as every property of a write outcome is - a key that appears only on one kind of
+	 * call is a second shape - and only on an answer that already carries `simulated`, which is what
+	 * marks it a write's. An answer that has the keys already keeps them.
+	 *
+	 * @param array<string, mixed> $aData A write's answer.
+	 *
+	 * @return array<string, mixed>
+	 * @since 2.0.1
+	 */
+	public static function AnnotateForced(array $aData): array
+	{
+		if (!array_key_exists('simulated', $aData)) {
+			return $aData;
+		}
+
+		$bForced = self::$bForced && $aData['simulated'] === true;
+
+		return $aData + [
+			'forced_by_credential' => $bForced,
+			'forced_reason'        => $bForced ? self::ForcedReason() : '',
+		];
+	}
+
+	/**
+	 * The two keys a write's output schema declares for that.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 * @since 2.0.1
+	 */
+	public static function ForcedSchemaProperties(): array
+	{
+		return [
+			'forced_by_credential' => [
+				'type'        => 'boolean',
+				'description' => 'true when simulate=false was asked for and the call rehearsed anyway, because this credential may only propose changes. Nothing was written.',
+			],
+			'forced_reason'        => [
+				'type'        => 'string',
+				'description' => 'When forced_by_credential is true, one plain sentence to tell the user why nothing was written; empty otherwise.',
+			],
+		];
+	}
+
+	/**
+	 * For tests, and for a runner that serves more than one request.
+	 *
+	 * @internal Request state, cleared by Service\Server\RequestScope; a pack never calls it.
+	 * @since 2.0.1
+	 */
+	public static function Forget(): void
+	{
+		self::$bForced = false;
 	}
 
 	/**

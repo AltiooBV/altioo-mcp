@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use AltiooEventMCPService;
 use CMDBChange;
 use CMDBObject;
@@ -79,7 +80,7 @@ final class CallLog
 			// only at debug level, so without this a later review of this log -
 			// which is the log such a review reads first - cannot tell a dry
 			// run from a write that happened.
-			$oLog->Set('simulate', self::simulateGrade($oResult->requestParams));
+			$oLog->Set('simulate', self::effectiveSimulate(self::simulateGrade($oResult->requestParams)));
 			// Which credential, and what it changed. The row named neither: it
 			// said a write by "claude" succeeded, where "claude" is a login
 			// string and the write had no subject. Both halves are links, so a
@@ -328,6 +329,18 @@ final class CallLog
 	 * nothing - and reporting that as a real write would be the lie this is
 	 * here to prevent.
 	 */
+	/**
+	 * The grade of what the call did rather than of what it asked: `yes` when the credential turned
+	 * a write the caller asked for into a rehearsal (the advisory scope), whatever `simulate` said.
+	 *
+	 * Only a call whose tool the credential actually rehearsed is changed - DryRun records it when
+	 * it overrides - so a read stays `n/a` and a refused call keeps what it asked.
+	 */
+	private static function effectiveSimulate(string $sRequested): string
+	{
+		return $sRequested === 'no' && DryRun::ForcedByCredential() ? 'yes' : $sRequested;
+	}
+
 	private static function simulateGrade(?string $sRequestParams): string
 	{
 		if ($sRequestParams === null || $sRequestParams === '') {
