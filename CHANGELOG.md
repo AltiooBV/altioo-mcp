@@ -21,7 +21,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-11-16
 
 **The source tree is laid out as iTop lays out its own, and a tool pack builds with what the core tools use.**
 `src/` follows Combodo's layer folders (`Controller`, `Hook`, `Core`, `Helper`, `Model`,
