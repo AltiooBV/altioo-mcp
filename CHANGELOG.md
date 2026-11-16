@@ -40,8 +40,8 @@ maintainer; the folders and a request's path through them are in
    1.3 name to its 2.0 one (under Changed).
 2. **The 1.3 deprecations are gone** (under Removed).
 3. **An administrator has nothing to do, and three things change on the instance.** Two
-   parameters are new and both default to what 1.3.0 did (`mcp_portal_extensions`,
-   `mcp_max_writes_per_hour`); the audit table gains a column, `written_objects`, which the setup
+   parameters are new and all default to what 1.3.0 did (`mcp_portal_extensions`,
+   `mcp_max_writes_per_hour`, `mcp_token_max_days`); the audit table gains a column, `written_objects`, which the setup
    adds (both under For administrators). And a file attached in console mode now leaves iTop's
    history row and raises `EVENT_ADD_ATTACHMENT_TO_OBJECT`, as the console's own attach does, so
    a trigger or action on that event now also fires for an assistant's attachment (under
@@ -86,9 +86,10 @@ through `ObjectSerializer`, as [doc/extending.md](doc/extending.md) describes. T
 
 ### For administrators
 
-**Nothing needs doing.** Two parameters are new. `mcp_portal_extensions` defaults to empty, so
+**Nothing needs doing.** Three parameters are new. `mcp_portal_extensions` defaults to empty, so
 portal mode serves exactly what it served before. `mcp_max_writes_per_hour` defaults to `0`, which is
-off, so no credential is capped until you set it. No default, identifier or table changed; the audit
+off, so no credential is capped until you set it. `mcp_token_max_days` defaults to `0`, which is off, so no
+token is refused for its lifetime until you set it. No default, identifier or table changed; the audit
 table gains one column, `written_objects`, which the setup adds with the datamodel and which reads 0 on
 older rows. The hourly
 background process is now `Hook\AuditHousekeeping` where it was `Service\AuditHousekeeping`, so
@@ -125,6 +126,12 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   every write is refused and reads are served. Each write tool asks `WriteCap::RefusalFor()` in its own source and a pack
   asks the same ([doc/extending.md](doc/extending.md)). It complements rate limiting at the web server, which stays
   recommended for call volume.
+- **`mcp_token_max_days`: an opt-in bound on how long a token used in console mode may live**
+  ([ADR 0020](doc/adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md), decided by the maintainer; OWASP
+  MCP01). Off by default. Above 0, a request logged in with a token that never expires, or expires later than that many
+  days from now, is refused with a `401` in the portal bound's words; an application token has no expiry in iTop and is
+  refused too. A malformed value refuses every token login rather than reading as off. Portal mode keeps
+  `mcp_portal_token_max_days` alone.
 - **`mcp_portal_extensions`: portal mode can serve a tool pack's element when the operator lists it**
   ([ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), decided by
   the maintainer). Portal mode served only this module's own elements because a pack could not reach the

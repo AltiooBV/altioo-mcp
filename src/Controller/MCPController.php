@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Controller;
 
 use Altioo\iTop\Extension\MCP\Controller\Gate\BodyIsJsonGate;
+use Altioo\iTop\Extension\MCP\Controller\Gate\ConsoleTokenLifetimeGate;
 use Altioo\iTop\Extension\MCP\Controller\Gate\CredentialPresentedGate;
 use Altioo\iTop\Extension\MCP\Controller\Gate\HostIsServedGate;
 use Altioo\iTop\Extension\MCP\Controller\Gate\LoginGate;
@@ -62,6 +63,7 @@ final class MCPController
 		McpProfileGate::class,
 		TokenLoginAccountedForGate::class,
 		TokenAudienceGate::class,
+		ConsoleTokenLifetimeGate::class,
 	];
 
 	public static function handleRequest(): void

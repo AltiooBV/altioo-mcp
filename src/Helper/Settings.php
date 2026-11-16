@@ -454,6 +454,17 @@ final class Settings extends SettingNames
 	}
 
 	/**
+	 * The bound on a console-mode token's remaining validity, in days; 0 for
+	 * none, null when the value is malformed (the caller refuses token logins).
+	 *
+	 * @since 2.0.0
+	 */
+	public static function GetTokenMaxDays(): ?int
+	{
+		return SettingParser::TokenMaxDaysFrom(utils::GetConfig()->GetModuleSetting(MCPModule::MODULE_NAME, self::MODULE_SETTING_TOKEN_MAX_DAYS, self::DEFAULT_TOKEN_MAX_DAYS));
+	}
+
+	/**
 	 * Days an audit row is kept; 0 keeps everything.
 	 *
 	 * A value that is not a non-negative integer reads as 0, which is "keep",

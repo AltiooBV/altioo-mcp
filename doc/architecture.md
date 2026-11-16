@@ -197,7 +197,7 @@ succeeds.
 1. **`Controller\MCPController`** receives the request and runs `Controller\Gate`'s gates in the
    order of its `GATES` list: `PreflightGate`, `HostIsServedGate`, `BodyIsJsonGate`,
    `CredentialPresentedGate`, `TokenNotAParameterGate`, `LoginGate`, `McpProfileGate`,
-   `TokenLoginAccountedForGate`, `TokenAudienceGate`. Each lets the request go on or answers
+   `TokenLoginAccountedForGate`, `TokenAudienceGate`, `ConsoleTokenLifetimeGate`. Each lets the request go on or answers
    it. The list is the code's (`MCPController::GATES`), the order is the security property, and
    the reason is on `Controller\Gate\iGate`: each gate stands where it does because of a side effect
    it must come before. What each one answers is the R1–R13 rows of the table under

@@ -235,6 +235,7 @@ class RequestPipelineOrderTest extends TestCase
 				'McpProfileGate',
 				'TokenLoginAccountedForGate',
 				'TokenAudienceGate',
+				'ConsoleTokenLifetimeGate',
 			]),
 			RequestPipelineSource::Gates()
 		);

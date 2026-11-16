@@ -820,6 +820,17 @@
       -->
       <mcp_portal_token_max_days type="integer">90</mcp_portal_token_max_days>
       <!--
+        Console mode: how many days ahead a token may still be valid to be
+        accepted, the counterpart of mcp_portal_token_max_days. 0, the default,
+        is no bound: nothing changes on upgrade. Above 0 a token that never
+        expires is refused, and so is one that expires later than this from
+        now; an application token (UserToken) has no expiry date in iTop, so it
+        is refused too. It restricts, so a value that is not a non-negative
+        integer refuses every request logged in with a token and is logged
+        (doc/adr/0020).
+      -->
+      <mcp_token_max_days type="integer">0</mcp_token_max_days>
+      <!--
         Days an audit row (AltiooEventMCPService) is kept before the hourly
         background process deletes it. iTop has no retention for its event log
         of its own, so 0, the default, keeps everything, as every earlier

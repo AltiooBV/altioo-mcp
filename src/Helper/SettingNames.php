@@ -237,6 +237,21 @@ abstract class SettingNames
 	/** The window the cap above counts over, in seconds. */
 	const WRITE_CAP_WINDOW_SECONDS = 3600;
 
+	/**
+	 * How many days ahead a token may still be valid to be accepted in console
+	 * mode (portal mode has mcp_portal_token_max_days). 0, the default, is no
+	 * bound: nothing changes on an instance that never set it.
+	 *
+	 * It restricts, so a value that is not a non-negative integer is not read
+	 * as 0: a request logged in with a token is refused until it is corrected
+	 * (ADR 0020).
+	 *
+	 * @since 2.0.0
+	 */
+	const MODULE_SETTING_TOKEN_MAX_DAYS = 'mcp_token_max_days';
+
+	const DEFAULT_TOKEN_MAX_DAYS = 0;
+
 	/** The default bound: altioo-oauth-server's own max_grant_days. */
 	const DEFAULT_PORTAL_TOKEN_MAX_DAYS = 90;
 
