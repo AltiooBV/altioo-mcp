@@ -39,8 +39,8 @@ maintainer; the folders and a request's path through them are in
    `src/Api/` and every class the core tools depend on, and the name table below maps every
    1.3 name to its 2.0 one (under Changed).
 2. **The 1.3 deprecations are gone** (under Removed).
-3. **An administrator has nothing to do, and three things change on the instance.** Two
-   parameters are new and all default to what 1.3.0 did (`mcp_portal_extensions`,
+3. **An administrator has nothing to do, and three things change on the instance.** Three
+   parameters are new and each defaults to what 1.3.0 did (`mcp_portal_extensions`,
    `mcp_max_writes_per_hour`, `mcp_token_max_days`); the audit table gains a column, `written_objects`, which the setup
    adds (both under For administrators). And a file attached in console mode now leaves iTop's
    history row and raises `EVENT_ADD_ATTACHMENT_TO_OBJECT`, as the console's own attach does, so
