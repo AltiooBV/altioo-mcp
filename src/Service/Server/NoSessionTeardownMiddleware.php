@@ -39,10 +39,10 @@ final class NoSessionTeardownMiddleware implements MiddlewareInterface
 	}
 
 	#[\Override]
-	public function process(ServerRequestInterface $oRequest, RequestHandlerInterface $oHandler): ResponseInterface
+	public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
 	{
-		if (strtoupper($oRequest->getMethod()) !== 'DELETE') {
-			return $oHandler->handle($oRequest);
+		if (strtoupper($request->getMethod()) !== 'DELETE') {
+			return $handler->handle($request);
 		}
 
 		$oResponse = $this->oResponses->createResponse(405)

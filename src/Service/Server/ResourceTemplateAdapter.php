@@ -29,6 +29,11 @@ final class ResourceTemplateAdapter implements ResourceTemplateHandlerInterface
 	#[\Override]
 	public function read(string $uri, array $variables, ClientGateway $gateway): mixed
 	{
-		return \Closure::fromCallable([$this->oTemplate, 'read'])($uri, ...$variables);
+		$fRead = [$this->oTemplate, 'read'];
+		if (!is_callable($fRead)) {
+			throw new \LogicException(get_class($this->oTemplate).' has no read() method.');
+		}
+
+		return $fRead($uri, ...$variables);
 	}
 }
