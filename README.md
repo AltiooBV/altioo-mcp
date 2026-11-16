@@ -1084,6 +1084,14 @@ identifier that an internal error also gives the caller, so the audit row and th
 > contain data your users would not expect to find in an audit log. Use it for troubleshooting, not
 > as a standing setting. At every other level a refused call's row says only "The tool refused the
 > call". Both are cleared when the account's person is anonymised.
+>
+> Concretely, the parameters are the request as sent: the value of a password or encrypted-string
+> field even when the tool then refused to write it, the whole base64 content of an attachment, and
+> any personal data in the object. **Anyone who may read `AltiooEventMCPService` rows can read
+> them** — in the console, and through this endpoint's own read tools, other accounts' rows
+> included (`core_my_activity` leaves both fields out; the generic reads do not). If that is not
+> acceptable while `debug` is on, keep both fields off this channel with
+> `'mcp_excluded_attributes' => array('AltiooEventMCPService' => array('request_params', 'refusal_text'))`.
 
 The two records answer two different questions and neither replaces the other. This one is
 per *call*: it holds the reads, the failures and the calls that changed nothing, and it is

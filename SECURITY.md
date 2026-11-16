@@ -642,7 +642,9 @@ records two). In particular, and specifically relevant here:
   holding the same profile gets the Personal tokens tab of My Account, for every scope.
 - Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
   standing**: `debug` stores raw request parameters and what a tool said when it refused a call, which may
-  contain data your users would not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
+  contain data your users would not expect to find in an audit log — a refused password value or a whole attachment
+  among them, readable by anyone who may read the audit rows, through this endpoint too (README, *Audit trail*, says
+  what and how to keep it off this channel). Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
 - **Set `mcp_max_writes_per_hour` for any credential that can write.** Off by default; above 0 it caps the
