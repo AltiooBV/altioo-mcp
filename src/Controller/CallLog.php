@@ -54,7 +54,7 @@ final class CallLog
 			return;
 		}
 
-		if (!in_array($sMethod, Settings::GetAuditedMethods(), true)) {
+		if ($sMethod !== MCPMethod::BATCH && !in_array($sMethod, Settings::GetAuditedMethods(), true)) {
 			return;
 		}
 		// If the response is successful and the log level is set to error, skip logging to avoid filling the logs with successful calls

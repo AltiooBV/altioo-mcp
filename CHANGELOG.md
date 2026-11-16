@@ -27,6 +27,17 @@ entry itself, not left to be inferred from it.
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
 
+### Security
+
+- **A JSON-RPC batch is refused.** The endpoint accepted a JSON array of up to 100 requests on every
+  protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
+  `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no
+  `simulate` flag, so `core_my_activity`, the audit list and anything forwarding the rows saw none of the calls
+  individually. A batch is now answered HTTP 400 with JSON-RPC `-32600 Invalid Request`, once the caller is
+  authenticated, and recorded as one row of method `batch` (always audited, whatever `log_mcp_method`
+  lists). The write cap was not bypassed: `WriteCap` reserves what each call is allowed within a request.
+  A client that sent batches has to send its requests one per HTTP request, which every revision requires of it from 2025-06-18.
+
 ### Fixed
 
 - **The audit row's `simulate` column recorded the caller's request, not what ran.** A call with

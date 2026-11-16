@@ -158,7 +158,7 @@
                     },
                     "required": []
                 },
-                "description": "List what this account's credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, and the reason given. Only your own calls; there is no way to ask for anyone else's. Read \"coverage\" for what the record cannot show.",
+                "description": "List what this account's credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see), and the reason given. Only your own calls; there is no way to ask for anyone else's. Read \"coverage\" for what the record cannot show.",
                 "annotations": {
                     "title": "My Activity",
                     "readOnlyHint": true,

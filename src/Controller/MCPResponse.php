@@ -119,6 +119,22 @@ final class MCPResponse
 		}
 	}
 
+	/**
+	 * Answers a JSON-RPC batch, which this endpoint does not accept: HTTP 400 and a JSON-RPC
+	 * -32600 Invalid Request, in the protocol's own shape so a client reads it as the protocol's
+	 * answer.
+	 */
+	public static function EmitBatchRefusal(string $sMessage): void
+	{
+		http_response_code(400);
+
+		$oP = new JsonPage();
+		self::addCorsHeader($oP);
+		$oP->SetData(['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => $sMessage]]);
+		$oP->SetOutputDataOnly(true);
+		$oP->Output();
+	}
+
 	public static function EmitResponse(ResponseInterface $response): MCPResult
 	{
 		foreach ($response->getHeaders() as $name => $values) {

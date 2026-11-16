@@ -474,6 +474,10 @@ endpoint's own audit row. Create tokens in the console, where the value is shown
 regenerated. (These classes are behind `mcp_allow_access_administration` in any case, and the
 self-guard still refuses minting one for yourself.)
 
+**One request, one audit row.** A JSON-RPC batch is refused (HTTP 400, `-32600`) and recorded as a row of
+method `batch`: a row is made from the one `method` and `params` of the body, and a list has neither, so a batch of writes
+would have been one row naming no tool, no parameters and no rehearsal flag (fixed in 2.1.0).
+
 **The endpoint's own audit rows say whether a call was a rehearsal.** `AltiooEventMCPService`
 carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a` where there is no
 dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later

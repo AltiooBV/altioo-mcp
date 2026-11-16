@@ -215,6 +215,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 			'changed_objects' => "UserRequest::987654 updated (title)\nUserRequest::987655 created",
 			'written_objects' => 2,
 		]);
+		UserRights::Login($this->sMe);
 
 		$aRow = $this->mine()['activity'][0];
 
@@ -227,6 +228,7 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 	public function testARowThatWroteNothingSaysZero(): void
 	{
 		$this->row($this->iMe, ['read_objects' => 'UserRequest: 1']);
+		UserRights::Login($this->sMe);
 
 		$this->assertSame(0, $this->mine()['activity'][0]['written']);
 	}

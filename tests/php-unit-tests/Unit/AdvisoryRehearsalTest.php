@@ -88,8 +88,10 @@ class AdvisoryRehearsalTest extends TestCase
 		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']));
 		DryRun::Simulated(false);
 		$this->assertTrue(DryRun::ForcedByCredential());
+		$this->assertTrue(DryRun::Decided());
 		RequestScope::Close();
 		$this->assertFalse(DryRun::ForcedByCredential());
+		$this->assertNull(DryRun::Decided(), 'the next request inherited the last one\'s decision');
 	}
 
 	public function testAWriteThatRehearsedByChoiceIsNotMarkedForced(): void

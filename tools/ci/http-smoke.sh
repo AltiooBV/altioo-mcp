@@ -211,6 +211,26 @@ echo "   HTTP ${DELETE_STATUS}"
 [ "$DELETE_STATUS" = "405" ] || fail "DELETE was answered ${DELETE_STATUS}, not 405"
 grep -qi '^allow:.*POST' "$DELETE_HEADERS" || fail "the 405 carries no Allow header naming POST"
 
+# A JSON-RPC batch is refused whatever the protocol version: the audit row cannot describe N calls
+# (BatchRefusal). HTTP 400 and -32600, and a row of its own.
+echo "4c3. a batch is refused: 400, -32600, one row"
+BATCH_STATUS=$(curl -s -o "$BODY" -w '%{http_code}' \
+  -X POST "$ENDPOINT" \
+  -H "Authorization: Bearer ${ITOP_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+  -d '[{"jsonrpc":"2.0","id":1,"method":"tools/list"},{"jsonrpc":"2.0","id":2,"method":"tools/list"}]')
+# shellcheck disable=SC2016
+BATCH_CODE=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); echo $a["error"]["code"] ?? "";' "$BODY")
+echo "   HTTP ${BATCH_STATUS}, error ${BATCH_CODE}"
+[ "$BATCH_STATUS" = "400" ] || fail "a batch was answered ${BATCH_STATUS}, not 400"
+[ "$BATCH_CODE" = "-32600" ] || fail "a batch did not answer -32600 Invalid Request"
+if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+  BATCH_ROWS=$(itop_sql "SELECT COUNT(*) FROM \`${AUDIT_TABLE}\` e WHERE e.mcp_method = 'batch'")
+  [ "${BATCH_ROWS:-0}" -ge 1 ] || fail "the refused batch left no audit row"
+fi
+
 # A call a tool refuses is answered with isError - HTTP 200 and a JSON-RPC success, as the protocol
 # says - and recorded as an error. A class that does not exist is refused by core_object_get.
 echo "4d. a refusal by a tool is HTTP 200 and an error on the audit row"

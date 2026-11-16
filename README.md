@@ -409,7 +409,7 @@ Because the schema is read live from `MetaModel`, whatever your datamodel custom
 ### Transport and protocol support
 
 Streamable HTTP, over a single endpoint, stateless: each request is authenticated on its own
-and no server-side session is carried between requests. SSE streaming and resumability are not
+and no server-side session is carried between requests. One JSON-RPC message per HTTP request: a batch (a JSON array) is refused with `400` and `-32600`, whatever the protocol revision, because one audit row could not describe it. SSE streaming and resumability are not
 supported. Authentication is delegated to iTop itself — see [Granting access](#granting-access).
 
 The one endpoint answers two protocol eras, and the client picks. A client on **2026-07-28** —

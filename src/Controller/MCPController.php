@@ -122,6 +122,17 @@ final class MCPController
 			RequestScope::Open($oPolicy);
 			MCPHttp::ForgetAuthToken();
 
+			// A batch - a JSON array of requests - is refused, once the caller is known so the row can name
+			// it. Batching is optional in 2025-03-26 and gone after it; here it would be one audit row with no
+			// tool, no parameters and no rehearsal flag for N calls, and N writes read as one.
+			if (BatchRefusal::IsBatch((string)file_get_contents('php://input'))) {
+				$oResult = BatchRefusal::Refuse();
+				$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000);
+				CallLog::LogIfConfigured($oResult);
+
+				return;
+			}
+
 			$oKPI->ComputeAndReport('Parameters validated');
 			$aRequestResponse = MCPService::run($oPolicy);
 			// Last moment the session can go: once the body is out, neither
