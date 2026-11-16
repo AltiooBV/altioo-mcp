@@ -654,6 +654,11 @@ records two). In particular, and specifically relevant here:
   may read that class, with a REST-scoped token or login — never an `MCP*` token, which cannot call REST.
   Whatever the account reads, a `debug` row carries raw request parameters (README, [*Audit
   trail*](README.md#audit-trail)). Pull before [`mcp_audit_retention_days`](README.md#configuration) purges.
+- **Set `mcp_token_max_days` if no console token should outlive a period you choose.** Off by default; above 0 a token
+  used in console mode that never expires, or expires later than that many days from now, is refused — an application
+  token included, since iTop gives it no expiry — and a malformed value refuses every token login
+  ([ADR 0020](doc/adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md)). Portal mode has its own,
+  `mcp_portal_token_max_days`, on by default.
 - **Set `mcp_max_writes_per_hour` for any credential that can write.** Off by default; above 0 it caps the
   objects one credential (a personal token, an application token, or a login) may create, change, delete or
   attach to in a rolling hour, so a steered agent holding a write-grade token has a ceiling the model does not
