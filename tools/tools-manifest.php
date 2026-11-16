@@ -106,7 +106,7 @@ $aManifest = [
 	'version'   => $sVersion,
 	'mode'      => 'console',
 	// What the per-tool digests are over, so a client can recompute one.
-	'digest'    => 'sha256 of the definition member, JSON-encoded with keys sorted at every depth, unescaped slashes and unicode, no whitespace',
+	'digest'    => 'sha256 of the definition member, JSON-encoded with keys sorted at every depth, unescaped slashes and unicode, no whitespace (decode as objects, not arrays: an empty object must stay {})',
 	'tools'     => $aTools,
 ];
 
