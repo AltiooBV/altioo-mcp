@@ -21,7 +21,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [2.0.1] - Unreleased
+## [2.1.0] - Unreleased
 
 **An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
@@ -35,7 +35,7 @@ what said so.
   rehearses by default, was logged `n/a`. Both are now `yes`: for a call to a write tool the row says
   what the tool did - `yes` when it rehearsed (asked, defaulted or forced), `no` when it wrote. A read
   is still `n/a`, so is a call refused before the tool decided anything unless it carried `simulate`, and the write cap counts exactly what it counted (a forced rehearsal wrote nothing).
-  **Rows written before 2.0.1 keep `no`; nothing migrates them.** To find the ones that were
+  **Rows written before 2.1.0 keep `no`; nothing migrates them.** To find the ones that were
   rehearsals, look for rows of a write tool by an advisory token with no changed objects.
 
 ### Added

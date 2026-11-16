@@ -162,7 +162,7 @@ no session: this endpoint is stateless, and the token record is the only thing t
 between calls and is read on every one of them anyway. It survives `MCP` (a token asking for
 everything, as a rehearsal) and narrowing only ever adds it. Every write tool routes its argument
 through one decision, and a unit test fails if one reads `simulate` directly — a tool that does is
-a tool the scope does not reach. Since 2.0.1 that decision also leaves a mark: `DryRun` remembers that it
+a tool the scope does not reach. Since 2.1.0 that decision also leaves a mark: `DryRun` remembers that it
 overrode the caller, and both the answer (`forced_by_credential`) and the audit row (`simulate = yes`) are
 read from it, so a rehearsal the credential forced is never recorded as a write that happened.
 
@@ -479,7 +479,7 @@ carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a`
 dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later
 security review of this log could not tell a rehearsal from a write that happened, because the
 parameters themselves are kept only at debug level — and telling those apart is exactly what such
-a review is for. Until 2.0.1 it was read from the call's own arguments, so a rehearsal the
+a review is for. Until 2.1.0 it was read from the call's own arguments, so a rehearsal the
 credential forced read `no` and an omitted argument read `n/a`. Now `yes` is what ran: once a write tool has
 decided, the row says `yes` when it rehearsed - asked, left out (the default) or forced by an advisory
 credential - and `no` when it wrote. Where no tool decided (a read, a handshake, a refusal, a pack's tool that

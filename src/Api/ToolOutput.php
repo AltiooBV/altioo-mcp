@@ -109,7 +109,7 @@ final class ToolOutput
 	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
 	 *
 	 * @throws ToolCallException When the result cannot be encoded at all.
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function StructuredWrite(array $aData): CallToolResult
 	{

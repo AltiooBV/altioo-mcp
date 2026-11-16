@@ -96,7 +96,7 @@ final class DryRun
 	 * a call refused first). The audit row records this rather than the argument, which a caller
 	 * may have left out or the credential overridden.
 	 *
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function Decided(): ?bool
 	{
@@ -110,7 +110,7 @@ final class DryRun
 	 * policy - so a refused call, a read, and a caller that rehearsed anyway are all false. It is the
 	 * effective value, where the `simulate` argument is only the requested one.
 	 *
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function ForcedByCredential(): bool
 	{
@@ -122,7 +122,7 @@ final class DryRun
 	 * heard of a token scope understands: the portal's user is told about their account, not about
 	 * a scope name.
 	 *
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function ForcedReason(): string
 	{
@@ -142,7 +142,7 @@ final class DryRun
 	 * @param array<string, mixed> $aData A write's answer.
 	 *
 	 * @return array<string, mixed>
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function AnnotateForced(array $aData): array
 	{
@@ -162,7 +162,7 @@ final class DryRun
 	 * The two keys a write's output schema declares for that.
 	 *
 	 * @return array<string, array<string, mixed>>
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function ForcedSchemaProperties(): array
 	{
@@ -182,7 +182,7 @@ final class DryRun
 	 * For tests, and for a runner that serves more than one request.
 	 *
 	 * @internal Request state, cleared by Service\Server\RequestScope; a pack never calls it.
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	public static function Forget(): void
 	{

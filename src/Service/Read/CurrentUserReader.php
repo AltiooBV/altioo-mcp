@@ -99,7 +99,7 @@ final class CurrentUserReader
 	 * portal connection without the word "scope", which that user has never met.
 	 *
 	 * @return array<string, mixed>
-	 * @since 2.0.1
+	 * @since 2.1.0
 	 */
 	private static function AdvisoryBlock(): array
 	{
