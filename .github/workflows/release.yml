@@ -162,6 +162,8 @@ jobs:
         run: |
           set -euo pipefail
           php tools/tools-manifest.php > tools-manifest.json
+          # Literal PHP passed to `php -r`; $m is a PHP variable, not a shell one.
+          # shellcheck disable=SC2016
           php -r '$m = json_decode(file_get_contents("tools-manifest.json"), true, 512, JSON_THROW_ON_ERROR); if (count($m["tools"] ?? []) < 1) { fwrite(STDERR, "the manifest lists no tool\n"); exit(1); }'
           sha256sum tools-manifest.json > tools-manifest.json.sha256
           cat tools-manifest.json.sha256
