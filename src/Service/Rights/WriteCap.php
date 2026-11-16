@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use CMDBChange;
 use DBObjectSearch;
@@ -67,14 +68,20 @@ final class WriteCap
 		$bTrailCounts = Settings::AuditCountsWrites();
 		$aRows = ($iCap !== null && $bTrailCounts) ? self::RowsInWindow() : [];
 
-		$sRefusal = self::Decide($iCap, $bTrailCounts, $aRows, self::$iReserved, $iObjects, time());
+		$iNow = time();
+		$sRefusal = self::Decide($iCap, $bTrailCounts, $aRows, self::$iReserved, $iObjects, $iNow);
 		if ($sRefusal === null) {
 			self::$iReserved += max(0, $iObjects);
-		} else {
-			ErrorReport::Log('A write was refused by the write cap: '.$sRefusal);
+
+			return null;
 		}
 
-		return $sRefusal;
+		// The operator's log names the setting; a portal user is not told the console's vocabulary.
+		ErrorReport::Log('A write was refused by the write cap: '.$sRefusal);
+
+		return PortalMode::Current() === null
+			? $sRefusal
+			: self::Decide($iCap, $bTrailCounts, $aRows, self::$iReserved, $iObjects, $iNow, true);
 	}
 
 	/**
@@ -87,15 +94,19 @@ final class WriteCap
 	 * @param int                                    $iReserved    What this request has already been allowed.
 	 * @param int                                    $iAsked       What this call is about to write.
 	 * @param int                                    $iNow         The time, in seconds.
+	 * @param bool                                   $bPortal      Word the refusal for a portal user, without the setting's name.
 	 *
 	 * @internal
 	 */
-	public static function Decide(?int $iCap, bool $bTrailCounts, ?array $aRows, int $iReserved, int $iAsked, int $iNow): ?string
+	public static function Decide(?int $iCap, bool $bTrailCounts, ?array $aRows, int $iReserved, int $iAsked, int $iNow, bool $bPortal = false): ?string
 	{
 		if ($iCap === 0) {
 			return null;
 		}
 		$sName = Settings::MODULE_SETTING_MAX_WRITES_PER_HOUR;
+		if ($bPortal && ($iCap === null || !$bTrailCounts || $aRows === null)) {
+			return 'Writes are refused on this instance for now. Reading is not affected. Ask your administrator.';
+		}
 		if ($iCap === null) {
 			return "Writes are refused: '$sName' is not a non-negative integer. Reads are not affected. Ask your administrator to correct it.";
 		}
@@ -106,6 +117,14 @@ final class WriteCap
 			return null;
 		}
 		if ($iAsked > $iCap) {
+			if ($bPortal) {
+				return sprintf(
+					'This call would write %d objects, more than the %d per hour your access allows. Write fewer, or ask your administrator.',
+					$iAsked,
+					$iCap
+				);
+			}
+
 			return sprintf(
 				'This call would write %d objects, more than the cap of %d per hour on this credential (%s). Write fewer, or ask your administrator.',
 				$iAsked,
@@ -134,6 +153,16 @@ final class WriteCap
 			}
 		}
 		$iMinutes = max(1, (int)ceil(($iFreesAt - $iNow) / 60));
+
+		if ($bPortal) {
+			return sprintf(
+				'You have reached the limit of %d objects written per hour; this call would write %d more. Room frees up in about %d minute%s. Dry runs are not affected. Ask your administrator if you need more.',
+				$iCap,
+				$iAsked,
+				$iMinutes,
+				$iMinutes === 1 ? '' : 's'
+			);
+		}
 
 		return sprintf(
 			'This credential has reached its write cap of %d objects per hour (%s); this call would write %d more. Room frees up in about %d minute%s. Dry runs are not affected.',

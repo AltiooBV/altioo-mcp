@@ -46,6 +46,26 @@ class WriteCapTest extends TestCase
 		$this->assertNull(WriteCap::Decide(0, false, null, 0, 1000, self::NOW));
 	}
 
+	public function testAPortalUserIsNotToldTheConsoleSettingName(): void
+	{
+		$aRows = [[self::NOW - 600, 1], [self::NOW - 300, 1]];
+		$aRefusals = [
+			'reached' => WriteCap::Decide(2, true, $aRows, 0, 1, self::NOW, true),
+			'too big' => WriteCap::Decide(10, true, [], 0, 11, self::NOW, true),
+			'malformed' => WriteCap::Decide(null, true, [], 0, 1, self::NOW, true),
+			'cannot count' => WriteCap::Decide(5, false, [], 0, 1, self::NOW, true),
+			'unreadable' => WriteCap::Decide(5, true, null, 0, 1, self::NOW, true),
+		];
+
+		foreach ($aRefusals as $sCase => $sRefusal) {
+			$this->assertNotNull($sRefusal, $sCase);
+			$this->assertStringNotContainsString('mcp_', $sRefusal, $sCase);
+			$this->assertStringContainsString('administrator', $sRefusal, $sCase);
+		}
+		$this->assertStringContainsString('in about 50 minutes', (string)$aRefusals['reached']);
+		$this->assertNull(WriteCap::Decide(2, true, [], 0, 1, self::NOW, true), 'wording only; the decision is the same');
+	}
+
 	public function testBelowTheCapIsAllowed(): void
 	{
 		$aRows = [[self::NOW - 600, 1]];
