@@ -38,6 +38,21 @@ what said so.
   **Rows written before 2.1.0 keep `no`; nothing migrates them.** To find the ones that were
   rehearsals, look for rows of a write tool by an advisory token with no changed objects.
 
+- **Portal mode's instructions and `core_class_list` named tools the token is not served.** The
+  portal text told a connection to call `core_current_user`, `core_my_activity`, `core_instructions`,
+  `core_class_list`, `core_object_get_document` and `core_object_attach` whatever its toolsets were,
+  and `core_class_list` reported `history: true` for a token without `core_object_history`. Each of
+  those sentences is now kept only when the toolset behind it is served, and the flag is true only
+  for a token that can use it. Tool descriptions and refusal texts are the same for every caller and
+  are still not narrowed; the README now says so.
+- **A stray character in an OQL query was answered as an internal error.** A query such as
+  `SELECT Organization; DELETE FROM Organization` is refused by iTop's own lexer with a plain
+  exception, and the endpoint told the caller the fault was server-side and gave a reference. It is
+  now `Invalid OQL query. Reason: unexpected character ";"`, like any other OQL mistake. Nothing was
+  ever executed, and every other unexpected failure stays opaque.
+- **The security summary overstated the audit row's `client`.** It is on every row for a `2026-07-28`
+  client that sends its `clientInfo`, and on the `initialize` row only for an earlier one.
+
 ### Added
 
 - **A forced rehearsal says why.** Every write tool's answer now carries `forced_by_credential` and a
