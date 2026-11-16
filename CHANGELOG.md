@@ -67,6 +67,12 @@ what said so.
   with the classes the caller may read that start with what was typed, at most 100 - never one the
   operator excluded, and in portal mode only the portal's own classes. No prompt takes a class
   argument today, so none completes.
+- **`core_my_activity` rows carry `written`**, the number of objects the call created, changed, deleted
+  or attached to (the audit row's `written_objects`). A count and never a name or an id, so
+  [ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md) holds, and the ADR says so.
+  `changed: []` beside a `written` above 0 now reads as what it is: objects you can no longer see, or
+  that were deleted afterwards. The tool's description and `coverage` say it, and say that
+  `objects_you_cannot_see` also counts objects that are gone.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
 

@@ -56,7 +56,7 @@ class ContextBudgetTest extends TestCase
 		'ClassSchema'         => [1860, 900],
 		'CurrentUser'         => [740, 40],
 		'Instructions'        => [780, 40],
-		'MyActivity'          => [330, 440],
+		'MyActivity'          => [430, 440],
 		'ObjectApplyStimulus' => [520, 1020],
 		'ObjectAttach'        => [400, 1610],
 		'ObjectBulkCreate'    => [420, 920],
@@ -78,7 +78,7 @@ class ContextBudgetTest extends TestCase
 	];
 
 	/** The whole of what the budgets above add up to, with a little room. */
-	private const TOTAL_DESCRIPTIONS = 13850;
+	private const TOTAL_DESCRIPTIONS = 13950;
 	private const TOTAL_INPUT_SCHEMAS = 24800;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
@@ -149,7 +149,7 @@ class ContextBudgetTest extends TestCase
 	/**
 	 * What a portal user is told: the tools portal mode serves, in portal mode,
 	 * where descriptions and schemas differ from the console's. Measured with
-	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050).
+	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950).
 	 */
 	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
 	{
@@ -171,7 +171,7 @@ class ContextBudgetTest extends TestCase
 			MCPRegistry::Clear();
 		}
 
-		$this->assertLessThanOrEqual(8850, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(8950, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
 		$this->assertLessThanOrEqual(8050, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
