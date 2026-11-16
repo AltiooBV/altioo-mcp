@@ -161,7 +161,7 @@ class SetObsoleteData extends AbstractMCPTool
 			// A preference is small, persistent, and shared with the console -
 			// which is exactly the shape of thing this server withholds on a
 			// first call.
-			return ToolOutput::Structured([
+			return ToolOutput::StructuredWrite([
 				'visible'   => $visible,
 				'simulated' => true,
 				'previous'  => $bPrevious,
@@ -175,7 +175,7 @@ class SetObsoleteData extends AbstractMCPTool
 			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the preference', $e));
 		}
 
-		return ToolOutput::Structured([
+		return ToolOutput::StructuredWrite([
 			'visible'   => $visible,
 			'simulated' => false,
 			'previous'  => $bPrevious,

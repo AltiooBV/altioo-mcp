@@ -96,7 +96,7 @@ class AdvisoryRehearsalTest extends TestCase
 	/** @param array<string, mixed> $aData */
 	private function answer(array $aData): array
 	{
-		return ToolOutput::Decode(ToolOutput::Structured($aData)->structuredContent);
+		return ToolOutput::Decode(ToolOutput::StructuredWrite($aData)->structuredContent);
 	}
 
 	public function testAForcedAnswerSaysWhyAndChangesNoExistingKey(): void
@@ -155,5 +155,23 @@ class AdvisoryRehearsalTest extends TestCase
 		$this->assertStringNotContainsString('forced_by_credential', ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write'])));
 		$this->assertStringNotContainsString('advisory', ServerInstructions::PortalText('brick', AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory'])));
 		$this->assertStringContainsString('only propose changes', ServerInstructions::PortalText('brick', AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory'])));
+	}
+
+	/**
+	 * A pack answering through Structured() - with a closed schema and a `simulated` key, under an
+	 * advisory credential that forced it - gets exactly what 2.0.0 gave it: it opts in by calling
+	 * StructuredWrite() and declaring the keys, never by being upgraded.
+	 */
+	public function testAPackAnswerThroughStructuredIsByteIdenticalTo200(): void
+	{
+		AccessPolicy::Remember(AccessPolicy::FromScopes(['MCP-write', 'MCP-advisory']));
+		DryRun::Simulated(false);
+		$this->assertTrue(DryRun::ForcedByCredential());
+
+		$aPack = ['ticket' => 'R-1', 'simulated' => true];
+		$oResult = ToolOutput::Structured($aPack);
+
+		$this->assertSame($aPack, $oResult->structuredContent);
+		$this->assertSame('{"ticket":"R-1","simulated":true}', $oResult->content[0]->text);
 	}
 }

@@ -260,10 +260,9 @@ class OutputSchemaContractTest extends TestCase
 
 	public function testStructuredCarriesBothHalvesOfTheResult(): void
 	{
-		// A write's answer also carries the two forced_by_credential keys, which DryRun adds.
-		$aData = ['class' => 'UserRequest', 'id' => 42, 'simulated' => true, 'forced_by_credential' => false, 'forced_reason' => ''];
+		$aData = ['class' => 'UserRequest', 'id' => 42, 'simulated' => true];
 
-		$oResult = ToolOutput::Structured(['class' => 'UserRequest', 'id' => 42, 'simulated' => true]);
+		$oResult = ToolOutput::Structured($aData);
 
 		$this->assertInstanceOf(CallToolResult::class, $oResult);
 		$this->assertSame($aData, $oResult->structuredContent, 'the half a client validates');

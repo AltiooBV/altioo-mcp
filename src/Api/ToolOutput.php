@@ -95,10 +95,25 @@ final class ToolOutput
 	 */
 	public static function Structured(array $aData): CallToolResult
 	{
-		// A write that rehearsed because its credential is advisory says so (DryRun::AnnotateForced).
-		$aData = DryRun::AnnotateForced($aData);
-
 		return new CallToolResult([self::Json($aData)], false, $aData);
+	}
+
+	/**
+	 * {@see Structured()} for a write's answer, which also says whether the credential forced it to
+	 * rehearse: `forced_by_credential` and `forced_reason` are added to an answer that carries
+	 * `simulated`, and the output schema must declare them ({@see DryRun::ForcedSchemaProperties()}).
+	 *
+	 * The core write tools answer through this. {@see Structured()} itself is unchanged, so a pack's
+	 * answer is what it was in 2.0.0 until the pack chooses to call this.
+	 *
+	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
+	 *
+	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @since 2.0.1
+	 */
+	public static function StructuredWrite(array $aData): CallToolResult
+	{
+		return self::Structured(DryRun::AnnotateForced($aData));
 	}
 
 	/**

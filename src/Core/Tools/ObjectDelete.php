@@ -262,7 +262,7 @@ class ObjectDelete extends AbstractMCPTool
 					throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
 				}
 
-				return ToolOutput::Structured(['class' => $class]
+				return ToolOutput::StructuredWrite(['class' => $class]
 					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
@@ -276,7 +276,7 @@ class ObjectDelete extends AbstractMCPTool
 			}
 		}
 
-		return ToolOutput::Structured(['class' => $class]
+		return ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,

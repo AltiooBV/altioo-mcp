@@ -42,9 +42,10 @@ what said so.
 - **A forced rehearsal says why.** Every write tool's answer now carries `forced_by_credential` and a
   one-line `forced_reason` (empty on every other answer), so a client can tell the user nothing was
   written and why instead of showing `simulated: true` on a call it asked to commit. For a portal user
-  the sentence names their account, not a scope. No existing key changes. A tool pack whose own output
-  schema forbids extra properties and answers through `ToolOutput::Structured()` with a `simulated`
-  key has to declare the two (`DryRun::ForcedSchemaProperties()`).
+  the sentence names their account, not a scope. No existing key changes. A tool pack's answers are
+  unchanged, byte for byte: `ToolOutput::Structured()` does not add them. A pack may add them by
+  answering through the new `ToolOutput::StructuredWrite()` and declaring
+  `DryRun::ForcedSchemaProperties()` in its output schema.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
 

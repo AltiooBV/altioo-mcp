@@ -83,7 +83,7 @@ class WriteFailureReportingContractTest extends TestCase
 		$aHandler = array_map('strtolower', $oSource->UsesInCatch('execute'));
 
 		$this->assertContains(strtolower(WriteOutcome::class.'::CommittedId'), $aHandler, 'The handler must ask whether the row exists.');
-		$this->assertContains(strtolower(ToolOutput::class.'::Structured'), $aHandler, 'A committed row is answered as a result.');
+		$this->assertContains(strtolower(ToolOutput::class.'::StructuredWrite'), $aHandler, 'A committed row is answered as a result.');
 		$this->assertContains('warning', $oSource->StringsInCatch('execute'), 'The failure is attached, not discarded.');
 	}
 

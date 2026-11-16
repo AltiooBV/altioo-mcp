@@ -284,7 +284,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		if ($simulate) {
 			// id is null rather than absent: a dry run has created nothing, and
 			// saying so is not the same as answering with a different shape.
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, null)
 				+ $aAction
 				+ self::credentialNote($class)
@@ -313,7 +313,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		try {
 			$iId = $oObject->DBInsert();
 
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $iId)
 				+ $aAction
 				+ [
@@ -348,7 +348,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to create the object', $e));
 			}
 
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $iCommittedId)
 				+ $aAction
 				+ [

@@ -182,7 +182,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		// Through report() like the other two, rather than a hand-rolled copy
 		// of it: the defaults it applies are what make every entry carry the
 		// keys the schema promises.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, ['changes' => WriteOutcome::Map([]), 'overridden' => WriteOutcome::Map([]), 'applied' => WriteOutcome::Map([]), 'defaulted' => []]));
+		return ToolOutput::StructuredWrite(self::report($class, $simulate, $aOutcomes, ['changes' => WriteOutcome::Map([]), 'overridden' => WriteOutcome::Map([]), 'applied' => WriteOutcome::Map([]), 'defaulted' => []]));
 	}
 
 	/**
