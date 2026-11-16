@@ -132,6 +132,10 @@ set it to `removed`). Its run count and durations do not carry over to the new r
   days from now, is refused with a `401` in the portal bound's words; an application token has no expiry in iTop and is
   refused too. A malformed value refuses every token login rather than reading as off. Portal mode keeps
   `mcp_portal_token_max_days` alone.
+- **An agent that writes with no person reviewing it runs under its own account, named as automated**
+  ([ADR 0021](doc/adr/0021-an-autonomous-agent-writes-under-its-own-account.md), decided by the maintainer). A rule
+  for operators, in the README under *Granting access*; no code changed. A person's writes with an assistant's help
+  carry their name as before, and the change line stays iTop's (ADR 0009).
 - **`mcp_portal_extensions`: portal mode can serve a tool pack's element when the operator lists it**
   ([ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md), decided by
   the maintainer). Portal mode served only this module's own elements because a pack could not reach the

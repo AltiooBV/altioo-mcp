@@ -768,6 +768,16 @@ attributes (those whose type implements `iAttributeNoGroupBy`) are masked in out
 On top of those four, `mcp_disabled_tools` lets you turn individual tools, prompts and
 resources off outright, by name or by class, whichever extension registered them.
 
+**An agent that writes on its own gets its own account.** When a person uses an assistant, the
+change carries their name, as for anything else they write. An agent that writes with no person
+reviewing its text — a scheduled triage, an auto-responder — must run under an iTop account of its
+own whose name says it is automated, such as *Service desk assistant (automated)*: that is the
+name the counterpart sees on its case-log entries and the history shows, and its profiles, tokens
+and write cap are its own. Give an application token (`UserToken`) to such an account, never to a
+person's. The endpoint cannot check this for you — nothing in a request says whether a person read
+the text first — so it is yours to keep. Every write is also on its audit row, with the tool, the
+client and the change it made. [ADR 0021](doc/adr/0021-an-autonomous-agent-writes-under-its-own-account.md)
+
 ### Grading a token
 
 Everything above answers "who is calling". iTop hangs permissions off the user, so the usual
