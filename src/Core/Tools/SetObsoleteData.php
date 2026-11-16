@@ -104,7 +104,7 @@ class SetObsoleteData extends AbstractMCPTool
 	{
 		return [
 			'type'       => 'object',
-			'properties' => [
+			'properties' => DryRun::ForcedSchemaProperties() + [
 				'visible'   => [
 					'type'        => 'boolean',
 					'description' => 'The preference as it now stands, or would stand.',
@@ -122,7 +122,7 @@ class SetObsoleteData extends AbstractMCPTool
 					'description' => 'false when the call asked for the value it already had.',
 				],
 			],
-			'required'             => ['visible', 'simulated', 'previous', 'changed'],
+			'required'             => ['visible', 'simulated', 'forced_by_credential', 'forced_reason', 'previous', 'changed'],
 			'additionalProperties' => false,
 		];
 	}
@@ -161,7 +161,7 @@ class SetObsoleteData extends AbstractMCPTool
 			// A preference is small, persistent, and shared with the console -
 			// which is exactly the shape of thing this server withholds on a
 			// first call.
-			return ToolOutput::Structured([
+			return ToolOutput::StructuredWrite([
 				'visible'   => $visible,
 				'simulated' => true,
 				'previous'  => $bPrevious,
@@ -175,7 +175,7 @@ class SetObsoleteData extends AbstractMCPTool
 			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the preference', $e));
 		}
 
-		return ToolOutput::Structured([
+		return ToolOutput::StructuredWrite([
 			'visible'   => $visible,
 			'simulated' => false,
 			'previous'  => $bPrevious,

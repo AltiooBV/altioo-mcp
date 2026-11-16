@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use AltiooEventMCPService;
 use CMDBChange;
 use CMDBObject;
@@ -53,7 +54,7 @@ final class CallLog
 			return;
 		}
 
-		if (!in_array($sMethod, Settings::GetAuditedMethods(), true)) {
+		if ($sMethod !== MCPMethod::BATCH && !in_array($sMethod, Settings::GetAuditedMethods(), true)) {
 			return;
 		}
 		// If the response is successful and the log level is set to error, skip logging to avoid filling the logs with successful calls
@@ -79,7 +80,7 @@ final class CallLog
 			// only at debug level, so without this a later review of this log -
 			// which is the log such a review reads first - cannot tell a dry
 			// run from a write that happened.
-			$oLog->Set('simulate', self::simulateGrade($oResult->requestParams));
+			$oLog->Set('simulate', self::effectiveSimulate(self::simulateGrade($oResult->requestParams)));
 			// Which credential, and what it changed. The row named neither: it
 			// said a write by "claude" succeeded, where "claude" is a login
 			// string and the write had no subject. Both halves are links, so a
@@ -312,6 +313,21 @@ final class CallLog
 	}
 
 	/**
+	 * The grade of what the call did rather than of what it asked: once a write tool has decided,
+	 * `yes` when it rehearsed - the caller asked, left `simulate` out so the default applied, or the
+	 * credential forced it (the advisory scope) - and `no` when it went on to write.
+	 *
+	 * When no tool decided (a read, a handshake, a call refused first, a pack's tool that does not
+	 * ask DryRun) the grade is the request's own, `n/a` where it carries no `simulate`.
+	 */
+	private static function effectiveSimulate(string $sRequested): string
+	{
+		$bDecided = DryRun::Decided();
+
+		return $bDecided === null ? $sRequested : ($bDecided ? 'yes' : 'no');
+	}
+
+	/**
 	 * Whether the call being logged was a dry run, as its own parameters say.
 	 *
 	 * Three answers, because there are three cases and collapsing them loses
@@ -323,10 +339,9 @@ final class CallLog
 	 * Read from the parameters rather than carried down from the tool, so it
 	 * stays true for a pack's tool this module has never heard of: any tool
 	 * spelling the argument the way the write tools spell it is graded by it.
-	 * Absent means "n/a" rather than "no", because a tool that declares the
-	 * argument and defaults it to true is rehearsing when the caller says
-	 * nothing - and reporting that as a real write would be the lie this is
-	 * here to prevent.
+	 * This is what the call asked; {@see effectiveSimulate()} replaces it with what
+	 * a write tool decided, which is what makes an omitted argument (the tool
+	 * defaults to a rehearsal) read "yes" rather than "n/a".
 	 */
 	private static function simulateGrade(?string $sRequestParams): string
 	{

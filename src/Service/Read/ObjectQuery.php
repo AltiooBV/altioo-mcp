@@ -165,10 +165,31 @@ final class ObjectQuery
 			if ($sUnknown !== null) {
 				throw new ToolCallException('Invalid OQL query. Reason: Unknown class "'.$sUnknown.'"');
 			}
+			// iTop's lexer refuses a character outside the grammar - a ';', a '#' - with a plain
+			// exception whose message it failed to translate into an OQLException. It is the caller's
+			// own mistake, told as one; the character is the one the caller typed, nothing of the exception.
+			$sUnexpected = self::unexpectedCharacterIn($e);
+			if ($sUnexpected !== null) {
+				throw new ToolCallException('Invalid OQL query. Reason: unexpected character '.$sUnexpected);
+			}
 			// Not an OQL problem at all - a datamodel that will not reflect, or
 			// something under it. The caller cannot act on that one.
 			throw new ToolCallException(ErrorReport::OpaqueFailure('Could not check the OQL query', $e));
 		}
+	}
+
+	/**
+	 * What the OQL lexer refused, when that is why it threw: the one character it names, quoted, or
+	 * a plain "outside the grammar" when it is not printable. Matched narrowly on the lexer's own
+	 * "Unexpected input at line N: c"; any other exception is not an OQL mistake and stays opaque.
+	 */
+	private static function unexpectedCharacterIn(\Throwable $e): ?string
+	{
+		if (preg_match('/^Unexpected input at line \d+:\s*(.)/su', $e->getMessage(), $aMatch) !== 1) {
+			return null;
+		}
+
+		return preg_match('/^[[:print:]]$/u', $aMatch[1]) === 1 ? '"'.$aMatch[1].'"' : '(outside the grammar)';
 	}
 
 	/**

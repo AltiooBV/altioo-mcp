@@ -291,7 +291,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		$aChanges = self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aChanges, array_keys($aValidatedValues)));
 
 		if ($simulate) {
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => true,
@@ -318,7 +318,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		try {
 			$oObject->DBUpdate();
 
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => false,

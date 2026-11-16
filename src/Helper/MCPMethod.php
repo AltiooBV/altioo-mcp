@@ -22,6 +22,15 @@ class MCPMethod
 	const EXCEPTION = 'exceptions';
 
 	/**
+	 * Pseudo-method stamped on the row of a request whose body was a JSON array - a batch - which this
+	 * endpoint refuses. Audited whatever log_mcp_method says: a refusal worth a row is one an operator
+	 * would otherwise never see.
+	 *
+	 * @since 2.1.0
+	 */
+	const BATCH = 'batch';
+
+	/**
 	 * The JSON-RPC method a client sends to open a session.
 	 *
 	 * Audited apart from the rest: it is the only record that a client

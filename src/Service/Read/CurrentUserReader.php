@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use MetaModel;
@@ -52,7 +53,7 @@ final class CurrentUserReader
 			// What this caller can reach, so that "the server has no such tool"
 			// and "I am not served it" stop looking the same. Only what is
 			// served is named - see ServedAccess::Current().
-			'access' => ServedAccess::Current(),
+			'access' => ServedAccess::Current() + self::AdvisoryBlock(),
 			'current_contact_friendlyname' => self::ContactFriendlyname(),
 			// The caller's own contact is an object like any other: of an excluded class it is not named
 			// (doc/adr/0012), and neither is its organisation, or its id.
@@ -87,6 +88,31 @@ final class CurrentUserReader
 				'enabled' => utils::IsArchiveMode(),
 				'means'   => 'A view, not a lock: when enabled, searches also return archived and obsolete objects. It never makes the instance read-only.',
 			],
+		];
+	}
+
+	/**
+	 * Whether writes from this credential are rehearsals only, beside the capabilities it reports.
+	 *
+	 * Without it an advisory credential finds out by calling a write tool and reading `simulated:
+	 * true` on an answer it asked to commit. `advisory_means` is said only when it is true, and in a
+	 * portal connection without the word "scope", which that user has never met.
+	 *
+	 * @return array<string, mixed>
+	 * @since 2.1.0
+	 */
+	private static function AdvisoryBlock(): array
+	{
+		$oPolicy = AccessPolicy::Current();
+		if ($oPolicy === null || !$oPolicy->isAdvisory()) {
+			return ['advisory' => false];
+		}
+
+		return [
+			'advisory'       => true,
+			'advisory_means' => PortalMode::Current() !== null
+				? 'This account may only propose changes: every change is checked and shown but never made, whatever is asked.'
+				: 'Every write from this credential is a rehearsal: simulate=false is accepted but nothing is written. Show the result to the user.',
 		];
 	}
 

@@ -119,6 +119,22 @@ final class MCPResponse
 		}
 	}
 
+	/**
+	 * Answers a JSON-RPC batch, which this endpoint does not accept: HTTP 400 and a JSON-RPC
+	 * -32600 Invalid Request, in the protocol's own shape so a client reads it as the protocol's
+	 * answer.
+	 */
+	public static function EmitBatchRefusal(string $sMessage): void
+	{
+		http_response_code(400);
+
+		$oP = new JsonPage();
+		self::addCorsHeader($oP);
+		$oP->SetData(['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => $sMessage]]);
+		$oP->SetOutputDataOnly(true);
+		$oP->Output();
+	}
+
 	public static function EmitResponse(ResponseInterface $response): MCPResult
 	{
 		foreach ($response->getHeaders() as $name => $values) {
@@ -274,11 +290,11 @@ final class MCPResponse
 			// serve one origin's response to another.
 			'Vary'                        => 'Origin',
 			// Streamable HTTP also defines GET, for opening a stream the
-			// client can resume. The SDK does not answer it - it matches
-			// OPTIONS, POST and DELETE and refuses everything else with 405
-			// and 'Allow: POST, DELETE, OPTIONS' - so advertising GET here
-			// would promise a browser something the transport refuses.
-			'Access-Control-Allow-Methods'  => 'POST, DELETE, OPTIONS',
+			// client can resume, and DELETE, for ending a session. Neither is
+			// served - there is no stream and no session (DELETE is answered
+			// 405, NoSessionTeardownMiddleware) - so advertising either here
+			// would promise a browser something this endpoint refuses.
+			'Access-Control-Allow-Methods'  => 'POST, OPTIONS',
 			// Authorization and Auth-Token carry the credential, Mcp-Session-Id
 			// and MCP-Protocol-Version are set by the client on every call, and
 			// a browser sends none of them without being told they are allowed.

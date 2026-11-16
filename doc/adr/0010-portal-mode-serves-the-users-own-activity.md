@@ -38,3 +38,9 @@ refusals stay invisible).
 
 Enforced by: `OwnActivityTest` (portal narrowing, no codes without a change, plain coverage) and `MyActivityContractTest`
 (portal-aware, read grade, and no column that can quote a third party).
+
+**Amendment (2.1.0): a row says how many objects it wrote.** `written` is the audit row's `written_objects`, a count of the
+objects the call's own change created, changed, deleted or attached to, with no class, id or name, in both modes. It adds
+nothing the hidden count did not already imply and gives a reader no way to learn a third party's data; `changed` still
+names an object only while `Readable()` shows it now. `objects_you_cannot_see` also counts objects that no longer exist,
+since existence of an unreadable object is never probed to tell them apart.

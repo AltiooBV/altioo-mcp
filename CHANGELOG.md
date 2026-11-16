@@ -21,6 +21,69 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+## [2.1.0] - Unreleased
+
+**An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`
+has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
+what said so.
+
+### Fixed
+
+- **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
+  protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
+  `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no
+  `simulate` flag, so `core_my_activity`, the audit list and anything forwarding the rows saw none of the calls
+  individually. A batch is now answered HTTP 400 with JSON-RPC `-32600 Invalid Request`, once the caller is
+  authenticated, and recorded as one row of method `batch` (always audited, whatever `log_mcp_method`
+  lists). The write cap was not bypassed: `WriteCap` reserves what each call is allowed within a request.
+  A client that sent batches has to send its requests one per HTTP request, which every revision requires of it from 2025-06-18.
+- **The audit row's `simulate` column recorded the caller's request, not what ran.** A call with
+  `simulate: false` that the advisory credential turned into a rehearsal was logged `no` and read, to
+  anyone reviewing the log, as a write that happened; and a write that left `simulate` out, which
+  rehearses by default, was logged `n/a`. Both are now `yes`: for a call to a write tool the row says
+  what the tool did - `yes` when it rehearsed (asked, defaulted or forced), `no` when it wrote. A read
+  is still `n/a`, so is a call refused before the tool decided anything unless it carried `simulate`, and the write cap counts exactly what it counted (a forced rehearsal wrote nothing).
+  **Rows written before 2.1.0 keep `no`; nothing migrates them.** To find the ones that were
+  rehearsals, look for rows of a write tool by an advisory token with no changed objects.
+
+- **Portal mode's instructions and `core_class_list` named tools the token is not served.** The
+  portal text told a connection to call `core_current_user`, `core_my_activity`, `core_instructions`,
+  `core_class_list`, `core_object_get_document` and `core_object_attach` whatever its toolsets were,
+  and `core_class_list` reported `history: true` for a token without `core_object_history`. Each of
+  those sentences is now kept only when the toolset behind it is served, and the flag is true only
+  for a token that can use it. Tool descriptions and refusal texts are the same for every caller and
+  are still not narrowed; the README now says so.
+- **A stray character in an OQL query was answered as an internal error.** A query such as
+  `SELECT Organization; DELETE FROM Organization` is refused by iTop's own lexer with a plain
+  exception, and the endpoint told the caller the fault was server-side and gave a reference. It is
+  now `Invalid OQL query. Reason: unexpected character ";"`, like any other OQL mistake. Nothing was
+  ever executed, and every other unexpected failure stays opaque.
+- **The security summary overstated the audit row's `client`.** It is on every row for a `2026-07-28`
+  client that sends its `clientInfo`, and on the `initialize` row only for an earlier one.
+
+### Added
+
+- **A forced rehearsal says why.** Every write tool's answer now carries `forced_by_credential` and a
+  one-line `forced_reason` (empty on every other answer), so a client can tell the user nothing was
+  written and why instead of showing `simulated: true` on a call it asked to commit. For a portal user
+  the sentence names their account, not a scope. No existing key changes. A tool pack's answers are
+  unchanged, byte for byte: `ToolOutput::Structured()` does not add them. A pack may add them by
+  answering through the new `ToolOutput::StructuredWrite()` and declaring
+  `DryRun::ForcedSchemaProperties()` in its output schema.
+- **The `class` of `itop://core/class/{class}` (and of any template with one) completes.** The
+  server has always advertised completions and always answered with an empty list. It now answers
+  with the classes the caller may read that start with what was typed, at most 100 - never one the
+  operator excluded, and in portal mode only the portal's own classes. No prompt takes a class
+  argument today, so none completes.
+- **`core_my_activity` rows carry `written`**, the number of objects the call created, changed, deleted
+  or attached to (the audit row's `written_objects`). A count and never a name or an id, so
+  [ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md) holds, and the ADR says so.
+  `changed: []` beside a `written` above 0 now reads as what it is: objects you can no longer see, or
+  that were deleted afterwards. The tool's description and `coverage` say it, and say that
+  `objects_you_cannot_see` also counts objects that are gone.
+- **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
+  `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
+
 ## [2.0.0] - 2026-11-16
 
 **The source tree is laid out as iTop lays out its own, and a tool pack builds with what the core tools use.**

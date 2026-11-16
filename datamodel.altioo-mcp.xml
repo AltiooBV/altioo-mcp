@@ -186,8 +186,10 @@
           Whether this call was a dry run. Without it a later review of this
           log cannot tell a rehearsal from a real write - the parameters are
           only stored at debug level - which is exactly the question such a
-          review is asking. "n/a" for a call that has no dry run to speak of:
-          a read, a handshake, anything that is not a write tool.
+          review is asking. "yes" is what ran: a write rehearsed because the
+          caller asked, left simulate out, or the credential (MCP-advisory) forced it.
+          "n/a" for a call that has no dry run to speak of: a read, a
+          handshake, anything that is not a write tool.
         -->
         <field id="simulate" xsi:type="AttributeEnum">
           <sql>simulate</sql>

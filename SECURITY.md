@@ -162,7 +162,9 @@ no session: this endpoint is stateless, and the token record is the only thing t
 between calls and is read on every one of them anyway. It survives `MCP` (a token asking for
 everything, as a rehearsal) and narrowing only ever adds it. Every write tool routes its argument
 through one decision, and a unit test fails if one reads `simulate` directly — a tool that does is
-a tool the scope does not reach.
+a tool the scope does not reach. Since 2.1.0 that decision also leaves a mark: `DryRun` remembers that it
+overrode the caller, and both the answer (`forced_by_credential`) and the audit row (`simulate = yes`) are
+read from it, so a rehearsal the credential forced is never recorded as a write that happened.
 
 ### The rule the write barriers reduce to
 
@@ -472,15 +474,21 @@ endpoint's own audit row. Create tokens in the console, where the value is shown
 regenerated. (These classes are behind `mcp_allow_access_administration` in any case, and the
 self-guard still refuses minting one for yourself.)
 
+**One request, one audit row.** A JSON-RPC batch is refused (HTTP 400, `-32600`) and recorded as a row of
+method `batch`: a row is made from the one `method` and `params` of the body, and a list has neither, so a batch of writes
+would have been one row naming no tool, no parameters and no rehearsal flag (fixed in 2.1.0).
+
 **The endpoint's own audit rows say whether a call was a rehearsal.** `AltiooEventMCPService`
 carries `simulate`: `yes` for a dry run, `no` for a call asked to proceed, `n/a` where there is no
 dry run to speak of — a read, a handshake, a tool taking no such argument. Without it, a later
 security review of this log could not tell a rehearsal from a write that happened, because the
 parameters themselves are kept only at debug level — and telling those apart is exactly what such
-a review is for. It is read from the call's own arguments rather than carried down from the tool,
-so a pack's tool spelling `simulate` the way the core ones do is graded by it too; absent means
-`n/a` rather than `no`, since a tool defaulting it to true is rehearsing when the caller says
-nothing.
+a review is for. Until 2.1.0 it was read from the call's own arguments, so a rehearsal the
+credential forced read `no` and an omitted argument read `n/a`. Now `yes` is what ran: once a write tool has
+decided, the row says `yes` when it rehearsed - asked, left out (the default) or forced by an advisory
+credential - and `no` when it wrote. Where no tool decided (a read, a handshake, a refusal, a pack's tool that
+does not ask `DryRun`) it is still read from the arguments, so a pack's tool spelling `simulate` as the core
+ones do is graded by it, and absent means `n/a`. Earlier rows are not rewritten.
 
 **How these are meant to be found in future.** The honest description of the barrier is that it
 is a set of named roots matched by descent, plus two questions asked of the datamodel (what
@@ -583,7 +591,7 @@ reference.
 | One account rewriting another's stored UI preferences | `appUserPreferences` writes are allowed on your own row and refused on anyone else's, whatever the profile says |
 | Tampering with the audit log | `CMDBChangeOp` and `CMDBChange` are refused by every tool, reads included — `core_object_history` is the only way in, and `core_class_schema` now reports that refusal instead of grading them `yes`. In portal mode it is served only when the portal shows history, for an object the portal shows, the rows its change-log scope holds and the fields its view form shows; nothing in portal mode writes them |
 | An agent deleting the evidence of what it did — the MCP endpoint's own audit rows, or iTop's event log | `Event` and everything descending from it, `AltiooEventMCPService` included, are read-only through this endpoint with **no setting to change that**; `CMDBChange`/`CMDBChangeOp` are refused outright, reads included, except through `core_object_history` |
-| Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element, the message and the `client` recorded on each row are reduced to one line before they are stored, and the element and the client are cut to their columns. They are still what the caller declared, never verified: they name a well-behaved client, they do not authenticate one |
+| Forging what the audit trail says — a client name, tool name or resource URI carrying line breaks, so one row reads as several or carries text aimed at whoever reviews it | The element, the message and the `client` recorded on a row are reduced to one line before they are stored, and the element and the client are cut to their columns. They are still what the caller declared, never verified: they name a well-behaved client, they do not authenticate one |
 | One valid token degrading the service for everyone — calls in a tight loop, or many at once | **Nothing in the module.** Each call is bounded — batch sizes, search limits, traversal depth, request size and JSON depth are all capped — but calls are not counted (the optional write cap, `mcp_max_writes_per_hour`, counts committed objects, not calls). An authenticated call costs a full iTop bootstrap and login, by design of a stateless endpoint, so a single holder can load the instance for every other user. Throttle in front of it: see [Hardening the deployment](#hardening-the-deployment) |
 | Mass notification through @mentions — hand-written mention markup in a case-log entry, naming any class and any number of objects, each firing `TriggerOnObjectMention` | Mentions are held to iTop's `mentions.allowed_classes` and to objects the caller can see, and one call may mention at most `mcp_max_mentions` distinct objects (default 5, `0` for none). The parser and the trigger are iTop's; this caps what the endpoint lets through to them |
 | Formula injection (CSV injection) — `=HYPERLINK(…)`, DDE and the like stored in an ordinary text field, running when the data reaches a spreadsheet through iTop's export, REST, or a CSV an assistant builds | Refused on the way in by every write tool, number-like values excepted (`mcp_refuse_formula_values`, on by default); every reader is told to quote such cells when building a CSV. Values that reach iTop by another path are not checked — see [Hardening the deployment](#hardening-the-deployment) for finding them. The export itself is iTop's |

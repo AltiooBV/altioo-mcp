@@ -91,7 +91,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 	#[\Override]
 	public function getDescription(): ?string
 	{
-		return 'List what this account\'s credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, and the reason given. Only your own calls; there is no way to ask for anyone else\'s. Read "coverage" for what the record cannot show.';
+		return 'List what this account\'s credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see), and the reason given. Only your own calls; there is no way to ask for anyone else\'s. Read "coverage" for what the record cannot show.';
 	}
 
 	#[\Override]
@@ -228,6 +228,9 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 			'portal'     => (string)$oRow->Get('portal'),
 			'credential' => (int)$oRow->Get('personal_token_id') > 0 ? 'personal token' : ((int)$oRow->Get('user_token_id') > 0 ? 'application token' : null),
 			'reason'     => (string)$oRow->Get('change_comment') === '' ? null : (string)$oRow->Get('change_comment'),
+			// How many objects the call's own change touched (created, changed, deleted, attached to): a
+			// count and nothing else, so it names nothing the hidden count did not already imply (ADR 0010).
+			'written'    => max(0, (int)$oRow->Get('written_objects')),
 			'_change'    => (int)$oRow->Get('change_id'),
 			'_changed'   => (string)$oRow->Get('changed_objects'),
 			'_read'      => (string)$oRow->Get('read_objects'),
@@ -486,7 +489,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		// A portal user is told that the record is not complete, and nothing of how this
 		// instance is set up: no level, no retention, no switch.
 		if (PortalMode::Current() !== null) {
-			return ['notes' => ['Some earlier calls may not be listed. Objects you can no longer see are counted in objects_you_cannot_see.']];
+			return ['notes' => ['Some earlier calls may not be listed. Objects you can no longer see are counted in objects_you_cannot_see. written counts the objects a call changed: above 0 beside an empty changed, they are objects you can no longer see.']];
 		}
 
 		$sLevel = (string)MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL);
@@ -497,7 +500,8 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		$iRetention = Settings::GetAuditRetentionDays();
 		$aNotes = [
 			'Rows are found by your account\'s key, never by login. A row written before that key existed (iTop MCP 1.2 and earlier), and a row of an account that was deleted, hold no key and are not listed.',
-			'A call is listed with the objects it changed or read only up to a cap; the rest is counted, not named. Objects you can no longer see are counted in objects_you_cannot_see.',
+			'A call is listed with the objects it changed or read only up to a cap; the rest is counted, not named. Objects you can no longer see are counted in objects_you_cannot_see, and so are objects that have since been deleted.',
+			'written is how many objects the call created, changed, deleted or attached to, as a count only. Beside an empty changed it means the call wrote objects you can no longer see, or that were deleted afterwards.',
 		];
 		if (!Settings::LogsCalls()) {
 			$aNotes[] = 'This instance does not record calls (log_mcp_service is off): nothing new appears here.';

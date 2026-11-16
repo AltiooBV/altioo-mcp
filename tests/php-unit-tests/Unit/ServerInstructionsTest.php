@@ -76,6 +76,51 @@ class ServerInstructionsTest extends TestCase
 	}
 
 	/**
+	 * Portal mode is held to the same contract: its text names no tool this policy withholds,
+	 * including the ones a toolset other than the sentence's own serves (core_class_list is
+	 * `datamodel`, core_object_attach `documents`, core_current_user `server`).
+	 *
+	 * @dataProvider policyProvider
+	 */
+	public function testThePortalTextNamesNoIdentifierThePolicyWithholds(string $sCase, AccessPolicy $oPolicy): void
+	{
+		$aWithheld = [];
+		foreach (self::identifiersNamedIn(ServerInstructions::PortalText('brick', $oPolicy)) as $sIdentifier) {
+			if (!self::isServed($sIdentifier, $oPolicy)) {
+				$aWithheld[] = $sIdentifier;
+			}
+		}
+
+		$this->assertSame([], $aWithheld, sprintf('%s (portal mode): the text names %s, which this policy does not serve.', $sCase, implode(', ', $aWithheld)));
+	}
+
+	public function testAPortalTokenWithHistoryButNoDatamodelIsNotToldToAskTheClassList(): void
+	{
+		$sText = ServerInstructions::PortalText('brick', AccessPolicy::Of([], ['history']));
+
+		$this->assertStringContainsString('core_object_history', $sText);
+		$this->assertStringNotContainsString('core_class_list', $sText);
+	}
+
+	public function testAPortalTokenWithoutHistoryIsNotOfferedIt(): void
+	{
+		$sText = ServerInstructions::PortalText('brick', AccessPolicy::Of([], ['datamodel', 'objects']));
+
+		$this->assertStringNotContainsString('core_object_history', $sText);
+		$this->assertStringNotContainsString('[[', $sText, 'a narrowing marker leaked into the text');
+	}
+
+	public function testAnUnrestrictedPortalUserIsStillToldAboutDocumentsAndHistory(): void
+	{
+		$sText = ServerInstructions::PortalText('brick');
+
+		foreach (['core_object_get_document', 'core_object_attach', 'core_object_history', 'core_current_user', 'core_my_activity'] as $sTool) {
+			$this->assertStringContainsString($sTool, $sText);
+		}
+		$this->assertStringNotContainsString('[[', $sText);
+	}
+
+	/**
 	 * @return array<string, array{0: string, 1: AccessPolicy}>
 	 */
 	public function policyProvider(): array
@@ -92,6 +137,8 @@ class ServerInstructionsTest extends TestCase
 				'A token scoped MCP-toolset-objects',
 				AccessPolicy::Of([], ['objects']),
 			],
+			'history without datamodel' => ['A token scoped to history and objects', AccessPolicy::Of([], ['history', 'objects'])],
+			'objects without documents' => ['A token scoped to datamodel, objects and history', AccessPolicy::Of([], ['datamodel', 'objects', 'history'])],
 			'nothing at all' => ['A policy that serves nothing', AccessPolicy::Of([], ['no-such-toolset'])],
 		];
 	}

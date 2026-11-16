@@ -132,7 +132,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 
 		// An entry that never got as far as a plan still reports one, empty:
 		// the schema promises deletionPlan on every entry.
-		return ToolOutput::Structured(self::report($class, $simulate, $aOutcomes, [
+		return ToolOutput::StructuredWrite(self::report($class, $simulate, $aOutcomes, [
 			'deletionPlan' => DeletionCascade::SerializeDeletionPlan(null),
 		]));
 	}

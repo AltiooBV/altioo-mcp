@@ -397,7 +397,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				$aChanges[$sStateAttCode] = $sTargetState;
 			}
 
-			return ToolOutput::Structured(['class' => $class]
+			return ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
@@ -436,7 +436,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
-		return ToolOutput::Structured(['class' => $class]
+		return ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,

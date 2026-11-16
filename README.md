@@ -398,7 +398,10 @@ the caller is restricted is the wrong way round; the third matters most to the c
 holding the smallest surface, which is the one most likely to be small because of
 something you have since changed.
 A paragraph a pack appends is *not* narrowed — `AddInstructions()` takes no toolset, so write
-it to be true of any caller who might read it.
+it to be true of any caller who might read it. Neither are the tool descriptions and refusal
+texts: each is the same text for every caller (and is what `tools-manifest.json` hashes), so one
+may say "call `core_class_list`" to a token that is not served it. The instructions, and the
+`history` flag of `core_class_list` in portal mode, are the two places that are narrowed.
 
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
@@ -406,7 +409,7 @@ Because the schema is read live from `MetaModel`, whatever your datamodel custom
 ### Transport and protocol support
 
 Streamable HTTP, over a single endpoint, stateless: each request is authenticated on its own
-and no server-side session is carried between requests. SSE streaming and resumability are not
+and no server-side session is carried between requests. One JSON-RPC message per HTTP request: a batch (a JSON array) is refused with `400` and `-32600`, whatever the protocol revision, because one audit row could not describe it. SSE streaming and resumability are not
 supported. Authentication is delegated to iTop itself — see [Granting access](#granting-access).
 
 The one endpoint answers two protocol eras, and the client picks. A client on **2026-07-28** —
@@ -414,7 +417,7 @@ the revision that dropped the handshake and the session id — is served statele
 itself and is given no `Mcp-Session-Id` at all. A client on an earlier revision still performs
 `initialize` and still receives a session id, because that is what those revisions require; the
 id is real but carries nothing, since this endpoint stores nothing past the request that made
-it. Either way what a request is allowed to do is decided from the credential it brought, not
+it, so an HTTP `DELETE` is answered `405 Method Not Allowed` (`Allow: POST, OPTIONS`): there is no session to end, and none is ever stored. Either way what a request is allowed to do is decided from the credential it brought, not
 from anything a previous request left behind.
 
 ### Sizing the worker pool
@@ -799,6 +802,10 @@ credentials of different strength.
 would change, without being able to change anything. It belongs to the credential rather than to
 the call, because a caller that can choose is not restricted; it survives `MCP`, so a token asking
 for everything as a rehearsal gets that; and combining it with anything only ever adds it.
+
+A write that rehearsed only because of it says so: the answer carries `forced_by_credential: true`
+and a plain `forced_reason` for the user, `core_current_user` reports `access.advisory: true`, and
+the call's audit row records `simulate = yes` — what ran, not what the caller sent.
 
 Scopes are **enforced, not labelled**: a tool the resulting policy does not allow is never
 registered on that connection, so it is not merely absent from `tools/list` but absent from the

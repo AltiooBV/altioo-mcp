@@ -207,6 +207,32 @@ class OwnActivityTest extends ItopDataTestCaseAlias
 		$this->assertArrayNotHasKey('personal_token_id', $aRow);
 	}
 
+	/** A row says how many objects it wrote, and nothing of which: a count, beside a `changed` that may be empty. */
+	public function testARowSaysHowManyObjectsItWroteAndNamesNone(): void
+	{
+		$iUser = $this->iMe;
+		$this->row($iUser, [
+			'changed_objects' => "UserRequest::987654 updated (title)\nUserRequest::987655 created",
+			'written_objects' => 2,
+		]);
+		UserRights::Login($this->sMe);
+
+		$aRow = $this->mine()['activity'][0];
+
+		$this->assertSame(2, $aRow['written']);
+		$this->assertSame([], $aRow['changed'], 'objects that are not there to be read are not named');
+		$this->assertSame(2, $aRow['objects_you_cannot_see']);
+		$this->assertStringNotContainsString('987654', json_encode($aRow));
+	}
+
+	public function testARowThatWroteNothingSaysZero(): void
+	{
+		$this->row($this->iMe, ['read_objects' => 'UserRequest: 1']);
+		UserRights::Login($this->sMe);
+
+		$this->assertSame(0, $this->mine()['activity'][0]['written']);
+	}
+
 	/** An object in an organisation the account cannot see is counted and not named. */
 	public function testAnObjectTheAccountCannotSeeIsCountedAndNotNamed(): void
 	{

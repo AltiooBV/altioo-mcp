@@ -150,7 +150,7 @@
   </file>
   <file src="src/Core/Tools/ObjectApplyStimulus.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'stimulus'      => $stimulus,
@@ -164,7 +164,7 @@
 					'overridden'    => WriteOutcome::Map($aOverridden),
 					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'stimulus'      => $stimulus,
@@ -260,7 +260,7 @@
   </file>
   <file src="src/Core/Tools/ObjectDelete.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 					+ WriteOutcome::Identity($class, $id)
 					+ [
 						'simulated'    => false,
@@ -271,7 +271,7 @@
 							$e
 						),
 					])]]></code>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
 				'simulated'    => $simulate,
@@ -439,7 +439,7 @@
   </file>
   <file src="src/Core/Tools/ObjectUpdate.php">
     <InvalidReturnStatement>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => false,
@@ -450,7 +450,7 @@
 					'overridden' => WriteOutcome::Map($aOverridden),
 					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 				])]]></code>
-      <code><![CDATA[ToolOutput::Structured(['class' => $class]
+      <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
 					'simulated'  => true,

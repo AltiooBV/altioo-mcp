@@ -411,7 +411,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		DryRun::Check($oAttachment, "An attachment on {$sClass}::{$iId}");
 
 		if ($bSimulate) {
-			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+			return ToolOutput::StructuredWrite(['class' => self::ATTACHMENT_CLASS]
 				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, null)
 				+ [
 					'simulated'   => true,
@@ -444,7 +444,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			$iAttachmentId = $oAttachment->DBInsert();
 			self::leaveHistoryTrace($oTarget, $oAttachment);
 
-			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+			return ToolOutput::StructuredWrite(['class' => self::ATTACHMENT_CLASS]
 				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iAttachmentId)
 				+ [
 					'simulated'   => false,
@@ -466,7 +466,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// success it is, with the failure attached rather than substituted
 			// for it - the file is not attached twice because the answer was
 			// hard to build.
-			return ToolOutput::Structured(['class' => self::ATTACHMENT_CLASS]
+			return ToolOutput::StructuredWrite(['class' => self::ATTACHMENT_CLASS]
 				+ WriteOutcome::Identity(self::ATTACHMENT_CLASS, $iCommittedId)
 				+ [
 					'simulated'   => false,
@@ -545,7 +545,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		DryRun::Check($oTarget, "{$sClass}::{$iId}");
 
 		if ($bSimulate) {
-			return ToolOutput::Structured(['class' => $sClass]
+			return ToolOutput::StructuredWrite(['class' => $sClass]
 				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => true,
@@ -573,7 +573,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		try {
 			$oTarget->DBUpdate();
 
-			return ToolOutput::Structured(['class' => $sClass]
+			return ToolOutput::StructuredWrite(['class' => $sClass]
 				+ WriteOutcome::Identity($sClass, $iId)
 				+ [
 					'simulated'   => false,

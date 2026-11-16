@@ -139,7 +139,7 @@ final class WriteOutcome
 				'type'        => 'boolean',
 				'description' => 'Every pre-write check passed. A call that fails one comes back as a tool error rather than as a result, so this is true on any result you receive; it is reported so that a dry run and a real write answer with the same shape.',
 			],
-		];
+		] + DryRun::ForcedSchemaProperties();
 
 		return [
 			'type'       => 'object',
