@@ -99,10 +99,21 @@ than replacing it: a reporter still gets an acknowledgement within 5 working day
 | `<archive>.zip.sha256` | "is the file I downloaded the file CI built" |
 | `sbom.cyclonedx.json` | CycloneDX inventory of every production dependency |
 | `licenses.json` | the licence of each of those dependencies |
+| `tools-manifest.json`, `tools-manifest.json.sha256` | the definition of every core tool (name, title, description, input and output schema, annotations) with a SHA-256 each, and the digest of the file; attested, and a copy is inside the archive |
 
 The SBOM is what makes a same-day vulnerability answer possible. When a CVE lands on something
 under `vendor/`, "does this extension ship it, and at which version" has to be answerable in
 minutes. Regenerate both with `composer sbom` and `composer licenses`.
+
+The tool manifest is what a client that pins tool definitions (OWASP MCP03 "rug pull") or an
+operator comparing two releases checks against: a changed hash is a changed definition in that
+release. Regenerate it with `composer tools-manifest` (no iTop needed); the file's own header,
+`tools/tools-manifest.php`, says how a digest is computed. **It is not what `tools/list` returns
+on a live connection.** That list is a subset, filtered per caller: token scope, toolsets,
+`mcp_disabled_tools`, portal mode (some descriptions differ there) and excluded classes. A
+client's pin therefore also changes when an operator changes one of those settings, which is
+expected and is not a rug pull; a pack's tools are not in the manifest. Titles are the code's
+English literals, not a translation.
 
 ## What the extension does, in security terms
 
@@ -642,9 +653,23 @@ records two). In particular, and specifically relevant here:
   holding the same profile gets the Personal tokens tab of My Account, for every scope.
 - Leave `log_mcp_level` at its default `info` in normal operation, and **never leave `debug`
   standing**: `debug` stores raw request parameters and what a tool said when it refused a call, which may
-  contain data your users would not expect to find in an audit log. Drop to `error` only as a deliberate volume decision,
+  contain data your users would not expect to find in an audit log — a refused password value or a whole attachment
+  among them, readable by anyone who may read the audit rows, through this endpoint too (README, *Audit trail*, says
+  what and how to keep it off this channel). Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
+- **Forward the audit rows yourself; the module has no forwarder.** It writes `AltiooEventMCPService`
+  objects into iTop and sends them nowhere. To feed a SIEM or central log store, have it poll iTop's own
+  REST/JSON API: `core/get` on `AltiooEventMCPService` (an OQL `key` such as `SELECT AltiooEventMCPService
+  WHERE id > <last id seen>`), from a dedicated account holding `REST Services User` and a profile that
+  may read that class, with a REST-scoped token or login — never an `MCP*` token, which cannot call REST.
+  Whatever the account reads, a `debug` row carries raw request parameters (README, [*Audit
+  trail*](README.md#audit-trail)). Pull before [`mcp_audit_retention_days`](README.md#configuration) purges.
+- **Set `mcp_token_max_days` if no console token should outlive a period you choose.** Off by default; above 0 a token
+  used in console mode that never expires, or expires later than that many days from now, is refused — an application
+  token included, since iTop gives it no expiry — and a malformed value refuses every token login
+  ([ADR 0020](doc/adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md)). Portal mode has its own,
+  `mcp_portal_token_max_days`, on by default.
 - **Set `mcp_max_writes_per_hour` for any credential that can write.** Off by default; above 0 it caps the
   objects one credential (a personal token, an application token, or a login) may create, change, delete or
   attach to in a rolling hour, so a steered agent holding a write-grade token has a ceiling the model does not

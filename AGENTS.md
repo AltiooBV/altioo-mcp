@@ -104,6 +104,10 @@ Settings agent skills read here.
   Also: the write cap `mcp_max_writes_per_hour` is off by default, counts objects per credential from the audit rows' `written_objects`, and
   refuses every write (never reads) when it cannot be honoured; each writing tool asks `WriteCap::RefusalFor()` in its own source and a gateway
   is still recommended for call volume ([0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)).
+  Also: `mcp_token_max_days` bounds a console-mode token's lifetime, off by default, in its own gate; above 0 an application token
+  (`UserToken`, no expiry) is refused, and a malformed value refuses every token login, never reads as off ([0020](doc/adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md)).
+  Also: an agent that writes with no person reviewing it runs under its own iTop account named as automated; that name is
+  the disclosure, so mark nothing in the change line or the entry for an assistant's help ([0021](doc/adr/0021-an-autonomous-agent-writes-under-its-own-account.md)).
   Also: portal mode serves a pack's element only when it implements `PortalAware` **and** the operator lists it in
   `mcp_portal_extensions` (empty by default; a malformed value opens nothing); a portal-aware element asks
   `ObjectAccess::Current()`, never `UserRights` alone ([0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).

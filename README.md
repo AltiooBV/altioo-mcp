@@ -768,6 +768,16 @@ attributes (those whose type implements `iAttributeNoGroupBy`) are masked in out
 On top of those four, `mcp_disabled_tools` lets you turn individual tools, prompts and
 resources off outright, by name or by class, whichever extension registered them.
 
+**An agent that writes on its own gets its own account.** When a person uses an assistant, the
+change carries their name, as for anything else they write. An agent that writes with no person
+reviewing its text — a scheduled triage, an auto-responder — must run under an iTop account of its
+own whose name says it is automated, such as *Service desk assistant (automated)*: that is the
+name the counterpart sees on its case-log entries and the history shows, and its profiles, tokens
+and write cap are its own. Give an application token (`UserToken`) to such an account, never to a
+person's. The endpoint cannot check this for you — nothing in a request says whether a person read
+the text first — so it is yours to keep. Every write is also on its audit row, with the tool, the
+client and the change it made. [ADR 0021](doc/adr/0021-an-autonomous-agent-writes-under-its-own-account.md)
+
 ### Grading a token
 
 Everything above answers "who is calling". iTop hangs permissions off the user, so the usual
@@ -918,6 +928,7 @@ $MyModuleSettings = array(
         'mcp_portals' => array('*'),
         'mcp_portal_extensions' => array(),
         'mcp_portal_token_max_days' => 90,
+        'mcp_token_max_days' => 0,
         'mcp_enabled_toolsets' => array(),
         'mcp_capabilities' => array(),
         'mcp_read_only' => false,
@@ -958,6 +969,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `mcp_portals` | `array('*')` | Portals whose portal-only users are served in portal mode: `'*'` is every portal, so a user's profiles decide; a list of ids serves only those; empty turns portal mode off and they are refused. Any other value than an array is reported and read as empty. See [Granting access](#granting-access) for who is let in — and for what: **what their portal offers, read and written as the portal does**. Needs iTop 3.2.2 or later |
 | `mcp_portal_extensions` | *(empty)* | Elements of a tool pack that portal mode may serve, by identifier or **class name**, as `mcp_disabled_tools` takes them — e.g. `array('Acme\\Tickets\\Tools\\TicketAddLogEntry')`. **Prefer the class name:** an identifier admits an element of any kind holding it, and never one that took it with `overrides()`, which only its class name admits. Empty serves none: portal mode serves only this extension's own tools. **Your consent, element by element:** a pack element is served to portal users only if it is listed here *and* declares that it answers by the portal's rules (`PortalAware`); every other filter still applies. List only an element you have read: iTop's `Portal user` profile reads every class, so one that checks `UserRights` alone would show a portal user the whole CMDB. Any other value than an array serves no pack element and is reported; the endpoint keeps running. See [ADR 0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md) |
 | `mcp_portal_token_max_days` | `90` | Portal mode accepts a token only if it expires within this many days from now; one that never expires is refused, since a portal user may have minted it themselves. `0` lifts the bound. Any other value than a non-negative integer is reported and read as 90 |
+| `mcp_token_max_days` | `0` | The same bound for a token used in **console** mode (`mcp_portal_token_max_days` governs portal mode); `0` is no bound, so nothing changes on upgrade. Above 0, a request logged in with a token that never expires, or expires later than this many days from now, is refused. An application token (`UserToken`) has no expiry date in iTop, so it is refused too: keep this at `0`, or use a personal token, if an integration needs one. A value that is not a non-negative integer **refuses every request logged in with a token** (a session or Basic login is served) and `log/error.log` says why. [ADR 0020](doc/adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md) |
 | `mcp_enabled_toolsets` | *(empty)* | Toolsets this instance serves — the base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server`, and a pack declares its own. An element that declares no toolset falls back to its namespace, which names who wrote it rather than what it does. Empty means all of them. The positive counterpart to `mcp_disabled_tools`: naming what may stay is what you want for a pack whose next release you have not read, since a tool added by an update is then off until you say otherwise |
 | `mcp_capabilities` | *(empty)* | What anyone may do: any of `read`, `write`, `delete`. A tool falls into one by its annotations, so a pack is graded by describing its tools rather than by being listed here. Empty means all three |
 | `mcp_read_only` | `false` | Shorthand for `mcp_capabilities => array('read')`. Narrows rather than overrides, so setting both cannot come out wider than either |
@@ -1084,6 +1096,14 @@ identifier that an internal error also gives the caller, so the audit row and th
 > contain data your users would not expect to find in an audit log. Use it for troubleshooting, not
 > as a standing setting. At every other level a refused call's row says only "The tool refused the
 > call". Both are cleared when the account's person is anonymised.
+>
+> Concretely, the parameters are the request as sent: the value of a password or encrypted-string
+> field even when the tool then refused to write it, the whole base64 content of an attachment, and
+> any personal data in the object. **Anyone who may read `AltiooEventMCPService` rows can read
+> them** — in the console, and through this endpoint's own read tools, other accounts' rows
+> included (`core_my_activity` leaves both fields out; the generic reads do not). If that is not
+> acceptable while `debug` is on, keep both fields off this channel with
+> `'mcp_excluded_attributes' => array('AltiooEventMCPService' => array('request_params', 'refusal_text'))`.
 
 The two records answer two different questions and neither replaces the other. This one is
 per *call*: it holds the reads, the failures and the calls that changed nothing, and it is
@@ -1224,6 +1244,7 @@ new one. See [Granting access](#granting-access) for which scope grants what.
 |---|---|
 | `401`, "This user has no access to the iTop console" | The account reaches only the end-user portal. `MCP Services User` does not grant a console, and neither `mcp_allowed_profiles` nor `secure_mcp_services` lifts the requirement — grant a profile that does, or let portal mode serve it: check `mcp_portals` serves its portal (the default `'*'` serves every one), which serves only what that portal offers. `log/error.log` names the account either way. See [Granting access](#granting-access) |
 | `401`, "In portal mode a token must expire within … days" | A portal-only user presented a token that never expires, or expires later than `mcp_portal_token_max_days` from now. Set an expiry date on the token under User management → Personal tokens, or mint one that has it. `log/error.log` names the account |
+| `401`, "A token must expire within … days" | `mcp_token_max_days` is above `0` and the token never expires, expires later than that from now, or is an application token (which has no expiry). Set an expiry date on a personal token, or set `mcp_token_max_days` to `0`. `log/error.log` names the user and the setting; if it says the setting is not a non-negative integer, every token is refused until it is corrected |
 | `415`, "must carry Content-Type: application/json" | The client sent a POST as `text/plain` or a form encoding. That is refused on purpose — it is what forces a cross-origin caller through a preflight |
 | A setting you changed has no effect, and nothing is logged | The `'altioo-mcp'` block is not in `$MyModuleSettings` — most often nested inside `$MySettings`, which iTop ignores for module settings without an error. See [Configuration](#configuration) |
 | A tool you disabled is callable again after an upgrade | The `mcp_disabled_tools` entry no longer matches anything. The module says so in `log/error.log` at every request, naming the stale entries — a tool pack that renamed an element between its own versions is the usual cause |
@@ -1374,6 +1395,11 @@ Full threat model, hardening notes and how to report a vulnerability:
 licences, provenance, vulnerability process, footprint, data processing — that is
 **[doc/security-summary.md](doc/security-summary.md)**.
 
+Each release publishes a tool manifest (`tools-manifest.json`) with a hash per core tool. A scanner
+that pins tool definitions (a rug-pull check) will report a change on every release, and also whenever
+an operator changes scopes, toolsets or exclusions, because `tools/list` is filtered per caller; that
+is expected. See [SECURITY.md](SECURITY.md#what-ships-beside-the-archive).
+
 In short: the endpoint is a public HTTP entry point. Beyond the gates above, follow
 [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security) —
 in particular serve iTop over HTTPS with HSTS, and set `session.cookie_secure`,
@@ -1384,6 +1410,27 @@ on instructions that may come from outside your organisation, so treat the profi
 it with as the real blast radius — start read-only and widen only as needed. The same applies
 to the tool packs you install on top: a tool can only do what the calling user could, which is
 exactly why the pairing of profile and tool set is the thing to review.
+
+## Accessibility
+
+This extension adds no screen of its own. Its two console menus, *MCP activity* and the audit list, are
+iTop's own dashboard and list components, so what iTop provides for accessibility applies to them, and their
+labels are in English and French. Everyone else meets the extension through their assistant (Claude, an IDE,
+a chat application), and that client decides how answers are shown or read out.
+
+What the extension controls is the text it returns, and it is held to this:
+
+- **Plain words for the person who reads them.** A refusal says what happened and what to do next, and a
+  portal user is never shown console vocabulary or a setting name they cannot see.
+- **The user's language.** The endpoint's own messages are in English; the server instructions give the
+  assistant the user's language (`core_current_user`) and tell it to answer in it.
+- **Structure, not presentation.** Answers are structured data and text; nothing depends on colour, layout or
+  an image to be understood.
+
+There is no conformance claim against WCAG or EN 301 549: the screens that would be tested are iTop's and the
+client's. A barrier that comes from this extension's text or behaviour is a bug: report it through
+[GitHub issues](https://github.com/AltiooBV/altioo-mcp/issues), saying which client and which language you
+used.
 
 ## Support
 

@@ -158,4 +158,31 @@ final class SettingParser
 
 		return null;
 	}
+
+	/**
+	 * The decision GetTokenMaxDays() makes, given the value it read.
+	 *
+	 * Null, not 0, when the value is not a non-negative integer: the setting
+	 * restricts, and a typo must not read as "no bound" (ADR 0020, after 0019).
+	 * The caller refuses a token login on null.
+	 *
+	 * Public for the unit suite, which has no configuration to read from.
+	 *
+	 * @internal
+	 * @since 2.0.0
+	 */
+	public static function TokenMaxDaysFrom(mixed $mValue): ?int
+	{
+		if (is_int($mValue) && $mValue >= 0) {
+			return $mValue;
+		}
+
+		ErrorReport::Log(sprintf(
+			"Itop configuration parameter '%s' should be a non-negative integer, not %s. Every request logged in with a token is refused until it is corrected.",
+			SettingNames::MODULE_SETTING_TOKEN_MAX_DAYS,
+			is_scalar($mValue) ? var_export($mValue, true) : gettype($mValue)
+		));
+
+		return null;
+	}
 }
