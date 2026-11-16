@@ -48,12 +48,14 @@
     "test": "phpunit",
     "test:unit": "phpunit --testsuite unit",
     "test:integration": "phpunit --testsuite integration",
-    "sbom": "php tools/sbom.php"
+    "sbom": "php tools/sbom.php",
+    "tools-manifest": "php tools/tools-manifest.php"
   },
   "scripts-descriptions": {
     "lint": "Checks the hand-written PHP against Combodo's coding standard (tools/phpcs/iTop). Needs phpcs on the PATH.",
     "lint:fix": "Applies the fixable half of what lint reports.",
-    "sbom": "Writes a CycloneDX bill of materials for the production dependencies to stdout."
+    "sbom": "Writes a CycloneDX bill of materials for the production dependencies to stdout.",
+    "tools-manifest": "Writes the MCP definition of every core tool, with a SHA-256 each, to stdout."
   },
   "config": {
     "sort-packages": true,
