@@ -18,7 +18,6 @@ use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Combodo\iTop\Application\Helper\Session;
 use LoginWebPage;
-use MetaModel;
 use UserRights;
 
 /**
@@ -67,7 +66,7 @@ final class PortalAdmission
 		$sRefusal = PortalMode::RefusalOf(
 			$sPortal,
 			TokenScopes::LoginWasAToken(Session::Get('login_mode')),
-			PortalMode::TokenIsBounded(self::presentedTokenExpiration(), time(), $iMaxDays),
+			PortalMode::TokenIsBounded(PresentedToken::Expiration(), time(), $iMaxDays),
 			(int)UserRights::GetContactId() > 0,
 			AllowedProfiles::UserHasMCPProfile()
 		);
@@ -148,22 +147,5 @@ final class PortalAdmission
 
 		// REFUSED_NO_MCP_PROFILE, answered and logged as it is for a console user.
 		return LoginWebPage::EXIT_CODE_NOTAUTHORIZED;
-	}
-
-	/**
-	 * The expiry of the token this request presented, as iTop stores it, or
-	 * null when it has none - including a token class that carries no expiry
-	 * at all, which portal mode therefore cannot bound and refuses.
-	 */
-	private static function presentedTokenExpiration(): ?string
-	{
-		$oToken = TokenScopes::OfCurrentRequestObject();
-		if ($oToken === null || !MetaModel::IsValidAttCode(get_class($oToken), 'expiration_date')) {
-			return null;
-		}
-
-		$mExpiration = $oToken->Get('expiration_date');
-
-		return is_string($mExpiration) && $mExpiration !== '' ? $mExpiration : null;
 	}
 }
