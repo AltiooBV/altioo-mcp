@@ -647,6 +647,13 @@ records two). In particular, and specifically relevant here:
   what and how to keep it off this channel). Drop to `error` only as a deliberate volume decision,
   knowing successful calls then leave no trace.
 - Set `mcp_audit_retention_days` against your own data-retention policy: iTop has none for its event log, and without it the audit table only grows.
+- **Forward the audit rows yourself; the module has no forwarder.** It writes `AltiooEventMCPService`
+  objects into iTop and sends them nowhere. To feed a SIEM or central log store, have it poll iTop's own
+  REST/JSON API: `core/get` on `AltiooEventMCPService` (an OQL `key` such as `SELECT AltiooEventMCPService
+  WHERE id > <last id seen>`), from a dedicated account holding `REST Services User` and a profile that
+  may read that class, with a REST-scoped token or login — never an `MCP*` token, which cannot call REST.
+  Whatever the account reads, a `debug` row carries raw request parameters (README, [*Audit
+  trail*](README.md#audit-trail)). Pull before [`mcp_audit_retention_days`](README.md#configuration) purges.
 - **Set `mcp_max_writes_per_hour` for any credential that can write.** Off by default; above 0 it caps the
   objects one credential (a personal token, an application token, or a login) may create, change, delete or
   attach to in a rolling hour, so a steered agent holding a write-grade token has a ceiling the model does not
