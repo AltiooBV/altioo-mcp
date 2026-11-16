@@ -1411,6 +1411,27 @@ it with as the real blast radius — start read-only and widen only as needed. T
 to the tool packs you install on top: a tool can only do what the calling user could, which is
 exactly why the pairing of profile and tool set is the thing to review.
 
+## Accessibility
+
+This extension adds no screen of its own. Its two console menus, *MCP activity* and the audit list, are
+iTop's own dashboard and list components, so what iTop provides for accessibility applies to them, and their
+labels are in English and French. Everyone else meets the extension through their assistant (Claude, an IDE,
+a chat application), and that client decides how answers are shown or read out.
+
+What the extension controls is the text it returns, and it is held to this:
+
+- **Plain words for the person who reads them.** A refusal says what happened and what to do next, and a
+  portal user is never shown console vocabulary or a setting name they cannot see.
+- **The user's language.** The endpoint's own messages are in English; the server instructions give the
+  assistant the user's language (`core_current_user`) and tell it to answer in it.
+- **Structure, not presentation.** Answers are structured data and text; nothing depends on colour, layout or
+  an image to be understood.
+
+There is no conformance claim against WCAG or EN 301 549: the screens that would be tested are iTop's and the
+client's. A barrier that comes from this extension's text or behaviour is a bug: report it through
+[GitHub issues](https://github.com/AltiooBV/altioo-mcp/issues), saying which client and which language you
+used.
+
 ## Support
 
 The extension is free and maintained in the open. What that means concretely:
