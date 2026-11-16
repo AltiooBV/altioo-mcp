@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
+use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -95,7 +96,10 @@ final class PortalDescription
 			'classes'        => $aClasses,
 			'lists'          => self::readableLists($oPolicy),
 			'create_actions' => self::servedCreateActions($oPolicy),
-			'history'        => $oPolicy->ShowsHistory(),
+			// True only when the portal shows history AND this credential is served the tool that reads
+			// it: the flag tells a model to call core_object_history, which a token without the
+			// `history` toolset does not have.
+			'history'        => $oPolicy->ShowsHistory() && (AccessPolicy::Current()?->allowsToolset('history') ?? true),
 		];
 	}
 

@@ -398,7 +398,10 @@ the caller is restricted is the wrong way round; the third matters most to the c
 holding the smallest surface, which is the one most likely to be small because of
 something you have since changed.
 A paragraph a pack appends is *not* narrowed — `AddInstructions()` takes no toolset, so write
-it to be true of any caller who might read it.
+it to be true of any caller who might read it. Neither are the tool descriptions and refusal
+texts: each is the same text for every caller (and is what `tools-manifest.json` hashes), so one
+may say "call `core_class_list`" to a token that is not served it. The instructions, and the
+`history` flag of `core_class_list` in portal mode, are the two places that are narrowed.
 
 Because the schema is read live from `MetaModel`, whatever your datamodel customisations add
 — your classes, your attributes, your states — shows up without any extra configuration.
