@@ -334,6 +334,24 @@ jobs:
           fi
           test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
 
+      # The tool manifest the release publishes, built here too so that a tool
+      # whose definition cannot be enumerated without an iTop fails a pull
+      # request and not a tag. Twice, because a manifest that differs between
+      # two runs of the same tree cannot be pinned.
+      - name: The tool manifest builds and is deterministic
+        run: |
+          set -euo pipefail
+          php tools/tools-manifest.php > /tmp/tools-manifest.json
+          php tools/tools-manifest.php | cmp - /tmp/tools-manifest.json
+          # Literal PHP passed to `php -r`; $m is a PHP variable, not a shell one.
+          # shellcheck disable=SC2016
+          php -r '
+            $m = json_decode(file_get_contents("/tmp/tools-manifest.json"), true, 512, JSON_THROW_ON_ERROR);
+            $n = count($m["tools"] ?? []);
+            if ($n < 1) { fwrite(STDERR, "the manifest lists no tool\n"); exit(1); }
+            echo $n, " tool definitions in the manifest\n";
+          '
+
       # Exercised on every change rather than only at a tag: a bill of
       # materials that first runs during a release is one that first fails
       # during a release. The release workflow ships what this proves buildable.

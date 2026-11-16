@@ -58,6 +58,8 @@ phpunit.xml
 /build/
 /sbom.cyclonedx.json
 /licenses.json
+/tools-manifest.json
+/tools-manifest.json.sha256
 /altioo-mcp-*.zip
 /altioo-mcp-*.zip.sha256
 

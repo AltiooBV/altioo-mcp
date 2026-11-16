@@ -104,6 +104,13 @@ set it to `removed`). Its run count and durations do not carry over to the new r
 
 ### Added
 
+- **Each release publishes a manifest of the core tools' definitions** (`tools-manifest.json` and its
+  `.sha256`, attested, with a copy inside the archive): name, title, description, input and output
+  schema and annotations of every core tool, with a SHA-256 each, so a client that pins tool
+  definitions or an operator comparing releases can see what changed. It is the console-mode set,
+  not a copy of a live `tools/list`, which is filtered per caller ([SECURITY.md](SECURITY.md),
+  "What ships beside the archive"). `composer tools-manifest` regenerates it with no iTop. No change
+  for an installed module.
 - **A test fails when what a client is served changes** ([ADR 0008](doc/adr/0008-agent-behaviour-is-tested-with-a-model.md),
   accepted by the maintainer): the integration suite compares the handshake and server
   instructions, `tools/list`, the resources, resource templates and prompts, for each token grade

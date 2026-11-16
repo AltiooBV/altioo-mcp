@@ -154,6 +154,18 @@ jobs:
           php -r 'json_decode(file_get_contents("sbom.cyclonedx.json"), true, 512, JSON_THROW_ON_ERROR);'
           php -r 'json_decode(file_get_contents("licenses.json"), true, 512, JSON_THROW_ON_ERROR);'
 
+      # What a client that pins tool definitions, or an operator comparing two
+      # releases, can check against: the definition of every core tool and its
+      # SHA-256. Built from the production vendor tree above, the one that
+      # ships, and needing no iTop (tools/tools-manifest.php says why).
+      - name: Manifest of the tool definitions
+        run: |
+          set -euo pipefail
+          php tools/tools-manifest.php > tools-manifest.json
+          php -r '$m = json_decode(file_get_contents("tools-manifest.json"), true, 512, JSON_THROW_ON_ERROR); if (count($m["tools"] ?? []) < 1) { fwrite(STDERR, "the manifest lists no tool\n"); exit(1); }'
+          sha256sum tools-manifest.json > tools-manifest.json.sha256
+          cat tools-manifest.json.sha256
+
       - name: Assemble the archive
         id: archive
         run: |
@@ -169,11 +181,12 @@ jobs:
           # reads it directly so the list cannot drift from what CI does.
           rsync -a --exclude-from=exclude.txt \
                 --exclude '/build' --exclude '/sbom.cyclonedx.json' --exclude '/licenses.json' \
+                --exclude '/tools-manifest.json' --exclude '/tools-manifest.json.sha256' \
                 ./ "build/${module}/"
 
           # The archive carries its own inventory: an instance found in a year's
           # time can answer what it is running without reaching the internet.
-          cp sbom.cyclonedx.json licenses.json "build/${module}/"
+          cp sbom.cyclonedx.json licenses.json tools-manifest.json "build/${module}/"
 
           ( cd build && zip -qr "../${name}.zip" "${module}" )
           sha256sum "${name}.zip" > "${name}.zip.sha256"
@@ -203,7 +216,7 @@ jobs:
                    extension.xml "module.${MODULE_CODE}.php" "datamodel.${MODULE_CODE}.xml" \
                    "datamodel.${MODULE_CODE}.dict.en-us.xml" "datamodel.${MODULE_CODE}.dict.fr-fr.xml" \
                    doc/clients.md vendor/autoload.php tests/php-unit-tests/bootstrap.php \
-                   sbom.cyclonedx.json licenses.json; do
+                   sbom.cyclonedx.json licenses.json tools-manifest.json; do
             test -e "$f" || { echo "missing from the package: $f"; exit 1; }
           done
           test ! -d vendor/phpunit || { echo "require-dev leaked into vendor/"; exit 1; }
@@ -230,6 +243,8 @@ jobs:
             ${{ steps.archive.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
+            tools-manifest.json
+            tools-manifest.json.sha256
           if-no-files-found: error
 
   # The only job with write access, and it runs none of this repository's code
@@ -270,16 +285,16 @@ jobs:
             || { echo "${NAME}.zip.sha256 in the artifact disagrees with the build job"; exit 1; }
 
       # The SBOM is attested below and the licence inventory attached, and both
-      # arrive in the artifact beside the zip - so the digest check above does
+      # (like the tool manifest) arrive in the artifact beside the zip - so the digest check above does
       # not cover them, and anything able to replace the artifact could have
       # the attestation sign a different inventory for the genuine zip. The
       # zip, now verified, carries its own copy of each at <module>/<file>;
       # the published ones must be those, byte for byte.
-      - name: The SBOM and licence inventory are the ones inside the archive
+      - name: The SBOM, licence inventory and tool manifest are the ones inside the archive
         run: |
           set -euo pipefail
           test -n "$MODULE" || { echo "the build job reported no module code"; exit 1; }
-          for f in sbom.cyclonedx.json licenses.json; do
+          for f in sbom.cyclonedx.json licenses.json tools-manifest.json; do
             unzip -p "${NAME}.zip" "${MODULE}/${f}" | cmp -s - "$f" \
               || { echo "$f in the artifact differs from ${MODULE}/${f} inside ${NAME}.zip"; exit 1; }
           done
@@ -312,6 +327,14 @@ jobs:
           subject-path: ${{ needs.build.outputs.name }}.zip
           sbom-path: sbom.cyclonedx.json
 
+      # The tool manifest is not derived from the lock, so it is attested on
+      # its own: `gh attestation verify tools-manifest.json --repo <owner>/<repo>`.
+      # Its digest is also the .sha256 published beside it.
+      - name: Attest the tool manifest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: tools-manifest.json
+
       # The checksum is published beside the archive so that "the file I
       # downloaded is the file CI built" is a question with an answer.
       - name: Attach everything to the release
@@ -322,3 +345,5 @@ jobs:
             ${{ needs.build.outputs.name }}.zip.sha256
             sbom.cyclonedx.json
             licenses.json
+            tools-manifest.json
+            tools-manifest.json.sha256
