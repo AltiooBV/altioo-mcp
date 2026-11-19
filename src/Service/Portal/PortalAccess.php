@@ -816,7 +816,7 @@ final class PortalAccess extends ObjectAccess
 
 		return $aIssues === []
 			? null
-			: implode('; ', $aIssues).'. Fields you may set: '.(implode(', ', array_merge($aSettable, $aAlso)) ?: 'none').'.';
+			: implode('; ', $aIssues).'. Fields you may set: '.(implode(', ', array_unique(array_merge($aSettable, $aAlso))) ?: 'none').'.';
 	}
 
 	/**
