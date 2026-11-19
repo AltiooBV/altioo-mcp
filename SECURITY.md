@@ -151,7 +151,7 @@ parameter — which `authent-token` would accept — is refused before login, an
 records as a token login the endpoint cannot match to one of those headers is refused after it.
 
 `MCP` everything · `MCP-read` read · `MCP-write` read and write, not delete · `MCP-delete` delete ·
-`MCP-toolset-<name>` that toolset only · **`MCP-advisory`** every core write tool it can reach rehearses (a pack's does when it calls `DryRun::Simulated()`).
+`MCP-toolset-<name>` that toolset only · **`MCP-advisory`** every write tool it can reach rehearses, and a pack's write tools are not served to it (ADR 0022).
 
 That last one is a modifier rather than a grade, and it is the trust tier between "may read" and
 "may write": a token carrying it may call the write tools its other scopes allow, and every one of
@@ -556,9 +556,10 @@ writes nothing, so an injected instruction has to be specific enough to name it,
 rehearsal puts a report in front of a person first.
 
 The boundary is **`MCP-advisory`**. A token carrying it has `simulate` forced true on every write
-tool it can reach, whatever the caller passes, so nothing that credential touches can commit — inside the write tool, by
-`DryRun::Simulated()`: this module's own write tools all call it, and a tool pack's must (`doc/extending.md`, and the
-`ElementContract` check warns about one that does not), so with a pack installed the guarantee is as good as the pack's write tools —
+tool it can reach, whatever the caller passes, so nothing that credential touches can commit. Inside this module's own write
+tools that is `DryRun::Simulated()`; a tool pack's write tools are not served to the credential at all
+([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)), because the server cannot check that a pack's tool
+calls it, so the guarantee does not depend on the packs installed —
 propose changes, show a person, write nothing. That is the scope to issue when the client is
 driven by a model reading text you do not control, and it is the one that makes the guarantee
 this paragraph used to claim for the default.

@@ -119,10 +119,12 @@ calls them. Read the tags rather than this table: the tags are what a test enfor
   counted, and the credential's next call is refused; asking is what keeps it from going over.
 - **The dry run, and the advisory scope.** A write tool calls `DryRun::Simulated($simulate)` first, before anything
   reads `$simulate`, and uses its answer from then on. For a caller that asked to rehearse it answers true; for a token
-  scoped `MCP-advisory` it answers true **whatever the caller sent**, and that is the only thing that stops the credential
-  from writing: the server serves such a token every write tool its grade reaches and cannot stop a tool that writes on its
-  own. A write tool that never asks commits under an advisory credential, in the audit row as `simulate: no`.
-  `ElementContract::Violations()` warns about a tool that writes (annotated not read-only) and never calls it. Answer through
+  scoped `MCP-advisory` it answers true **whatever the caller sent**. An advisory credential is **not served a pack's write-graded
+  tools at all** ([ADR 0022](adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)): they are absent from `tools/list`
+  and answered as unknown when called by name, because the server cannot tell whether a pack's tool rehearses. So your write tool
+  is invisible to such a credential whatever it does; the call is still what makes the audit row (`simulate`, `forced_by_credential`) true, and
+  `ElementContract::Violations()` warns about a tool that writes (annotated not read-only) and never calls it. A pack's read-only
+  tools are served. Answer through
   `ToolOutput::StructuredWrite()` and declare `DryRun::ForcedSchemaProperties()`, so a rehearsal by force says so. An
   `AbstractBulkTool` does not do this for you either: its `execute()` is yours.
 - **The caller's view of an object.** `ObjectAccess::Current()` answers in the mode the request is

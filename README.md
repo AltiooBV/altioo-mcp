@@ -802,7 +802,7 @@ credentials of different strength.
 | `MCP-write` | Read, create and modify — **not** delete |
 | `MCP-delete` | Tools that declare `destructiveHint` |
 | `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects`. The base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server` |
-| `MCP-advisory` | **Every core write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing. The server enforces it inside the write tool (`DryRun::Simulated()`), not around it: a tool pack's write tool does so only if it calls that, which `doc/extending.md` tells it to and the `ElementContract` check warns about when it does not — so with a pack installed, read the pack's write tools before trusting an advisory credential with them, or list them in `mcp_disabled_tools` |
+| `MCP-advisory` | **Every write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing. This module's own write tools are served and rehearse; **a tool pack's write tools are not served at all** (absent from `tools/list`, answered as an unknown tool when called by name), since only the pack's author could make them rehearse and the server cannot check it ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)). A pack's read-only tools are still served |
 
 `MCP-advisory` is a modifier rather than a grade, and it is the trust tier between "may read" and
 "may write": pair it with `MCP-write` and the integration can compute and show exactly what it

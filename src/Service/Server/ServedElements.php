@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
@@ -113,6 +114,18 @@ final class ServedElements
 		if ($oElement instanceof AbstractMCPTool) {
 			[$bReadOnly, $bDestructive] = self::annotatedHints($oElement);
 			if (!$oPolicy->allowsTool($bReadOnly, $bDestructive)) {
+				return true;
+			}
+		}
+
+		// An advisory credential is not served a pack's write tool (ADR 0022). This module's own tools
+		// rehearse through DryRun::Simulated() whatever the caller sends; a pack's write tool does only if
+		// its author called it, which nothing here can know, so the credential that must never write is not
+		// given one. Absent from the registry the SDK builds, it is neither listed nor routable: a call by
+		// name is answered as for a tool that does not exist.
+		if ($oElement instanceof AbstractMCPTool && $oPolicy->isAdvisory() && !CoreElement::IsOwn($oElement)) {
+			[$bReadOnlyHint, $bDestructiveHint] = self::annotatedHints($oElement);
+			if (AccessPolicy::CapabilityOf($bReadOnlyHint, $bDestructiveHint) !== AccessPolicy::CAPABILITY_READ) {
 				return true;
 			}
 		}
