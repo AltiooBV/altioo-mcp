@@ -12,7 +12,10 @@ use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSearch;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -113,6 +116,18 @@ class TicketSearchMine extends AbstractObjectSearch implements PortalAware
 		if ($offset < self::MIN_OFFSET) {
 			throw new ToolCallException('Invalid offset. Specify a non-negative offset.');
 		}
+		// What the operator excluded is not this tool's to answer for, whatever UserRights says (ADR 0012), and
+		// nothing applies it for a pack: a class that is excluded is answered as one that does not exist, and a
+		// tool that said "0 tickets" instead would still tell the caller the class is there. The two attributes
+		// the query below filters on are held to it as well, as a search on them is a read of them.
+		if (!ExclusionPolicy::Serves('UserRequest')) {
+			throw new ToolCallException(ClassRefusal::Unreadable('UserRequest'));
+		}
+		foreach (['agent_id', 'caller_id'] as $sFiltered) {
+			if (ExclusionPolicy::ExcludesAttribute('UserRequest', $sFiltered)) {
+				throw new ToolCallException("Unknown attribute '{$sFiltered}' on class 'UserRequest'.");
+			}
+		}
 		if (!UserRights::IsActionAllowed('UserRequest', UR_ACTION_READ)) {
 			throw new ToolCallException('Access denied: cannot read tickets.');
 		}
@@ -145,7 +160,8 @@ class TicketSearchMine extends AbstractObjectSearch implements PortalAware
 		$aOrderBy = self::orderBy('UserRequest', $order_by, $order_direction);
 		$aFields = self::fieldsForPage('UserRequest', $output_fields, $limit);
 
-		$oSet = new DBObjectSet($oSearch, $aOrderBy, [], null, $limit, $offset);
+		// The rows of an excluded subclass are not in the set, so neither the rows nor the total (ADR 0012).
+		$oSet = new DBObjectSet(ExclusionSearches::Narrowed($oSearch, 'UserRequest'), $aOrderBy, [], null, $limit, $offset);
 
 		$aResults = [];
 		while ($oTicket = $oSet->Fetch()) {

@@ -27,6 +27,10 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
  * ({@see \AttributeLinkedSet}) and tag sets require.
  * @api
  * @since 1.0.0
+ * @deprecated 2.1.0 A tool that writes values goes through {@see WriteValues::Validated()}, which converts them with this class and
+ *             holds every other rule of a write (exclusions, the attribute right, the lifecycle, mentions, formulas); a tool that
+ *             converts by hand is a second validator, which is how the bulk tools came to skip the exclusions. It leaves the surface
+ *             in a later release (CHANGELOG states what is breaking).
  */
 final class RestValue
 {

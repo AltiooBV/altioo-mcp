@@ -9,17 +9,18 @@ declare(strict_types=1);
 namespace Acme\iTop\Extension\ServiceDesk\Tools;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
-use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
-use RestUtils;
 use UserRights;
 
 /**
@@ -115,6 +116,10 @@ class TicketAddLogEntry extends AbstractMCPTool
 					'description' => 'The text to append. It is written as the authenticated user, and the caller of the ticket can read it.',
 				],
 				'simulate' => DryRun::SimulateSchemaProperty('append the entry for real'),
+				'comment'  => [
+					'type'        => ['string', 'null'],
+					'description' => 'Why the entry is being added, recorded on the audit row of the call.',
+				],
 			],
 			// Every parameter of execute() without a default must be listed
 			// here, and every property must match a parameter by name. The
@@ -131,7 +136,8 @@ class TicketAddLogEntry extends AbstractMCPTool
 				'id'        => ['type' => 'integer'],
 				'simulated' => ['type' => 'boolean'],
 				'appended'  => ['type' => 'boolean'],
-			],
+			// forced_by_credential and forced_reason: said when an advisory credential turned a real write into a rehearsal.
+			] + DryRun::ForcedSchemaProperties(),
 			'required'   => ['id', 'simulated', 'appended'],
 		];
 	}
@@ -139,7 +145,8 @@ class TicketAddLogEntry extends AbstractMCPTool
 	/**
 	 * @param int    $id       Id of the ticket
 	 * @param string $message  Text to append to the public log
-	 * @param bool   $simulate When true (the default), nothing is written
+	 * @param bool        $simulate When true (the default), nothing is written
+	 * @param string|null $comment  Why, recorded on the audit row
 	 *
 	 * @return mixed What was appended, or would be
 	 *
@@ -149,8 +156,15 @@ class TicketAddLogEntry extends AbstractMCPTool
 		int    $id,
 		string $message,
 		bool   $simulate = DryRun::SIMULATE_BY_DEFAULT,
+		?string $comment = null,
 	): mixed
 	{
+		// First, before anything reads $simulate. A credential scoped MCP-advisory may only rehearse, and this
+		// call is what makes it so: it answers true for such a credential whatever the caller sent, and a write
+		// tool that never asks commits for it (the server cannot stop a tool that writes on its own). Use its
+		// answer, never the argument, from here on.
+		$simulate = DryRun::Simulated($simulate);
+
 		if (trim($message) === '') {
 			throw new ToolCallException('The message is empty.');
 		}
@@ -164,18 +178,12 @@ class TicketAddLogEntry extends AbstractMCPTool
 		if (!ExclusionPolicy::Serves('UserRequest')) {
 			throw new ToolCallException(ClassRefusal::Unreadable('UserRequest'));
 		}
-		if (ExclusionPolicy::ExcludesAttribute('UserRequest', self::LOG_ATTRIBUTE)) {
-			throw new ToolCallException("Unknown attribute '".self::LOG_ATTRIBUTE."' on class 'UserRequest'.");
-		}
 
 		// Nothing here replaces UserRights. The framework authenticated the
 		// caller and checked the endpoint gates; what this particular user may
 		// do to this particular object is still this tool's job to ask.
 		if (!UserRights::IsActionAllowed('UserRequest', UR_ACTION_MODIFY)) {
 			throw new ToolCallException('Access denied: cannot modify tickets.');
-		}
-		if (!UserRights::IsActionAllowedOnAttribute('UserRequest', self::LOG_ATTRIBUTE, UR_ACTION_MODIFY)) {
-			throw new ToolCallException('Access denied: cannot write the public log of a ticket.');
 		}
 
 		// Object-level rights are the point: "may modify a ticket" and "may
@@ -196,25 +204,43 @@ class TicketAddLogEntry extends AbstractMCPTool
 			throw new ToolCallException("Ticket {$id} is read-only.");
 		}
 
-		// RestValue is what makes a caselog append work. The MCP SDK decodes
-		// inbound JSON with json_decode($input, true), so nested objects reach
-		// a tool as PHP arrays, while RestUtils branches on stdClass to tell a
-		// search from an id and an append from a plain string. Without this
-		// call the wrong branch is taken, silently.
-		$oTicket->Set(
-			self::LOG_ATTRIBUTE,
-			RestUtils::MakeValue('UserRequest', self::LOG_ATTRIBUTE, RestValue::FromDecodedJson($message))
-		);
+		// One validator for every write this module makes: WriteValues::Validated() is what the core tools
+		// ask, and it holds, in one place, what a hand-written copy forgets. The operator's excluded attributes
+		// (an excluded public_log is answered as one that does not exist, ADR 0012), the right to modify the
+		// attribute on this object, what the console's form would let this user change in this state (a closed
+		// ticket's log is read-only), the mention cap, the spreadsheet-formula rule, and RestValue - which is what
+		// makes a caselog append work: the MCP SDK decodes inbound JSON with json_decode($input, true), so a nested
+		// object reaches a tool as a PHP array, while RestUtils branches on stdClass to tell a search from an id
+		// and an append from a plain string.
+		[$aValues, $aIssues] = WriteValues::Validated($oTicket, 'UserRequest', [self::LOG_ATTRIBUTE => $message], $oSet);
+		if ($aIssues !== []) {
+			throw new ToolCallException('Failed to add the entry: '.implode(' ', $aIssues));
+		}
+		foreach ($aValues as $sAttCode => $mValue) {
+			$oTicket->Set($sAttCode, $mValue);
+		}
 
 		// Runs iTop's own consistency checks and throws with the reasons, so
 		// that a dry run reports what a real call would refuse.
 		DryRun::Check($oTicket, "Ticket {$id}");
 
 		if (!$simulate) {
+			// The operator's cap on committed writes per credential (ADR 0019): asked once the call is known to
+			// commit and before it writes, with the objects it will write - here, the ticket - and never for a dry run.
+			$sCapRefusal = WriteCap::RefusalFor(1);
+			if ($sCapRefusal !== null) {
+				throw new ToolCallException($sCapRefusal);
+			}
+			// Said before the write, because the change record is built by the write itself: the tool is named on
+			// it and the caller's reason goes to the audit row.
+			ChangeTracking::Explain($comment);
+
 			$oTicket->DBUpdate();
 		}
 
-		return ToolOutput::Structured([
+		// StructuredWrite() adds forced_by_credential and forced_reason to the answer, so a caller whose credential
+		// may only propose is told that nothing was written, and why.
+		return ToolOutput::StructuredWrite([
 			'id'        => $id,
 			'simulated' => $simulate,
 			'appended'  => !$simulate,
