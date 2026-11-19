@@ -265,7 +265,12 @@ final class ExclusionSearches
 	 * The classes of a parsed query other than the one it returns: joined classes, the classes of every
 	 * sub-query, and every class of a union (whose rows are not narrowed branch by branch).
 	 *
+	 * Psalm runs with no iTop checkout (psalm.xml), so it cannot tell what the parser's classes extend.
+	 *
 	 * @return array<int, string>
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress RedundantCondition
+	 * @psalm-suppress RedundantCast
 	 */
 	private static function mentionedBesidesTheSelected(\OqlQuery $oQuery): array
 	{
@@ -287,6 +292,9 @@ final class ExclusionSearches
 
 	/**
 	 * @return array<int, string>
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress RedundantCondition
+	 * @psalm-suppress RedundantCast
 	 */
 	private static function allClassesOf(\OqlQuery $oQuery): array
 	{
@@ -309,6 +317,9 @@ final class ExclusionSearches
 	 * @param bool $bLeaveSelected The query is the outermost one: the class it returns is narrowed, so it is not listed.
 	 *
 	 * @return array<int, string>
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress RedundantCondition
+	 * @psalm-suppress RedundantCast
 	 */
 	private static function classesOf(\OqlObjectQuery $oQuery, bool $bLeaveSelected): array
 	{
