@@ -119,8 +119,7 @@ what said so.
 - **Security (tool packs): the example pack, which every pack is copied from, skipped what the core tools hold.** `acme_ticket_add_log_entry` checked rights by hand and so skipped `mcp_max_mentions`, the console's lifecycle locks (it appended to the `public_log`
   of a closed ticket, which iTop flags read-only there), the spreadsheet-formula rule and `ChangeTracking::Explain()`; and `acme_ticket_search_mine` asked neither `ExclusionPolicy::Serves()` nor `ExclusionSearches::Narrowed()`, so for an excluded class it answered
   `total: N, objects: []` (a row count, no values). Both now do what a core tool does: the write tool validates through `WriteValues::Validated()`, asks `WriteCap::RefusalFor()`, explains the change and answers through `ToolOutput::StructuredWrite()`; the read tool
-  refuses an excluded class and attribute as unknown and narrows its search. **For pack authors:** copy the new example; `doc/extending.md` ("Writing values back" and the checks list) says what each call is for. `RestValue` is **deprecated** as an entry point - `WriteValues::Validated()` converts
-  values with it - and stays on the surface for the minor that the policy at the top of this file requires before it goes.
+  refuses an excluded class and attribute as unknown and narrows its search. **For pack authors:** copy the new example; `doc/extending.md` ("Writing values back" and the checks list) says what each call is for. `RestValue` is no longer a pack's entry point: see Removed below.
 - **Security (tool packs): an `MCP-advisory` credential is no longer served a pack's write tools** ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)). The scope was enforced inside each write tool, by `DryRun::Simulated()`,
   which `doc/extending.md` never told a pack to call: a pack's write tool written from the documentation, the example included, **committed under an `MCP-advisory` credential** with `simulate: false`, and the audit row recorded `no`.
   A tool that is not this module's own and is not read-only is now left out of the server built for an advisory credential: absent from `tools/list`, and answered as an unknown tool when called by name. This module's own write tools are unchanged (they are served and rehearse),
@@ -180,6 +179,13 @@ what said so.
   `objects_you_cannot_see` also counts objects that are gone.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
+
+### Removed
+
+- **`Service\Write\RestValue` leaves the surface a tool pack builds on** ([ADR 0016](doc/adr/0016-what-the-core-tools-use-is-public.md), Amendment 1). It was `@api` in 1.x and 2.0, and the
+  example pack was the only thing that used it as such; `WriteValues::Validated()` converts values with it and holds every other rule of a write, and a pack that converts by hand is a second
+  validator. It is `@internal` now (the class stays, `WriteValues` uses it) and off the list `PublicSurfaceTest` reads. **The changelog's rule that a removal from the surface follows a deprecation by a minor is waived
+  this once**: nothing is installed anywhere and no known pack uses it. A pack that does keeps working in 2.1.0, with no promise after it; write through `WriteValues::Validated()`.
 
 ## [2.0.0] - 2026-11-16
 

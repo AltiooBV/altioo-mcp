@@ -22,7 +22,7 @@ says packs do) but could not call what that tool calls.
 3. a class that a public or protected signature of a class from 1 or 2 names as a parameter or
    return type, or that one of them extends or implements, so that a pack can call what it was given.
    A type named only in a docblock does not count, as it does not for `LayerDependencyTest`;
-4. `Service\Write\RestValue`, which no core element uses but the example pack does, as it has since 1.x.
+4. ~~`Service\Write\RestValue`, which no core element uses but the example pack does, as it has since 1.x.~~ Removed from the surface by Amendment 1 below.
 
 Everything else stays `@internal`: the controller and its gates, the server, the background process,
 the audit summaries the controller writes, and the internals those surface classes use without
@@ -61,3 +61,17 @@ when an element under `src/Core/` depends on a class that is not on the surface,
 public signature names one that is not, and when a listed class is used by none of `src/Core`, a
 surface signature and the example pack. The list stays written out rather than derived, so growing
 the surface is a reviewed change.
+
+## Amendment 1 — `RestValue` leaves the surface (2026-11-19)
+
+- Decided by: Guy Couronne, 2026-11-19 ("remove restvalue"), on the persona review's PA-2.
+
+`Service\Write\RestValue` was on the surface (rule 4) only because the example pack called it. The example pack now writes through
+`WriteValues::Validated()`, which converts values with it and holds every other rule of a write; a pack that converts by hand is a second
+validator, which is how the bulk tools came to skip the exclusions. It is not deleted - `WriteValues` still uses it - but it is `@internal`,
+off `PublicSurfaceTest::EXTRA_SURFACE`, and rule 4 is void.
+
+**The CHANGELOG's rule that a removal from the surface follows a `@deprecated` by a minor is waived this once**, as the maintainer decided: nothing
+is installed anywhere and no known pack uses it. A pack that does call it still works in 2.1.0 (the class exists); it is no longer a promise.
+
+Enforced by: `PublicSurfaceTest` (it is not listed, and nothing on the list is unused).

@@ -93,7 +93,6 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Write/DryRun.php',
 		'src/Service/Write/EditPolicy.php',
 		'src/Service/Write/MentionPolicy.php',
-		'src/Service/Write/RestValue.php',
 		'src/Service/Write/WriteOutcome.php',
 		'src/Service/Write/WritePlan.php',
 		'src/Service/Write/WriteValues.php',
@@ -209,9 +208,8 @@ class PublicSurfaceTest extends TestCase
 	/**
 	 * And no class is on the list for nothing: each is used by an element
 	 * under src/Core, named by a surface class's signature, or called by the
-	 * example pack (RestValue, on the surface since 1.x, was the one only the
-	 * pack called; it is deprecated now that the pack writes through WriteValues::Validated(),
-	 * and a class tagged @deprecated is exempt until the release that removes it).
+	 * example pack (RestValue was the one only the pack called; it left the
+	 * surface in 2.1.0, ADR 0016 Amendment 1).
 	 */
 	public function testEveryExtraIsUsedByACoreElementOrASurfaceSignature(): void
 	{
@@ -230,10 +228,6 @@ class PublicSurfaceTest extends TestCase
 			}
 		}
 		foreach (self::EXTRA_SURFACE as $sPath) {
-			// Deprecated, and kept for the minor that CHANGELOG.md promises before it goes: used by nobody on purpose.
-			if (str_contains((string)file_get_contents(self::ROOT.'/'.$sPath), '@deprecated')) {
-				continue;
-			}
 			$sClass = self::classOf($sPath);
 			$this->assertArrayHasKey($sClass, $aUsed, $sPath.' is on EXTRA_SURFACE but no core element uses it, no surface signature names it and the example pack does not call it; take it off (ADR 0016)');
 		}

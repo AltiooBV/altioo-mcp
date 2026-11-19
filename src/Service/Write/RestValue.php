@@ -25,12 +25,9 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
  * flag restores the distinction JSON already carried: objects become
  * `stdClass`, lists stay PHP arrays - which is what link sets
  * ({@see \AttributeLinkedSet}) and tag sets require.
- * @api
+ * @internal Not on the surface a pack builds on since 2.1.0 ({@see WriteValues::Validated()} converts values with it and holds every
+ *            other rule of a write; ADR 0016 Amendment 1). It was on the public surface in 1.x and 2.0.
  * @since 1.0.0
- * @deprecated 2.1.0 A tool that writes values goes through {@see WriteValues::Validated()}, which converts them with this class and
- *             holds every other rule of a write (exclusions, the attribute right, the lifecycle, mentions, formulas); a tool that
- *             converts by hand is a second validator, which is how the bulk tools came to skip the exclusions. It leaves the surface
- *             in a later release (CHANGELOG states what is breaking).
  */
 final class RestValue
 {

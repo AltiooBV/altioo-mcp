@@ -88,7 +88,7 @@ with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the 
 | Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess`, `Service\Rights\WriteCap` |
 | Access | `Service\Access\ObjectAccess`, `Service\Access\DocumentFetch` |
 | Read | `Service\Read\ObjectQuery`, `Service\Read\ObjectSerializer`, `Service\Read\OutputFields`, `Service\Read\UntrustedMarker`, `Service\Read\ObjectHistory`, `Service\Read\ObjectGrades`, `Service\Read\DocumentAccess`, `Service\Read\DatamodelReader`, `Service\Read\ClassCatalog`, `Service\Read\AttributeDescription`, `Service\Read\CurrentUserReader` |
-| Write | `Service\Write\DryRun`, `Service\Write\RestValue` (deprecated), `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
+| Write | `Service\Write\DryRun`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
 | Portal | `Service\Portal\PortalPolicy`, `Service\Portal\PortalBricks`, `Service\Portal\PortalRows`, `Service\Portal\PortalDescription`, `Service\Portal\PortalAware` |
 | Audit | `Service\Audit\ReadSummary` |
 | Helper | `Helper\Settings`, `Helper\SettingNames`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
@@ -306,10 +306,10 @@ forgets: the operator's excluded attributes (answered as an unknown attribute), 
 this object, what the console's form would let the user change in the object's state, external keys, the mention cap,
 the spreadsheet-formula rule, secrets, a set that would lose what was sent, and the conversion itself. It returns the
 values ready to `Set()` and the reasons for each one it refused. Converting with `RestUtils::MakeValue()` yourself
-is a second validator, and the bulk tools once did exactly that and skipped the exclusions. `RestValue` is what the
-conversion uses (the MCP SDK decodes inbound JSON with `json_decode($input, true)`, so a nested object reaches a
-tool as an array while `RestUtils` branches on `stdClass`); it is `@deprecated` as an entry point and leaves the
-surface in a later release.
+is a second validator, and the bulk tools once did exactly that and skipped the exclusions. The conversion
+needs care the SDK makes necessary (it decodes inbound JSON with `json_decode($input, true)`, so a nested object reaches a
+tool as an array while `RestUtils` branches on `stdClass`), and `Validated()` does it: `RestValue`, which did it, is
+internal since 2.1.0 and a pack no longer calls it.
 
 **Two base classes worth extending instead of `AbstractMCPTool`**, both in `Api\` and
 both covered by the versioning policy above:
