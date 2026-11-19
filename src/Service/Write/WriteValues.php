@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
@@ -135,6 +136,13 @@ final class WriteValues
 					unset($aValidatedValues[$sAttCode]);
 					$aIssues[$sAttCode] = $sDropped;
 					continue;
+				}
+				// The set a caller sends is the rows they were shown, so the rows the mode
+				// does not show them stay in it: a write changes what they can see and
+				// keeps the rest (the portal's own form submits a delta, never a rewrite).
+				// Before the comparison below, which would read a hidden row as removed.
+				if ($aValidatedValues[$sAttCode] instanceof DBObjectSet && MetaModel::GetAttributeDef($sClass, $sAttCode)->IsLinkSet()) {
+					ObjectAccess::Current()->KeepHiddenLinks($oObject, $sAttCode, $aValidatedValues[$sAttCode]);
 				}
 				// What the set would add, change and remove, judged before
 				// Set() hands it to ormLinkSet. See EditPolicy.

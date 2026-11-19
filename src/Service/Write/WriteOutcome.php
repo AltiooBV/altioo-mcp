@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use MetaModel;
 use Throwable;
 use utils;
@@ -308,6 +309,35 @@ final class WriteOutcome
 			'description'          => 'Attribute code => the value this write set, or would set. '.$sWhichOnes.' Empty when the write touched nothing. '
 				.'Read before the write, because the write clears it - so an attribute the write itself fills is empty here rather than wrong: a ticket answers "" for ref and friendlyname, which are assigned as the row is inserted. What the object ended up with is in `after`.',
 		];
+	}
+
+	/**
+	 * What a write of a link set did with the rows the mode hides from the
+	 * caller, said once and for the set only, never how many there were: in
+	 * portal mode the set a caller sends replaces the rows they are shown, and
+	 * the rows the portal hides from them stay, as the portal's own form keeps
+	 * them. Saying so is what makes `contacts_list: []` mean what it did, and
+	 * says nothing of whether any such row exists.
+	 *
+	 * @param array<int, string> $aWritten The attribute codes the write set.
+	 *
+	 * @return array<string, array<string, string>> `links_kept` => attribute code => the sentence; empty when the mode keeps nothing.
+	 * @since 2.1.0
+	 */
+	public static function LinksKept(string $sClass, array $aWritten): array
+	{
+		if (PortalMode::Current() === null) {
+			return [];
+		}
+
+		$aKept = [];
+		foreach ($aWritten as $sAttCode) {
+			if (MetaModel::IsValidAttCode($sClass, $sAttCode) && MetaModel::GetAttributeDef($sClass, $sAttCode)->IsLinkSet()) {
+				$aKept[$sAttCode] = 'What you sent replaces the rows of this set that the portal shows you. The rows it does not show you stay, as the portal\'s own form keeps them.';
+			}
+		}
+
+		return $aKept === [] ? [] : ['links_kept' => $aKept];
 	}
 
 	/**

@@ -9,10 +9,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use DBObject;
 use DBObjectSearch;
@@ -162,6 +165,249 @@ final class PortalAccess extends ObjectAccess
 			static fn (string $sAttCode): bool => isset($aSent[$sAttCode]) || $fShown($sAttCode),
 			ARRAY_FILTER_USE_KEY
 		);
+	}
+
+	/**
+	 * The rows of a link set as the portal draws them, and no others.
+	 *
+	 * The portal hides a row whose remote object its scopes do not let the
+	 * user read (ObjectFormManager::PrepareFields(), "Filtering links regarding
+	 * scopes", and BsLinkedSetFieldRenderer::PrepareItems(), which skips them)
+	 * and draws the columns it lists for the remote class. `Portal user` reads
+	 * every class through UserRights, so a link set serialised from the ORM
+	 * would hand over what only the scope withholds. A row is shown here when
+	 * the remote object is readable as {@see Readable()} would say - the 1-n
+	 * set's row itself, the n-n set's object behind the link's key to it - and
+	 * carries only the portal's list columns of that class, within what its
+	 * view form shows of the object and what the attribute rights allow. A blob
+	 * is never inlined, and the rows the caller supplied on this very call
+	 * (an object not yet written) are theirs to see.
+	 *
+	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the portal's forms cannot be read.
+	 */
+	#[\Override]
+	public function LinkedRows(DBObject $oObject, string $sAttCode, ?int $iMost = null): ?array
+	{
+		[$aLinks, $oAttDef, $sRemoteClass] = $this->linksOf($oObject, $sAttCode);
+		if ($oAttDef === null) {
+			return [[], 0];
+		}
+
+		$aRows = [];
+		$iShown = 0;
+		$oInstanceSet = null;
+		foreach ($aLinks as $aLink) {
+			if (!$aLink['shown']) {
+				continue;
+			}
+			++$iShown;
+			if ($iMost !== null && count($aRows) >= $iMost) {
+				continue;
+			}
+
+			$aRows[] = $oAttDef instanceof \AttributeLinkedSetIndirect
+				? $this->indirectRow($oObject, $oAttDef, $aLink['link'], $aLink['remote'], $oInstanceSet)
+				: $this->directRow($oAttDef, $aLink['link'], $oInstanceSet);
+		}
+
+		return [$aRows, $iShown];
+	}
+
+	/**
+	 * Every link the portal hides from the user in a set the caller sends the
+	 * complete list of is added to that list, so that the write changes what the
+	 * user can see and keeps the rest, as the portal's own form does: it submits
+	 * the changes to the rows it showed, never the rows it did not.
+	 *
+	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the portal's forms cannot be read.
+	 */
+	#[\Override]
+	public function KeepHiddenLinks(DBObject $oObject, string $sAttCode, DBObjectSet $oNewSet): void
+	{
+		[$aLinks, $oAttDef] = $this->linksOf($oObject, $sAttCode);
+		if ($oAttDef === null) {
+			return;
+		}
+
+		foreach ($aLinks as $aLink) {
+			if (!$aLink['shown'] && !$aLink['link']->IsNew()) {
+				$oNewSet->AddObject($aLink['link']);
+			}
+		}
+	}
+
+	/**
+	 * The links of a set as it stands now, each with the remote object the
+	 * portal would ask about and whether the user is shown it. One query per
+	 * class and chunk of ids, not per row.
+	 *
+	 * @return array{0: array<int, array{link: DBObject, remote: DBObject|null, shown: bool}>, 1: \AttributeLinkedSet|null, 2: string} The links, the attribute (null if it is no link set), the remote class.
+	 */
+	private function linksOf(DBObject $oObject, string $sAttCode): array
+	{
+		$oAttDef = MetaModel::GetAttributeDef(get_class($oObject), $sAttCode);
+		$oSet = $oObject->Get($sAttCode);
+		if (!$oAttDef->IsLinkSet() || !$oSet instanceof \ormLinkSet) {
+			return [[], null, ''];
+		}
+
+		$sKeyToRemote = $oAttDef instanceof \AttributeLinkedSetIndirect ? $oAttDef->GetExtKeyToRemote() : null;
+		$sRemoteClass = $sKeyToRemote === null
+			? $oAttDef->GetLinkedClass()
+			: MetaModel::GetAttributeDef($oAttDef->GetLinkedClass(), $sKeyToRemote)->GetTargetClass();
+
+		$aLinks = [];
+		$oSet->Rewind();
+		while ($oLink = $oSet->Fetch()) {
+			$aLinks[] = $oLink;
+		}
+		$oSet->Rewind();
+
+		$aIds = [];
+		foreach ($aLinks as $oLink) {
+			$aIds[] = $sKeyToRemote === null ? (int)$oLink->GetKey() : (int)$oLink->Get($sKeyToRemote);
+		}
+		$aReadable = $this->oPolicy->ReadableObjects($sRemoteClass, $aIds);
+
+		$aClassified = [];
+		foreach ($aLinks as $iAt => $oLink) {
+			$iRemote = $aIds[$iAt];
+			$oRemote = $aReadable[$iRemote] ?? null;
+
+			// An object of this very call, which nothing else knows, is the caller's own; a link
+			// with no remote object behind it holds nothing to show.
+			$bNew = $sKeyToRemote === null && $oLink->IsNew();
+			$bShown = $bNew || ($oRemote !== null && $this->consoleReads($oRemote, $sRemoteClass));
+
+			$aClassified[] = ['link' => $oLink, 'remote' => $oRemote, 'shown' => $bShown && ($sKeyToRemote === null || $iRemote > 0)];
+		}
+
+		return [$aClassified, $oAttDef, $sRemoteClass];
+	}
+
+	/**
+	 * The questions {@see Readable()} asks of the console once the object is in
+	 * hand: the class it is declared as and the one it is, on the object, and
+	 * the operator's exclusions.
+	 */
+	private function consoleReads(DBObject $oRemote, string $sDeclared): bool
+	{
+		$sFinal = get_class($oRemote);
+		$oOne = DBObjectSet::FromObject($oRemote);
+
+		return UserRights::IsActionAllowed($sDeclared, UR_ACTION_READ, $oOne)
+			&& UserRights::IsActionAllowed($sFinal, UR_ACTION_READ)
+			&& UserRights::IsActionAllowed($sFinal, UR_ACTION_READ, $oOne)
+			&& !ExclusionPolicy::ExcludesClass($sFinal)
+			&& !ExclusionSearches::IsFiledUnderExcluded($oRemote);
+	}
+
+	/**
+	 * A 1-n set's row: the object itself, with the columns the portal lists
+	 * for the class of the set.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function directRow(\AttributeLinkedSet $oAttDef, DBObject $oRow, ?DBObjectSet &$oInstanceSet): array
+	{
+		$sRowClass = get_class($oRow);
+		$sLinkedClass = $oAttDef->GetLinkedClass();
+		$fShown = $this->ShownOf($oRow);
+
+		$aRow = [];
+		if (!$oRow->IsNew()) {
+			$aRow['id'] = ObjectId::Normalise($oRow->GetKey());
+			ReadSummary::Note($sRowClass, (int)$oRow->GetKey());
+		}
+		if ($sRowClass !== $sLinkedClass) {
+			$aRow['finalclass'] = $sRowClass;
+		}
+
+		foreach ($this->oPolicy->ListColumns($sLinkedClass) as $sCode) {
+			if ($sCode === 'friendlyname') {
+				if (MetaModel::IsValidAttCode($sRowClass, $sCode) && !ExclusionPolicy::ExcludesAttribute($sRowClass, $sCode)) {
+					$aRow[$sCode] = $oRow->GetName();
+				}
+				continue;
+			}
+			if ($sCode === $oAttDef->GetExtKeyToMe() || $sCode === 'finalclass' || !$fShown($sCode)) {
+				continue;
+			}
+			$this->addColumn($aRow, $oRow, $sRowClass, $sCode, $oInstanceSet);
+		}
+
+		return $aRow;
+	}
+
+	/**
+	 * An n-n set's row: the link, which names the remote object by its key
+	 * and its name (what the portal's table starts with), and the link's own
+	 * attributes the portal lets the user edit.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function indirectRow(DBObject $oHost, \AttributeLinkedSetIndirect $oAttDef, DBObject $oLink, ?DBObject $oRemote, ?DBObjectSet &$oInstanceSet): array
+	{
+		$sLinkClass = get_class($oLink);
+		$sKeyToRemote = $oAttDef->GetExtKeyToRemote();
+
+		$aRow = [];
+		if ($oRemote !== null && !ExclusionPolicy::ExcludesAttribute($sLinkClass, $sKeyToRemote)) {
+			$aRow[$sKeyToRemote] = ObjectId::Normalise($oRemote->GetKey());
+			if (!ExclusionPolicy::ExcludesAttribute(get_class($oRemote), 'friendlyname')) {
+				$aRow[$sKeyToRemote.'_friendlyname'] = $oRemote->GetName();
+			}
+			ReadSummary::Note(get_class($oRemote), (int)$oRemote->GetKey());
+		}
+		if ($sLinkClass !== $oAttDef->GetLinkedClass()) {
+			$aRow['finalclass'] = $sLinkClass;
+		}
+
+		// ObjectFormManager::GetZListAttDefsFilteredForIndirectLinkClass(), which is private: the
+		// list's columns, but not the state, the keys at either end or the class, and only those
+		// that are writable and neither hidden nor read-only in the host's default state.
+		$sStateCode = MetaModel::GetStateAttributeCode(get_class($oHost));
+		$sDefaultState = MetaModel::GetDefaultState(get_class($oHost));
+		foreach ($this->oPolicy->ListColumns($oAttDef->GetLinkedClass()) as $sCode) {
+			if ($sCode === 'friendlyname' || $sCode === $sStateCode || $sCode === $oAttDef->GetExtKeyToMe() || $sCode === $sKeyToRemote || $sCode === 'finalclass') {
+				continue;
+			}
+			if (!MetaModel::IsValidAttCode($sLinkClass, $sCode) || !MetaModel::GetAttributeDef($sLinkClass, $sCode)->IsWritable()) {
+				continue;
+			}
+			$iFlags = MetaModel::GetAttributeFlags($sLinkClass, $sDefaultState, $sCode);
+			if (($iFlags & (OPT_ATT_HIDDEN | OPT_ATT_READONLY)) !== 0) {
+				continue;
+			}
+			$this->addColumn($aRow, $oLink, $sLinkClass, $sCode, $oInstanceSet);
+		}
+
+		return $aRow;
+	}
+
+	/**
+	 * One column of a row, in the form AttributeLinkedSet::GetForJSON() gives it, when it is one of
+	 * those that form gives (stored, scalar, not a field of another class) and the user may read it:
+	 * not excluded, not refused by the attribute rights, masked when sensitive, and never a blob.
+	 *
+	 * @param array<string, mixed> $aRow
+	 */
+	private function addColumn(array &$aRow, DBObject $oObject, string $sClass, string $sCode, ?DBObjectSet &$oInstanceSet): void
+	{
+		if (!MetaModel::IsValidAttCode($sClass, $sCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sCode)) {
+			return;
+		}
+		$oAttDef = MetaModel::GetAttributeDef($sClass, $sCode);
+		if ($oAttDef instanceof \AttributeBlob || $oAttDef->IsExternalField() || !$oAttDef->IsBasedOnDBColumns() || !$oAttDef->IsScalar()) {
+			return;
+		}
+		if (!ObjectSerializer::MayReadAttribute($oObject, $sClass, $sCode, $oInstanceSet)) {
+			return;
+		}
+
+		$aRow[$sCode] = ObjectSerializer::IsSensitive($oAttDef, $sClass)
+			? ObjectSerializer::MASK
+			: $oAttDef->GetForJSON($oObject->Get($sCode));
 	}
 
 	/** When a brick granted to the caller reaches the change log, and a scope covers it. */
@@ -642,7 +888,23 @@ final class PortalAccess extends ObjectAccess
 		if (!$oSet instanceof \ormLinkSet) {
 			return null;
 		}
+
+		// A row the set already held is not the caller's choice. The rows the portal hides were
+		// never theirs to send, and {@see KeepHiddenLinks()} keeps them in; a caller cannot name
+		// a stored row (a value they send is a new object), so nothing else gets past here.
+		$aStored = [];
+		$oOriginal = $oSet->GetOriginalSet();
+		if ($oOriginal !== null) {
+			$oOriginal->Rewind();
+			while ($oStored = $oOriginal->Fetch()) {
+				$aStored[(int)$oStored->GetKey()] = true;
+			}
+			$oOriginal->Rewind();
+		}
 		foreach ($oSet as $oLink) {
+			if (!$oLink->IsNew() && isset($aStored[(int)$oLink->GetKey()])) {
+				continue;
+			}
 			if ($sExtKey === null) {
 				if (!$oLink->IsNew() && $this->oPolicy->Readable(get_class($oLink), (int)$oLink->GetKey()) === null) {
 					return sprintf("'%s' holds an item the portal does not show you.", $sAttCode);

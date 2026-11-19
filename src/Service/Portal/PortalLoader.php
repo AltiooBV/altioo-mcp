@@ -18,6 +18,7 @@ use Combodo\iTop\Portal\Brick\BrickCollection;
 use Combodo\iTop\Portal\DependencyInjection\SilexCompatBootstrap\PortalXmlConfiguration\Forms;
 use Combodo\iTop\Portal\DependencyInjection\SilexCompatBootstrap\PortalXmlConfiguration\Lists;
 use Combodo\iTop\Portal\Form\ObjectFormManager;
+use Combodo\iTop\Portal\Helper\ApplicationHelper;
 use Combodo\iTop\Portal\Helper\LifecycleValidatorHelper;
 use Combodo\iTop\Portal\Helper\ScopeValidatorHelper;
 use Combodo\iTop\Portal\Service\TemplatesProvider\TemplatesProviderService;
@@ -43,7 +44,7 @@ final class PortalLoader
 	/**
 	 * Reads a portal's configuration and the bricks granted to the current user.
 	 *
-	 * @return array{0: string, 1: object, 2: object, 3: object, 4: array<string, array<string, mixed>>, 5: array<string, array<int, string>>, 6: array<string, array<string, array<int, \DBSearch|null>>>, 7: array<int, array<string, mixed>>, 8: array<string, array<string, mixed>>, 9: array<int, array<string, mixed>>, 10: array<int, string>}
+	 * @return array{0: string, 1: object, 2: object, 3: object, 4: array<string, array<string, mixed>>, 5: array<string, array<int, string>>, 6: array<string, array<string, array<int, \DBSearch|null>>>, 7: array<int, array<string, mixed>>, 8: array<string, array<string, mixed>>, 9: array<int, array<string, mixed>>, 10: array<int, string>, 11: array<string, array<string, array<int, array<string, mixed>>>>}
 	 *               What PortalPolicy's constructor takes, in its order.
 	 *
 	 * @throws MCPPortalException
@@ -56,7 +57,7 @@ final class PortalLoader
 			throw self::Refusal(sprintf('Portal mode refuses to read a portal whose id cannot be a file name: %s.', json_encode($sPortal)));
 		}
 
-		foreach ([\ModuleDesign::class, BrickCollection::class, ScopeValidatorHelper::class, ObjectFormManager::class, Container::class] as $sNeeded) {
+		foreach ([\ModuleDesign::class, BrickCollection::class, ScopeValidatorHelper::class, ObjectFormManager::class, ApplicationHelper::class, Container::class] as $sNeeded) {
 			if (!class_exists($sNeeded)) {
 				throw self::Refusal(sprintf(
 					"Portal mode cannot read portal '%s': %s is not available. The portal module (itop-portal-base) has to be installed.",
@@ -134,6 +135,7 @@ final class PortalLoader
 			$aListDefs,
 			$aCreates,
 			array_values(array_map('strval', UserRights::ListProfiles())),
+			is_array($aConf['lists'] ?? null) ? $aConf['lists'] : [],
 		];
 	}
 

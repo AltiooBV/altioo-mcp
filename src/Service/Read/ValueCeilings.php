@@ -71,20 +71,27 @@ final class ValueCeilings
 	 * A rack with four hundred devices, expanded attribute by attribute, is
 	 * larger than everything else in the response put together.
 	 *
-	 * @param mixed $value As AttributeLinkedSet::GetForJSON() returns it.
+	 * @param mixed    $value  As AttributeLinkedSet::GetForJSON() returns it.
+	 * @param int|null $iTotal How many rows the set holds when $value was cut short before it got here
+	 *                         (portal mode describes only the rows that are reported); null when $value is the whole set.
 	 *
 	 * @return mixed
 	 */
-	public static function firstLinks($value)
+	public static function firstLinks($value, ?int $iTotal = null)
 	{
-		if (!is_array($value) || count($value) <= self::MAX_LINKS) {
+		if (!is_array($value)) {
+			return $value;
+		}
+
+		$iTotal = max($iTotal ?? 0, count($value));
+		if ($iTotal <= self::MAX_LINKS) {
 			return $value;
 		}
 
 		return [
 			'links'         => array_values(array_slice($value, 0, self::MAX_LINKS)),
-			'links_omitted' => count($value) - self::MAX_LINKS,
-			'links_total'   => count($value),
+			'links_omitted' => $iTotal - self::MAX_LINKS,
+			'links_total'   => $iTotal,
 		];
 	}
 

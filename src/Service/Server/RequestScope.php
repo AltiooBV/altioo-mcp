@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Read\LinkedRows;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -24,6 +25,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
+use DBObject;
 
 /**
  * Where a request's state is opened and closed.
@@ -63,6 +65,9 @@ final class RequestScope
 	{
 		PortalMode::Remember($sPortal);
 		ObjectAccess::Remember(static fn (): ObjectAccess => PortalAccess::ForCurrentRequest());
+		// What a link set shows is the portal's to say, on every route that serialises one: asked
+		// of the access of the request, built when asked, as ObjectAccess::Current() is.
+		LinkedRows::Remember(static fn (DBObject $oObject, string $sAttCode, ?int $iMost): ?array => ObjectAccess::Current()->LinkedRows($oObject, $sAttCode, $iMost));
 	}
 
 	/**
@@ -107,6 +112,7 @@ final class RequestScope
 
 		// Portal mode: all of it, so that no half is left to disagree with the other.
 		ObjectAccess::Forget();
+		LinkedRows::Forget();
 		PortalPolicy::Forget();
 		PortalMode::Forget();
 

@@ -65,6 +65,11 @@ final class PortalPolicy
 
 	private readonly PortalForms $oForms;
 
+	private readonly PortalLists $oLists;
+
+	/** How many ids one query asks about, as ormLinkSet keeps its own queries bounded. */
+	private const BATCH = 500;
+
 	/**
 	 * @param object                                  $oDesign    ModuleDesign: the portal's configuration, for the action rules.
 	 * @param object                                  $oScopes    ScopeValidatorHelper.
@@ -76,6 +81,7 @@ final class PortalPolicy
 	 * @param array<string, array<string, mixed>>     $aListDefs  The same lists by id, with what running one needs: its query, tabs and columns.
 	 * @param array<int, array<string, mixed>>        $aCreates   The granted bricks' create actions.
 	 * @param array<int, string>                      $aProfiles  The user's profiles, as the scopes are keyed.
+	 * @param array<string, array<string, array<int, array<string, mixed>>>> $aColumns The portal's lists of attributes, by class then list id.
 	 */
 	private function __construct(
 		private readonly string $sPortal,
@@ -89,9 +95,11 @@ final class PortalPolicy
 		private readonly array $aListDefs,
 		private readonly array $aCreates,
 		private readonly array $aProfiles,
+		array $aColumns = [],
 	)
 	{
 		$this->oForms = new PortalForms($aForms, $sPortal);
+		$this->oLists = new PortalLists($aColumns);
 	}
 
 	/**
@@ -107,8 +115,8 @@ final class PortalPolicy
 		}
 
 		if (self::$oCurrent === null || self::$oCurrent->sPortal !== $sPortal) {
-			[$sId, $oDesign, $oScopes, $oLifecycle, $aForms, $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates, $aProfiles] = PortalLoader::Load($sPortal);
-			self::$oCurrent = new self($sId, $oDesign, $oScopes, $oLifecycle, $aForms, $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates, $aProfiles);
+			[$sId, $oDesign, $oScopes, $oLifecycle, $aForms, $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates, $aProfiles, $aColumns] = PortalLoader::Load($sPortal);
+			self::$oCurrent = new self($sId, $oDesign, $oScopes, $oLifecycle, $aForms, $aReach, $aBrickSets, $aLists, $aListDefs, $aCreates, $aProfiles, $aColumns);
 		}
 
 		return self::$oCurrent;
@@ -319,6 +327,58 @@ final class PortalPolicy
 	public function Readable(string $sClass, int $iId): ?DBObject
 	{
 		return $this->within($sClass, $iId, fn (string $sOf): ?DBSearch => $this->ReadSet($sOf));
+	}
+
+	/**
+	 * The objects of a class, among those ids, that the scopes let the user
+	 * read: {@see Readable()} for many at once, in one query per class and
+	 * chunk of ids instead of one or two per object. An id that is unknown,
+	 * out of reach, of a class the scopes cannot hold, or not positive is
+	 * simply not in the answer, all alike.
+	 *
+	 * @param array<int, int|string> $aIds
+	 *
+	 * @return array<int, DBObject> Id => the object, as the class it is.
+	 */
+	public function ReadableObjects(string $sClass, array $aIds): array
+	{
+		$aIds = array_values(array_unique(array_filter(array_map('intval', $aIds), static fn (int $iId): bool => $iId > 0)));
+		if ($aIds === [] || !MetaModel::IsValidClass($sClass)) {
+			return [];
+		}
+
+		$aFound = self::fetchEach($this->ReadSet($sClass), $aIds);
+
+		// A child class may carry a narrower scope than its parent: each object is
+		// asked once more in the set of the class it is, as Readable() asks it.
+		$aOfClass = [];
+		foreach ($aFound as $iId => $oObject) {
+			if (get_class($oObject) !== $sClass) {
+				$aOfClass[get_class($oObject)][] = $iId;
+			}
+		}
+		foreach ($aOfClass as $sFinal => $aOfIds) {
+			$aStill = self::fetchEach($this->ReadSet($sFinal), $aOfIds);
+			foreach ($aOfIds as $iId) {
+				if (!isset($aStill[$iId])) {
+					unset($aFound[$iId]);
+				}
+			}
+		}
+
+		return $aFound;
+	}
+
+	/**
+	 * The attribute codes the portal shows of a class's rows in a link set.
+	 *
+	 * @see PortalLists::ColumnsOf()
+	 *
+	 * @return array<int, string>
+	 */
+	public function ListColumns(string $sClass): array
+	{
+		return $this->oLists->ColumnsOf($sClass);
 	}
 
 	/**
@@ -567,6 +627,37 @@ final class PortalPolicy
 		$sFinal = get_class($oObject);
 
 		return $sFinal === $sClass ? $oObject : self::fetchFrom($fSetOf($sFinal), $iId);
+	}
+
+	/**
+	 * The objects of a set with these ids, by id; none when there is no set.
+	 *
+	 * @param array<int, int> $aIds
+	 *
+	 * @return array<int, DBObject>
+	 */
+	private static function fetchEach(?DBSearch $oSet, array $aIds): array
+	{
+		if ($oSet === null) {
+			return [];
+		}
+
+		$aFound = [];
+		foreach (array_chunk($aIds, self::BATCH) as $aChunk) {
+			$oSearch = $oSet->DeepClone();
+			$oSearch->AddCondition('id', $aChunk, 'IN');
+			$oSearch->SetShowObsoleteData(true);
+			if ($oSet->IsAllDataAllowed()) {
+				$oSearch->AllowAllData();
+			}
+
+			$oFound = new DBObjectSet($oSearch);
+			while ($oObject = $oFound->Fetch()) {
+				$aFound[(int)$oObject->GetKey()] = $oObject;
+			}
+		}
+
+		return $aFound;
 	}
 
 	/**

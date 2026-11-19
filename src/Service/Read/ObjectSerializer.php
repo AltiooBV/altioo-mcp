@@ -313,13 +313,27 @@ final class ObjectSerializer
 			return self::document($oObject->Get($sAttCode), $sClass, (int)$oObject->GetKey(), $sAttCode);
 		}
 
-		$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
-
+		$iTotalLinks = null;
 		if ($oAttDef instanceof AttributeLinkedSet) {
+			// The rows this caller is shown, which in portal mode are those the portal
+			// shows, with the columns it shows (doc/adr/0006). Asked here, where every
+			// route that reports a link set passes, and never skipped by $bClip: the
+			// attributes named in output_fields decide how much of an object is
+			// reported, never which rows of a set may be read at all. Null in the
+			// console, whose set is the datamodel's own.
+			$aShown = LinkedRows::Of($oObject, $oAttDef, $bClip ? ValueCeilings::MAX_LINKS : null);
+			if ($aShown !== null) {
+				[$value, $iTotalLinks] = $aShown;
+			} else {
+				$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
+			}
+
 			// Before anything else looks at it, and regardless of $bClip:
 			// output_fields decides how much of an object is reported, never
 			// what may be read at all.
 			$value = self::maskSensitiveLinks($value, $oAttDef);
+		} else {
+			$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
 		}
 
 		if (!$bClip) {
@@ -331,7 +345,7 @@ final class ObjectSerializer
 		}
 
 		if ($oAttDef instanceof AttributeLinkedSet) {
-			return ValueCeilings::clip(ValueCeilings::firstLinks($value));
+			return ValueCeilings::clip(ValueCeilings::firstLinks($value, $iTotalLinks));
 		}
 
 		return ValueCeilings::clip($value);
