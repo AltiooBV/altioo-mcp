@@ -181,6 +181,39 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		}
 	}
 
+	/**
+	 * Review 2026-11-18, RT-11: `Prompted()` took the datamodel's target-state flags, so a transition set fields the portal's own
+	 * transition form shows read-only or not at all. On `ev_reopen` of a resolved ticket the stock portal's form holds `public_log`
+	 * (editable), `org_id` and `team_id` (read-only) and no `agent_id`, and a requester routed their own ticket to a team and an agent.
+	 */
+	public function testATransitionDoesNotSetWhatThePortalsTransitionFormShowsReadOnlyOrNotAtAll(): void
+	{
+		$aStimuli = array_column(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iResolved))['object']['stimuli']['available'] ?? [], 'stimulus');
+		if (!in_array('ev_reopen', $aStimuli, true)) {
+			$this->markTestSkipped('This portal does not offer ev_reopen on a resolved request.');
+		}
+
+		$aOwn = ['request_type' => 'incident', 'public_log' => 'Reopening, the problem is back.'];
+		try {
+			$aDry = ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen', $aOwn));
+			$this->assertTrue($aDry['simulated'], 'the control: what the portal form lets the user set is accepted');
+		} catch (ToolCallException $oException) {
+			$this->markTestSkipped('This datamodel asks for more on reopening than this test supplies: '.$oException->getMessage());
+		}
+
+		foreach (['agent_id' => $this->iContact, 'team_id' => 1] as $sCode => $mValue) {
+			try {
+				ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen', $aOwn + [$sCode => $mValue], false);
+				$this->fail("{$sCode} was set by a transition the portal form shows it read-only or not at all on");
+			} catch (ToolCallException $oException) {
+				$this->assertStringContainsString("'{$sCode}' is not a field the portal's", $oException->getMessage());
+			}
+		}
+		$oAfter = MetaModel::GetObject('UserRequest', $this->iResolved, true, true);
+		$this->assertSame('resolved', $oAfter->Get('status'), 'a refused transition moved the request');
+		$this->assertSame(0, (int)$oAfter->Get('agent_id'));
+	}
+
 	private function refusalOfContact(mixed $mKey): string
 	{
 		try {

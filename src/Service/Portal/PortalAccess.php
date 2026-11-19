@@ -790,7 +790,7 @@ final class PortalAccess extends ObjectAccess
 
 	/**
 	 * A field the portal's edit form does not leave settable - or, for a
-	 * transition, one its target state does not prompt for either. Named,
+	 * transition, one its transition form does not leave editable either. Named,
 	 * each with why, before any value is converted: a field the form hides or
 	 * shows read-only is not a value the user could have typed in.
 	 */
@@ -800,7 +800,9 @@ final class PortalAccess extends ObjectAccess
 		$sClass = get_class($oObject);
 		$bNew = $oObject->IsNew();
 		$aSettable = self::Settable($sClass, $this->oPolicy->Fields($sClass, $bNew ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject));
-		$aAlso = $sStimulus === '' ? [] : self::Prompted($oObject, $sStimulus);
+		// What the portal's own transition form leaves editable for this stimulus (not what the datamodel's
+		// target state prompts for: the portal's form may show such a field read-only, or not at all).
+		$aAlso = $sStimulus === '' ? [] : self::Settable($sClass, $this->oPolicy->TransitionFields($sClass, $sStimulus, $oObject));
 		$sForm = $bNew ? 'create' : ($sStimulus === '' ? 'edit' : 'transition or edit');
 
 		$aIssues = [];
@@ -834,33 +836,6 @@ final class PortalAccess extends ObjectAccess
 		}
 
 		return $aIssues;
-	}
-
-	/**
-	 * The fields a transition's target state prompts for: those it must
-	 * change or prompt for, and those it makes mandatory that are empty.
-	 *
-	 * @return array<int, string>
-	 */
-	public static function Prompted(DBObject $oObject, string $sStimulus): array
-	{
-		$sClass = get_class($oObject);
-		$aTransitions = MetaModel::EnumTransitions($sClass, (string)$oObject->GetState());
-		$sTarget = (string)($aTransitions[$sStimulus]['target_state'] ?? '');
-		$aStates = MetaModel::EnumStates($sClass);
-
-		/** @var array<string, int> $aFlags */
-		$aFlags = array_map('intval', $aStates[$sTarget]['attribute_list'] ?? []);
-
-		$aPrompted = [];
-		foreach ($aFlags as $sAttCode => $iFlags) {
-			if (($iFlags & (OPT_ATT_MUSTCHANGE | OPT_ATT_MUSTPROMPT)) !== 0
-				|| (($iFlags & OPT_ATT_MANDATORY) !== 0 && $oObject->Get($sAttCode) == '')) {
-				$aPrompted[] = $sAttCode;
-			}
-		}
-
-		return $aPrompted;
 	}
 
 	private function outOfReach(DBObject $oObject, string $sAttCode): ?string
