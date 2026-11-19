@@ -89,6 +89,11 @@ what said so.
   with its values into `error.log`, where retention and anonymisation never reach. Caller text is now fitted to its column before the insert (a character the column's character set cannot hold becomes U+FFFD; a message is cut to what its
   column holds), a failed insert is retried once with only what the server built (credential, account, method, status, change, counts; no client name, comment, parameters or message), and the failure is logged by class and code, never by its text.
   Unicode line and bidirectional controls (U+0085, U+2028, U+2029, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) are now stripped from the client name, the message and the change comment as the ASCII controls were, so a log forwarder reads one row where there is one.
+- **Security: an attribute the endpoint masks on output could still be filtered, sorted and `LIKE`-matched.** A password, a token or an outbound secret (`token`, `refresh_token`, `access_token`, `client_secret` of the OAuth and
+  webhook classes) is read back as asterisks, yet `core_object_search_by_class` with `filters`, `order_by`, and `core_object_search_by_oql` with a condition or `order_by` answered whether `token LIKE "SECRET-A%"` matched, so a steered agent
+  recovered a secret one character at a time (`core_object_count` already refused them). A masked attribute is now unknown to every search on every route, in iTop's own words for a name the datamodel does not have - in a filter, a sort,
+  a condition, a join and a sub-query alike, and in an OQL given as a key's value. The default sort of a class drops a masked attribute. An account that could read the secret in clear in its own console still reads it there; the endpoint no longer
+  lets a search stand in for the read. *Check each 1.x tree: the by-name masking of the outbound secrets is recent.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

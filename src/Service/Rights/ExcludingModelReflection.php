@@ -29,7 +29,7 @@ use ModelReflectionRuntime;
  * @internal
  * @since 1.3.0
  */
-final class ExcludingModelReflection extends ModelReflectionRuntime
+class ExcludingModelReflection extends ModelReflectionRuntime
 {
 	#[\Override]
 	public function IsValidClass($sClass)

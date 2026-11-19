@@ -202,6 +202,13 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 		];
 	}
 
+	/** Whether the endpoint masks the attribute's value on output, so it cannot be searched or sorted on either. */
+	private static function isMasked(string $sClass, string $sAttCode): bool
+	{
+		return MetaModel::IsValidAttCode($sClass, $sAttCode)
+			&& ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($sClass, $sAttCode), $sClass);
+	}
+
 	/**
 	 * The sort order a page is read in, always ending in a unique attribute.
 	 *
@@ -231,13 +238,16 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			// What the datamodel orders by, less what is excluded: an order is a read of the values.
 			$aOrderBy = [];
 			foreach (MetaModel::GetOrderByDefault($sClass) as $sCode => $bAsc) {
-				if (!ExclusionPolicy::ExcludesAttribute($sClass, (string)$sCode)) {
+				if (!ExclusionPolicy::ExcludesAttribute($sClass, (string)$sCode) && !self::isMasked($sClass, (string)$sCode)) {
 					$aOrderBy[$sCode] = $sDirection === self::SORT_DESC ? !$bAsc : (bool)$bAsc;
 				}
 			}
 		} else {
+			// A masked attribute's order is a read of it, one comparison at a time: unknown here, as an excluded one is.
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
-				&& (!MetaModel::IsValidAttCode($sClass, $sOrderBy) || ExclusionPolicy::ExcludesAttribute($sClass, $sOrderBy))) {
+				&& (!MetaModel::IsValidAttCode($sClass, $sOrderBy)
+					|| ExclusionPolicy::ExcludesAttribute($sClass, $sOrderBy)
+					|| self::isMasked($sClass, $sOrderBy))) {
 				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
 			}
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE

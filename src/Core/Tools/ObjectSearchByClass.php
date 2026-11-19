@@ -139,7 +139,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		self::applyArchived($oSearch, $class, $archived);
 
 		foreach ($filters as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode) || ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)) {
+			// A masked attribute is read one prefix at a time by whoever may filter on it, so it is unknown
+			// here, as it is to core_object_count (review 2026-11-18, RT-3).
+			if (!MetaModel::IsValidAttCode($class, $sAttCode)
+				|| ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)
+				|| ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($class, (string)$sAttCode), $class)) {
 				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
 			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
