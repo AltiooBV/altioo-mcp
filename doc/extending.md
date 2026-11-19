@@ -297,13 +297,13 @@ from an id, and a caselog append from a plain string. Without that call the wron
 taken silently. Scalars pass through untouched and JSON lists stay arrays, which is what link
 sets and tag sets need.
 
-**Two base classes worth extending instead of `AbstractMCPTool`**, both under `Abstract/` and
+**Two base classes worth extending instead of `AbstractMCPTool`**, both in `Api\` and
 both covered by the versioning policy above:
 
 | Extend | When | What you stop having to write |
 |---|---|---|
 | `AbstractObjectSearch` | Your tool returns a set of objects | Paging, ordering, field selection, and `has_more` / `next_offset` |
-| `AbstractBulkTool` | Your tool acts on a list of ids | The bulk right check, the per-object right check, id validation, the dry run |
+| `AbstractBulkTool` | Your tool acts on a list of ids | The bulk right check, the per-object right check, id validation, the per-attribute checks of a write (`validatedValues()`, which is `WriteValues::Validated()`: exclusions, attribute rights, the lifecycle, mentions, formulas), and the shape of the report. **Not** the dry run and not the write cap: your `execute()` asks `DryRun::Simulated()` and `WriteCap::RefusalFor()` itself, as the core bulk tools do (see "Use the checks a core tool uses" above) |
 
 Neither declares a namespace — that is yours, and the registry refuses `core` from anything
 outside this module. The reason to prefer them over copying is not brevity in either case.

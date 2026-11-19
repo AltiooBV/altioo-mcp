@@ -103,6 +103,11 @@ what said so.
   `manager_id: "SELECT Person WHERE phone = 'x'"` answered "Unknown filter code ... expecting {...}" when `phone` was excluded and "is not an id and not valid OQL" when the name did not exist, and an excluded class was told apart from an unknown one in the
   same way: any account that may create or update could enumerate which names exist but are excluded (a name, never a value). The checker now answers first, in the same words for both, and the explanation of what a key takes follows it; text that is no OQL
   at all gets the checker's reason followed by the same explanation. *Affects 1.3, not checked on that tree.*
+- **Security: `core_object_bulk_create` wrote attributes the operator had excluded.** The bulk tools validated a caller's values with their own copy of the write validator, which had drifted from the one every other write uses: it never asked
+  `mcp_excluded_attributes`. With `Person.phone` or `UserRequest.private_log` excluded, a bulk create with `"phone": "+3355507777"` answered "Would be created" and committed it (`zzphone` was "Unknown attribute", so the dry run was an oracle for the excluded name too),
+  and a `private_log` was committed into a log the console's agents read; any write grade, a narrow console user's included. The answer's `applied` and `changes` hid the field, so it read as ignored. The bulk tools, and a pack's tool built on `AbstractBulkTool`, now
+  validate through `WriteValues::Validated()`: one validator, so an excluded attribute is refused as an unknown one, and the checks the copy lacked (a link set's hidden rows in portal mode) hold too. **For pack authors:** `AbstractBulkTool::validatedValues()` keeps its
+  signature; what changed is that it now refuses what a single write refuses. `doc/extending.md` no longer says the base class does the dry run: your `execute()` asks `DryRun::Simulated()` and `WriteCap::RefusalFor()`. *Affects 1.3 (exclusions) if its bulk tool has the same copy; not checked on that tree.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

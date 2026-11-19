@@ -123,7 +123,7 @@ class FormulaPolicyTest extends TestCase
 			}
 		}
 
-		$this->assertGreaterThanOrEqual(2, $iFound, 'expected the single-object write paths (WriteValues) and the bulk ones');
+		$this->assertGreaterThanOrEqual(1, $iFound, 'expected the write path every tool shares (WriteValues; the bulk tools delegate to it, BulkToolContractTest)');
 	}
 
 	/**
