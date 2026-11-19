@@ -91,6 +91,10 @@ class LinkedRowsContractTest extends TestCase
 			}
 		}
 
+		// The directory is walked in whatever order the filesystem returns it, which differs between
+		// machines (it did on GitHub's runners), so both sides are compared sorted.
+		ksort($aAllowed);
+		ksort($aFound);
 		$this->assertSame($aAllowed, $aFound, 'GetForJSON() is called somewhere new: a link set rendered there is not the portal\'s row');
 	}
 
