@@ -94,6 +94,11 @@ what said so.
   recovered a secret one character at a time (`core_object_count` already refused them). A masked attribute is now unknown to every search on every route, in iTop's own words for a name the datamodel does not have - in a filter, a sort,
   a condition, a join and a sub-query alike, and in an OQL given as a key's value. The default sort of a class drops a masked attribute. An account that could read the secret in clear in its own console still reads it there; the endpoint no longer
   lets a search stand in for the read. *Check each 1.x tree: the by-name masking of the outbound secrets is recent.*
+- **Security: one join or sub-query on a class that has an excluded subclass was served.** The refusal ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md): such a class "cannot be joined or sub-queried") counted textual mentions of the class and refused at two, so with
+  `Person` excluded, `SELECT Organization AS o JOIN Contact AS c ON c.org_id = o.id WHERE c.email LIKE 'agatha%'` answered whether an excluded person's e-mail began that way - a blind prefix search on any attribute of every excluded person.
+  The decision is now taken from the query as iTop parses it: a class that has an excluded subclass may be the class a query returns (its rows are narrowed to leave the subclass out) and nothing else - not a joined class, not the class of a sub-query at any depth,
+  not a branch of a union. **Visible to operators:** a query that joined or sub-queried `Contact`, `Ticket` or another parent of an excluded class once is now refused where it was served before; select that class and filter on its own attributes. Applies to `core_object_search_by_oql`,
+  `core_object_count` with `oql`, and an OQL given as a key's value. *Affects 1.3 (exclusions shipped in 1.3.0), not checked on that tree.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

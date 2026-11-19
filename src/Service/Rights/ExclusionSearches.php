@@ -208,6 +208,15 @@ final class ExclusionSearches
 	 * selects, and there the rows of the subclass cannot be told apart from the
 	 * rest - a join or a sub-query on Contact would match an excluded Person.
 	 * Said without naming the class: it would say there is something under it.
+	 *
+	 * Decided from the query as iTop parses it, not from its text (review 2026-11-18, HA-3): the
+	 * text counted mentions of the class and refused at two, so one mention as a joined class or in
+	 * a sub-query passed - `SELECT Organization AS o JOIN Contact AS c ON c.org_id = o.id WHERE
+	 * c.email LIKE 'agatha%'` answered, with `Person` excluded, whether an excluded person's email
+	 * began so. The selected class is the one thing narrowed to leave the subclass out
+	 * ({@see Narrowed()}); every other mention of a class in the query - a join, a sub-query, any
+	 * branch of a union - is refused when the class has an excluded subclass. A query that cannot
+	 * be parsed here is refused.
 	 */
 	public static function OqlRefusal(string $sOql): ?string
 	{
@@ -227,17 +236,113 @@ final class ExclusionSearches
 					}
 				}
 			}
-		} catch (Throwable $e) {
-			return 'This query cannot be checked against what this channel serves, so it is refused. Select from one class and filter on its attributes.';
-		}
 
-		foreach (array_keys($aTainted) as $sParent) {
-			$iNamed = preg_match_all('/\b'.preg_quote($sParent, '/').'\b/i', $sOql);
-			if ($iNamed > 1) {
-				return 'This query cannot be checked against what this channel serves, so it is refused. Select from one class and filter on its attributes.';
+			if ($aTainted === []) {
+				return null;
 			}
+
+			if (!class_exists('OqlInterpreter')) {
+				require_once(APPROOT.'core/oql/check_oql.php');
+			}
+			$oQuery = (new \OqlInterpreter($sOql))->ParseQuery();
+
+			// Each class a query mentions where it is not the selected one, in the whole parsed tree.
+			foreach (self::mentionedBesidesTheSelected($oQuery) as $sClass) {
+				if (isset($aTainted[strtolower($sClass)])) {
+					return self::UNPROVEN_QUERY;
+				}
+			}
+		} catch (Throwable $e) {
+			return self::UNPROVEN_QUERY;
 		}
 
 		return null;
+	}
+
+	private const UNPROVEN_QUERY = 'This query cannot be checked against what this channel serves, so it is refused. Select from one class and filter on its attributes.';
+
+	/**
+	 * The classes of a parsed query other than the one it returns: joined classes, the classes of every
+	 * sub-query, and every class of a union (whose rows are not narrowed branch by branch).
+	 *
+	 * @return array<int, string>
+	 */
+	private static function mentionedBesidesTheSelected(\OqlQuery $oQuery): array
+	{
+		if ($oQuery instanceof \OqlUnionQuery) {
+			$aClasses = [];
+			foreach ($oQuery->GetQueries() as $oBranch) {
+				$aClasses = array_merge($aClasses, self::allClassesOf($oBranch));
+			}
+
+			return $aClasses;
+		}
+
+		if (!$oQuery instanceof \OqlObjectQuery) {
+			throw new \LogicException('A query of a kind this channel does not know.');
+		}
+
+		return self::classesOf($oQuery, true);
+	}
+
+	/**
+	 * @return array<int, string>
+	 */
+	private static function allClassesOf(\OqlQuery $oQuery): array
+	{
+		if ($oQuery instanceof \OqlUnionQuery) {
+			$aClasses = [];
+			foreach ($oQuery->GetQueries() as $oBranch) {
+				$aClasses = array_merge($aClasses, self::allClassesOf($oBranch));
+			}
+
+			return $aClasses;
+		}
+		if (!$oQuery instanceof \OqlObjectQuery) {
+			throw new \LogicException('A query of a kind this channel does not know.');
+		}
+
+		return self::classesOf($oQuery, false);
+	}
+
+	/**
+	 * @param bool $bLeaveSelected The query is the outermost one: the class it returns is narrowed, so it is not listed.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function classesOf(\OqlObjectQuery $oQuery, bool $bLeaveSelected): array
+	{
+		$aSelected = [];
+		foreach ((array)$oQuery->GetSelectedClasses() as $oSelected) {
+			$aSelected[] = (string)$oSelected->GetValue();
+		}
+
+		$aMentions = [(string)$oQuery->GetClassAlias() => (string)$oQuery->GetClassDetails()->GetValue()];
+		foreach ((array)$oQuery->GetJoins() as $oJoin) {
+			$aMentions[(string)$oJoin->GetClassAlias()] = (string)$oJoin->GetClass();
+		}
+
+		$aClasses = [];
+		foreach ($aMentions as $sAlias => $sClass) {
+			if ($bLeaveSelected && in_array((string)$sAlias, $aSelected, true)) {
+				continue;
+			}
+			$aClasses[] = $sClass;
+		}
+
+		$oCondition = $oQuery->GetCondition();
+		if ($oCondition instanceof \Expression) {
+			$aNested = [];
+			$oCondition->Browse(static function ($oExpression) use (&$aNested): void {
+				if ($oExpression instanceof \NestedQueryOqlExpression) {
+					$aNested[] = $oExpression->GetOQLObjectQuery();
+				}
+			});
+			foreach ($aNested as $oNested) {
+				$aClasses = array_merge($aClasses, self::allClassesOf($oNested));
+			}
+		}
+
+		return $aClasses;
 	}
 }
