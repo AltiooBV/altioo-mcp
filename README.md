@@ -706,7 +706,7 @@ portal is served as customised:
   portal's form leaves settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
   so a case log only gains entries; an external key or a link may point only at what the user
   can read; a stimulus must be one the portal's lifecycle allows, that UserRights grants on the
-  object, from its current state; and a creation starts from a row of the action's list, takes
+  object, from its current state, and sets only the fields the portal's own transition form leaves editable for it (an edit-form field is changed with `core_object_update` first); and a creation starts from a row of the action's list, takes
   the class the action names or its factory method chooses, and is preset by the action's
   rules, run by the portal's own helper — in the stock portal, the caller and organisation
   from the user's contact and the service from the subcategory

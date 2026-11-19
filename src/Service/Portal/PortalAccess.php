@@ -799,15 +799,17 @@ final class PortalAccess extends ObjectAccess
 	{
 		$sClass = get_class($oObject);
 		$bNew = $oObject->IsNew();
-		$aSettable = self::Settable($sClass, $this->oPolicy->Fields($sClass, $bNew ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject));
-		// What the portal's own transition form leaves editable for this stimulus (not what the datamodel's
-		// target state prompts for: the portal's form may show such a field read-only, or not at all).
-		$aAlso = $sStimulus === '' ? [] : self::Settable($sClass, $this->oPolicy->TransitionFields($sClass, $sStimulus, $oObject));
-		$sForm = $bNew ? 'create' : ($sStimulus === '' ? 'edit' : 'transition or edit');
+		// A stimulus sets what the portal's own transition form leaves editable, and nothing else (ADR 0005, amended 2026-11-19): the
+		// portal never lets a transition submit an edit-form field, so an assistant changes one of those with core_object_update first.
+		// What the datamodel's target state prompts for is in that form already (PortalForms::TransitionFields()).
+		$aSettable = $sStimulus === ''
+			? self::Settable($sClass, $this->oPolicy->Fields($sClass, $bNew ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject))
+			: self::Settable($sClass, $this->oPolicy->TransitionFields($sClass, $sStimulus, $oObject));
+		$sForm = $bNew ? 'create' : ($sStimulus === '' ? 'edit' : 'transition');
 
 		$aIssues = [];
 		foreach (array_keys($aFields) as $sAttCode) {
-			if (!in_array((string)$sAttCode, $aSettable, true) && !in_array((string)$sAttCode, $aAlso, true)) {
+			if (!in_array((string)$sAttCode, $aSettable, true)) {
 				// Quoted only when it is shaped like a code: the text lands in the audit row.
 				$aIssues[] = (\Altioo\iTop\Extension\MCP\Helper\ClassRefusal::LooksLikeClassName((string)$sAttCode) ? "'{$sAttCode}'" : 'A key')
 					." is not a field the portal's {$sForm} form lets you set";
@@ -816,7 +818,8 @@ final class PortalAccess extends ObjectAccess
 
 		return $aIssues === []
 			? null
-			: implode('; ', $aIssues).'. Fields you may set: '.(implode(', ', array_unique(array_merge($aSettable, $aAlso))) ?: 'none').'.';
+			: implode('; ', $aIssues).'. Fields you may set: '.(implode(', ', array_unique($aSettable)) ?: 'none').'.'
+				.($sStimulus === '' ? '' : ' To change another field of the request, use core_object_update first.');
 	}
 
 	/**

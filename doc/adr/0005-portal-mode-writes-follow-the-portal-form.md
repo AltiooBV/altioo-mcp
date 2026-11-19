@@ -10,7 +10,7 @@
   ([0006](0006-one-tool-surface-the-portal-is-a-policy.md)). Attachments are read and added, never
   deleted ([0011](0011-portal-mode-reads-and-adds-attachments.md)), which replaces "Not covered"
   for them.
-- Amended: 2026-11-19, a transition's fields are the portal's transition form's, not the datamodel's target-state flags (the stimulus bullet).
+- Amended: 2026-11-19, a transition's fields are the portal's transition form's, not the datamodel's target-state flags, and no longer also the edit form's (the stimulus bullet; Guy Couronne).
 - Renamed: 2026-11-11. `WritePlan::ValidatedValues()` became `Service\Write\WriteValues::Validated()` in 2.0 ([0015](0015-2-0-lays-out-src-as-itop-does.md)); the decision is unchanged.
 
 Portal mode now writes: `core_portal_create`, `core_portal_update` and
@@ -30,8 +30,10 @@ with the portal's own code where it runs outside the portal's kernel. The decisi
   they search through the scope, and answer "does not exist" for a class that has none.
 - **A stimulus must be offered on the object now:** allowed by the portal's lifecycle, granted by
   UserRights on the object (DEPENDS is a no), and a transition out of its current state. Its
-  fields are those the portal's own transition form leaves editable and those the edit form leaves
-  settable. The transition form is built as the portal's `ApplyStimulusAction` builds it (the form the
+  fields are those the portal's own transition form leaves editable, and nothing else (amended
+  2026-11-19, Guy Couronne: no longer "and those the edit form leaves settable"; the portal never lets a
+  transition submit an edit-form field, so an assistant changes one with `core_object_update` first).
+  The transition form is built as the portal's `ApplyStimulusAction` builds it (the form the
   portal declares for that stimulus, else its default one with the datamodel's target-state flags) and
   merged by its own `PrepareFields()`, so a field it shows read-only or not at all is not set by a
   transition either, whatever the target state prompts for (`PortalForms::TransitionFields()`; review
