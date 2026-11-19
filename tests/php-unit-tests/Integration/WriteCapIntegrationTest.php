@@ -317,4 +317,44 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 			$this->assertStringContainsString('This call would write 6 objects', $e->getMessage());
 		}
 	}
+
+	/**
+	 * ADR 0019 (Guy Couronne, 2026-11-19): a bulk update that sends link sets is counted as an upper bound, and its refusal says so.
+	 */
+	public function testABulkUpdateThatSendsLinkSetsIsRefusedAsAnUpperBoundAndSaysSplittingHelps(): void
+	{
+		[, $aPeople, $iTicket] = $this->ticketWithPeople(3);
+		$iOther = (int)$this->CreateUserRequest(2, ['org_id' => (int)MetaModel::GetObject('UserRequest', $iTicket)->Get('org_id'), 'caller_id' => $aPeople[0]])->GetKey();
+		CMDBObject::SetCurrentChange(null);
+		$this->cap(3);
+
+		try {
+			$this->call(
+				fn () => ObjectBulkUpdate::execute('UserRequest', [$iTicket, $iOther], ['contacts_list' => $this->entries([$aPeople[1], $aPeople[2]])], false),
+				'{}'
+			);
+			$this->fail('two tickets and two link entries each, against a cap of three');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 6 objects', $e->getMessage());
+			$this->assertStringContainsString('That count is an upper bound', $e->getMessage());
+			$this->assertStringContainsString('Splitting the call into smaller ones helps.', $e->getMessage());
+		}
+	}
+
+	public function testABulkUpdateWithoutLinkSetsIsRefusedWithoutTheUpperBoundNote(): void
+	{
+		$this->cap(2);
+		$aIds = [];
+		foreach ([1, 2, 3] as $i) {
+			$aIds[] = (int)$this->CreateOrganization("NoLinks$i ".bin2hex(random_bytes(3)))->GetKey();
+		}
+		CMDBObject::SetCurrentChange(null);
+
+		try {
+			$this->call(static fn () => ObjectBulkUpdate::execute('Organization', $aIds, ['code' => 'X'], false), '{}');
+			$this->fail('three objects against a cap of two');
+		} catch (ToolCallException $e) {
+			$this->assertStringNotContainsString('upper bound', $e->getMessage(), 'the count is exact here');
+		}
+	}
 }

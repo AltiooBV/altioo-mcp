@@ -58,9 +58,13 @@ final class WriteCap
 	 * @param int $iObjects How many objects the call is about to create, change, delete, move through
 	 *                      a stimulus or attach to. A bulk call asks once for all of them.
 	 *
+	 * @param bool $bUpperBound The count is an upper bound, not what the write will record (a bulk update that sends link-set entries:
+	 *                          the objects are not loaded to tell which entries they already hold). A refusal then says so, and that
+	 *                          splitting the call helps.
+	 *
 	 * @since 2.0.0
 	 */
-	public static function RefusalFor(int $iObjects): ?string
+	public static function RefusalFor(int $iObjects, bool $bUpperBound = false): ?string
 	{
 		$iCap = Settings::GetMaxWritesPerHour();
 		if ($iCap === 0) {
@@ -81,10 +85,15 @@ final class WriteCap
 		// The operator's log names the setting; a portal user is not told the console's vocabulary.
 		ErrorReport::Log('A write was refused by the write cap: '.$sRefusal);
 
-		return PortalMode::Current() === null
+		$sAnswered = PortalMode::Current() === null
 			? $sRefusal
 			: self::Decide($iCap, $bTrailCounts, $aRows, self::$iReserved, $iObjects, $iNow, true);
+
+		return $bUpperBound ? $sAnswered.' '.self::UPPER_BOUND_NOTE : $sAnswered;
 	}
+
+	/** Said after a refusal whose count is an upper bound (a bulk update that sends link-set entries). */
+	public const UPPER_BOUND_NOTE = 'That count is an upper bound: it counts every link-set entry the call sends for every object, including entries an object already holds. Splitting the call into smaller ones helps.';
 
 	/**
 	 * The link rows a write is about to add, change or remove, for the attributes it set, to be added to the objects a tool asks for.

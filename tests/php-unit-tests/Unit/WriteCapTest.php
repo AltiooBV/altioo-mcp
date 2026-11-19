@@ -212,4 +212,17 @@ class WriteCapTest extends TestCase
 		$this->assertStringContainsString('WriteCap::LinkEntriesIn($class,$aRow)', SourceCalls::OfClass(ObjectBulkCreate::class)->Code());
 		$this->assertStringContainsString('WriteCap::LinkEntriesIn($class,$fields)', SourceCalls::OfClass(ObjectBulkUpdate::class)->Code());
 	}
+
+	/**
+	 * ADR 0019, 2026-11-19: the bulk update that sends link sets asks for an upper bound, and says so in its refusal.
+	 */
+	public function testABulkUpdateWithLinkSetsAsksForAnUpperBoundAndFlagsIt(): void
+	{
+		$sCode = SourceCalls::OfClass(ObjectBulkUpdate::class)->Code();
+
+		$this->assertStringContainsString('WriteCap::RefusalFor(count($aIds)*(1+$iLinkEntries),$iLinkEntries>0)', $sCode);
+		$this->assertStringContainsString('upper bound', WriteCap::UPPER_BOUND_NOTE);
+		$this->assertStringContainsString('Splitting the call', WriteCap::UPPER_BOUND_NOTE);
+		$this->assertStringContainsString('$bUpperBound?$sAnswered.\' \'.self::UPPER_BOUND_NOTE:$sAnswered', SourceCalls::OfClass(WriteCap::class)->Code('RefusalFor'));
+	}
 }
