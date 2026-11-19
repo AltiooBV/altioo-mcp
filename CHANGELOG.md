@@ -84,6 +84,11 @@ what said so.
   a scalar becomes a label naming its type, strings and lines are cut, and tool arguments are never written. The Basic password and the `Authorization` header are dropped from `$_SERVER` once the login has used them, as a token already
   was. A filter on an attribute iTop cannot search (`Person.picture`) is now answered as the caller's mistake, by `core_object_search_by_class` and `core_object_count` alike, not as a server-side failure.
   `zend.exception_ignore_args=On` stays the recommendation (SECURITY.md). **Rotate any Basic password that was used against an endpoint with the default setting**, and purge the log and its shipped copies. *Likely affects every 1.x line (the logger bridge dates from 1.0.0); not checked on those trees.*
+- **Security: a caller could make the audit row of its own call fail to be written.** A failed insert dropped the row, and the row is what `mcp_max_writes_per_hour` counts from: a committed write whose `comment` or client name held an emoji on an
+  audit table still in 3-byte utf8 (an instance upgraded from before iTop 3.1 can have one), or a refused call whose tool name of 70 000 characters was quoted in the row's message, left no row and spent none of the cap, and iTop wrote the failed `INSERT`
+  with its values into `error.log`, where retention and anonymisation never reach. Caller text is now fitted to its column before the insert (a character the column's character set cannot hold becomes U+FFFD; a message is cut to what its
+  column holds), a failed insert is retried once with only what the server built (credential, account, method, status, change, counts; no client name, comment, parameters or message), and the failure is logged by class and code, never by its text.
+  Unicode line and bidirectional controls (U+0085, U+2028, U+2029, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) are now stripped from the client name, the message and the change comment as the ASCII controls were, so a log forwarder reads one row where there is one.
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

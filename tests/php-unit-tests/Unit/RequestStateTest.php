@@ -55,6 +55,7 @@ class RequestStateTest extends TestCase
 		'Api\\MCPExtensionCollector::$aExtensionClasses' => 'registration: the provider classes iTop reports, collected once',
 		'Helper\\MCPLog::$m_oFileLog'           => 'the log handle: LogAPI opens one file log per channel and keeps it, as every iTop log does',
 		'Core\\Tools\\ObjectCount::$aResolved'  => 'a constant list of class names resolved by reflection; it cannot differ between requests',
+		'Controller\\CallLog::$aFourByteColumns' => 'a fact about the database schema (whether a column of the audit table takes four-byte characters), read once and the same on every request until the schema changes; CallLog::ForgetColumnCharsets() is the tests\'',
 	];
 
 	public function testTheListNamesOnlyStaticsThatExistAndGivesAReasonForEach(): void
