@@ -253,21 +253,25 @@ final class ExternalKeyPolicy
 			$sTarget
 		);
 
+		// Held to what this channel serves, as a query is anywhere else (doc/adr/0012), and BEFORE iTop parses it
+		// against the real datamodel: that parse says "unknown filter code" for a name that does not exist and
+		// accepts one the operator excluded, so asking it first told the two apart (review 2026-11-18, HA-5). The
+		// checker answers for both in the same words - text that is no OQL at all included, which then also
+		// gets the explanation of what a key takes.
+		try {
+			ObjectQuery::CheckQuery($sValue);
+		} catch (\Mcp\Exception\ToolCallException $e) {
+			return $e->getMessage().' '.$sHow;
+		}
+		$sUnproved = ExclusionSearches::OqlRefusal($sValue);
+		if ($sUnproved !== null) {
+			return $sUnproved.' '.$sHow;
+		}
+
 		try {
 			$oSearch = DBObjectSearch::FromOQL($sValue);
 		} catch (Throwable $e) {
 			return sprintf('%s is not an id and not valid OQL. %s', json_encode($sValue), $sHow);
-		}
-
-		// Held to what this channel serves, as a query is anywhere else (doc/adr/0012).
-		try {
-			ObjectQuery::CheckQuery($sValue);
-		} catch (\Mcp\Exception\ToolCallException $e) {
-			return $e->getMessage();
-		}
-		$sUnproved = ExclusionSearches::OqlRefusal($sValue);
-		if ($sUnproved !== null) {
-			return $sUnproved;
 		}
 
 		$sSelected = (string) $oSearch->GetClass();

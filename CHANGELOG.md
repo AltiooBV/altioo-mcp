@@ -99,6 +99,10 @@ what said so.
   The decision is now taken from the query as iTop parses it: a class that has an excluded subclass may be the class a query returns (its rows are narrowed to leave the subclass out) and nothing else - not a joined class, not the class of a sub-query at any depth,
   not a branch of a union. **Visible to operators:** a query that joined or sub-queried `Contact`, `Ticket` or another parent of an excluded class once is now refused where it was served before; select that class and filter on its own attributes. Applies to `core_object_search_by_oql`,
   `core_object_count` with `oql`, and an OQL given as a key's value. *Affects 1.3 (exclusions shipped in 1.3.0), not checked on that tree.*
+- **Security: an OQL query given as an external key's value told an excluded name from an unknown one.** The value was parsed by iTop against the real datamodel before this channel's checker ran, so
+  `manager_id: "SELECT Person WHERE phone = 'x'"` answered "Unknown filter code ... expecting {...}" when `phone` was excluded and "is not an id and not valid OQL" when the name did not exist, and an excluded class was told apart from an unknown one in the
+  same way: any account that may create or update could enumerate which names exist but are excluded (a name, never a value). The checker now answers first, in the same words for both, and the explanation of what a key takes follows it; text that is no OQL
+  at all gets the checker's reason followed by the same explanation. *Affects 1.3, not checked on that tree.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no
