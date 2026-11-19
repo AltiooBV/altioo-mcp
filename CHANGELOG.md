@@ -29,6 +29,26 @@ what said so.
 
 ### Fixed
 
+- **Security: in portal mode a link set was served with every row and every attribute.** `core_object_get` checked the object it was
+  asked for and then serialised its link sets from the ORM, asking neither the remote object's read scope nor the remote class's form: on the stock portal, a
+  portal user's `core_object_get Location person_list` returned a **person of another organisation** whom the portal itself hides (name, organisation, e-mail, phones,
+  employee number), and the same columns of a colleague whose own page hides them; `physicaldevice_list` returned a foreign server's serial number, management IP and
+  warranty dates (the portal has no `Server` scope); `ServiceFamily` `services_list` returned services no contract of the user's organisation covers; a ticket's
+  `contacts_list` returned a contact the portal does not show; and a blob inside a row came back whole in base64, past the `documents` toolset and
+  `mcp_max_document_bytes`. `Portal user` reads every class through UserRights, so the portal's scope is the only thing that hides those rows, and nothing asked it per row.
+  The `applied`, `changes` and `after` of a write and the rows of `core_portal_list` took the same path. A link set is now served **as the portal draws it**, on every
+  route (one place, `ObjectSerializer::Value()`): a row only when its remote object is in the user's read scope (a 1-n set's row itself, an n-n set's object behind the
+  link), asked once per class instead of once per row; only the columns the portal lists for that class (its `list`, the friendly name, and for a link the attributes the
+  portal's form lets the user edit), within what the class's view form shows and the attribute rights allow; a blob never inlined. The total of a long set counts the rows shown,
+  never those hidden. Console mode is unchanged. **What a portal user's assistant gives up:** a link set's rows carry fewer attributes than before (`id`, the name and the portal's
+  columns, not every attribute of the remote class); read the object itself for the rest. `core_object_history` and `core_my_activity` were checked and report no row of a set.
+  *Affects 1.2 and 1.3 (portal mode shipped in 1.2.0), not checked on those trees.*
+- **Security: a portal user's update of a link set deleted the rows the portal hides from them.** `core_object_update` and `core_object_apply_stimulus` replaced a link set with
+  the complete list the caller sent, so the rows the portal never showed them (a ticket's link to a contact of another organisation, for one) were removed, silently, and
+  sending one back to keep it was refused. The portal's own form submits a delta and keeps the rows it hides. The complete list a caller sends is now completed with the
+  rows the portal hides from them before it is compared and set, so a write changes what the user can see and leaves the rest; a person the portal does not show still cannot
+  be linked. The answer of a write to a link set says so (`links_kept`, generic: it never says whether any such row exists). Console mode is unchanged.
+  *Affects 1.2 and 1.3, not checked on those trees.*
 - **Security: a key or a link set typed on the parent of an excluded class served the excluded objects** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), Amendment 3).
   `mcp_excluded_classes` excluded a key or a link set only when its *declared* target was excluded. With `Person` excluded, the stock link rows
   `lnkContactToTicket` and `lnkContactToFunctionalCI` (keyed on `Contact`, the parent) still served an excluded person's name, email and id, filterable, sortable and
