@@ -24,10 +24,20 @@ require_once __DIR__.'/../bootstrap.php';
  */
 class PreparedAnswerTest extends TestCase
 {
+	/**
+	 * Emit() is the one place that calls http_response_code() (and header(), for an answer that has headers),
+	 * as the endpoint does on a request that has written nothing yet. In the PHPUnit process output has
+	 * started - the progress it prints - and PHP 8.4 warns, which PHPUnit makes an error. So it runs in a
+	 * process of its own, where nothing has been written, and the production code carries no guard that only
+	 * a test needs: what the endpoint puts on the wire is unchanged.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
 	public function testNothingIsWrittenUntilEmit(): void
 	{
 		$sBody = '{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}';
-		// No headers: header() warns once PHPUnit has written, and what is asserted is the body.
+		// No headers: what is asserted is the body.
 		$oResponse = new Response(200, [], $sBody);
 
 		ob_start();
