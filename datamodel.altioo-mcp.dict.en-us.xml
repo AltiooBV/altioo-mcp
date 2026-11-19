@@ -38,7 +38,7 @@
         <entry id="Class:AltiooEventMCPService/Attribute:written_objects" _delta="force"><![CDATA[Objects written]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:written_objects+" _delta="force"><![CDATA[Objects this call created, changed, deleted or attached to; the write cap adds these up per credential over the last hour]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Duration (ms)]]></entry>
-        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Wall-clock time the whole request took, in milliseconds]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Time the request took to decide its answer, in milliseconds. Writing the answer to the client is not included]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Response size (bytes)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Size of the response body sent back to the client]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Log reference]]></entry>

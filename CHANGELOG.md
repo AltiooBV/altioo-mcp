@@ -29,6 +29,18 @@ what said so.
 
 ### Fixed
 
+- **Security: a client that hung up after sending a write was neither audited nor counted by the write cap.** The endpoint
+  wrote its answer first and its audit row after. PHP learns that a client has gone only when it writes output, and then ends the
+  script, so a caller holding a write-grade token that sent a write and closed the connection without reading the answer
+  (or that sent a call padded so the answer was large) had the write committed and **no audit row written**. `mcp_max_writes_per_hour`
+  counts from those rows, so the write was never counted either: a client that simply hung up after every write
+  spent none of its cap, and the same hang-up left no row for a read, a refused call or a failed one. The row is now written
+  **before** the answer on every path - served, failed and refused as a batch - so it exists whatever the client does with the answer, and
+  the cap counts the write. iTop's own history (`CMDBChange`) was never affected: it is written with the change itself. No
+  runtime setting is touched to get this (no `ignore_user_abort()`). One reading changes: the audit row's duration is the time to decide the
+  answer, no longer the time to write it to the client, which is the client's. Rows already missing are not recoverable; iTop's history of the objects is
+  where to look for writes made by a credential that hung up, if the cap was in force. A batch refusal also now ends the PHP session the login opened, as every other answer does, instead
+  of leaving it for the garbage collector.
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

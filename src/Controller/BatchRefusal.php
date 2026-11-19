@@ -33,15 +33,13 @@ final class BatchRefusal
 		return str_starts_with(ltrim($sBody, " \t\r\n\xEF\xBB\xBF"), '[');
 	}
 
-	/** Answers the request and returns the result the audit row is made from. */
-	public static function Refuse(): MCPResult
+	/** The answer to a batch, not yet written, and the result the audit row is made from. */
+	public static function Refuse(): PreparedAnswer
 	{
-		MCPResponse::EmitBatchRefusal(self::MESSAGE);
-
 		$oResult = new MCPResult(MCPResult::REQUEST_REJECTED, self::MESSAGE);
 		$oResult->httpStatus = 400;
 		$oResult->mcpMethod = MCPMethod::BATCH;
 
-		return $oResult;
+		return MCPResponse::PrepareBatchRefusal(self::MESSAGE, $oResult);
 	}
 }

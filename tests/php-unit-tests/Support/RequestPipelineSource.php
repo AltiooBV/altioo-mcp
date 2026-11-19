@@ -93,6 +93,24 @@ final class RequestPipelineSource
 	}
 
 	/**
+	 * serve()'s own code, no comments, no whitespace: for what must not be in it at all.
+	 */
+	public static function ServeCode(): string
+	{
+		return SourceCalls::OfClass(MCPController::class)->Code('serve');
+	}
+
+	/**
+	 * The calls and constants serve() itself makes, in order, without the gates'.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function ServeUses(): array
+	{
+		return SourceCalls::OfClass(MCPController::class)->Uses('serve');
+	}
+
+	/**
 	 * The spec of a call the pipeline makes, from the short name a test uses: a
 	 * gate marker, `ResetSession`, `ForgetAuthToken` and so on. A name that is
 	 * not known is an error, so a test cannot ask about a call that is spelled
@@ -111,7 +129,10 @@ final class RequestPipelineSource
 			'ForgetAuthToken', 'PromoteBearerToAuthToken' => $sRoot.'Helper\\MCPHttp::'.$sName,
 			'MCPHttp::CarriesACredential' => $sRoot.'Helper\\MCPHttp::CarriesACredential',
 			'discardRequestSession' => $sRoot.'Controller\\MCPController::discardRequestSession',
-			'EmitResponse', 'OutputJsonResultException' => $sRoot.'Controller\\MCPResponse::'.$sName,
+			'PrepareResponse', 'PrepareException' => $sRoot.'Controller\\MCPResponse::'.$sName,
+			'BatchRefusal::Refuse' => $sRoot.'Controller\\BatchRefusal::Refuse',
+			'CallLog::LogIfConfigured' => $sRoot.'Controller\\CallLog::LogIfConfigured',
+			'Emit' => '->Emit',
 			default => str_starts_with($sName, '[[') ? $sName : throw new \LogicException("the pipeline has no call known as {$sName}"),
 		};
 	}

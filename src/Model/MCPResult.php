@@ -125,7 +125,7 @@ class MCPResult implements \JsonSerializable
 	}
 
 	/**
-	 * The shape MCPResponse::OutputJsonResultException() puts on the wire.
+	 * The shape MCPResponse::PrepareException() puts on the wire.
 	 *
 	 * Named rather than inferred from the public properties, so that a field
 	 * added for the audit trail - a timing, a log reference - does not silently
