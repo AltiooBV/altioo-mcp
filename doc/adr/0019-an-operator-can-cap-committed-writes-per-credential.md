@@ -45,6 +45,12 @@ addresses; this limits committed objects.
   One named exemption, `core_set_obsolete_data`: a display preference of the caller's own, with no change and no object.
   A core tool's signatures do not change (ADR 0014). A call allowed is reserved for the rest of its request, so a request
   carrying several calls cannot spend the room twice.
+- **Link rows are objects, and are counted before the write.** A create, an update or a stimulus asks for the object plus the
+  link rows its call would add, change or remove (`WriteCap::LinkRowsOf()`, read from the object's own link set once its values
+  are set; a complete list that repeats rows already there counts none of them); a bulk create asks for its rows plus every
+  link-set entry they send, and a bulk update for each object plus the entries the call sends, an upper bound since it does not
+  load them (`WriteCap::LinkEntriesIn()`). Review 2026-11-18, HA-8: they were counted only after the write, so one call with 19
+  entries committed 20 objects against a cap of 3. The delete cascade stays counted afterwards.
 - **A pack (ADR 0016).** `WriteCap` is `@api` and on `PublicSurfaceTest::EXTRA_SURFACE`; `doc/extending.md` says a pack's
   write tool asks it with its object count.
 - **The refusal** is one line: the cap, the setting's name, how many more the call would write and the minutes until

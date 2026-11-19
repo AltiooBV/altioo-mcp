@@ -171,4 +171,150 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 
 		$this->assertFalse(ToolOutput::Decode($this->update($iOrg, 'CapOther2', false))['simulated']);
 	}
+
+	/** @return array{0: int, 1: array<int, int>, 2: int} The organisation, some people, and a ticket */
+	private function ticketWithPeople(int $iPeople): array
+	{
+		if (!MetaModel::IsValidClass('UserRequest') || !MetaModel::IsValidClass('lnkContactToTicket')) {
+			$this->markTestSkipped('Needs request management.');
+		}
+		$iOrg = (int)$this->CreateOrganization('CapLinks '.bin2hex(random_bytes(4)))->GetKey();
+		$aPeople = [];
+		for ($i = 0; $i < $iPeople; $i++) {
+			$aPeople[] = (int)$this->CreatePerson(30 + $i, $iOrg)->GetKey();
+		}
+		$iTicket = (int)$this->CreateUserRequest(1, ['org_id' => $iOrg, 'caller_id' => $aPeople[0]])->GetKey();
+		CMDBObject::SetCurrentChange(null);
+
+		return [$iOrg, $aPeople, $iTicket];
+	}
+
+	/** @param array<int, int> $aPeople */
+	private function entries(array $aPeople): array
+	{
+		return array_map(static fn (int $i): array => ['contact_id' => $i], $aPeople);
+	}
+
+	private function lastWritten(): int
+	{
+		$aRows = [];
+		$oRows = new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT AltiooEventMCPService WHERE written_objects > 0 AND user_id = :user'), [], ['user' => (int)\CMDBChange::GetCurrentUserId()]);
+		while ($oRow = $oRows->Fetch()) {
+			$aRows[] = (int)$oRow->Get('written_objects');
+		}
+
+		return (int)end($aRows);
+	}
+
+	/**
+	 * Review 2026-11-18, HA-8: link-set entries were counted by the cap only after the write, with no ceiling per call:
+	 * with a cap of 3 and 2 spent, one create with 19 `contacts_list` entries committed 20 objects. ADR 0019 counts objects,
+	 * not calls, and a link row is an object.
+	 */
+	public function testALinkSetsEntriesAreCountedBeforeTheWrite(): void
+	{
+		[, $aPeople, $iTicket] = $this->ticketWithPeople(6);
+		$this->cap(3);
+
+		try {
+			$this->call(
+				static fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['contacts_list' => array_map(static fn (int $i): array => ['contact_id' => $i], $aPeople)], false),
+				json_encode(['arguments' => ['simulate' => false]])
+			);
+			$this->fail('six link rows and the ticket against a cap of three must be refused before anything is written');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 7 objects', $e->getMessage());
+		}
+		$this->assertSame(0, (new DBObjectSet(DBObjectSearch::FromOQL('SELECT lnkContactToTicket WHERE ticket_id = :t'), [], ['t' => $iTicket]))->Count(), 'the refused call wrote nothing');
+	}
+
+	public function testTheRowsAnUpdateWouldAddFitTheCapAndAreCountedWhenWritten(): void
+	{
+		[, $aPeople, $iTicket] = $this->ticketWithPeople(3);
+		$this->cap(3);
+
+		// The ticket and two link rows: exactly the cap.
+		$this->call(
+			fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['contacts_list' => $this->entries([$aPeople[1], $aPeople[2]])], false),
+			json_encode(['arguments' => ['simulate' => false]])
+		);
+		$this->assertSame(3, $this->lastWritten(), 'the audit row counts what the cap asked for');
+
+		try {
+			$this->call(
+				fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['title' => 'one more'], false),
+				json_encode(['arguments' => ['simulate' => false]])
+			);
+			$this->fail('the cap is spent');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('write cap of 3', $e->getMessage());
+		}
+	}
+
+	public function testACompleteListThatRepeatsTheRowsAlreadyThereCountsNoneOfThem(): void
+	{
+		[, $aPeople, $iTicket] = $this->ticketWithPeople(4);
+		// The rows are there already, put there by the fixture and not by a call that would be counted.
+		foreach ([1, 2, 3] as $i) {
+			$this->createObject('lnkContactToTicket', ['ticket_id' => $iTicket, 'contact_id' => $aPeople[$i]]);
+		}
+		CMDBObject::SetCurrentChange(null);
+		$this->cap(3);
+		CMDBObject::SetCurrentChange(null);
+
+		// The same three and nothing else: a complete list is not three new rows.
+		$aAnswer = ToolOutput::Decode($this->call(
+			fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['title' => 'same rows', 'contacts_list' => $this->entries([$aPeople[1], $aPeople[2], $aPeople[3]])], false),
+			json_encode(['arguments' => ['simulate' => false]])
+		));
+		$this->assertFalse($aAnswer['simulated'], 'rows already there were counted again');
+		$this->assertSame(1, $this->lastWritten(), 'only the ticket was written');
+	}
+
+	public function testARowThatChangesAndARowThatGoesAreCounted(): void
+	{
+		[, $aPeople, $iTicket] = $this->ticketWithPeople(4);
+		foreach ([1, 2, 3] as $i) {
+			$this->createObject('lnkContactToTicket', ['ticket_id' => $iTicket, 'contact_id' => $aPeople[$i]]);
+		}
+		$this->cap(2);
+		CMDBObject::SetCurrentChange(null);
+
+		// One row dropped (the ticket and a removal: two) is within the cap; dropping two is not.
+		try {
+			$this->call(
+				fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['contacts_list' => $this->entries([$aPeople[1]])], false),
+				json_encode(['arguments' => ['simulate' => false]])
+			);
+			$this->fail('two removals and the ticket against a cap of two');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 3 objects', $e->getMessage());
+		}
+		$this->call(
+			fn () => ObjectUpdate::execute('UserRequest', $iTicket, ['contacts_list' => $this->entries([$aPeople[1], $aPeople[2]])], false),
+			json_encode(['arguments' => ['simulate' => false]])
+		);
+		$this->assertSame(2, $this->lastWritten());
+	}
+
+	public function testACreateAndABulkCreateCountTheirLinkEntriesToo(): void
+	{
+		[$iOrg, $aPeople] = $this->ticketWithPeople(5);
+		$this->cap(3);
+		$aFields = ['org_id' => $iOrg, 'caller_id' => $aPeople[0], 'title' => 'cap create', 'description' => 'x', 'contacts_list' => $this->entries($aPeople)];
+
+		try {
+			$this->call(static fn () => \Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate::execute('UserRequest', $aFields, false), json_encode(['arguments' => ['simulate' => false]]));
+			$this->fail('a ticket with five link rows against a cap of three');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 6 objects', $e->getMessage());
+		}
+
+		try {
+			$this->call(static fn () => \Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate::execute('UserRequest', [$aFields], false), '{}');
+			$this->fail('a bulk create of a ticket with five link rows against a cap of three');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 6 objects', $e->getMessage());
+		}
+	}
 }
