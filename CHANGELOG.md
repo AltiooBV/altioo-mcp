@@ -29,6 +29,17 @@ what said so.
 
 ### Fixed
 
+- **Security: a key or a link set typed on the parent of an excluded class served the excluded objects** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), Amendment 3).
+  `mcp_excluded_classes` excluded a key or a link set only when its *declared* target was excluded. With `Person` excluded, the stock link rows
+  `lnkContactToTicket` and `lnkContactToFunctionalCI` (keyed on `Contact`, the parent) still served an excluded person's name, email and id, filterable, sortable and
+  groupable; every ticket's and CI's `contacts_list` returned their ids, in portal mode too; a write to the set answered differently for an
+  existing excluded person than for an id nobody has and then let the link row read them back; and `core_class_schema` listed up to 100 names
+  of excluded people and teams as the set's allowed values. The same held for any excluded subclass behind a parent-typed key (`Server` behind `FunctionalCI`).
+  A key or link set whose target has an excluded descendant is now **excluded for every row, in both modes, on every route**, as an excluded attribute is, and
+  the fields and labels through it with it. A class whose friendly name is made of such a part (the link class, named by `contact_name`) no longer serves its
+  `friendlyname`: not in a read, a filter, a sort, a group or `find_by_name`; its default field list answers with the id. A derived exclusion never makes the settings
+  malformed. **What an operator gives up:** with `Person` excluded, `contacts_list` disappears from every ticket, for teams as well as people, and the contact fields of the
+  link rows; with `Server` excluded, `functionalcis_list` does. Check what your assistants read through them before upgrading.
 - **Security: a client that hung up after sending a write was neither audited nor counted by the write cap.** The endpoint
   wrote its answer first and its audit row after. PHP learns that a client has gone only when it writes output, and then ends the
   script, so a caller holding a write-grade token that sent a write and closed the connection without reading the answer
