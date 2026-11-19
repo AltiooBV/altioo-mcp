@@ -29,6 +29,49 @@ what said so.
 
 ### Fixed
 
+- **Security: in portal mode a link set was served with every row and every attribute.** `core_object_get` checked the object it was
+  asked for and then serialised its link sets from the ORM, asking neither the remote object's read scope nor the remote class's form: on the stock portal, a
+  portal user's `core_object_get Location person_list` returned a **person of another organisation** whom the portal itself hides (name, organisation, e-mail, phones,
+  employee number), and the same columns of a colleague whose own page hides them; `physicaldevice_list` returned a foreign server's serial number, management IP and
+  warranty dates (the portal has no `Server` scope); `ServiceFamily` `services_list` returned services no contract of the user's organisation covers; a ticket's
+  `contacts_list` returned a contact the portal does not show; and a blob inside a row came back whole in base64, past the `documents` toolset and
+  `mcp_max_document_bytes`. `Portal user` reads every class through UserRights, so the portal's scope is the only thing that hides those rows, and nothing asked it per row.
+  The `applied`, `changes` and `after` of a write and the rows of `core_portal_list` took the same path. A link set is now served **as the portal draws it**, on every
+  route (one place, `ObjectSerializer::Value()`): a row only when its remote object is in the user's read scope (a 1-n set's row itself, an n-n set's object behind the
+  link), asked once per class instead of once per row; only the columns the portal lists for that class (its `list`, the friendly name, and for a link the attributes the
+  portal's form lets the user edit), within what the class's view form shows and the attribute rights allow; a blob never inlined. The total of a long set counts the rows shown,
+  never those hidden. Console mode is unchanged. **What a portal user's assistant gives up:** a link set's rows carry fewer attributes than before (`id`, the name and the portal's
+  columns, not every attribute of the remote class); read the object itself for the rest. `core_object_history` and `core_my_activity` were checked and report no row of a set.
+  *Affects 1.2 and 1.3 (portal mode shipped in 1.2.0), not checked on those trees.*
+- **Security: a portal user's update of a link set deleted the rows the portal hides from them.** `core_object_update` and `core_object_apply_stimulus` replaced a link set with
+  the complete list the caller sent, so the rows the portal never showed them (a ticket's link to a contact of another organisation, for one) were removed, silently, and
+  sending one back to keep it was refused. The portal's own form submits a delta and keeps the rows it hides. The complete list a caller sends is now completed with the
+  rows the portal hides from them before it is compared and set, so a write changes what the user can see and leaves the rest; a person the portal does not show still cannot
+  be linked. The answer of a write to a link set says so (`links_kept`, generic: it never says whether any such row exists). Console mode is unchanged.
+  *Affects 1.2 and 1.3, not checked on those trees.*
+- **Security: a key or a link set typed on the parent of an excluded class served the excluded objects** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md), Amendment 3).
+  `mcp_excluded_classes` excluded a key or a link set only when its *declared* target was excluded. With `Person` excluded, the stock link rows
+  `lnkContactToTicket` and `lnkContactToFunctionalCI` (keyed on `Contact`, the parent) still served an excluded person's name, email and id, filterable, sortable and
+  groupable; every ticket's and CI's `contacts_list` returned their ids, in portal mode too; a write to the set answered differently for an
+  existing excluded person than for an id nobody has and then let the link row read them back; and `core_class_schema` listed up to 100 names
+  of excluded people and teams as the set's allowed values. The same held for any excluded subclass behind a parent-typed key (`Server` behind `FunctionalCI`).
+  A key or link set whose target has an excluded descendant is now **excluded for every row, in both modes, on every route**, as an excluded attribute is, and
+  the fields and labels through it with it. A class whose friendly name is made of such a part (the link class, named by `contact_name`) no longer serves its
+  `friendlyname`: not in a read, a filter, a sort, a group or `find_by_name`; its default field list answers with the id. A derived exclusion never makes the settings
+  malformed. **What an operator gives up:** with `Person` excluded, `contacts_list` disappears from every ticket, for teams as well as people, and the contact fields of the
+  link rows; with `Server` excluded, `functionalcis_list` does. Check what your assistants read through them before upgrading.
+- **Security: a client that hung up after sending a write was neither audited nor counted by the write cap.** The endpoint
+  wrote its answer first and its audit row after. PHP learns that a client has gone only when it writes output, and then ends the
+  script, so a caller holding a write-grade token that sent a write and closed the connection without reading the answer
+  (or that sent a call padded so the answer was large) had the write committed and **no audit row written**. `mcp_max_writes_per_hour`
+  counts from those rows, so the write was never counted either: a client that simply hung up after every write
+  spent none of its cap, and the same hang-up left no row for a read, a refused call or a failed one. The row is now written
+  **before** the answer on every path - served, failed and refused as a batch - so it exists whatever the client does with the answer, and
+  the cap counts the write. iTop's own history (`CMDBChange`) was never affected: it is written with the change itself. No
+  runtime setting is touched to get this (no `ignore_user_abort()`). One reading changes: the audit row's duration is the time to decide the
+  answer, no longer the time to write it to the client, which is the client's. Rows already missing are not recoverable; iTop's history of the objects is
+  where to look for writes made by a credential that hung up, if the cap was in force. A batch refusal also now ends the PHP session the login opened, as every other answer does, instead
+  of leaving it for the garbage collector.
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

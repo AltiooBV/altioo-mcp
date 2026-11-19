@@ -160,6 +160,43 @@ class ObjectAccess
 	}
 
 	/**
+	 * The rows of a link set of the object that the caller is shown, each with
+	 * the attributes it is shown of it, or null when this mode serves a link set
+	 * as the datamodel renders it (the console: every row, every scalar
+	 * attribute the attribute rights let through, exactly as
+	 * AttributeLinkedSet::GetForJSON() makes them).
+	 *
+	 * A row is an object of its own class or the link to one, and a mode that
+	 * limits what the caller reads of objects limits it in a set too
+	 * ({@see Service\Read\LinkedRows}, which asks this for every link set any
+	 * tool serialises).
+	 *
+	 * @param int|null $iMost How many rows the caller will be told of, at most, or null for every one:
+	 *                        the rows beyond it are counted and not described.
+	 *
+	 * @return array{0: array<int, array<string, mixed>>, 1: int}|null The rows described, and how many the caller is shown in all.
+	 */
+	public function LinkedRows(DBObject $oObject, string $sAttCode, ?int $iMost = null): ?array
+	{
+		return null;
+	}
+
+	/**
+	 * Completes the complete list of links a caller sends with the links this
+	 * mode keeps for them, which the caller was never shown and so could not
+	 * send. Nothing on the console, which shows a set whole.
+	 *
+	 * Called with the set a write is about to replace the current one with,
+	 * before anything is judged or Set(): what the caller is then held to is
+	 * what they changed of what they could see.
+	 *
+	 * @param DBObjectSet $oNewSet As RestUtils::MakeValue() made it; rows are added to it.
+	 */
+	public function KeepHiddenLinks(DBObject $oObject, string $sAttCode, DBObjectSet $oNewSet): void
+	{
+	}
+
+	/**
 	 * What of a write's `changes` the caller is shown. A write reports every
 	 * attribute it touches, the ones iTop fills in as well as the ones named,
 	 * and on the console the attribute rights already decided what each shows.

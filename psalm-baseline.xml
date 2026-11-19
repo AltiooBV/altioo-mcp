@@ -163,7 +163,8 @@
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden'    => WriteOutcome::Map($aOverridden),
 					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-				])]]></code>
+				]
+				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)))]]></code>
       <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
@@ -181,7 +182,8 @@
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WriteOutcome::Map($aOverridden),
 					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-			])]]></code>
+			]
+			+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)))]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
       <code><![CDATA[array]]></code>
@@ -449,7 +451,8 @@
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),
 					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-				])]]></code>
+				]
+				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)))]]></code>
       <code><![CDATA[ToolOutput::StructuredWrite(['class' => $class]
 				+ WriteOutcome::Identity($class, $id)
 				+ [
@@ -460,7 +463,8 @@
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),
 					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-				])]]></code>
+				]
+				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)))]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
       <code><![CDATA[array]]></code>

@@ -38,7 +38,7 @@
         <entry id="Class:AltiooEventMCPService/Attribute:written_objects" _delta="force"><![CDATA[Objets écrits]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:written_objects+" _delta="force"><![CDATA[Objets que cet appel a créés, modifiés, supprimés ou auxquels il a joint un fichier ; le plafond d'écriture les additionne par identifiant sur la dernière heure]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:duration_ms" _delta="force"><![CDATA[Durée (ms)]]></entry>
-        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Temps total de traitement de la requête, en millisecondes]]></entry>
+        <entry id="Class:AltiooEventMCPService/Attribute:duration_ms+" _delta="force"><![CDATA[Temps pris par la requête pour décider de sa réponse, en millisecondes. L'envoi de la réponse au client n'est pas compris]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes" _delta="force"><![CDATA[Taille de la réponse (octets)]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:response_bytes+" _delta="force"><![CDATA[Taille du corps de la réponse renvoyée au client]]></entry>
         <entry id="Class:AltiooEventMCPService/Attribute:error_ref" _delta="force"><![CDATA[Référence de log]]></entry>

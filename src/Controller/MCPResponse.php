@@ -20,6 +20,9 @@ use Psr\Http\Message\ResponseInterface;
  * answer to a refusal, the answer to a CORS preflight, the CORS headers all
  * three carry and the challenge a 401 is sent with.
  *
+ * The answers a request gets are built here and written by the controller, after
+ * the audit row: each is a PreparedAnswer, which says why.
+ *
  * The response half of what MCPHttp and MCPController used to do together; the
  * request half, which runs before anything is answered, stays in Helper\MCPHttp.
  *
@@ -120,48 +123,56 @@ final class MCPResponse
 	}
 
 	/**
-	 * Answers a JSON-RPC batch, which this endpoint does not accept: HTTP 400 and a JSON-RPC
+	 * The answer to a JSON-RPC batch, which this endpoint does not accept: HTTP 400 and a JSON-RPC
 	 * -32600 Invalid Request, in the protocol's own shape so a client reads it as the protocol's
-	 * answer.
+	 * answer. Nothing is written until Emit(); see PreparedAnswer.
+	 *
+	 * @param MCPResult $oResult What the audit row is made from.
 	 */
-	public static function EmitBatchRefusal(string $sMessage): void
+	public static function PrepareBatchRefusal(string $sMessage, MCPResult $oResult): PreparedAnswer
 	{
-		http_response_code(400);
+		return new PreparedAnswer($oResult, static function () use ($sMessage): void {
+			http_response_code(400);
 
-		$oP = new JsonPage();
-		self::addCorsHeader($oP);
-		$oP->SetData(['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => $sMessage]]);
-		$oP->SetOutputDataOnly(true);
-		$oP->Output();
+			$oP = new JsonPage();
+			self::addCorsHeader($oP);
+			$oP->SetData(['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => $sMessage]]);
+			$oP->SetOutputDataOnly(true);
+			$oP->Output();
+		});
 	}
 
-	public static function EmitResponse(ResponseInterface $response): MCPResult
+	/**
+	 * The SDK's answer, read and described for the audit row, and not yet written:
+	 * Emit() does that, once the row is. The result carries the status and the size
+	 * of the body; the body is read here, once.
+	 */
+	public static function PrepareResponse(ResponseInterface $response): PreparedAnswer
 	{
-		foreach ($response->getHeaders() as $name => $values) {
-			foreach ($values as $value) {
-				header(sprintf('%s: %s', $name, $value), false);
-			}
-		}
-
-		foreach (self::corsHeaders() as $sName => $sValue) {
-			header($sName.': '.$sValue, true);
-		}
-
-		http_response_code($response->getStatusCode());
-
 		$body = $response->getBody();
 		if ($body->isSeekable()) {
 			$body->rewind();
 		}
 		$sBody = (string)$body;
 
-		// Inspect before emitting — no double decode
 		$oResult = self::buildResultFromBody($response, $sBody);
 		$oResult->responseBytes = strlen($sBody);
 
-		echo $sBody;
+		return new PreparedAnswer($oResult, static function () use ($response, $sBody): void {
+			foreach ($response->getHeaders() as $name => $values) {
+				foreach ($values as $value) {
+					header(sprintf('%s: %s', $name, $value), false);
+				}
+			}
 
-		return $oResult;
+			foreach (self::corsHeaders() as $sName => $sValue) {
+				header($sName.': '.$sValue, true);
+			}
+
+			http_response_code($response->getStatusCode());
+
+			echo $sBody;
+		});
 	}
 
 	/**
@@ -214,8 +225,14 @@ final class MCPResponse
 		return new MCPResult(MCPResult::OK, 'Response emitted successfully');
 	}
 
-	// The following methods are for handling exceptions and logging in a consistent way, ensuring that even if the MCP response cannot be emitted properly, we still return a valid JSON response with error details.
-	public static function OutputJsonResultException(MCPResult $oResult): void
+	/**
+	 * The answer to a call that failed, a refusal or an unexpected error: a plain JSON body and
+	 * the status the result carries, not yet written. Whatever went wrong, the caller still gets
+	 * a valid JSON response with the error once Emit() runs.
+	 *
+	 * @param MCPResult $oResult What the caller is told, and what the audit row is made from.
+	 */
+	public static function PrepareException(MCPResult $oResult): PreparedAnswer
 	{
 		$sResponse = json_encode($oResult);
 		if ($sResponse === false || is_null($sResponse)) {
@@ -236,26 +253,24 @@ final class MCPResponse
 			$sResponse = json_encode($oJsonIssue);
 		}
 
-		$bUnauthorized = $oResult->code === MCPResult::UNAUTHORIZED;
+		return new PreparedAnswer($oResult, static function () use ($oResult, $sResponse): void {
+			$bUnauthorized = $oResult->code === MCPResult::UNAUTHORIZED;
 
-		// A throw can also happen after emitResponse() has already flushed a
-		// successful body, and a status set at that point is only noise.
-		if (!headers_sent()) {
 			http_response_code($oResult->httpStatus ?? ($bUnauthorized ? 401 : 500));
-		}
 
-		$oP = new JsonPage();
-		self::addCorsHeader($oP);
-		if ($bUnauthorized) {
-			// A 401 with no challenge says "no" without saying what would have
-			// worked. RFC 9110 requires one on this status; RFC 9728 is what a
-			// client with a Connect button follows to find the authorization
-			// server, when the operator has put one in front of iTop.
-			$oP->add_header('WWW-Authenticate: '.self::BearerChallenge(OAuthResource::MetadataUrl(), $oResult->challengeError));
-		}
-		$oP->SetData(json_decode($sResponse, true));
-		$oP->SetOutputDataOnly(true);
-		$oP->Output();
+			$oP = new JsonPage();
+			self::addCorsHeader($oP);
+			if ($bUnauthorized) {
+				// A 401 with no challenge says "no" without saying what would have
+				// worked. RFC 9110 requires one on this status; RFC 9728 is what a
+				// client with a Connect button follows to find the authorization
+				// server, when the operator has put one in front of iTop.
+				$oP->add_header('WWW-Authenticate: '.self::BearerChallenge(OAuthResource::MetadataUrl(), $oResult->challengeError));
+			}
+			$oP->SetData(json_decode($sResponse, true));
+			$oP->SetOutputDataOnly(true);
+			$oP->Output();
+		});
 	}
 
 	/**

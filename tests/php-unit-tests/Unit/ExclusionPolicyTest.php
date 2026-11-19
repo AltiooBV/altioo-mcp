@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -61,6 +63,38 @@ class ExclusionPolicyTest extends TestCase
 		foreach ($aQueries as $oQuery) {
 			$this->assertMatchesRegularExpression('/^\s*SELECT\s+AltiooEventMCPService\b/', (string)$oQuery, 'a dashlet reads something other than the audit trail');
 		}
+	}
+
+	/**
+	 * doc/adr/0012, Amendment 3: a key or a link set typed on the parent of an excluded class holds rows of it, so the
+	 * question asked about the target is "does a query on it reach an excluded class", never "is it excluded".
+	 * Asked of the target alone, `lnkContactToTicket.contact_id` (to Contact) served an excluded Person. The behaviour is
+	 * in ExclusionParentTypedTest; this keeps the one call that decides it from being put back.
+	 */
+	public function testAKeyAndALinkSetAskWhetherTheirTargetHoldsAnExcludedClass(): void
+	{
+		$oSource = SourceCalls::OfClass(ExclusionPolicy::class);
+		$sOwn = ExclusionPolicy::class;
+
+		$this->assertTrue($oSource->HasCall($sOwn.'::holdsExcluded', 'excludes'), 'excludes() no longer asks what a target holds');
+		$this->assertFalse($oSource->HasCall($sOwn.'::ExcludesClass', 'excludes'), 'excludes() asks about the declared class alone');
+		$this->assertTrue($oSource->HasCall($sOwn.'::ExcludesClass', 'holdsExcluded'), 'a class that is itself excluded holds one');
+		$this->assertTrue($oSource->HasCall($sOwn.'::lineage', 'holdsExcluded'), 'the classes above an excluded one are not walked');
+	}
+
+	/**
+	 * The friendly name is derived, never listed: the settings keep refusing an attribute the operator names that is
+	 * part of it, and a name that reaches an excluded attribute by derivation is absent without refusing anything.
+	 */
+	public function testTheFriendlyNameIsDerivedFromItsPartsAndItsPartsAreReadOnce(): void
+	{
+		$oPolicy = SourceCalls::OfClass(ExclusionPolicy::class);
+		$sOwn = ExclusionPolicy::class;
+		$this->assertTrue($oPolicy->HasCall($sOwn.'::nameReachesExcluded', 'excludes'));
+		$this->assertTrue($oPolicy->HasCall(ExclusionSettings::class.'::NameAttributes', 'nameReachesExcluded'));
+		$this->assertTrue($oPolicy->HasCall($sOwn.'::excludes', 'nameReachesExcluded'), 'a part of the name is asked about as any attribute is');
+
+		$this->assertTrue(SourceCalls::OfClass(ExclusionSettings::class)->HasCall(ExclusionSettings::class.'::NameAttributes', 'datamodelProblem'), 'the settings check reads the name another way than the policy does');
 	}
 
 	public function testTheExemptProfilesAreReadAsNames(): void

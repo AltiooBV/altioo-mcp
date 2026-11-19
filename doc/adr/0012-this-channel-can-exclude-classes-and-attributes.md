@@ -88,6 +88,42 @@ removing an extension.** The operator sees it in `log/error.log`, once per reque
 exclusions: ... Nothing is served to anyone until it is corrected"; a client authenticates and is then served no tools,
 resources or prompts, so it looks as if the server has nothing, and says nothing more.
 
+## Amendment 3 — a key or a link set that can hold an excluded class is excluded
+
+**Decided by Guy Couronne, 2026-11-19 ("Whole attribute absent")**, after the 2026-11-18 review (HA-1, HA-2, HA-9) found that
+"an external key or a link set whose target class is excluded" did not reach a key **typed on a parent** of an excluded class.
+`lnkContactToTicket.contact_id` points at `Contact`; with `Person` excluded, `Contact` is not, yet what the key holds is a
+`Person`, so the link row served that person's name and email, every ticket's `contacts_list` served their id, a write to the set
+answered differently for an existing excluded person than for an id nobody has, and a schema listed up to 100 names.
+
+The rule, in the words of this record's own precedent for an attribute on its parents ("the parent therefore loses the attribute
+for all its rows"): an external key, or a link set, **whose target class has an excluded descendant — or is excluded — is
+excluded for every row, on every route, in both modes**, as an excluded attribute is. The target of a direct set is its linked
+class; of an indirect one, the class its key to the remote object points at. It follows, by the rules above, that the external
+fields through such a key (`contact_name`, `contact_email`), its `_friendlyname` and every other derived label are absent too.
+The rows are not narrowed instead: a key on `Contact` would need a different answer per row, and "this row's value is hidden"
+tells which rows are the excluded ones.
+
+- **A friendly name made of an excluded attribute is not served.** A class whose short or complementary friendly name reaches
+  an excluded attribute — the link class is named by `contact_name`, so `lnkContactToTicket` and `lnkPersonToTeam` with `Person`
+  excluded — has its `friendlyname` **excluded as an attribute**: not in a read, not as a filter, a sort or a group, not matched by
+  `find_by_name`, and not as the `_friendlyname` or the label of a key that points at the class. Chosen as the narrowest correct
+  answer because iTop builds the name from its parts and there is no name left once a part is gone; an attribute that is absent
+  is already how every route answers for an excluded name, where a masked name would say that one exists. It is asked of the
+  class and of the served classes below it, since a query on the class returns their rows and names them by their own. The default
+  field list (`id, friendlyname`) answers with the id alone for such a class; typed out, `friendlyname` is an unknown attribute.
+  A derived exclusion **never makes the settings malformed**: only an attribute the operator lists is checked against the friendly
+  name when the settings are read, as before, so excluding `Person` keeps the endpoint serving.
+- **A schema lists no name of an excluded object.** `core_class_schema` and `itop://core/class/{class}` give a link set's `values`
+  only when the objects it lists are of a class that is served and named by what is served; the sets of the rule above are
+  absent altogether.
+- **The cost is the operator's to know.** With `Person` excluded, `contacts_list` disappears from every ticket and `Team`
+  members through it, and with `Server` excluded `functionalcis_list` does on every ticket and every other class that links
+  to `FunctionalCI`; a link class that is named by an excluded part serves its id and its other fields, not its name. An
+  operator who wants an attribute of the ticket kept should not exclude the class that sits under its key.
+- The first sentence of "What points at an excluded thing is excluded too", above, now reads with this: a target that is
+  **or holds** an excluded class.
+
 ## Consequences
 
 An operator who excludes `Person.phone` loses it from every read, filter, sort and write on this channel, including the
@@ -98,6 +134,7 @@ Rejected: a profile-based mechanism (changes the console, which is the point it 
 value as `***` as sensitive attributes are (it confirms the attribute exists and holds something). Rejected: a warning for an
 unknown entry (a security setting that does nothing is worse than one that stops the service).
 
-Amendment 1 (the "Not covered" section) and Amendment 2 are the maintainer's, 2026-11-09.
+Amendment 1 (the "Not covered" section) and Amendment 2 are the maintainer's, 2026-11-09; Amendment 3 is the maintainer's, 2026-11-19.
 
-Enforced by: `ExclusionPolicyTest`, `ExclusionRoutesTest` (every tool × route, hidden equals absent) and the HTTP smoke.
+Enforced by: `ExclusionPolicyTest`, `ExclusionRoutesTest` (every tool × route, hidden equals absent), `ExclusionParentTypedTest` (Amendment 3,
+with `Person` and with `Server`), `ExclusionPortalTest` and the HTTP smoke.

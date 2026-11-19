@@ -85,7 +85,7 @@ Settings agent skills read here.
   anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Also: classes and attributes an operator excludes are **absent** on every route, in both modes, for every grade, never refused
   with a different word, and a setting that cannot be honoured stops the endpoint ([0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)):
-  a new tool or surface that returns object data asks `Service\Rights\ExclusionPolicy`. The one lift is an account holding an exempt profile,
+  a new tool or surface that returns object data asks `Service\Rights\ExclusionPolicy` (a key or link set typed on a parent of an excluded class is excluded whole, and so is a friendly name made of an excluded part: Amendment 3). The one lift is an account holding an exempt profile,
   never a token scope, a client name or a portal user ([0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md)).
   Also: `core_my_activity` is the one thing portal mode serves that the portal has no screen for — an account's own trail, not
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).

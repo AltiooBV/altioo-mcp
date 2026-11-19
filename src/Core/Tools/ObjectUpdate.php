@@ -301,7 +301,8 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),
 					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-				]);
+				]
+				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)));
 		}
 
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
@@ -328,7 +329,8 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),
 					'defaulted'  => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
-				]);
+				]
+				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)));
 		} catch (\Throwable $e) {
 			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to update {$class}::{$id}", $e));
 		}

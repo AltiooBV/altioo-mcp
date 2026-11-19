@@ -180,10 +180,10 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 | `Hook` | What iTop calls into: `AuditHousekeeping`, the background process |
 | `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), opens and closes the request's state (`RequestScope`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and its session store |
 | `Core` | The core tools, resources, resource templates and prompts, and `ServerInstructions` |
-| `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from, `PortalAccess` (the portal's `ObjectAccess`), the description and the rows a list is built from |
+| `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from (with `PortalLists`, the columns it lists), `PortalAccess` (the portal's `ObjectAccess`, which also decides the rows of a link set), the description and the rows a list is built from |
 | `Service\Write` | Turning a caller's fields into a checked write: `DryRun`, `WritePlan`, `WriteValues`, `DeletionCascade`, `WriteOutcome` and the rules a value must pass (`EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `ExternalKeyPolicy`) |
 | `Service\Access` | The question every tool asks of an object: may this caller see it, change it? `ObjectAccess` answers by the console's rules; `DocumentFetch` is the rights half of reading a document |
-| `Service\Read` | Reading objects out: `ObjectQuery`, `ObjectSerializer` (with `ObjectGrades`, `UntrustedMarker`, `OutputFields` and `ValueCeilings`), `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, and the datamodel description (`DatamodelReader`, `ClassCatalog`, `AttributeDescription`, `AttributeFormat`) |
+| `Service\Read` | Reading objects out: `ObjectQuery`, `ObjectSerializer` (with `ObjectGrades`, `UntrustedMarker`, `OutputFields`, `ValueCeilings` and `LinkedRows`, where a link set asks which of its rows the mode shows), `ObjectHistory`, `DocumentAccess`, `CurrentUserReader`, and the datamodel description (`DatamodelReader`, `ClassCatalog`, `AttributeDescription`, `AttributeFormat`) |
 | `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy` (with `ExclusionSettings` and `ExclusionSearches`), `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
 | `Service\Audit` | The audit trail: `AuditRetention`, `ChangeSummary`, `ReadSummary` |
 | `Helper`, `Model`, `Exception` | Small stateless utilities and per-request facts (`Settings` and its catalogue `SettingNames`, `MCPLog`, `PortalMode`, `ObjectId`, `MCPHttp`), the value object `MCPResult`, and the exceptions |
@@ -221,8 +221,10 @@ succeeds.
    `Service\Write\DryRun` and the write classes beside it, which check each value, simulates by default and applies the
    change only when asked. Both ask `Service\Rights` what is excluded, secret or barred
    (`ExclusionPolicy`, `SecretPolicy`, `AccessGrants`).
-7. `Controller\MCPResponse` writes the answer, and `Controller\CallLog` records the audit row,
-   whose summaries come from `Service\Audit` (`ChangeSummary`, `ReadSummary`). Later,
+7. `Controller\MCPResponse` builds the answer as a `PreparedAnswer` and writes nothing; `Controller\CallLog`
+   records the audit row from it, and only then the controller writes the answer
+   (`PreparedAnswer::Emit()`), so a client that hangs up cannot leave a committed write with no row.
+   The row's summaries come from `Service\Audit` (`ChangeSummary`, `ReadSummary`). Later,
    iTop's cron calls `Hook\AuditHousekeeping`, which applies `Service\Audit\AuditRetention`.
 8. **`Service\Server\RequestScope::Close()`** forgets every per-request slot, whichever way the
    request ended: the controller calls it in a `finally`, after the audit row, as the audit task
@@ -262,7 +264,7 @@ the source wins where they differ. Names carry no namespace: `Controller\Gate\Lo
 
 A refusal from a gate is **not** a JSON-RPC error. It is a plain JSON body
 `{"code": 1, "message": "…", "mcpMethod": "exceptions", …}` with the HTTP status in the table
-(`MCPResponse::OutputJsonResultException`, `MCPController::buildErrorResult`), and a `401`
+(`MCPResponse::PrepareException`, `MCPController::buildErrorResult`), and a `401`
 adds `WWW-Authenticate: Bearer realm="iTop MCP"`, with `error="invalid_token"` and
 `resource_metadata="…"` where the table says so. Everything from step 14 on is the MCP SDK's own
 JSON-RPC, or a tool's result.
@@ -369,7 +371,7 @@ belongs to, so a client's symptom is found by the text or the status in the firs
 | R17 | `403`, `Content-Type: text/plain`, body *Forbidden: Invalid Host header.* or *Forbidden: Invalid Origin header.* Not skipped unless `mcp_allowed_hosts` holds `*` | the SDK's `DnsRebindingProtectionMiddleware`, a second check after `HostIsServedGate` | `MCPService::middleware`; `Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware` (in `vendor/mcp/sdk`) |
 | R18 | HTTP `200`, JSON-RPC success, `result.isError: true`, the tool's own text. The audit row says only *The tool refused the call*; the text is kept at `log_mcp_level` `debug` | the tool | A tool throws `Mcp\Exception\ToolCallException`; the audit row is made by `MCPResponse::buildResultFromBody`. For `core_object_get` see [diagram 2](#2-what-core_object_get-checks) |
 | R19 | JSON-RPC `-32603`, *Error while executing tool* | the tool: an exception that is not a `ToolCallException`, which is a bug in the tool | `CallToolHandler::handle` (in `vendor/mcp/sdk`) |
-| R20 | HTTP `500`, `{"code": 100, "message": "The MCP request could not be completed. Server log reference: <ref>"}`. Log: *[<ref>] Unhandled <Class>: …*. An unexpected failure before or after the SDK answered | `MCPController::serve`, the `catch (Throwable)` | `MCPController::buildErrorResult`, `ErrorReport::NewReference`, `MCPResponse::OutputJsonResultException` |
+| R20 | HTTP `500`, `{"code": 100, "message": "The MCP request could not be completed. Server log reference: <ref>"}`. Log: *[<ref>] Unhandled <Class>: …*. An unexpected failure before or after the SDK answered | `MCPController::serve`, the `catch (Throwable)` | `MCPController::buildErrorResult`, `ErrorReport::NewReference`, `MCPResponse::PrepareException` |
 
 Two things the diagram cannot show:
 

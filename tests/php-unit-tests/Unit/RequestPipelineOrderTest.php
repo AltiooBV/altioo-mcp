@@ -9,7 +9,9 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Controller\MCPController;
+use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
+use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -195,8 +197,13 @@ class RequestPipelineOrderTest extends TestCase
 	 */
 	public function testTheSessionIsDiscardedBetweenTheToolsAndTheAnswer(): void
 	{
-		$this->assertComesBefore('MCPService::run', 'discardRequestSession', 'the session must outlive the tools');
-		$this->assertComesBefore('discardRequestSession', 'EmitResponse', 'the session must go before the answer is written');
+		// In serve() itself, and in sequence rather than at the first occurrence: the batch
+		// refusal, which runs no tool, discards the session in a branch of its own.
+		$aSpecs = [RequestPipelineSource::Spec('MCPService::run'), RequestPipelineSource::Spec('discardRequestSession'), RequestPipelineSource::Spec('Emit')];
+		$this->assertTrue(
+			SourceCalls::OfClass(MCPController::class)->CallsInSequence($aSpecs, 'serve'),
+			'the session must outlive the tools, and go before the answer is written'
+		);
 	}
 
 	/**
@@ -207,12 +214,91 @@ class RequestPipelineOrderTest extends TestCase
 	{
 		$aCatch = RequestPipelineSource::ErrorPath();
 		$sDiscard = strtolower(RequestPipelineSource::Spec('discardRequestSession'));
-		$sOutput = strtolower(RequestPipelineSource::Spec('OutputJsonResultException'));
+		$sAnswer = strtolower(RequestPipelineSource::Spec('PrepareException'));
 		$aLowered = array_map('strtolower', $aCatch);
 
 		$this->assertContains($sDiscard, $aLowered, 'the exception path no longer discards the session');
-		$this->assertContains($sOutput, $aLowered, 'the exception path no longer answers');
-		$this->assertLessThan(array_search($sOutput, $aLowered, true), array_search($sDiscard, $aLowered, true), 'the session must go before the error is written');
+		$this->assertContains($sAnswer, $aLowered, 'the exception path no longer prepares the answer');
+		$this->assertLessThan(array_search($sAnswer, $aLowered, true), array_search($sDiscard, $aLowered, true), 'the session must go before the error is answered');
+	}
+
+	/**
+	 * The audit row is written before the answer is, whichever way the request ends.
+	 *
+	 * PHP learns that a client has hung up only when it writes output, and then ends the
+	 * script. A write that is answered first and recorded after is therefore committed and
+	 * never recorded for a caller that sends it and closes the socket: no row, so no count
+	 * against `mcp_max_writes_per_hour` (which counts from the rows, ADR 0019) and nothing in
+	 * the trail. ignore_user_abort() would be a global switch (guide section 6.1); the order
+	 * is the fix, so the order is what is pinned.
+	 *
+	 * serve() has one tail for every path - served, refused as a batch, failed - and these
+	 * three tests say what it is made of: one row, then one answer, and nothing else that
+	 * writes.
+	 */
+	public function testTheAuditRowIsWrittenBeforeTheAnswerIsWritten(): void
+	{
+		$this->assertComesBefore(
+			'CallLog::LogIfConfigured',
+			'Emit',
+			'the audit row must be written before the answer is, or a client that hangs up after sending a write leaves the write with no row and no count against the write cap'
+		);
+	}
+
+	public function testEveryPathEndsInOneRowAndThenOneAnswer(): void
+	{
+		$aUses = array_map('strtolower', RequestPipelineSource::ServeUses());
+		$sRow = strtolower(RequestPipelineSource::Spec('CallLog::LogIfConfigured'));
+		$sEmit = strtolower(RequestPipelineSource::Spec('Emit'));
+
+		$this->assertSame(1, count(array_keys($aUses, $sRow, true)), 'serve() must write the audit row in one place, after every path has decided its answer');
+		$this->assertSame(1, count(array_keys($aUses, $sEmit, true)), 'serve() must write the answer in one place, after the audit row');
+
+		// The tail is the last two things serve() does.
+		$this->assertSame([$sRow, $sEmit], array_slice($aUses, -2), 'the audit row and then the answer must be the last things serve() does, so no path writes after the answer');
+
+		// The paths that decide an answer: each prepares it, none writes it.
+		foreach (['PrepareResponse', 'PrepareException', 'BatchRefusal::Refuse'] as $sName) {
+			$this->assertContains(strtolower(RequestPipelineSource::Spec($sName)), $aUses, "serve() no longer builds its answer with {$sName}");
+		}
+		$this->assertNotContains(
+			$sEmit,
+			array_map('strtolower', RequestPipelineSource::ErrorPath()),
+			'the exception path must not write the answer: the row is written after it, by the tail'
+		);
+	}
+
+	public function testServeWritesNothingToTheWireItself(): void
+	{
+		$sCode = RequestPipelineSource::ServeCode();
+
+		foreach (['echo', 'print(', 'print$', 'exit', 'die', 'header(', 'http_response_code(', 'header_remove(', 'flush(', 'ob_flush(', 'readfile(', 'fwrite(', 'fputs(', 'file_put_contents('] as $sToken) {
+			$this->assertStringNotContainsStringIgnoringCase($sToken, $sCode, "serve() must not write to the wire or end the script itself ({$sToken}): the answer goes out through PreparedAnswer::Emit(), after the audit row");
+		}
+		foreach (RequestPipelineSource::ServeUses() as $sUse) {
+			$this->assertDoesNotMatchRegularExpression('/::(emit|output)[a-z]*$/i', $sUse, "serve() calls {$sUse}, which writes before the audit row");
+		}
+	}
+
+	/**
+	 * What builds an answer builds it and writes nothing: the output calls are inside the
+	 * closure handed to PreparedAnswer, which only Emit() runs. A header(), echo or
+	 * ->Output() ahead of `new PreparedAnswer` is a write before the row.
+	 */
+	public function testPreparingAnAnswerWritesNothing(): void
+	{
+		$oSource = SourceCalls::OfClass(MCPResponse::class);
+
+		foreach (['PrepareResponse', 'PrepareException', 'PrepareBatchRefusal'] as $sMethod) {
+			$sCode = $oSource->Code($sMethod);
+			$iBuilt = strpos($sCode, 'newPreparedAnswer(');
+			$this->assertNotFalse($iBuilt, "{$sMethod} no longer returns a PreparedAnswer");
+
+			$sBefore = substr($sCode, 0, $iBuilt);
+			foreach (['echo', 'print(', 'print$', 'exit', 'die', 'header(', 'http_response_code(', '->Output(', 'flush('] as $sToken) {
+				$this->assertStringNotContainsStringIgnoringCase($sToken, $sBefore, "{$sMethod} writes ({$sToken}) before it hands the answer back: that is a write ahead of the audit row");
+			}
+		}
 	}
 
 	/**

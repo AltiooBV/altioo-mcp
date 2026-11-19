@@ -199,17 +199,7 @@ final class ExclusionSettings
 						return sprintf("'%s' names '%s' on %s, which has no such attribute", self::SETTING_ATTRIBUTES, $sCode, $sClass);
 					}
 					foreach (array_merge([$sClass], MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL)) as $sOn) {
-						$aInName = (array)(MetaModel::GetNameSpec($sOn)[1] ?? []);
-						// The complementary name too (a ticket's title is part of what a name search matches),
-						// which is asked on its own: the combined long name calls a function iTop 3.2 does not define.
-						if (class_exists('Combodo\iTop\Core\MetaModel\FriendlyNameType')) {
-							try {
-								$aInName = array_merge($aInName, (array)(MetaModel::GetNameSpec($sOn, \Combodo\iTop\Core\MetaModel\FriendlyNameType::COMPLEMENTARY)[1] ?? []));
-							} catch (Throwable $e) {
-								// Nothing to add.
-							}
-						}
-						if (in_array($sCode, $aInName, true)) {
+						if (in_array($sCode, self::NameAttributes((string)$sOn), true)) {
 							return sprintf("'%s' excludes '%s' of %s, which is part of the friendly name of %s: the friendly name would still serve its value", self::SETTING_ATTRIBUTES, $sCode, $sClass, $sOn);
 						}
 					}
@@ -220,6 +210,28 @@ final class ExclusionSettings
 		}
 
 		return null;
+	}
+
+	/**
+	 * The attribute codes the friendly name of a class is made of: its short name and its complementary name (a
+	 * ticket's title is part of what a name search matches), each asked on its own because the combined long name
+	 * calls a function iTop 3.2 does not define.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function NameAttributes(string $sClass): array
+	{
+		// The short name is let to throw: a name that cannot be read is a setting that cannot be checked.
+		$aInName = (array)(MetaModel::GetNameSpec($sClass)[1] ?? []);
+		if (class_exists('Combodo\iTop\Core\MetaModel\FriendlyNameType')) {
+			try {
+				$aInName = array_merge($aInName, (array)(MetaModel::GetNameSpec($sClass, \Combodo\iTop\Core\MetaModel\FriendlyNameType::COMPLEMENTARY)[1] ?? []));
+			} catch (Throwable $e) {
+				// Nothing to add.
+			}
+		}
+
+		return array_values(array_filter(array_map('strval', $aInName), static fn (string $s): bool => $s !== ''));
 	}
 
 	public static function canonicalClass(string $sLowerName): ?string

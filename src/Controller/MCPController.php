@@ -126,22 +126,21 @@ final class MCPController
 			// it. Batching is optional in 2025-03-26 and gone after it; here it would be one audit row with no
 			// tool, no parameters and no rehearsal flag for N calls, and N writes read as one.
 			if (BatchRefusal::IsBatch((string)file_get_contents('php://input'))) {
-				$oResult = BatchRefusal::Refuse();
-				$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000.0);
-				CallLog::LogIfConfigured($oResult);
-
-				return;
+				$oAnswer = BatchRefusal::Refuse();
+				$oResult = $oAnswer->result;
+				self::discardRequestSession();
+			} else {
+				$oKPI->ComputeAndReport('Parameters validated');
+				$aRequestResponse = MCPService::run($oPolicy);
+				// Last moment the session can go: once the body is out, neither
+				// the headers nor the session can be touched.
+				self::discardRequestSession();
+				// The answer is decided here and written below, after the audit row.
+				// Extract info for logging
+				$oAnswer = MCPResponse::PrepareResponse($aRequestResponse['response']);
+				$oKPI->ComputeAndReport('Operation finished');
+				$oResult = CallRequest::GetMCPInfoFromRequest($aRequestResponse['request'], $oAnswer->result);
 			}
-
-			$oKPI->ComputeAndReport('Parameters validated');
-			$aRequestResponse = MCPService::run($oPolicy);
-			// Last moment the session can go: once the body is out, neither
-			// the headers nor the session can be touched.
-			self::discardRequestSession();
-			// Emit response and extract info for logging
-			$oResult = MCPResponse::EmitResponse($aRequestResponse['response']);
-			$oKPI->ComputeAndReport('Operation finished');
-			$oResult = CallRequest::GetMCPInfoFromRequest($aRequestResponse['request'], $oResult);
 		} catch (Throwable $e) {
 			// Throwable, not Exception: this is the single public entry point, and a
 			// TypeError or a missing class here would otherwise escape uncaught -
@@ -150,12 +149,24 @@ final class MCPController
 			$oResult->mcpMethod = MCPMethod::EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
 			self::discardRequestSession();
-			MCPResponse::OutputJsonResultException($oResult);
+			$oAnswer = MCPResponse::PrepareException($oResult);
 		}
 
+		// What the request took to decide its answer. Writing the answer to the client is not
+		// in it: the row is written before that (below), and that time is the client's - a slow
+		// reader, or none.
 		$oResult->durationMs = (int)round((microtime(true) - $fStarted) * 1000);
 
+		// The audit row first, the answer after, on every path, with nothing written to the
+		// wire before. PHP learns that a client has hung up only when it writes output, and
+		// then ends the script, so a row written after the answer is lost for a caller that
+		// sends a write and closes the socket: the write is committed, no row exists, and the
+		// write cap, which counts from the rows (ADR 0019), never counts it. ignore_user_abort()
+		// would do it by changing what a hang-up means for the whole process (guide section
+		// 6.1); the order costs nothing and changes nothing else. RequestPipelineOrderTest
+		// holds it.
 		CallLog::LogIfConfigured($oResult);
+		$oAnswer->Emit();
 	}
 
 	/**

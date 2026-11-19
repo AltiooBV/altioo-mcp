@@ -57,6 +57,10 @@ final class OutputFields
 		$aFields = [];
 		$aUnknown = [];
 
+		// The default is what a caller gets by saying nothing, so a class whose friendly name is not served
+		// (doc/adr/0012, Amendment 3) answers it with the id alone, where a name typed out is an unknown attribute.
+		$bDefault = (string)preg_replace('/\s+/', '', $sOutputFields) === (string)preg_replace('/\s+/', '', ObjectSerializer::DEFAULT_LIST_FIELDS);
+
 		foreach (explode(',', $sOutputFields) as $sAttCode) {
 			$sAttCode = trim($sAttCode);
 			if ($sAttCode === '') {
@@ -64,6 +68,9 @@ final class OutputFields
 			}
 			if ($sAttCode === 'id' || $sAttCode === 'class') {
 				// Always reported anyway, and not attributes of the class.
+				continue;
+			}
+			if ($bDefault && $sAttCode === 'friendlyname' && ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
 				continue;
 			}
 			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
