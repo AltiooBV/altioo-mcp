@@ -93,6 +93,40 @@ class ExclusionNameLeakTest extends ItopDataTestCaseAlias
 		return $aClasses;
 	}
 
+	/**
+	 * Whether a part of the friendly name of the class, or of a class below it, is a field taken from a class related to the excluded one:
+	 * the structure of the name, read from iTop's own name specification, which is what separates a name that quotes the excluded class from
+	 * one that merely contains the same word.
+	 */
+	private function namePartsReach(string $sClass, string $sExcluded): bool
+	{
+		$aClasses = [$sClass];
+		foreach (MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL) as $sChild) {
+			$aClasses[] = (string)$sChild;
+		}
+		foreach ($aClasses as $sOn) {
+			foreach (ExclusionSettings::NameAttributes($sOn) as $sCode) {
+				if (!MetaModel::IsValidAttCode($sOn, $sCode)) {
+					continue;
+				}
+				$oDef = MetaModel::GetAttributeDef($sOn, $sCode);
+				if ($oDef instanceof \AttributeExternalField) {
+					$sTarget = $oDef->GetTargetClass();
+					if (is_a($sTarget, $sExcluded, true) || is_a($sExcluded, $sTarget, true)) {
+						return true;
+					}
+				} elseif ($oDef->IsExternalKey()) {
+					$sTarget = $oDef->GetTargetClass();
+					if (is_a($sTarget, $sExcluded, true) || is_a($sExcluded, $sTarget, true)) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
 	/** @return array<string, array{0: string}> */
 	public static function scenarioProvider(): array
 	{
@@ -131,6 +165,12 @@ class ExclusionNameLeakTest extends ItopDataTestCaseAlias
 					continue;
 				}
 				$iChecked++;
+				// A name is only a leak when its text comes from the excluded class. A word common to both (iTop 3.3's demo data has an
+				// organisation called "Customer" and a contract, a contact type and links called "Customer ...") is not: those names are the
+				// objects' own. So a quoted name counts only where a part of this class's friendly name reaches the excluded class.
+				if (!$this->namePartsReach($sClass, $sExcluded)) {
+					continue;
+				}
 				foreach ($aNames as $sName) {
 					if (str_contains($sGet, $sName)) {
 						$aLeaks[] = "{$sClass}#{$oObject->GetKey()} names '{$sName}'";
