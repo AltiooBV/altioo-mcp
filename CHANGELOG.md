@@ -72,6 +72,11 @@ what said so.
   answer, no longer the time to write it to the client, which is the client's. Rows already missing are not recoverable; iTop's history of the objects is
   where to look for writes made by a credential that hung up, if the cap was in force. A batch refusal also now ends the PHP session the login opened, as every other answer does, instead
   of leaving it for the garbage collector.
+- **Security: any web page could log a console user out of iTop through the endpoint.** The endpoint ends the PHP session the login opened for the request, and did so
+  on every refusal, including one before the login ran. A top-level `GET` (or a cross-site form `POST`, or a `DELETE`) to the endpoint made a browser send the
+  user's iTop session cookie with no credential; iTop's startup had already resumed that session, the request was refused `401` or `403`, and the refusal
+  destroyed the session the cookie named. The session is now ended only when the request created it, or once the login has run and replaced what it held; a refusal before the
+  login leaves a console session as it found it. The answer still sets no cookie. No data was reachable this way. *Affects 1.1, 1.2 and 1.3 (the destroy arrived in 1.1.0); not checked on those trees.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

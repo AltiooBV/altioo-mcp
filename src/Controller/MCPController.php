@@ -93,6 +93,11 @@ final class MCPController
 		$oKPI = new ExecutionKPI();
 		$fStarted = microtime(true);
 
+		// Whose session this is, decided before any gate can change it: one a browser's cookie
+		// named and that holds something is the console's, not this request's, and is left alone
+		// until the login has run and replaced what it held (see RequestSession).
+		$bKeepSession = RequestSession::CurrentIsResumed();
+
 		try {
 			$oKPI->ComputeAndReport('Data model loaded');
 
@@ -100,6 +105,10 @@ final class MCPController
 			// order is the security property (each gate says what it must come
 			// before), and a gate that answers the request ends it here.
 			foreach (self::GATES as $sGate) {
+				if ($sGate === LoginGate::class) {
+					// From here the session is this request's: the login resets it before it reads the credential.
+					$bKeepSession = false;
+				}
 				if (!(new $sGate())->Check($oKPI)) {
 					return;
 				}
@@ -128,13 +137,13 @@ final class MCPController
 			if (BatchRefusal::IsBatch((string)file_get_contents('php://input'))) {
 				$oAnswer = BatchRefusal::Refuse();
 				$oResult = $oAnswer->result;
-				self::discardRequestSession();
+				self::discardRequestSession($bKeepSession);
 			} else {
 				$oKPI->ComputeAndReport('Parameters validated');
 				$aRequestResponse = MCPService::run($oPolicy);
 				// Last moment the session can go: once the body is out, neither
 				// the headers nor the session can be touched.
-				self::discardRequestSession();
+				self::discardRequestSession($bKeepSession);
 				// The answer is decided here and written below, after the audit row.
 				// Extract info for logging
 				$oAnswer = MCPResponse::PrepareResponse($aRequestResponse['response']);
@@ -148,7 +157,7 @@ final class MCPController
 			$oResult = self::buildErrorResult($e);
 			$oResult->mcpMethod = MCPMethod::EXCEPTION;
 			$oKPI->ComputeAndReport('Exception catched');
-			self::discardRequestSession();
+			self::discardRequestSession($bKeepSession);
 			$oAnswer = MCPResponse::PrepareException($oResult);
 		}
 
@@ -189,16 +198,25 @@ final class MCPController
 	 * token-mode session presented without its token - but there is no longer
 	 * a cookie to replay either.
 	 *
+	 * Not when the session is not this request's to end (RequestSession): a request
+	 * refused before the login ran, which carried a browser's console cookie, found
+	 * that session open and did nothing to it. Destroying it logged the browser's user
+	 * out of the console, and any web page can make a browser send such a request.
+	 * Its cookies are withdrawn all the same: the answer sets none, and the browser
+	 * keeps the cookie it had.
+	 *
 	 * Must run before anything is written to the wire. After that neither the
 	 * headers nor the session can be changed, and this does nothing.
+	 *
+	 * @param bool $bKeepSession the session was resumed from a client's cookie and the login has not run
 	 */
-	private static function discardRequestSession(): void
+	private static function discardRequestSession(bool $bKeepSession = false): void
 	{
 		if (headers_sent()) {
 			return;
 		}
 
-		if (session_id() !== '') {
+		if (!$bKeepSession && session_id() !== '') {
 			// Reopened through iTop's own helper, so its bookkeeping agrees,
 			// and destroyed through PHP, which runs iTop's session handler -
 			// the one that also removes its session-tracking file.
