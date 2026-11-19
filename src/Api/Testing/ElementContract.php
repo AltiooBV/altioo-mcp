@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use PhpToken;
 use ReflectionClass;
 use ReflectionMethod;
@@ -151,7 +152,7 @@ final class ElementContract
 			$aWarnings = array_merge($aWarnings, self::toolWarnings($oElement));
 		}
 
-		if (is_a($oElement, self::PORTAL_AWARE) && !CoreElement::IsOwn($oElement) && !self::asksObjectAccess($oElement)) {
+		if (is_a($oElement, self::PORTAL_AWARE) && !CoreElement::IsOwn($oElement) && !self::asksStatic($oElement, ObjectAccess::class, 'Current')) {
 			$aWarnings[] = self::WARNING.sprintf(
 				'%s declares PortalAware but its own source (nor that of its parent classes outside this module) never calls ObjectAccess::Current(). In portal mode answer through ObjectAccess::Current() (Readable, Bounded, Hides, RefusalToSet and the other RefusalTo...) for every object read or written, never UserRights alone, which grants a portal user the whole CMDB. The operator must also list the element in mcp_portal_extensions before portal mode serves it.',
 				get_class($oElement)
@@ -185,6 +186,18 @@ final class ElementContract
 			);
 		}
 
+		// The advisory scope is enforced by the tool, not around it: a token scoped MCP-advisory is served
+		// every write tool its grade reaches, and what keeps it from writing is DryRun::Simulated() turning
+		// the call into a rehearsal (review 2026-11-18, PA-1). A write-graded tool of a pack that never
+		// calls it commits for an advisory credential whatever `simulate` says.
+		if ($oAnnotations !== null && $oAnnotations->readOnlyHint !== true
+			&& !CoreElement::IsOwn($oTool) && !self::asksStatic($oTool, DryRun::class, 'Simulated')) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'"%s" writes (it is not read-only) but its own source - nor that of its parent classes outside this module - never calls DryRun::Simulated(). A token scoped MCP-advisory is served this tool and must only ever rehearse: DryRun::Simulated($simulate) is the one place that makes it so, so without it the tool commits for an advisory credential whatever the caller sent. Call it first in execute() and use its answer instead of the argument, and ask WriteCap::RefusalFor() before a real write.',
+				$oTool->getQualifiedName()
+			);
+		}
+
 		$aOutputSchema = $oTool->getOutputSchema();
 		if ($aOutputSchema !== null && ($aOutputSchema['type'] ?? null) !== 'object') {
 			$aWarnings[] = self::WARNING.'getOutputSchema() is not a JSON Schema of type "object", so a client validating structured content against it will reject every result.';
@@ -214,7 +227,7 @@ final class ElementContract
 	 * lines. Necessary, not sufficient: it catches the element that never
 	 * asks, not the one that asks and ignores the answer.
 	 */
-	private static function asksObjectAccess(object $oElement): bool
+	private static function asksStatic(object $oElement, string $sTargetClass, string $sTargetMethod): bool
 	{
 		$sHandler = $oElement instanceof AbstractMCPTool ? 'execute' : ($oElement instanceof AbstractMCPPrompt ? 'get' : 'read');
 		if (method_exists($oElement, $sHandler)
@@ -228,7 +241,7 @@ final class ElementContract
 				continue;
 			}
 			$sCode = @file_get_contents($sFile);
-			if ($sCode !== false && self::callsObjectAccessCurrent($sCode)) {
+			if ($sCode !== false && self::callsStatic($sCode, $sTargetClass, $sTargetMethod)) {
 				return true;
 			}
 		}
@@ -236,8 +249,8 @@ final class ElementContract
 		return false;
 	}
 
-	/** @internal Reads one source text: whether it calls ObjectAccess::Current(). */
-	private static function callsObjectAccessCurrent(string $sCode): bool
+	/** @internal Reads one source text: whether it calls `Class::Method()` for the class and method given. */
+	private static function callsStatic(string $sCode, string $sTargetClass, string $sTargetMethod): bool
 	{
 		try {
 			$aAll = PhpToken::tokenize($sCode, TOKEN_PARSE);
@@ -299,10 +312,10 @@ final class ElementContract
 			}
 		}
 
-		$sTarget = strtolower(ObjectAccess::class);
+		$sTarget = strtolower($sTargetClass);
 		for ($i = 0; $i + 3 < $iCount; $i++) {
 			$oName = $aTokens[$i];
-			if (!in_array($oName->id, $aNames, true) || $aTokens[$i + 1]->id !== T_DOUBLE_COLON || strtolower($aTokens[$i + 2]->text) !== 'current' || $aTokens[$i + 3]->text !== '(') {
+			if (!in_array($oName->id, $aNames, true) || $aTokens[$i + 1]->id !== T_DOUBLE_COLON || strtolower($aTokens[$i + 2]->text) !== strtolower($sTargetMethod) || $aTokens[$i + 3]->text !== '(') {
 				continue;
 			}
 			if ($i > 0 && in_array($aTokens[$i - 1]->id, [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_NEW], true)) {
