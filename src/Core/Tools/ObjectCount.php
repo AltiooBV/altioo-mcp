@@ -522,6 +522,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	private static function consoleLabel(string $sTarget, int $iId): ?string
 	{
 		if (!ExclusionPolicy::Serves($sTarget)
+			|| ExclusionPolicy::ExcludesAttribute($sTarget, 'friendlyname')
 			|| ChangeLogReservation::IsReserved($sTarget)
 			|| !UserRights::IsActionAllowed($sTarget, UR_ACTION_READ)) {
 			return null;
@@ -534,7 +535,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	/** The portal's: a target its scopes show this user, which UserRights does not decide. */
 	private static function portalLabel(PortalPolicy $oPolicy, string $sTarget, int $iId): ?string
 	{
-		if (!ExclusionPolicy::Serves($sTarget) || ChangeLogReservation::IsReserved($sTarget)) {
+		if (!ExclusionPolicy::Serves($sTarget) || ExclusionPolicy::ExcludesAttribute($sTarget, 'friendlyname') || ChangeLogReservation::IsReserved($sTarget)) {
 			return null;
 		}
 		$oQuery = $oPolicy->ReadSet($sTarget);

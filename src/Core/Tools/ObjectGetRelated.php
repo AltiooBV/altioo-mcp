@@ -307,7 +307,8 @@ class ObjectGetRelated extends AbstractMCPTool
 			$aObjects[$sKey] = [
 				'class'        => $sClass,
 				MetaModel::DBGetKey($sClass)           => ObjectId::Normalise($oObject->GetKey()),
-				'friendlyname' => $oObject->GetName(),
+				// Not served where a part of the name is excluded (doc/adr/0012, Amendment 3).
+				'friendlyname' => ExclusionPolicy::ExcludesAttribute($sClass, 'friendlyname') ? null : $oObject->GetName(),
 			];
 
 			// Stats per class

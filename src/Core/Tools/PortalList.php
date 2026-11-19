@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalRows;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSet;
 use DBSearch;
@@ -223,7 +224,8 @@ class PortalList extends AbstractPortalTool
 		}
 		$aAttCodes = array_values(array_unique(array_filter(
 			$aAttCodes,
-			static fn (string $sAttCode): bool => MetaModel::IsValidAttCode($sClass, $sAttCode)
+			// Nor a name an exclusion reaches (doc/adr/0012, Amendment 3): a search over it is a search of what it quotes.
+			static fn (string $sAttCode): bool => MetaModel::IsValidAttCode($sClass, $sAttCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)
 		)));
 		if ($aAttCodes === []) {
 			throw new ToolCallException('This list shows no column a search can look in.');

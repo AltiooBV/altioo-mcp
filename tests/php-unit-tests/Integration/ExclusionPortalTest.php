@@ -20,6 +20,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use DBObjectSearch;
@@ -97,6 +98,21 @@ class ExclusionPortalTest extends ItopDataTestCaseAlias
 		$sForms = json_encode(ToolOutput::Decode(ClassSchema::execute('UserRequest'))['forms'] ?? []);
 		$this->assertStringContainsString('"attribute":"title"', $sForms, 'the control: the forms list their fields');
 		$this->assertStringNotContainsString('"attribute":"description"', $sForms, 'a field of a portal form');
+	}
+
+	/**
+	 * The ticket's contacts are keyed on Contact, the parent of an excluded Person: the set is absent from the portal's
+	 * reads as it is from the console's (doc/adr/0012, Amendment 3), and a person is not in a portal user's answer.
+	 */
+	public function testALinkSetToTheParentOfAnExcludedClassIsNotInThePortalsRead(): void
+	{
+		$this->exclude(['Person'], []);
+
+		$this->assertTrue(ExclusionPolicy::ExcludesAttribute('UserRequest', 'contacts_list'));
+		$this->assertFalse(ObjectAccess::Current()->ShownOf(MetaModel::GetObject('UserRequest', $this->iOwn))('contacts_list'));
+		$sRead = json_encode(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn, '*')));
+		$this->assertStringNotContainsString('contacts_list', $sRead);
+		$this->assertStringNotContainsString(self::CALLER, $sRead);
 	}
 
 	/** A column a list shows is excluded: no cell, no column, and a word that is only in it finds nothing. */

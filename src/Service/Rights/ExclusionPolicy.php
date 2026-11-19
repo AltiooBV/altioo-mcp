@@ -113,7 +113,9 @@ final class ExclusionPolicy
 	 * Whether the attribute is excluded on this class: listed on it or on a
 	 * class it descends from, or derived from something that is - an external
 	 * field resolving to an excluded attribute or through an excluded key, a key
-	 * or a link set pointing at an excluded class.
+	 * or a link set pointing at an excluded class **or at a class that has an excluded
+	 * subclass** (doc/adr/0012, Amendment 3), and the friendly name of a class whose
+	 * name is made of one of these.
 	 */
 	public static function ExcludesAttribute(string $sClass, string $sAttCode): bool
 	{
@@ -251,6 +253,11 @@ final class ExclusionPolicy
 			}
 		}
 
+		// The name an object is called by: derived, as it is made of attributes that may be excluded.
+		if ($sCode === 'friendlyname') {
+			return self::nameReachesExcluded($sClass, $iDepth);
+		}
+
 		// Listed on a subclass: a query on this class reaches the subclass's rows, and an attribute the two
 		// share is the same column, so it is excluded here too. Otherwise a filter, a sort or a search
 		// on UserRequest.caller_id is one on Ticket.caller_id, which would not be.
@@ -269,22 +276,22 @@ final class ExclusionPolicy
 
 			if ($oAttDef instanceof AttributeExternalField) {
 				return self::excludes($sClass, $oAttDef->GetKeyAttCode(), $iDepth + 1)
-					|| self::ExcludesClass($oAttDef->GetTargetClass())
+					|| self::holdsExcluded($oAttDef->GetTargetClass())
 					|| self::excludes($oAttDef->GetTargetClass(), $oAttDef->GetExtAttCode(), $iDepth + 1);
 			}
 			if ($oAttDef instanceof AttributeExternalKey) {
-				return self::ExcludesClass($oAttDef->GetTargetClass());
+				return self::holdsExcluded($oAttDef->GetTargetClass());
 			}
 			if ($oAttDef instanceof AttributeLinkedSet) {
 				$sLinked = $oAttDef->GetLinkedClass();
-				if (self::ExcludesClass($sLinked)) {
+				if (self::holdsExcluded($sLinked)) {
 					return true;
 				}
 				/** @psalm-suppress TypeDoesNotContainType */
 				if ($oAttDef instanceof AttributeLinkedSetIndirect) {
 					$oToRemote = MetaModel::GetAttributeDef($sLinked, $oAttDef->GetExtKeyToRemote());
 
-					return $oToRemote instanceof AttributeExternalKey && self::ExcludesClass($oToRemote->GetTargetClass());
+					return $oToRemote instanceof AttributeExternalKey && self::holdsExcluded($oToRemote->GetTargetClass());
 				}
 
 				return false;
@@ -295,6 +302,81 @@ final class ExclusionPolicy
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether a query on the class can return a row of an excluded class: the class is excluded, or
+	 * one it is the parent of is (doc/adr/0012, Amendment 3).
+	 *
+	 * A key typed on `Contact` holds the id of a `Person`, and a link set to `Contact` the rows of
+	 * one, so what such a key or set shows is the excluded object whatever class it declares. The
+	 * whole attribute is excluded rather than narrowed row by row, as an attribute listed on a
+	 * class is on its parents.
+	 */
+	private static function holdsExcluded(string $sClass): bool
+	{
+		$aState = self::state();
+		if ($aState['classes'] === []) {
+			return false;
+		}
+
+		return self::$aMemo['h|'.$sClass] ??= (static function () use ($sClass, $aState): bool {
+			if (self::ExcludesClass($sClass)) {
+				return true;
+			}
+			try {
+				foreach ($aState['classes'] as $sListed) {
+					$sListed = ExclusionSettings::canonicalClass(strtolower($sListed)) ?? $sListed;
+					if (MetaModel::IsValidClass($sListed)
+						&& in_array(strtolower($sClass), array_map('strtolower', self::lineage($sListed)), true)) {
+						return true;
+					}
+				}
+			} catch (Throwable $e) {
+				return true; // a datamodel that cannot be walked is not one to serve
+			}
+
+			return false;
+		})();
+	}
+
+	/**
+	 * Whether what the class is called by reaches an excluded attribute, so that it is not served: its
+	 * short or its complementary friendly name is made of one (an external field through an excluded key,
+	 * as the link between a contact and a ticket is named by the contact), on the class or on a served
+	 * class below it, whose rows a query on this one returns and names by their own.
+	 *
+	 * Derived, so that it never makes the settings malformed: only an attribute the operator listed is
+	 * checked against the friendly name when they are read, and that stays so.
+	 */
+	private static function nameReachesExcluded(string $sClass, int $iDepth): bool
+	{
+		if ($iDepth > 8) {
+			return true;
+		}
+
+		return self::$aMemo['f|'.$sClass] ??= (static function () use ($sClass, $iDepth): bool {
+			try {
+				$aOn = [$sClass];
+				foreach (MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL) as $sChild) {
+					$aOn[] = (string)$sChild;
+				}
+				foreach ($aOn as $sOn) {
+					if ($sOn !== $sClass && self::ExcludesClass($sOn)) {
+						continue; // its rows are not in the answer, so neither is their name
+					}
+					foreach (ExclusionSettings::NameAttributes($sOn) as $sCode) {
+						if (self::excludes($sOn, $sCode, $iDepth + 1)) {
+							return true;
+						}
+					}
+				}
+			} catch (Throwable $e) {
+				return true;
+			}
+
+			return false;
+		})();
 	}
 
 	/**

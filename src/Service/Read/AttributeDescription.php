@@ -17,6 +17,9 @@ use AttributeCaseLog;
 use AttributeDate;
 use AttributeDateTime;
 use AttributeDefinition;
+use AttributeExternalKey;
+use AttributeLinkedSet;
+use AttributeLinkedSetIndirect;
 use MetaModel;
 use UserRights;
 
@@ -103,7 +106,7 @@ final class AttributeDescription
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef, $sClass),
-			] + self::allowedValues($oAttDef) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
+			] + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;
@@ -127,7 +130,7 @@ final class AttributeDescription
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function allowedValues(AttributeDefinition $oAttDef): array
+	private static function allowedValues(AttributeDefinition $oAttDef, string $sClass): array
 	{
 		if ($oAttDef->IsExternalKey()) {
 			return [
@@ -135,6 +138,14 @@ final class AttributeDescription
 				'targetClass' => $oAttDef->GetTargetClass(),
 				'valuesHint'  => 'Search the target class for the object you want, then pass its id.',
 			];
+		}
+
+		$sListed = self::classOfListedObjects($oAttDef);
+		if ($sListed !== null && (ExclusionPolicy::ExcludesClass($sListed) || ExclusionPolicy::ExcludesAttribute($sListed, 'friendlyname'))) {
+			// The values are the names of objects of a class the operator excluded, or names made of what they excluded
+			// (doc/adr/0012, Amendment 3): none is listed, as for a key. The attribute itself is already absent when
+			// it points at such a class through a parent; this is what is left when it does not.
+			return ['values' => null, 'targetClass' => $sListed, 'valuesHint' => 'Search the target class for the object you want, then pass its id.'];
 		}
 
 		$aValues = $oAttDef->GetAllowedValues();
@@ -147,6 +158,32 @@ final class AttributeDescription
 			'valuesTruncated' => true,
 			'valuesTotal'     => count($aValues),
 		];
+	}
+
+	/**
+	 * The class whose objects an attribute lists as its values - a link set's: the class it links, or the one
+	 * its link class leads to - or null for an attribute whose values are not objects.
+	 */
+	private static function classOfListedObjects(AttributeDefinition $oAttDef): ?string
+	{
+		/** @psalm-suppress RedundantCondition */
+		if (!$oAttDef instanceof AttributeLinkedSet) {
+			return null;
+		}
+
+		try {
+			$sLinked = $oAttDef->GetLinkedClass();
+			/** @psalm-suppress TypeDoesNotContainType */
+			if ($oAttDef instanceof AttributeLinkedSetIndirect) {
+				$oToRemote = MetaModel::GetAttributeDef($sLinked, $oAttDef->GetExtKeyToRemote());
+
+				return $oToRemote instanceof AttributeExternalKey ? $oToRemote->GetTargetClass() : $sLinked;
+			}
+
+			return $sLinked;
+		} catch (\Throwable $e) {
+			return null;
+		}
 	}
 
 	/**

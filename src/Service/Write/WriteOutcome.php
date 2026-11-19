@@ -241,7 +241,8 @@ final class WriteOutcome
 				$oObject = $oFresh ?? $oObject;
 			}
 
-			$aAfter['friendlyname'] = $oObject->GetName();
+			// The name of an object is made of its attributes: not served where one of them is excluded (doc/adr/0012).
+			$aAfter['friendlyname'] = ExclusionPolicy::ExcludesAttribute($sClass, 'friendlyname') ? null : $oObject->GetName();
 
 			if ($aAttCodes !== []) {
 				// Through the serializer, so per-attribute read rights, the
