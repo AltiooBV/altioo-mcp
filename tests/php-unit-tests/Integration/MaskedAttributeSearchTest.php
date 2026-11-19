@@ -42,7 +42,7 @@ class MaskedAttributeSearchTest extends ItopDataTestCaseAlias
 				continue;
 			}
 			foreach (MetaModel::ListAttributeDefs($sClass) as $sAtt => $oDef) {
-				if (ObjectSerializer::IsSensitive($oDef, $sClass) && in_array($sAtt, MetaModel::GetFilterAttribList($sClass), true)) {
+				if (ObjectSerializer::IsSensitive($oDef, $sClass) && MetaModel::IsValidFilterCode($sClass, $sAtt)) {
 					$this->sClass = $sClass;
 					$this->sAtt = $sAtt;
 					break 2;
