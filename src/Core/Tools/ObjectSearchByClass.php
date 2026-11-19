@@ -146,7 +146,13 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			if ($sRefusal !== null) {
 				throw new ToolCallException($sRefusal);
 			}
-			$oSearch->AddCondition($sAttCode, $value, '=');
+			try {
+				$oSearch->AddCondition($sAttCode, $value, '=');
+			} catch (\CoreException) {
+				// iTop's own refusal of a code its search cannot use (an image, say): the caller's
+				// mistake, not the server's, and not one to hand to the opaque failure below.
+				throw new ToolCallException("Attribute '{$sAttCode}' on class '{$class}' cannot be used as a filter.");
+			}
 		}
 
 		$aOrderBy = self::orderBy($class, $order_by, $order_direction);

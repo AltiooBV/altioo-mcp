@@ -77,6 +77,13 @@ what said so.
   user's iTop session cookie with no credential; iTop's startup had already resumed that session, the request was refused `401` or `403`, and the refusal
   destroyed the session the cookie named. The session is now ended only when the request created it, or once the login has run and replaced what it held; a refusal before the
   login leaves a console session as it found it. The answer still sets no cookie. No data was reachable this way. *Affects 1.1, 1.2 and 1.3 (the destroy arrived in 1.1.0); not checked on those trees.*
+- **Security: a tool error could write megabytes, and a Basic password, into `log/error.log`.** The SDK logs an exception object on every tool failure and every unknown tool,
+  and the tool's arguments at debug level; the bridge to iTop's log handed the whole context over. Under PHP's default `zend.exception_ignore_args=0` the exception's trace carries the PSR-7 request
+  built from `$_SERVER`: **the plaintext password of a Basic login** (`PHP_AUTH_PW`, many copies) and the base64 header, and 5 to 24 MB per call - a read-only token filtering on an attribute iTop cannot search wrote 24 MB each time,
+  so a loop of a few thousand calls filled the disk. The log now receives a reduced context: an exception becomes its class, code, a shortened message and a reference (also on the call's audit row), a value that is not
+  a scalar becomes a label naming its type, strings and lines are cut, and tool arguments are never written. The Basic password and the `Authorization` header are dropped from `$_SERVER` once the login has used them, as a token already
+  was. A filter on an attribute iTop cannot search (`Person.picture`) is now answered as the caller's mistake, by `core_object_search_by_class` and `core_object_count` alike, not as a server-side failure.
+  `zend.exception_ignore_args=On` stays the recommendation (SECURITY.md). **Rotate any Basic password that was used against an endpoint with the default setting**, and purge the log and its shipped copies. *Likely affects every 1.x line (the logger bridge dates from 1.0.0); not checked on those trees.*
 - **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
   protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
   `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no

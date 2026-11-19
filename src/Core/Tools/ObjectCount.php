@@ -284,7 +284,12 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				if (!self::mayRead($sClass, (string)$sAttCode) || !is_scalar($value)) {
 					throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 				}
-				$oSearch->AddCondition((string)$sAttCode, $value, '=');
+				try {
+					$oSearch->AddCondition((string)$sAttCode, $value, '=');
+				} catch (\CoreException) {
+					// iTop's own refusal of a code its search cannot use (an image, say): the caller's mistake.
+					throw new ToolCallException("Attribute '{$sAttCode}' on class '{$sClass}' cannot be used as a filter.");
+				}
 			}
 		}
 

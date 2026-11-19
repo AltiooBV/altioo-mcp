@@ -192,6 +192,25 @@ final class MCPHttp
 	{
 		self::$sAuthToken = null;
 		unset($_SERVER[self::AUTH_TOKEN_KEY]);
+		self::ForgetBasicCredentials();
+	}
+
+	/**
+	 * Drops what Basic authentication left in $_SERVER: the password the SAPI decoded and the
+	 * Authorization header it came from, base64 of the same password.
+	 *
+	 * Same reason as the token, and one more that the token never had: iTop's login reads Basic
+	 * from here, so it has to be here until the login has run, and everything built from $_SERVER
+	 * afterwards - the PSR-7 request the SDK gets - would carry it, into every exception trace
+	 * that keeps its arguments and so into the log (review 2026-11-18, RT-2). The user name is
+	 * not a secret and stays; the audit row names the credential from RequestScope, not from here.
+	 */
+	private static function ForgetBasicCredentials(): void
+	{
+		unset($_SERVER['PHP_AUTH_PW'], $_SERVER['PHP_AUTH_DIGEST']);
+		foreach (self::AUTHORIZATION_KEYS as $sKey) {
+			unset($_SERVER[$sKey]);
+		}
 	}
 
 	/**
