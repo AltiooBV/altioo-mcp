@@ -921,4 +921,28 @@ class ModuleMetadataTest extends TestCase
 			$aHeadings[1]
 		);
 	}
+
+	/**
+	 * Review 2026-11-18, DC-1: the datamodel scaffold `model.altioo-mcp.php` carried no header, so "the header of every source file"
+	 * (doc/security-summary.md) was wider than true. Every PHP file this module owns at its root or under src/ names the licence.
+	 */
+	public function testEveryPhpFileTheModuleOwnsCarriesTheLicenceHeader(): void
+	{
+		$sRoot = dirname(__DIR__, 3);
+		$aFiles = glob($sRoot.'/*.php') ?: [];
+		foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($sRoot.'/src', \FilesystemIterator::SKIP_DOTS)) as $oFile) {
+			if ($oFile->getExtension() === 'php') {
+				$aFiles[] = $oFile->getPathname();
+			}
+		}
+
+		$aMissing = [];
+		foreach ($aFiles as $sFile) {
+			if (!str_contains((string)file_get_contents($sFile, false, null, 0, 600), 'AGPL-3.0-or-later')) {
+				$aMissing[] = substr($sFile, strlen($sRoot) + 1);
+			}
+		}
+
+		$this->assertSame([], $aMissing, 'These files carry no licence header');
+	}
 }
