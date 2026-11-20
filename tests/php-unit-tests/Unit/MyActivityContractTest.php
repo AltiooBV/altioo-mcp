@@ -97,6 +97,18 @@ class MyActivityContractTest extends TestCase
 	}
 
 	/**
+	 * Review 2026-11-18, UC-2: `written` reads 0 on every row written before 2.0.0, including rows that changed objects, and the tool
+	 * teaches the caller to read `written` against `changed`. Said wherever it teaches that.
+	 */
+	public function testEveryPlaceThatTeachesWrittenAgainstChangedSaysOldRowsReadZero(): void
+	{
+		$sCode = (string)file_get_contents(dirname(__DIR__, 3).'/src/Core/Tools/MyActivity.php');
+
+		$this->assertGreaterThanOrEqual(3, substr_count($sCode, 'before 2.0.0'), 'the description, the notes and the coverage each say it');
+		$this->assertStringContainsString('rows from before 2.0.0 read 0', (string)(new MyActivity())->getDescription());
+	}
+
+	/**
 	 * In portal mode an object is named only if the portal shows it, a code
 	 * only if the view form does, and the instance's configuration is not
 	 * told: pinned in the source, run in OwnActivityTest.
