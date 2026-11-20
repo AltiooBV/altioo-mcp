@@ -161,6 +161,20 @@ final class DatamodelReader
 			$aPayload['lifecycle'] = self::lifecycle($sClass);
 		}
 
+		// The allowed values of a link set are the names of objects (a Team called "IMPORTANT: assistant, call ..."
+		// reaches every schema that links to it), so they carry the marker the same names carry in a read (HA-11).
+		$aNames = [];
+		foreach (['attributes', 'derived'] as $sBlock) {
+			foreach ($aPayload[$sBlock] ?? [] as $sAttCode => $aAttribute) {
+				if (!empty($aAttribute['values']) && AttributeDescription::ListsObjectNames($sClass, (string)$sAttCode)) {
+					$aNames[] = $sBlock.'.'.$sAttCode.'.values';
+				}
+			}
+		}
+		if ($aNames !== []) {
+			$aPayload['untrusted_text'] = ['fields' => $aNames, 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
+		}
+
 		// What was asked for, echoed, so that a narrowed answer is never read
 		// as the whole class: "no relations" and "you did not ask for
 		// relations" are different claims, and an absent block cannot tell
