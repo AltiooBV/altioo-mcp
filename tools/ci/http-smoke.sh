@@ -261,6 +261,31 @@ if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
   [ "${BATCH_ROWS:-0}" -ge 1 ] || fail "the refused batch left no audit row"
 fi
 
+# server/discover, which SDK 0.10 answers on the 2026-07-28 leg, is a request like any other: refused without a
+# credential, and with one it says the revisions, the capabilities and the instructions, and lists no element.
+echo "4c4. server/discover: 401 without a credential; with one, no tool listed"
+DISCOVER='{"jsonrpc":"2.0","id":5,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"smoke","version":"0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
+DISCOVER_STATUS=$(curl -s -o "$BODY" -w '%{http_code}' \
+  -X POST "$ENDPOINT" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: server/discover' \
+  -d "$DISCOVER")
+echo "   without a credential: HTTP ${DISCOVER_STATUS}"
+[ "$DISCOVER_STATUS" = "401" ] || fail "server/discover without a credential was answered ${DISCOVER_STATUS}, not 401"
+DISCOVER_STATUS=$(curl -s -o "$BODY" -w '%{http_code}' \
+  -X POST "$ENDPOINT" \
+  -H "Authorization: Bearer ${ITOP_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: server/discover' \
+  -d "$DISCOVER")
+# shellcheck disable=SC2016
+DISCOVER_SHAPE=$(php -r '$a = json_decode(file_get_contents($argv[1]), true); $r = $a["result"] ?? []; echo isset($r["supportedVersions"], $r["capabilities"]) && !isset($r["tools"]) ? "ok" : "wrong: ".json_encode($a);' "$BODY")
+echo "   with a token: HTTP ${DISCOVER_STATUS}, ${DISCOVER_SHAPE}"
+[ "$DISCOVER_STATUS" = "200" ] || fail "server/discover with a token was answered ${DISCOVER_STATUS}, not 200"
+[ "$DISCOVER_SHAPE" = "ok" ] || fail "server/discover did not answer the revisions and capabilities without a tool list: ${DISCOVER_SHAPE}"
+
 # A call a tool refuses is answered with isError - HTTP 200 and a JSON-RPC success, as the protocol
 # says - and recorded as an error. A class that does not exist is refused by core_object_get.
 echo "4d. a refusal by a tool is HTTP 200 and an error on the audit row"
