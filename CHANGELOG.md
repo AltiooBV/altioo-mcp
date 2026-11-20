@@ -166,6 +166,9 @@ what said so.
   ever executed, and every other unexpected failure stays opaque.
 - **The security summary overstated the audit row's `client`.** It is on every row for a `2026-07-28`
   client that sends its `clientInfo`, and on the `initialize` row only for an earlier one.
+- **An empty or malformed `Authorization` header was counted as a credential and reached iTop's Basic login.** `Bearer` alone, `Basic !!!!` and a Basic value with no colon once decoded passed the credential check, and iTop's own login split them on a colon without checking:
+  "Undefined array key 1", a server path in a `200` where `display_errors` is on and a misleading `401` where it is off. Such a header is now no credential: the request is answered the `401` and the audit row of a request that brought none, and the header
+  is dropped before iTop's login can read it, beside an `Auth-Token` as well. A usable Basic or bearer header is untouched.
 
 ### Added
 

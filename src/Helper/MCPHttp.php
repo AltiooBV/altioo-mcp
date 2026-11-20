@@ -94,6 +94,8 @@ final class MCPHttp
 		// in a process that serves more than one.
 		self::$sAuthToken = self::ExistingAuthToken();
 
+		self::ForgetUnusableAuthorization();
+
 		$sToken = self::ReadBearerToken();
 		if ($sToken === null) {
 			return;
@@ -138,7 +140,7 @@ final class MCPHttp
 
 		foreach (self::AUTHORIZATION_KEYS as $sKey) {
 			$sHeader = $_SERVER[$sKey] ?? null;
-			if (is_string($sHeader) && trim($sHeader) !== '') {
+			if (is_string($sHeader) && self::IsUsableAuthorization($sHeader)) {
 				return true;
 			}
 		}
@@ -154,7 +156,7 @@ final class MCPHttp
 		// Authorization to getallheaders() and not to $_SERVER.
 		if (function_exists('getallheaders')) {
 			foreach (getallheaders() as $sName => $sValue) {
-				if (strcasecmp($sName, 'Authorization') === 0 && is_string($sValue) && trim($sValue) !== '') {
+				if (strcasecmp($sName, 'Authorization') === 0 && is_string($sValue) && self::IsUsableAuthorization($sValue)) {
 					return true;
 				}
 			}
@@ -338,6 +340,46 @@ final class MCPHttp
 	 * place would make authentication depend on how that list is written. No
 	 * iTop login mode can consume a bearer, so nothing is lost by removing it.
 	 */
+	/**
+	 * Whether an Authorization header holds something a login could use: a bearer token, or Basic with a
+	 * base64 value that decodes to `user:password` (review 2026-11-18, RT-5).
+	 *
+	 * iTop's LoginBasic claims any request that carries an Authorization header, whatever its scheme, and
+	 * splits the value on a colon without checking that there is one: `Bearer` with no token, `Basic !!!!` and a
+	 * Basic value with no colon reached it and raised "Undefined array key 1" (a server path in a 200 with
+	 * display_errors on, a misleading 401 with it off). Such a header is no credential here: the request is
+	 * answered the 401 and the audit row of a request that brought none.
+	 */
+	private static function IsUsableAuthorization(string $sHeader): bool
+	{
+		if (self::ExtractBearer($sHeader) !== null) {
+			return true;
+		}
+
+		if (preg_match('/^Basic\s+([A-Za-z0-9+\/]+={0,2})\s*$/i', $sHeader, $aMatches) !== 1) {
+			return false;
+		}
+
+		$sDecoded = base64_decode($aMatches[1], true);
+
+		return $sDecoded !== false && strpos($sDecoded, ':') > 0;
+	}
+
+	/**
+	 * Drops an Authorization header no login can use, so that iTop's LoginBasic never reads it - not as the only
+	 * thing the request brought, and not beside an Auth-Token that would otherwise be answered by the same
+	 * warning.
+	 */
+	private static function ForgetUnusableAuthorization(): void
+	{
+		foreach (self::AUTHORIZATION_KEYS as $sKey) {
+			$sHeader = $_SERVER[$sKey] ?? null;
+			if (is_string($sHeader) && !self::IsUsableAuthorization($sHeader)) {
+				unset($_SERVER[$sKey]);
+			}
+		}
+	}
+
 	private static function ForgetBearerHeaders(): void
 	{
 		foreach (self::AUTHORIZATION_KEYS as $sKey) {
