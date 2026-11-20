@@ -23,9 +23,12 @@ entry itself, not left to be inferred from it.
 
 ## [2.1.0] - Unreleased
 
-**An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`
+**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Sixteen entries under *Fixed* are marked Security (two of them concern tool packs); none
+needs a migration. An advisory token's rehearsal is now also recorded and answered as one: a token carrying `MCP-advisory`
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
+
+**Nothing to migrate.** The datamodel gained no class or attribute (two comments and one dictionary label were reworded), the installer gained no step, no module parameter was added and no default moved. Downgrading is unsupported, as for every release.
 
 **Read before upgrading.**
 
@@ -65,6 +68,16 @@ what said so.
   a string parameter, where 0.9 answered `-32603` or handed the tool the word `Array`. A batch is refused by the SDK as well, `400` and `-32600`, behind this endpoint's own refusal.
 - **For pack authors: a nested JSON object reaches a tool parameter typed `mixed`, `object`, `\stdClass` or not at all as a `\stdClass`**, where 0.9 handed an array; a parameter typed `array` still receives arrays at every level. Every core tool types its structured
   arguments `array`, so none of the module's checks changed. `Testing\ElementContract` warns about such a parameter on a pack's tool.
+- **A refusal before any tool ran is `{"code":…,"message":…}` and nothing more.** 2.0.0 also sent `mcpMethod`, `mcpName` and `requestParams`, which are the audit row's own fields and were null or a constant there
+  (*Fixed*, the CORS entry). A client that read one of them reads `undefined` now; none was ever a field of the protocol. A request whose `Authorization` header is empty or malformed (`Bearer` alone, `Basic !!!!`) is answered the `401` of a request that brought no credential, instead of reaching iTop's Basic login.
+- **For pack authors: `Service\Write\RestValue` is no longer on the surface** ([ADR 0016](doc/adr/0016-what-the-core-tools-use-is-public.md), Amendment 1; *Removed*). It is `@internal`: the class stays and works in 2.1.0, with no promise after it. Write through `WriteValues::Validated()`.
+  This is the one place the changelog's rule of a deprecation a minor before a removal from the surface is waived, once, and the entry says why.
+- **For operators with tool packs: an `MCP-advisory` credential is no longer served a pack's write tools** ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)): absent from `tools/list`, an unknown tool when named. This module's own write tools still rehearse for it.
+- **For operators: other behaviour changes that a client, a saved prompt or a dashboard may notice**, each with its own entry under *Fixed* or *Added*: with `Person` or another class excluded, the keys and link sets typed on its parent (`contacts_list` of every ticket and CI) are excluded as well;
+  a portal user's assistant reads a link set's rows with fewer attributes, and a stimulus that sets a field the portal's transition form does not offer is refused; with `mcp_max_writes_per_hour` set, a write that sets a link set can be refused for more objects than before; the audit row's `simulate` column reads `yes` for every
+  rehearsal (a forced one and one that left `simulate` out included; earlier rows keep `no`) and `duration_ms` stops at the decision of the answer; a filter or a sort on an attribute the endpoint masks is refused as an unknown one; a half-failed bulk call carries `all_succeeded: false`.
+- **Runtime libraries were refreshed with `composer.lock`** (*Changed*); the licences did not change.
+
 ### Fixed
 
 - **Security: in portal mode a link set was served with every row and every attribute.** `core_object_get` checked the object it was
@@ -235,6 +248,13 @@ what said so.
   `objects_you_cannot_see` also counts objects that are gone.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
+
+### Changed
+
+- **`mcp/sdk` is `^0.10.0`** (locked at v0.10.0), and the runtime libraries moved with the lock: `doctrine/deprecations` 1.1.6 to 1.2.0, `opis/json-schema` 2.6.0 to 2.6.2, `phpstan/phpdoc-parser` 2.3.9 to 2.4.1,
+  `symfony/deprecation-contracts` v3.7.1 to v3.8.1 and `webmozart/assert` 2.5.0 to 2.5.1. The set of packages is the one 2.0.0 shipped and every licence is unchanged (the SDK and the `opis/*` libraries Apache-2.0, the rest MIT); `composer.json` gained
+  `autoload.files` for `sdk-aliases.php`. What the SDK's move changes for a client and a pack is under *Read before upgrading*.
+- **The audit row's `duration_ms` is the time to decide the answer**, no longer the time to write it to the client (*Fixed*, the entry on a client that hung up; the attribute's help text says so in both languages).
 
 ### Removed
 
