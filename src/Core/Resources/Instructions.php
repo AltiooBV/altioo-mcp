@@ -13,9 +13,9 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
+use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
 
 /**
  * The server instructions, as something a client can fetch.
@@ -102,13 +102,13 @@ class Instructions extends AbstractMCPResource implements PortalAware
 	 * it is not being served. A refusal names the fault; a confident wrong
 	 * answer buries it.
 	 *
-	 * @throws ResourceReadException When no policy was remembered for this request.
+	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) When no policy was remembered for this request.
 	 */
 	public function read(): mixed
 	{
 		$oPolicy = AccessPolicy::Current();
 		if ($oPolicy === null) {
-			throw new ResourceReadException('No access policy was established for this request, so there are no instructions to render for it.');
+			throw ResourceRefusal::Because('No access policy was established for this request, so there are no instructions to render for it.');
 		}
 
 		return ServerInstructions::ForCaller($oPolicy);

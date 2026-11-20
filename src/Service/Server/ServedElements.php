@@ -23,8 +23,10 @@ use UserRights;
  * What this caller is served: which elements are kept out of the server for it, the policy that
  * the instance configuration and the token's scopes make, and the summary of what is left.
  *
- * Registration and the instructions ask the same questions through here, so the instructions
- * cannot name an element tools/list would withhold. In portal mode only what enforces the
+ * Registration and the instructions ask the same questions through here, but the instructions are
+ * narrowed by toolset and by grade, not tool by tool: a tool the operator turned off one by one in
+ * `mcp_disabled_tools` is still named in them (a public tool's name, answered as an unknown one when
+ * called), on `initialize` and on `server/discover` alike. In portal mode only what enforces the
  * portal's own rules is served, and that filter is asked first. It was the half of `MCPService`
  * in 1.x that decides, as `SettingsWarnings` is the half that warns and `MCPService` the half that
  * builds.

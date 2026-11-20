@@ -93,7 +93,7 @@ class WriteFailureReportingContractTest extends TestCase
 	public function testAFailedCreateStillFails(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/if\(\$iCommittedId===null\)\{[^}]*thrownewToolCallException/',
+			'/if\(\$iCommittedId===null\)\{[^}]*throwToolRefusal::Because/',
 			SourceCalls::OfClass(ObjectCreate::class)->CodeInCatch('execute'),
 			'Nothing written is still an error; only a committed row changes the answer.'
 		);
@@ -460,13 +460,13 @@ class WriteFailureReportingContractTest extends TestCase
 	 */
 	public function testAnEmptyMapIsNotATypeError(string $sTool, string $sJson): void
 	{
-		if (!class_exists('Mcp\\Capability\\Discovery\\SchemaValidator')) {
+		if (!class_exists('Mcp\\Server\\Capability\\Discovery\\SchemaValidator')) {
 			$this->markTestSkipped('the MCP SDK validator is not available here.');
 		}
 
 		$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.$sTool;
 		$oTool = new $sClass();
-		$oValidator = new \Mcp\Capability\Discovery\SchemaValidator();
+		$oValidator = new \Mcp\Server\Capability\Discovery\SchemaValidator();
 
 		$aErrors = $oValidator->validateAgainstJsonSchema(json_decode($sJson, true), $oTool->getInputSchema());
 

@@ -18,9 +18,10 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSet;
 use DBSearch;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Runs one of the lists the portal shows this user: a ManageBrick, one of
@@ -124,15 +125,15 @@ class PortalList extends AbstractPortalTool
 	 * @param int    $offset    Rows to skip
 	 *
 	 * @return mixed The list, the tab, the rows and whether there are more
-	 * @throws ToolCallException if the list is not one the portal offers, or the portal cannot be read
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the list is not one the portal offers, or the portal cannot be read
 	 */
 	public static function execute(string $list, string $tab = '', int $parent_id = 0, string $search = '', int $limit = self::DEFAULT_LIMIT, int $offset = 0): mixed
 	{
 		if ($limit < 1 || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException('Invalid limit. Please specify a limit between 1 and '.self::MAX_LIMIT.'.');
+			throw ToolRefusal::Because('Invalid limit. Please specify a limit between 1 and '.self::MAX_LIMIT.'.');
 		}
 		if ($offset < 0) {
-			throw new ToolCallException('Invalid offset. Please specify a non-negative offset.');
+			throw ToolRefusal::Because('Invalid offset. Please specify a non-negative offset.');
 		}
 
 		$aResolved = self::Resolve($list, $tab, $parent_id);
@@ -159,7 +160,7 @@ class PortalList extends AbstractPortalTool
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 	}
 
@@ -172,7 +173,7 @@ class PortalList extends AbstractPortalTool
 	 *
 	 * @return array{policy: PortalPolicy, list: array<string, mixed>, class: string, query: ?DBSearch} The query is null when the list can hold nothing for this user.
 	 *
-	 * @throws ToolCallException When the list, the tab or the parent is not one the portal offers.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the list, the tab or the parent is not one the portal offers.
 	 *
 	 * @since 1.3.0
 	 */
@@ -184,7 +185,7 @@ class PortalList extends AbstractPortalTool
 		if ($aList === null || $oPolicy->ReadSet((string)$aList['class']) === null) {
 			// Not quoted back: a list id is the client's text, and an unknown
 			// one and one the scopes empty answer alike.
-			throw new ToolCallException('The portal offers no such list. Call core_class_list for the lists it offers.');
+			throw ToolRefusal::Because('The portal offers no such list. Call core_class_list for the lists it offers.');
 		}
 
 		$sClass = (string)$aList['class'];
@@ -195,7 +196,7 @@ class PortalList extends AbstractPortalTool
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\Throwable $oException) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to run the portal list', $oException));
 		}
 
 		return ['policy' => $oPolicy, 'list' => $aList, 'class' => $sClass, 'query' => $oQuery];
@@ -228,14 +229,14 @@ class PortalList extends AbstractPortalTool
 			static fn (string $sAttCode): bool => MetaModel::IsValidAttCode($sClass, $sAttCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)
 		)));
 		if ($aAttCodes === []) {
-			throw new ToolCallException('This list shows no column a search can look in.');
+			throw ToolRefusal::Because('This list shows no column a search can look in.');
 		}
 
 		$aNeedles = preg_match('/^"(.*)"$/', $sSearch, $aMatches) === 1
 			? [$aMatches[1]]
 			: array_values(array_filter(explode(' ', $sSearch), static fn (string $s): bool => $s !== ''));
 		if (count($aNeedles) > self::MAX_SEARCH_WORDS) {
-			throw new ToolCallException(sprintf('A search takes at most %d words; narrow it, or quote a phrase to match it whole.', self::MAX_SEARCH_WORDS));
+			throw ToolRefusal::Because(sprintf('A search takes at most %d words; narrow it, or quote a phrase to match it whole.', self::MAX_SEARCH_WORDS));
 		}
 		foreach ($aNeedles as $sNeedle) {
 			$oQuery->AddCondition_FullTextOnAttributes($aAttCodes, $sNeedle);

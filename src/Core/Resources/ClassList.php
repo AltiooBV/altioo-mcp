@@ -11,9 +11,9 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
-use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
+use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
 
 /**
  * @internal
@@ -59,7 +59,7 @@ class ClassList extends AbstractMCPResource
 	/**
 	 * @return string The same envelope core_class_list returns, with neither
 	 *                narrowing applied: a static URI takes no arguments.
-	 * @throws ResourceReadException if the class list cannot be encoded.
+	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) if the class list cannot be encoded.
 	 */
 	public function read(): mixed
 	{

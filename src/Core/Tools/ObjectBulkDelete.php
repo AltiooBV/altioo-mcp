@@ -18,8 +18,9 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
 use DeletionPlan;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Delete a list of objects of one class.
@@ -91,7 +92,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 	 *
 	 * @return mixed A per-object report, each carrying what its deletion would take with it
 	 *
-	 * @throws ToolCallException When the class, the ids or the bulk right rule out the whole call.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the class, the ids or the bulk right rule out the whole call.
 	 */
 	public static function execute(
 		string  $class,
@@ -112,7 +113,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// tool's own source, once the call is known to commit and before it writes.
 		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Once for the batch, before the loop: the objects deleted by one call

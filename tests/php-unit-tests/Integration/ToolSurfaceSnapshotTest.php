@@ -18,7 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
 use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Http\Discovery\Psr17Factory;
-use Mcp\Server;
+use Mcp\Server\Server;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use Psr\Http\Message\ResponseInterface;
 use ReflectionMethod;
@@ -247,9 +247,9 @@ class ToolSurfaceSnapshotTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * One exchange. The first returns the session id in `headers`, which every
-	 * later call carries; a stateless server accepts any, but a request
-	 * without one is refused before it reaches a handler.
+	 * One exchange. `headers` is the session id the answer carried, which is
+	 * empty: the endpoint keeps no session (SDK 0.10 serves a handshake-era
+	 * client without one), and a later call carries none.
 	 *
 	 * @param array<string, mixed>|object $mParams
 	 *
@@ -264,7 +264,7 @@ class ToolSurfaceSnapshotTest extends ItopDataTestCaseAlias
 			->withHeader('Content-Type', 'application/json')
 			->withHeader('Accept', 'application/json, text/event-stream')
 			->withBody($oFactory->createStream((string)json_encode(['jsonrpc' => '2.0', 'id' => $iId, 'method' => $sMethod, 'params' => $mParams])));
-		if ($sSession !== null) {
+		if ($sSession !== null && $sSession !== '') {
 			$oRequest = $oRequest->withHeader('Mcp-Session-Id', $sSession);
 		}
 

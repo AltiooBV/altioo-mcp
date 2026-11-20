@@ -12,12 +12,12 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
-use Mcp\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use utils;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What a write would do, established before it does it.
@@ -60,7 +60,7 @@ final class WritePlan
 	 * reports per row, so a hidden-obsolete row there is an entry that says so
 	 * rather than a refusal that stops the other ninety-nine.
 	 *
-	 * @throws ToolCallException When the object is obsolete, hidden from this account, and no hatch was passed.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the object is obsolete, hidden from this account, and no hatch was passed.
 	 * @since 1.0.0
 	 */
 	public static function RefuseHiddenObsolete(DBObject $oObject, string $sClass, bool $bObsoleteOk, string $sVerb): void
@@ -86,7 +86,7 @@ final class WritePlan
 			return;
 		}
 
-		throw new ToolCallException(sprintf(
+		throw ToolRefusal::Because(sprintf(
 			"This %s counts as obsolete (%s) and your account does not show obsolete objects, so it is absent from your own searches. "
 			."Refused because acting on it is usually a stale id rather than a decision. "
 			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete - or call core_set_obsolete_data to show them.",
@@ -208,7 +208,7 @@ final class WritePlan
 	 * @param array<string, array{raw: mixed, shown: mixed}>          $aRequested  From {@see Requested()}.
 	 * @param array<string, array{requested: mixed, effective: mixed}> $aOverridden From {@see Overridden()}.
 	 *
-	 * @throws ToolCallException When a discarded value was not a legal one.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When a discarded value was not a legal one.
 	 * @since 1.0.0
 	 */
 	public static function CheckRequested(DBObject $oObject, array $aRequested, array $aOverridden, string $sWhat): void
@@ -225,7 +225,7 @@ final class WritePlan
 			} catch (Throwable $e) {
 				// Same reading as Check(): a check that could not run is not a
 				// check that passed, and what it threw is for the log.
-				throw new ToolCallException(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
+				throw ToolRefusal::Because(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
 			}
 
 			if ($mResult !== true) {
@@ -237,7 +237,7 @@ final class WritePlan
 			return;
 		}
 
-		throw new ToolCallException(sprintf(
+		throw ToolRefusal::Because(sprintf(
 			'%s cannot be written as described: %s. iTop overwrites %s from other attributes, so the value was never stored - but it is not a legal value either, and a call that sent it is not the call that was meant.',
 			$sWhat,
 			implode(' ', $aIssues),

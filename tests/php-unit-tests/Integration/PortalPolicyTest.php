@@ -21,7 +21,7 @@ use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalTestBrick;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use UserRights;
 

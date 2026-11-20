@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
-use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
-use Mcp\Server;
+use Altioo\iTop\Extension\MCP\Service\Server\NoSessionTeardownMiddleware;
+use Mcp\Server\Server;
 use Mcp\Server\Transport\Http\Middleware\ProtocolVersionMiddleware;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -50,7 +50,12 @@ class ProtocolEraTest extends TestCase
 
 	private const HANDSHAKE_VERSION = '2025-11-25';
 
-	public function testTheHandshakeEraStillOpensASession(): void
+	/**
+	 * SDK 0.10 serves a handshake-era client over HTTP without sessions unless the builder is told to keep them,
+	 * which MCPService is not (it used to hand the SDK a store that remembered nothing; the SDK now binds a session to
+	 * the principal that opened it, and answered 503 to the id such a store could not give back).
+	 */
+	public function testTheHandshakeEraIsServedWithoutASession(): void
 	{
 		$aResponse = self::answer(
 			[
@@ -67,7 +72,7 @@ class ProtocolEraTest extends TestCase
 		);
 
 		$this->assertSame(200, $aResponse['status'], 'the handshake era is still served');
-		$this->assertNotSame('', $aResponse['session'], 'a handshake-era client is given a session id');
+		$this->assertSame('', $aResponse['session'], 'a handshake-era client is given no session id: none is kept');
 		$this->assertSame(
 			self::HANDSHAKE_VERSION,
 			$aResponse['body']['result']['protocolVersion'] ?? null,
@@ -120,6 +125,88 @@ class ProtocolEraTest extends TestCase
 	}
 
 	/**
+	 * What the 0.9 store was for: the second call of a handshake-era client. It carries the revision in a header, and
+	 * the session id the client was never given is not needed.
+	 */
+	public function testAHandshakeEraCallAfterInitializeIsServedWithoutAnId(): void
+	{
+		$aResponse = self::answer(self::handshakeCall(), ['MCP-Protocol-Version' => self::HANDSHAKE_VERSION]);
+
+		$this->assertSame(200, $aResponse['status']);
+		$this->assertSame('HELLO', $aResponse['body']['result']['content'][0]['text'] ?? null, 'the tool ran');
+	}
+
+	/**
+	 * A client that invents an id, or still holds one a 2.0 server issued, is served as one that sent none. The SDK
+	 * answers 404 to a session "opened before the upgrade" only when it keeps sessions.
+	 */
+	public function testAnIdTheEndpointNeverIssuedIsNotLookedUp(): void
+	{
+		$aResponse = self::answer(self::handshakeCall(), [
+			'MCP-Protocol-Version' => self::HANDSHAKE_VERSION,
+			'Mcp-Session-Id'       => '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+		]);
+
+		$this->assertSame(200, $aResponse['status']);
+		$this->assertSame('HELLO', $aResponse['body']['result']['content'][0]['text'] ?? null);
+	}
+
+	/**
+	 * 2.1.0 says a DELETE is answered 405 with `Allow: POST, OPTIONS`, and the SDK's own sessionless transport says the
+	 * same without the module's middleware: this holds on either, and the two are asserted apart so that removing the
+	 * module's middleware is a decision and not an accident.
+	 */
+	public function testADeleteIsRefusedWithTheAllowHeaderTheChangelogStates(): void
+	{
+		$oFactory = new Psr17Factory();
+		$aSessionId = ['Mcp-Session-Id' => '3f2504e0-4f89-41d3-9a0c-0305e82c3301'];
+
+		foreach ([[], [new NoSessionTeardownMiddleware($oFactory)]] as $aMiddleware) {
+			$oResponse = self::send('DELETE', '', $aSessionId + ['MCP-Protocol-Version' => self::HANDSHAKE_VERSION], $aMiddleware);
+
+			$this->assertSame(405, $oResponse->getStatusCode(), 'a DELETE is refused, whoever answers');
+			$this->assertSame('POST, OPTIONS', $oResponse->getHeaderLine('Allow'));
+		}
+	}
+
+	public function testAGetIsRefusedToo(): void
+	{
+		$oResponse = self::send('GET', '', ['MCP-Protocol-Version' => self::HANDSHAKE_VERSION, 'Accept' => 'text/event-stream']);
+
+		$this->assertSame(405, $oResponse->getStatusCode());
+		$this->assertSame('POST, OPTIONS', $oResponse->getHeaderLine('Allow'));
+	}
+
+	/**
+	 * The module refuses a batch before the SDK sees it (Controller\BatchRefusal, audited as one row), so the SDK's
+	 * own answer is a backstop. 0.9 served the array; 0.10 answers 400 and -32600 on every revision, so the refusal
+	 * stands even if the controller's check is ever lost.
+	 */
+	public function testTheSdkItselfNoLongerServesABatch(): void
+	{
+		$oResponse = self::send('POST', (string)json_encode([self::handshakeCall()]), ['MCP-Protocol-Version' => self::HANDSHAKE_VERSION]);
+
+		$this->assertSame(400, $oResponse->getStatusCode());
+		$aBody = (array)json_decode((string)$oResponse->getBody(), true);
+		$this->assertSame(-32600, $aBody['error']['code'] ?? null);
+	}
+
+	/**
+	 * A handshake-era tools/call, the second call of a client that has initialized.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function handshakeCall(): array
+	{
+		return [
+			'jsonrpc' => '2.0',
+			'id'      => 3,
+			'method'  => 'tools/call',
+			'params'  => ['name' => 'shout', 'arguments' => ['q' => 'hello']],
+		];
+	}
+
+	/**
 	 * A 2026-07-28 tools/call, complete enough to be served.
 	 *
 	 * @return array<string, mixed>
@@ -163,7 +250,7 @@ class ProtocolEraTest extends TestCase
 	}
 
 	/**
-	 * Runs one request through a server wired the way MCPService wires it.
+	 * Runs one request through a server wired the way MCPService wires it: no session store.
 	 *
 	 * @param array<string, mixed>                        $aBody
 	 * @param array<string, string>                       $aHeaders
@@ -173,12 +260,27 @@ class ProtocolEraTest extends TestCase
 	 */
 	private static function answer(array $aBody, array $aHeaders, array $aMiddleware = []): array
 	{
+		$oResponse = self::send('POST', (string)json_encode($aBody), $aHeaders, $aMiddleware);
+
+		return [
+			'status'  => $oResponse->getStatusCode(),
+			'session' => $oResponse->getHeaderLine('Mcp-Session-Id'),
+			'body'    => (array)json_decode((string)$oResponse->getBody(), true),
+		];
+	}
+
+	/**
+	 * @param array<string, string>                            $aHeaders
+	 * @param array<int, \Psr\Http\Server\MiddlewareInterface> $aMiddleware
+	 */
+	private static function send(string $sMethod, string $sBody, array $aHeaders, array $aMiddleware = []): \Psr\Http\Message\ResponseInterface
+	{
 		$oFactory = new Psr17Factory();
 
-		$oRequest = $oFactory->createServerRequest('POST', 'https://itop.example.com/mcp')
+		$oRequest = $oFactory->createServerRequest($sMethod, 'https://itop.example.com/mcp')
 			->withHeader('Content-Type', 'application/json')
 			->withHeader('Accept', 'application/json, text/event-stream')
-			->withBody($oFactory->createStream((string)json_encode($aBody)));
+			->withBody($oFactory->createStream($sBody));
 
 		foreach ($aHeaders as $sName => $sValue) {
 			$oRequest = $oRequest->withHeader($sName, $sValue);
@@ -187,15 +289,8 @@ class ProtocolEraTest extends TestCase
 		$oServer = Server::builder()
 			->setServerInfo('era-test', '1.0.0')
 			->addTool(static fn(string $q): string => strtoupper($q), 'shout', 'Shouts back')
-			->setSession(new StatelessSessionStore())
 			->build();
 
-		$oResponse = $oServer->run(new StreamableHttpTransport($oRequest, $oFactory, middleware: $aMiddleware));
-
-		return [
-			'status'  => $oResponse->getStatusCode(),
-			'session' => $oResponse->getHeaderLine('Mcp-Session-Id'),
-			'body'    => (array)json_decode((string)$oResponse->getBody(), true),
-		];
+		return $oServer->run(new StreamableHttpTransport($oRequest, $oFactory, middleware: $aMiddleware));
 	}
 }

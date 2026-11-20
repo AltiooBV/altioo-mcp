@@ -16,8 +16,8 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The readable classes of the datamodel, as a tool.
@@ -115,7 +115,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	 * @param string $filter Optional case-insensitive text matched against class name, label and description
 	 * @param string $may Optional rights gate to narrow on, e.g. 'create', or '*' to attach the rights block without narrowing; either way each class returned carries all eight grades
 	 * @return mixed An array containing the category, the filter, the gate narrowed on, the number of classes returned, and the classes themselves
-	 * @throws ToolCallException if the category is not one the datamodel declares, or the gate is not one the tools check.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the category is not one the datamodel declares, or the gate is not one the tools check.
 	 */
 	public static function execute(
 		string $category = '',
@@ -135,7 +135,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 
 		if ($sCategory !== '' && !in_array($sCategory, ClassCatalog::Categories(), true)) {
 			// Naming the valid ones costs one line and saves the model a round of guessing.
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				"Unknown category '%s'. Valid categories: %s.",
 				$sCategory,
 				implode(', ', ClassCatalog::Categories())
@@ -144,7 +144,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 
 		if ($sMay !== '' && !in_array($sMay, GateGrades::MayValues(), true)) {
 			// Same courtesy as the category above: the valid ones cost one line.
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				"Unknown gate '%s'. Valid gates: %s. Pass '%s' to report them all without narrowing.",
 				$sMay,
 				implode(', ', GateGrades::RightsKeys()),

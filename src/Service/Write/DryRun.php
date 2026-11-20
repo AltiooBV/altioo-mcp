@@ -13,8 +13,8 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
-use Mcp\Exception\ToolCallException;
 use Throwable;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The dry run of a write tool: the argument that asks for it, whether this call is rehearsing, and
@@ -215,7 +215,7 @@ final class DryRun
 	 * with sentences meant for a person - "Attribute X is mandatory" - which
 	 * are exactly what a model needs to fix the call and try again.
 	 *
-	 * @throws ToolCallException When the object cannot be written as described.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the object cannot be written as described.
 	 * @since 1.0.0
 	 */
 	public static function Check(DBObject $oObject, string $sWhat): void
@@ -226,7 +226,7 @@ final class DryRun
 			// A check that cannot run is not a check that passed. What it threw
 			// came from inside CheckToWrite() - a class extension, a query -
 			// and is for the log, not for the caller.
-			throw new ToolCallException(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure("Could not validate {$sWhat}", $e));
 		}
 
 		if ($bOk) {
@@ -237,7 +237,7 @@ final class DryRun
 		// are not repeated, and the call says only that it cannot be written as described.
 		$aIssues = ExclusionPolicy::WithoutExcluded(get_class($oObject), array_map('strval', (array)$aIssues));
 
-		throw new ToolCallException(empty($aIssues)
+		throw ToolRefusal::Because(empty($aIssues)
 			? "{$sWhat} cannot be written as described."
 			: "{$sWhat} cannot be written as described: ".implode(' ', $aIssues));
 	}

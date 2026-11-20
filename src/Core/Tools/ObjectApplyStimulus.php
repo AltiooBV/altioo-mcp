@@ -27,11 +27,11 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use DBObjectSet;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Apply a lifecycle stimulus on an iTop object.
@@ -157,7 +157,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 	 * @param bool $simulate When true (default), the transition is validated but not applied
 	 * @param string|null $comment Why the transition is being applied, recorded on the audit row
 	 * @return array The state the object is in, or the state it would move to
-	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
 	 */
 	public static function execute(
 		string  $class,
@@ -175,42 +175,42 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		// Validate input parameters
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
+			throw ToolRefusal::Because("Invalid ID. Please specify a valid object ID.");
 		}
 		if ($stimulus === '') {
-			throw new ToolCallException("Stimulus cannot be empty. Please specify a valid stimulus code.");
+			throw ToolRefusal::Because("Stimulus cannot be empty. Please specify a valid stimulus code.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id, $fields);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException("The database is in read-only mode, cannot apply stimulus on objects.");
+			throw ToolRefusal::Because("The database is in read-only mode, cannot apply stimulus on objects.");
 		}
 
 		if (MetaModel::IsAbstract($class)) {
-			throw new ToolCallException("Class '{$class}' is abstract, cannot apply stimulus.");
+			throw ToolRefusal::Because("Class '{$class}' is abstract, cannot apply stimulus.");
 		}
 		// A class whose state attribute is excluded has no lifecycle on this channel (doc/adr/0012).
 		if (!MetaModel::HasLifecycle($class) || ExclusionPolicy::ExcludesAttribute($class, MetaModel::GetStateAttributeCode($class))) {
-			throw new ToolCallException("Class '{$class}' does not have a lifecycle, cannot apply stimulus.");
+			throw ToolRefusal::Because("Class '{$class}' does not have a lifecycle, cannot apply stimulus.");
 		}
 
 		// Applying a stimulus is a modification
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY)) {
-			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
 		// What this request's mode adds to UserRights: in portal mode, the
@@ -222,7 +222,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0 || $oAccess->Hides($class, $id)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
 		// Fetch() instantiates the leaf from the finalclass column it has
@@ -236,27 +236,27 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (ExclusionPolicy::ExcludesClass($sFinalClass) || !UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			// Even if the rights are allowed, this is not the correct class to use.
-			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the apply stimulus with the correct final class."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the apply stimulus with the correct final class."); // hide that the object exists
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY, $oSet)) {
-			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot update objects of class '{$class}'.");
 		}
 		// Validate its current state
 		if ($oObject->IsReadOnly()) {
-			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot apply stimulus on object.");
+			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot apply stimulus on object.");
 		}
 		$sCurrentState = $oObject->GetState();
 		if ($sCurrentState === '') {
-			throw new ToolCallException("Object {$class}::{$id} is in an invalid state, cannot apply stimulus.");
+			throw ToolRefusal::Because("Object {$class}::{$id} is in an invalid state, cannot apply stimulus.");
 		}
 
 		// The mode's refusals first: a portal lists only the stimuli it offers,
@@ -265,14 +265,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			?? $oAccess->RefusalToApply($oObject, $stimulus)
 			?? $oAccess->RefusalToSet($oObject, $fields, $stimulus));
 		if ($sModeRefusal !== null) {
-			throw new ToolCallException($sModeRefusal);
+			throw ToolRefusal::Because($sModeRefusal);
 		}
 
 		// Validate the stimulus is available on this class
 		$aTransitions = MetaModel::EnumTransitions($class, $sCurrentState);
 		if (!isset($aTransitions[$stimulus])) {
 			$aAvailable = array_keys($aTransitions);
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				"Invalid stimulus '{$stimulus}' on {$class}::{$id} in state '{$sCurrentState}'."
 				.(empty($aAvailable) ? ' No transitions available.' : ' Available: '.implode(', ', $aAvailable).'.')
 			);
@@ -280,7 +280,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 
 		// Check access rights on the stimulus (e.g. agent can apply ev_assign but not ev_reassign)
 		if (!UserRights::IsStimulusAllowed($class, $stimulus, $oSet)) {
-			throw new ToolCallException("Access denied: cannot apply stimulus '{$stimulus}' to this object of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot apply stimulus '{$stimulus}' to this object of class '{$class}'.");
 		}
 
 		// A set holding this object and nothing else, built fresh: $oSet has
@@ -294,7 +294,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// what its target state prompts for.
 		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, $oInstanceSet, $stimulus);
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to apply stimulus due to fields : ".json_encode($aIssues));
+			throw ToolRefusal::Because("Failed to apply stimulus due to fields : ".json_encode($aIssues));
 		}
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
@@ -305,7 +305,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to apply stimulus due to setting fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to apply stimulus due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// Once everything is Set(), because a datamodel filter reads the
@@ -313,7 +313,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
 			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to apply stimulus due to fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to apply stimulus due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Check for missing mandatory attributes before applying the stimulus, to provide a more helpful error message in this common case
@@ -352,7 +352,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// for a transition it was never going to be allowed to complete, and
 		// learns that on a second round trip.
 		if (!empty($aMissingFillable) || !empty($aMissingBlocked)) {
-			throw new ToolCallException(self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked));
+			throw ToolRefusal::Because(self::missingMandatoryMessage($stimulus, $aMissingFillable, $aMissingBlocked));
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()
@@ -419,7 +419,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// The object and the link rows the call would add, change or remove: a link row is an object the cap counts (ADR 0019).
 		$sCapRefusal = WriteCap::RefusalFor(1 + WriteCap::LinkRowsOf($oObject, array_keys($aValidatedValues)));
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -431,11 +431,11 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		try {
 			$bApplied = $oObject->ApplyStimulus($stimulus);
 		} catch (\Throwable $e) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}", $e));
 		}
 		// ApplyStimulus returns false if the state transition did not happen (e.g. due to a condition on the transition that is not met), but no exception is thrown in this case, so we need to check the return value to provide a helpful error message.
 		if (!$bApplied) {
-			throw new ToolCallException("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
+			throw ToolRefusal::Because("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
 		return ToolOutput::StructuredWrite(['class' => $class]

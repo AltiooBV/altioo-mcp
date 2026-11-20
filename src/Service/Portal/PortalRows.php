@@ -13,8 +13,8 @@ use DBObject;
 use DBObjectSet;
 use DBSearch;
 use DBUnionSearch;
-use Mcp\Exception\ToolCallException;
 use MetaModel;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The rows of a portal list, bounded by the portal's scope, the tab and the
@@ -107,7 +107,7 @@ final class PortalRows
 			return $oQuery;
 		}
 
-		throw new ToolCallException('This list has no such tab. Call core_class_list for its tabs.');
+		throw ToolRefusal::Because('This list has no such tab. Call core_class_list for its tabs.');
 	}
 
 	/**
@@ -122,7 +122,7 @@ final class PortalRows
 		$sParentList = $aList['parent'];
 		$sParentAtt = $aList['parent_att'];
 		if (!is_string($sParentList) || !is_string($sParentAtt) || $sParentAtt === '') {
-			throw new ToolCallException('parent_id narrows a browse level below the first, and this list is not one.');
+			throw ToolRefusal::Because('parent_id narrows a browse level below the first, and this list is not one.');
 		}
 
 		$aParent = $oPolicy->ListDefinition($sParentList);

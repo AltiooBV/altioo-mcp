@@ -18,7 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
@@ -100,7 +100,7 @@ class TicketSearchMine extends AbstractObjectSearch implements PortalAware
 	 * @param string $order_direction 'asc' or 'desc'
 	 * @param string $output_fields   Comma-separated attribute codes, or '*'
 	 *
-	 * @throws ToolCallException When tickets cannot be read at all.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When tickets cannot be read at all.
 	 */
 	public static function execute(
 		int    $limit = self::DEFAULT_LIMIT,
@@ -111,25 +111,25 @@ class TicketSearchMine extends AbstractObjectSearch implements PortalAware
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException('Invalid limit. Specify between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
+			throw ToolRefusal::Because('Invalid limit. Specify between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
 		}
 		if ($offset < self::MIN_OFFSET) {
-			throw new ToolCallException('Invalid offset. Specify a non-negative offset.');
+			throw ToolRefusal::Because('Invalid offset. Specify a non-negative offset.');
 		}
 		// What the operator excluded is not this tool's to answer for, whatever UserRights says (ADR 0012), and
 		// nothing applies it for a pack: a class that is excluded is answered as one that does not exist, and a
 		// tool that said "0 tickets" instead would still tell the caller the class is there. The two attributes
 		// the query below filters on are held to it as well, as a search on them is a read of them.
 		if (!ExclusionPolicy::Serves('UserRequest')) {
-			throw new ToolCallException(ClassRefusal::Unreadable('UserRequest'));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable('UserRequest'));
 		}
 		foreach (['agent_id', 'caller_id'] as $sFiltered) {
 			if (ExclusionPolicy::ExcludesAttribute('UserRequest', $sFiltered)) {
-				throw new ToolCallException("Unknown attribute '{$sFiltered}' on class 'UserRequest'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sFiltered}' on class 'UserRequest'.");
 			}
 		}
 		if (!UserRights::IsActionAllowed('UserRequest', UR_ACTION_READ)) {
-			throw new ToolCallException('Access denied: cannot read tickets.');
+			throw ToolRefusal::Because('Access denied: cannot read tickets.');
 		}
 
 		// The whole reason this tool exists rather than a documented OQL

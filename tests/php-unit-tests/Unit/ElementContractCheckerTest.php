@@ -9,12 +9,17 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\MixedParameterPackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PackThrowingTheSdkClass;
+use Altioo\iTop\Extension\MCP\Test\Support\PackWrittenAgainstSdk09;
+use Altioo\iTop\Extension\MCP\Test\Support\ReadPackTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassInheriting;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassNoAsk;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
@@ -222,5 +227,82 @@ class ElementContractCheckerTest extends TestCase
 			ElementContract::Violations(new ClassList()),
 			static fn (string $s): bool => str_contains($s, 'DryRun::Simulated()')
 		));
+	}
+	/**
+	 * SDK 0.10: a nested JSON object reaches a parameter typed mixed, object, \stdClass or not at all as a \stdClass. A pack that
+	 * guards with is_array() on such a parameter lets an object through, so the checker says so, naming the parameters.
+	 */
+	public function testAToolWhoseParametersWouldReceiveAStdClassIsWarnedAbout(): void
+	{
+		$aViolations = ElementContract::Violations(new MixedParameterPackTool());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aViolations[0]);
+		$this->assertStringContainsString('$fields, $filters', $aViolations[0]);
+		$this->assertStringNotContainsString('$ids', $aViolations[0], 'an array-typed parameter receives arrays at every level');
+		$this->assertStringNotContainsString('$name', $aViolations[0], 'a scalar union is not an object');
+	}
+
+	/**
+	 * What the contract tests of a security check rely on: every structured argument of a core tool is typed array, so the SDK
+	 * hands it over as an array at every level and the tool's own is_array() checks keep meaning what they meant.
+	 */
+	public function testNoCoreToolTakesAParameterThatWouldReceiveAStdClass(): void
+	{
+		$aFiles = glob(dirname(__DIR__, 3).'/src/Core/Tools/*.php');
+		$this->assertNotEmpty($aFiles);
+
+		foreach ($aFiles as $sFile) {
+			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.basename($sFile, '.php');
+			$oReflection = new \ReflectionClass($sClass);
+			if ($oReflection->isAbstract() || !$oReflection->isSubclassOf(AbstractMCPTool::class)) {
+				continue;
+			}
+
+			$aLoose = [];
+			foreach ($oReflection->getMethod('execute')->getParameters() as $oParameter) {
+				$oType = $oParameter->getType();
+				$aMembers = $oType instanceof \ReflectionUnionType ? $oType->getTypes() : [$oType];
+				foreach ($aMembers as $oMember) {
+					if ($oMember === null || !$oMember instanceof \ReflectionNamedType
+						|| in_array(ltrim($oMember->getName(), '\\'), ['mixed', 'object', 'stdClass'], true)) {
+						$aLoose[] = $oParameter->getName();
+					}
+				}
+			}
+			$this->assertSame([], $aLoose, "{$sClass}::execute() takes a parameter that would receive a stdClass for a nested object");
+		}
+	}
+	/**
+	 * ADR 0024: the SDK's 0.9 exception names are aliases until 3.0, and a pack is told to move off them while it is
+	 * a warning and not a fatal.
+	 */
+	public function testAPackThatNamesTheSdkOldExceptionsIsWarnedAboutThem(): void
+	{
+		$aViolations = ElementContract::Violations(new PackWrittenAgainstSdk09());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Exception\\ToolCallException', $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Exception\\ResourceReadException', $aViolations[0]);
+		$this->assertStringContainsString('until 3.0', $aViolations[0]);
+		$this->assertStringContainsString('ToolRefusal::Because()', $aViolations[0]);
+	}
+
+	public function testAPackThatThrowsTheSdkClassDirectlyIsPointedToTheModulesRefusal(): void
+	{
+		$aViolations = ElementContract::Violations(new PackThrowingTheSdkClass());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringContainsString('throws the SDK', $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Server\\Exception\\ToolCallException', $aViolations[0]);
+		$this->assertStringNotContainsString('until 3.0', $aViolations[0], 'the new name is not deprecated, only the habit of writing it');
+	}
+
+	/** A pack that names neither, and the module's own tools, are left alone. */
+	public function testAPackThatUsesTheModulesRefusalsIsNotWarned(): void
+	{
+		$this->assertSame([], ElementContract::Violations(new ReadPackTool()));
+		$this->assertSame([], ElementContract::Violations(new ClassList()));
 	}
 }

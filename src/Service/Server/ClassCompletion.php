@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Mcp\Capability\Completion\ProviderInterface;
+use Mcp\Server\Capability\Completion\ProviderInterface;
 use Throwable;
 
 /**

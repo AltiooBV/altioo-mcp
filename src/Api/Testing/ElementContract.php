@@ -159,6 +159,10 @@ final class ElementContract
 			);
 		}
 
+		if (!CoreElement::IsOwn($oElement)) {
+			$aWarnings = array_merge($aWarnings, self::sdkNameWarnings($oElement));
+		}
+
 		$sDescription = method_exists($oElement, 'getDescription') ? $oElement->getDescription() : null;
 		if (!$oElement instanceof AbstractMCPTool && (!is_string($sDescription) || trim($sDescription) === '')) {
 			// Only tools have this refused outright, because only a tool is
@@ -198,6 +202,18 @@ final class ElementContract
 			);
 		}
 
+		// SDK 0.10 keeps the JSON types of the arguments: a nested object reaches a parameter typed array as an array at every
+		// level, but one typed mixed, object, \stdClass or not at all as a \stdClass. A check written for 0.9, an is_array() on
+		// the value or on anything inside it, then passes an object by instead of refusing it.
+		$aLoose = self::parametersThatReceiveObjects($oTool);
+		if ($aLoose !== []) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'execute() of "%s" takes %s with no scalar or array type. A nested JSON object reaches such a parameter as a \stdClass, not as an array, so an is_array() check on it, or on anything inside it, lets the value through unexamined. Declare it array (the SDK then hands arrays at every level) or handle \stdClass as well.',
+				$oTool->getQualifiedName(),
+				implode(', ', array_map(static fn (string $sName): string => '$'.$sName, $aLoose))
+			);
+		}
+
 		$aOutputSchema = $oTool->getOutputSchema();
 		if ($aOutputSchema !== null && ($aOutputSchema['type'] ?? null) !== 'object') {
 			$aWarnings[] = self::WARNING.'getOutputSchema() is not a JSON Schema of type "object", so a client validating structured content against it will reject every result.';
@@ -210,6 +226,142 @@ final class ElementContract
 		// assertion this class exists to support.
 
 		return $aWarnings;
+	}
+
+	/**
+	 * What a pack's source says about the SDK's exceptions: the names `mcp/sdk` 0.9 gave them, which are aliases until
+	 * 3.0, and a `new` of the SDK's own class where the module's `ToolRefusal::Because()` is the way
+	 * (doc/adr/0024-the-pack-contract-names-this-modules-exceptions.md). Only the pack's code counts: the element's class and
+	 * the parents of it that are not this module's. Read from the PHP tokens, so a comment or a string naming one does not.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function sdkNameWarnings(object $oElement): array
+	{
+		$aOld = [];
+		$aThrown = [];
+		for ($oClass = new ReflectionClass($oElement); $oClass !== false; $oClass = $oClass->getParentClass()) {
+			$sFile = $oClass->getFileName();
+			if ($sFile === false || CoreElement::IsOwn($oClass->getName())) {
+				continue;
+			}
+			$sCode = @file_get_contents($sFile);
+			if ($sCode === false) {
+				continue;
+			}
+			[$aFoundOld, $aFoundThrown] = self::sdkExceptionNames($sCode);
+			$aOld = array_merge($aOld, $aFoundOld);
+			$aThrown = array_merge($aThrown, $aFoundThrown);
+		}
+
+		$aWarnings = [];
+		if ($aOld !== []) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'%s names the SDK\'s 0.9 exception %s. SDK 0.10 moved them to Mcp\\Server\\Exception\\ and the module keeps the old names working as aliases, until 3.0. Throw ToolRefusal::Because() or ResourceRefusal::Because() (Api\\), and where a catch is needed ask ToolRefusal::Is().',
+				get_class($oElement),
+				implode(', ', array_map(static fn (string $sName): string => '"'.$sName.'"', array_values(array_unique($aOld))))
+			);
+		}
+		if ($aThrown !== []) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'%s throws the SDK\'s own %s directly. The SDK has moved that class once already and says it is being split into packages: throw ToolRefusal::Because() (or ResourceRefusal::Because()) from Api\\, which returns the same exception and is the one place that names it.',
+				get_class($oElement),
+				implode(', ', array_map(static fn (string $sName): string => '"'.$sName.'"', array_values(array_unique($aThrown))))
+			);
+		}
+
+		return $aWarnings;
+	}
+
+	/**
+	 * @internal Reads one source text.
+	 *
+	 * @return array{0: array<int, string>, 1: array<int, string>} The 0.9 names it mentions, and the SDK classes it `new`s.
+	 */
+	private static function sdkExceptionNames(string $sCode): array
+	{
+		try {
+			$aAll = PhpToken::tokenize($sCode, TOKEN_PARSE);
+		} catch (Throwable) {
+			return [[], []];
+		}
+
+		$aTokens = array_values(array_filter(
+			$aAll,
+			static fn (PhpToken $oToken): bool => !in_array($oToken->id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_INLINE_HTML, T_OPEN_TAG, T_OPEN_TAG_WITH_ECHO, T_CLOSE_TAG], true)
+		));
+		$aOld = [];
+		$aImports = [];
+		$iCount = count($aTokens);
+
+		for ($i = 0; $i < $iCount; $i++) {
+			$oToken = $aTokens[$i];
+
+			if (in_array($oToken->id, [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+				$sName = ltrim($oToken->text, '\\');
+				if ($sName === 'Mcp\\Exception' || str_starts_with($sName, 'Mcp\\Exception\\')) {
+					$aOld[] = $sName;
+				}
+			}
+
+			// use A\B\C [as D]; - the simple form, which is how a pack imports a class.
+			if ($oToken->id === T_USE && isset($aTokens[$i + 1]) && $aTokens[$i + 1]->id === T_NAME_QUALIFIED) {
+				$sFull = $aTokens[$i + 1]->text;
+				$sShort = substr($sFull, (int)strrpos($sFull, '\\') + 1);
+				if (isset($aTokens[$i + 2]) && $aTokens[$i + 2]->id === T_AS && isset($aTokens[$i + 3])) {
+					$sShort = $aTokens[$i + 3]->text;
+				}
+				$aImports[$sShort] = $sFull;
+			}
+		}
+
+		$aThrown = [];
+		for ($i = 0; $i + 1 < $iCount; $i++) {
+			if ($aTokens[$i]->id !== T_NEW) {
+				continue;
+			}
+			$oName = $aTokens[$i + 1];
+			if ($oName->id === T_NAME_FULLY_QUALIFIED) {
+				$sResolved = ltrim($oName->text, '\\');
+			} else {
+				$sResolved = $aImports[$oName->text] ?? '';
+			}
+			if (in_array($sResolved, ['Mcp\\Server\\Exception\\ToolCallException', 'Mcp\\Server\\Exception\\ResourceReadException'], true)) {
+				$aThrown[] = $sResolved;
+			}
+		}
+
+		return [$aOld, $aThrown];
+	}
+
+	/**
+	 * The parameters of a tool's execute() that are not typed as a scalar or an array: untyped, mixed, object, \stdClass, or a
+	 * union that holds one of them. An execute() that cannot be read is not this check's to report.
+	 *
+	 * @return array<int, string> Their names.
+	 */
+	private static function parametersThatReceiveObjects(AbstractMCPTool $oTool): array
+	{
+		try {
+			$aParameters = (new ReflectionMethod($oTool, 'execute'))->getParameters();
+		} catch (\ReflectionException) {
+			return [];
+		}
+
+		$aLoose = [];
+		foreach ($aParameters as $oParameter) {
+			$oType = $oParameter->getType();
+			$aMembers = $oType instanceof \ReflectionUnionType ? $oType->getTypes() : [$oType];
+			foreach ($aMembers as $oMember) {
+				$sName = $oMember instanceof \ReflectionNamedType ? ltrim($oMember->getName(), '\\') : null;
+				if ($oMember === null || in_array($sName, ['mixed', 'object', 'stdClass'], true)) {
+					$aLoose[] = $oParameter->getName();
+					break;
+				}
+			}
+		}
+
+		return $aLoose;
 	}
 
 	/**

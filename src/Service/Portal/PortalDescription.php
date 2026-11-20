@@ -13,9 +13,9 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
-use Mcp\Exception\ToolCallException;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What this user's portal offers, read from the portal's own configuration.
@@ -58,16 +58,16 @@ final class PortalDescription
 	 *
 	 * @return array<string, mixed>
 	 *
-	 * @throws ToolCallException When the portal does not offer the class.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the portal does not offer the class.
 	 * @throws MCPPortalException When the portal cannot be read.
 	 */
 	public static function Of(PortalPolicy $oPolicy, string $sClass): array
 	{
 		if (!in_array($sClass, self::offeredClasses($oPolicy), true)) {
 			if (!ClassRefusal::LooksLikeClassName($sClass)) {
-				throw new ToolCallException('That is not a class name. Call core_class_list for the classes this portal offers.');
+				throw ToolRefusal::Because('That is not a class name. Call core_class_list for the classes this portal offers.');
 			}
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				"The portal offers no class '%s'. Call core_class_list for the ones it offers.",
 				$sClass
 			));

@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;

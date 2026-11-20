@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Http\Discovery\Psr17Factory;
-use Mcp\Server;
+use Mcp\Server\Server;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use Psr\Http\Message\ResponseInterface;
 use ReflectionMethod;
@@ -62,13 +62,14 @@ class ServerBootTest extends ItopDataTestCaseAlias
 	 * One request/response exchange against a freshly built server.
 	 *
 	 * A new server per call is not a shortcut, it is the deployment: this
-	 * endpoint is stateless, every request builds its own, and the session id
-	 * is honoured across them only because StatelessSessionStore accepts any id
-	 * without looking it up.
+	 * endpoint is stateless and every request builds its own. Since SDK 0.10 a
+	 * handshake-era client is served without sessions unless the builder is told
+	 * to keep them, which MCPService does not: initialize issues no session id and
+	 * a later request carries only the protocol revision, in MCP-Protocol-Version.
 	 *
 	 * @param array<string, mixed> $aPayload
 	 */
-	private function ask(array $aPayload, ?string $sSessionId = null): ResponseInterface
+	private function ask(array $aPayload, ?string $sSessionId = null, bool $bAfterInitialize = true): ResponseInterface
 	{
 		$oFactory = new Psr17Factory();
 
@@ -81,6 +82,10 @@ class ServerBootTest extends ItopDataTestCaseAlias
 
 		if ($sSessionId !== null && $sSessionId !== '') {
 			$oRequest = $oRequest->withHeader(self::SESSION_HEADER, $sSessionId);
+		}
+
+		if ($bAfterInitialize) {
+			$oRequest = $oRequest->withHeader('MCP-Protocol-Version', self::CLIENT_PROTOCOL_VERSION);
 		}
 
 		// No middleware: the Host allow-list is instance configuration and is
@@ -104,11 +109,10 @@ class ServerBootTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * The handshake, and the session id every later call has to carry.
+	 * The handshake. It issues no session id: a client that is given none sends none.
 	 *
-	 * Not optional: a non-initialize request without one is refused with a 400
-	 * before it reaches any handler, so a test that skipped this would assert
-	 * nothing about the tools.
+	 * Returns the id the server issued, which is '' and which the tests then pass
+	 * on as a client without one would.
 	 */
 	private function initialize(): string
 	{
@@ -121,15 +125,12 @@ class ServerBootTest extends ItopDataTestCaseAlias
 				'capabilities'    => new \stdClass(),
 				'clientInfo'      => ['name' => 'altioo-mcp-tests', 'version' => '1.0.0'],
 			],
-		]);
+		], null, false);
 
 		$this->assertSame(200, $oResponse->getStatusCode(), 'initialize was not answered');
 		$this->assertArrayNotHasKey('error', $this->decode($oResponse));
 
-		$sSessionId = $oResponse->getHeaderLine(self::SESSION_HEADER);
-		$this->assertNotSame('', $sSessionId, 'the server issued no session id, so no further call can be made');
-
-		return $sSessionId;
+		return $oResponse->getHeaderLine(self::SESSION_HEADER);
 	}
 
 	/**
@@ -141,9 +142,15 @@ class ServerBootTest extends ItopDataTestCaseAlias
 		$this->assertInstanceOf(Server::class, $this->server());
 	}
 
-	public function testInitializeIsAnsweredWithASessionId(): void
+	/**
+	 * The endpoint keeps no session (README, "Transport and protocol support"), so the handshake does not issue one:
+	 * an id would have to be looked up on the next request, and nothing is there to find. SDK 0.9 issued one the
+	 * store accepted blindly; 0.10 binds a session to the principal that opened it and answers 503 for one it
+	 * cannot read, so the module no longer asks for sessions at all.
+	 */
+	public function testInitializeIssuesNoSessionId(): void
 	{
-		$this->assertNotSame('', $this->initialize());
+		$this->assertSame('', $this->initialize());
 	}
 
 	/**
@@ -214,10 +221,10 @@ class ServerBootTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * A non-initialize call with no session id is refused, which is what makes
-	 * the handshake above load-bearing rather than ceremony.
+	 * A call with no session id is served: there is no session to be missing. What a request may do is decided
+	 * from the credential it brought, and the revision it speaks comes from MCP-Protocol-Version.
 	 */
-	public function testACallWithoutASessionIsRefused(): void
+	public function testACallWithoutASessionIsServed(): void
 	{
 		$oResponse = $this->ask([
 			'jsonrpc' => '2.0',
@@ -226,6 +233,24 @@ class ServerBootTest extends ItopDataTestCaseAlias
 			'params'  => new \stdClass(),
 		]);
 
-		$this->assertSame(400, $oResponse->getStatusCode());
+		$this->assertSame(200, $oResponse->getStatusCode());
+		$this->assertNotEmpty($this->decode($oResponse)['result']['tools'] ?? []);
+	}
+
+	/**
+	 * An id a client invents is not looked up either: a request that names a session the endpoint never issued is
+	 * answered as one that names none, not 404 (SDK 0.10: "a session opened before the upgrade") nor 503.
+	 */
+	public function testASessionIdTheServerNeverIssuedChangesNothing(): void
+	{
+		$oResponse = $this->ask([
+			'jsonrpc' => '2.0',
+			'id'      => 5,
+			'method'  => 'tools/list',
+			'params'  => new \stdClass(),
+		], '3f2504e0-4f89-41d3-9a0c-0305e82c3301');
+
+		$this->assertSame(200, $oResponse->getStatusCode());
+		$this->assertNotEmpty($this->decode($oResponse)['result']['tools'] ?? []);
 	}
 }

@@ -13,7 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\MCPService;
 use Http\Discovery\Psr17Factory;
-use Mcp\Capability\Discovery\SchemaValidator;
+use Mcp\Server\Capability\Discovery\SchemaValidator;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use ReflectionMethod;
 

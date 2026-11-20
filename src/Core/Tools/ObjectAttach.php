@@ -27,11 +27,11 @@ use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use ormDocument;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Put a file on an object: an attachment, or a blob attribute.
@@ -203,7 +203,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 *
 	 * @return mixed Where the document landed, and what it is
 	 *
-	 * @throws ToolCallException When the object, the attribute, the encoding or the size rules the call out.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the object, the attribute, the encoding or the size rules the call out.
 	 */
 	public static function execute(
 		string  $class,
@@ -223,7 +223,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$bPortal = PortalMode::Current() !== null;
 		if ($bPortal && $att_code !== null && $att_code !== '') {
-			throw new ToolCallException('The portal attaches files as attachments; setting a document attribute is not offered. Leave att_code out.');
+			throw ToolRefusal::Because('The portal attaches files as attachments; setting a document attribute is not offered. Leave att_code out.');
 		}
 
 		$oTarget = self::target($class, $id);
@@ -242,34 +242,34 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 * modify the target, per object, and not the right to create an Attachment
 	 * somewhere.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function target(string $sClass, int $iId): DBObject
 	{
 		if ($iId < 1) {
-			throw new ToolCallException('Invalid ID. Please specify a valid object ID.');
+			throw ToolRefusal::Because('Invalid ID. Please specify a valid object ID.');
 		}
 		if (!ExclusionPolicy::Serves($sClass) || !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 
 		if (ChangeLogReservation::IsReserved($sClass)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException('The database is in read-only mode, cannot attach documents.');
+			throw ToolRefusal::Because('The database is in read-only mode, cannot attach documents.');
 		}
 
 		$oSet = new DBObjectSet(ObjectQuery::ById($sClass, $iId));
 		if ($oSet->Count() === 0) {
-			throw new ToolCallException("Object {$sClass}::{$iId} not found."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$sClass}::{$iId} not found."); // hide that the object exists
 		}
 		if (self::portalRefusal(static fn () => ObjectAccess::Current()->Hides($sClass, $iId))) {
-			throw new ToolCallException("Object {$sClass}::{$iId} not found."); // out of the portal's reach: the same answer
+			throw ToolRefusal::Because("Object {$sClass}::{$iId} not found."); // out of the portal's reach: the same answer
 		}
 
 		// Fetched before the rights check and rewound after, not the other way
@@ -284,15 +284,15 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $sClass) {
-			throw new ToolCallException("Object {$sClass}::{$iId} is of class '{$sFinalClass}'. Rerun with the correct final class.");
+			throw ToolRefusal::Because("Object {$sClass}::{$iId} is of class '{$sFinalClass}'. Rerun with the correct final class.");
 		}
 
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_MODIFY, $oSet)) {
-			throw new ToolCallException("Access denied: cannot modify {$sClass}::{$iId}.");
+			throw ToolRefusal::Because("Access denied: cannot modify {$sClass}::{$iId}.");
 		}
 
 		if ($oObject->IsReadOnly()) {
-			throw new ToolCallException("Object {$sClass}::{$iId} is read-only, cannot attach to it.");
+			throw ToolRefusal::Because("Object {$sClass}::{$iId} is read-only, cannot attach to it.");
 		}
 
 		// The portal's gates, on top of the rights above: its write scope, and
@@ -301,7 +301,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		if (!$oAccess->AttachmentsAreObjects()) {
 			$sRefusal = $oAccess->RefusalToAttach($oObject);
 			if ($sRefusal !== null) {
-				throw new ToolCallException($sRefusal);
+				throw ToolRefusal::Because($sRefusal);
 			}
 		}
 
@@ -333,7 +333,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 * the base64: what matters is what lands in the database, and a caller told
 	 * the limit in the units it sent would still have to do the arithmetic.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 * @return array{0: ormDocument, 1: string|null} The file, and what to tell
 	 *                                                the caller when the type
 	 *                                                it declared was not used.
@@ -346,15 +346,15 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// as a path.
 		$sFilename = trim(basename(str_replace('\\', '/', $sFilename)));
 		if ($sFilename === '' || $sFilename === '.' || $sFilename === '..') {
-			throw new ToolCallException('A filename is required.');
+			throw ToolRefusal::Because('A filename is required.');
 		}
 
 		$sData = base64_decode($sBase64, true);
 		if ($sData === false) {
-			throw new ToolCallException('content_base64 is not valid base64. Send the file base64-encoded, with no data: prefix and no line breaks.');
+			throw ToolRefusal::Because('content_base64 is not valid base64. Send the file base64-encoded, with no data: prefix and no line breaks.');
 		}
 		if ($sData === '') {
-			throw new ToolCallException('The file is empty.');
+			throw ToolRefusal::Because('The file is empty.');
 		}
 
 		$iMax = DocumentAccess::MaxBytes();
@@ -362,10 +362,10 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			if (PortalMode::Current() !== null) {
 				// An operator's setting is not an end user's vocabulary (review 2026-11-18, RT-13): the log keeps it.
 				ErrorReport::Log(sprintf('Refused a %d byte file for a portal user: %s allows %d.', strlen($sData), DocumentAccess::MODULE_SETTING_MAX_BYTES, $iMax));
-				throw new ToolCallException(sprintf('The file is %s, which is more than this connection accepts. Add a smaller one.', DocumentAccess::HumanBytes(strlen($sData))));
+				throw ToolRefusal::Because(sprintf('The file is %s, which is more than this connection accepts. Add a smaller one.', DocumentAccess::HumanBytes(strlen($sData))));
 			}
 
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'The file is %d bytes and this instance accepts at most %d through MCP (%s).',
 				strlen($sData),
 				$iMax,
@@ -391,12 +391,12 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 * one still tied to a form that has not been submitted; this one is already
 	 * attached to a saved object.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function asAttachment(DBObject $oTarget, string $sClass, int $iId, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
 		if (!MetaModel::IsValidClass(self::ATTACHMENT_CLASS)) {
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				'This iTop has no Attachment class, so a file can only be stored in a document attribute. '
 				.'Call core_class_schema on the class and pass att_code, or install the attachments module.'
 			);
@@ -406,7 +406,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// is the host object and the form, checked in target().
 		$bPortal = !ObjectAccess::Current()->AttachmentsAreObjects();
 		if (!$bPortal && !UserRights::IsActionAllowed(self::ATTACHMENT_CLASS, UR_ACTION_CREATE)) {
-			throw new ToolCallException('Access denied: cannot create attachments.');
+			throw ToolRefusal::Because('Access denied: cannot create attachments.');
 		}
 
 		$oAttachment = MetaModel::NewObject(self::ATTACHMENT_CLASS);
@@ -432,7 +432,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// tool's own source, once the call is known to commit and before it writes.
 		$sCapRefusal = WriteCap::RefusalFor(1);
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -465,7 +465,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 			// one means the row reached the database.
 			$iCommittedId = WriteOutcome::CommittedId($oAttachment);
 			if ($iCommittedId === null) {
-				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to attach the document', $e));
+				throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to attach the document', $e));
 			}
 
 			// Stored, and the description of it is what failed. Reported as the
@@ -523,27 +523,27 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	 * document that would go in: a picture set on the wrong object is not
 	 * recoverable from the response that says it worked.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function asAttribute(DBObject $oTarget, string $sClass, int $iId, string $sAttCode, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
 		if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
-			throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+			throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 		}
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
 		if (!$oAttDef instanceof AttributeBlob) {
-			throw new ToolCallException("Attribute '{$sAttCode}' on '{$sClass}' does not hold a document. Use core_object_update for it.");
+			throw ToolRefusal::Because("Attribute '{$sAttCode}' on '{$sClass}' does not hold a document. Use core_object_update for it.");
 		}
 		if (!$oAttDef->IsWritable()) {
-			throw new ToolCallException("Attribute '{$sAttCode}' is not writable.");
+			throw ToolRefusal::Because("Attribute '{$sAttCode}' is not writable.");
 		}
 		// With the object in hand, UR_ALLOWED_DEPENDS is resolved and anything
 		// short of a yes is a no. Read as a boolean, DEPENDS is 2 and therefore
 		// truthy, which turns "ask me again with the object" into "yes".
 		$oInstanceSet = new DBObjectSet(ObjectQuery::ById($sClass, $iId));
 		if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet) !== UR_ALLOWED_YES) {
-			throw new ToolCallException("Write access denied on attribute '{$sAttCode}'.");
+			throw ToolRefusal::Because("Write access denied on attribute '{$sAttCode}'.");
 		}
 
 		$oTarget->Set($sAttCode, $oDocument);
@@ -566,7 +566,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 		// tool's own source, once the call is known to commit and before it writes.
 		$sCapRefusal = WriteCap::RefusalFor(1);
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		ChangeTracking::Explain($sComment);
@@ -589,7 +589,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 				]
 				+ self::mimeTypeNote($sMimeTypeNote));
 		} catch (\Throwable $e) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the document', $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to store the document', $e));
 		}
 	}
 }

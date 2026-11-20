@@ -19,10 +19,9 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Helper\MCPLog;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
-use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Http\Discovery\Psr17Factory;
 use Mcp\Schema\ResourceTemplate;
-use Mcp\Server;
+use Mcp\Server\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;
@@ -133,8 +132,7 @@ final class MCPService
 			->setServerInfo('Altioo iTop MCP Base', MCPModule::VERSION, 'Altioo iTop MCP extension framework')
 			->setInstructions(ServerInstructions::ForCaller($oPolicy))
 			->setPaginationLimit(Settings::GetPaginationLimit())
-			->setLogger(new LogAPILogger(MCPLog::class))
-			->setSession(new StatelessSessionStore());
+			->setLogger(new LogAPILogger(MCPLog::class));
 
 		$aDisabled = Settings::GetDisabledIdentifiers();
 

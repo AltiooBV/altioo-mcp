@@ -92,8 +92,13 @@ class LogAPILogger extends AbstractLogger
 	private const MAX_MESSAGE_BYTES = 1000;
 	private const MAX_VALUE_BYTES = 300;
 
-	/** Context keys never written, whatever they hold: what a caller sent. */
-	private const DROPPED_KEYS = ['arguments', 'params', 'request', 'body'];
+	/**
+	 * Context keys never written, whatever they hold: what a caller sent. `message` is the SDK's own name for the raw
+	 * JSON-RPC text it received (`Received message payload.`, at debug, on the handshake era): a string, so it
+	 * survived the reduction below cut to 300 bytes - the first of every tool call's arguments (SdkLogHygieneTest,
+	 * on 0.9.0 and 0.10.0 alike).
+	 */
+	private const DROPPED_KEYS = ['arguments', 'params', 'request', 'body', 'message'];
 
 	/**
 	 * @var class-string<LogAPI>  Concrete LogAPI subclass to delegate to

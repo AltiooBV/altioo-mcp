@@ -112,7 +112,7 @@ class ExclusionBulkCreateTest extends ItopDataTestCaseAlias
 		try {
 			ObjectBulkUpdate::execute('Person', [$iPerson], ['phone' => '+1']);
 			$this->fail('the bulk update was served');
-		} catch (\Mcp\Exception\ToolCallException $e) {
+		} catch (\Mcp\Server\Exception\ToolCallException $e) {
 			$this->assertStringContainsString("Unknown attribute 'phone'", $e->getMessage());
 		}
 	}

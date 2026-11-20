@@ -13,8 +13,8 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The server instructions, as a tool, because that is the list a model reads.
@@ -106,13 +106,13 @@ class Instructions extends AbstractMCPTool implements PortalAware
 	/**
 	 * @return string The same block the initialize answer carries, rendered for this caller.
 	 *
-	 * @throws ToolCallException When no policy was remembered for this request.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When no policy was remembered for this request.
 	 */
 	public static function execute(): mixed
 	{
 		$oPolicy = AccessPolicy::Current();
 		if ($oPolicy === null) {
-			throw new ToolCallException('No access policy was established for this request, so there are no instructions to render for it.');
+			throw ToolRefusal::Because('No access policy was established for this request, so there are no instructions to render for it.');
 		}
 
 		// Markdown prose, not a payload: returned as a string so the SDK sends

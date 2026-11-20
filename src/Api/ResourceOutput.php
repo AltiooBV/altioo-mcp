@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Api;
 
 use JsonException;
-use Mcp\Exception\ResourceReadException;
+use Mcp\Server\Exception\ResourceReadException;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 
 /**
@@ -38,7 +38,7 @@ final class ResourceOutput
 	/**
 	 * @param mixed $data The shape the resource documents in its description.
 	 *
-	 * @throws ResourceReadException When the result cannot be encoded at all.
+	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) When the result cannot be encoded at all.
 	 *
 	 * @since 1.0.0
 	 */
@@ -51,7 +51,7 @@ final class ResourceOutput
 			// so is the whole point: returning json_encode()'s false instead
 			// reached the SDK as a boolean and came back to the caller as
 			// "unhandled type", with nothing naming the resource.
-			throw new ResourceReadException('The content of this resource could not be encoded: '.$e->getMessage());
+			throw ResourceRefusal::Because('The content of this resource could not be encoded: '.$e->getMessage());
 		}
 	}
 }

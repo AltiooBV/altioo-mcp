@@ -13,9 +13,9 @@ use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
-use Mcp\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
+use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
 
 /**
  * One document, by the URI a read reported.
@@ -89,24 +89,24 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 	 *
 	 * @return mixed The document, as image content or as a blob
 	 *
-	 * @throws ResourceReadException When the object, the attribute or the document cannot be read.
+	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) When the object, the attribute or the document cannot be read.
 	 */
 	public function read(string $uri, string $class, string $id, string $att_code): mixed
 	{
 		if (!ctype_digit($id)) {
-			throw new ResourceReadException("Invalid id '{$id}' in '{$uri}'.");
+			throw ResourceRefusal::Because("Invalid id '{$id}' in '{$uri}'.");
 		}
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is the same way into the change log core_object_get_document
 		// refuses - and the one that was missed when that refusal went in.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ResourceReadException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ResourceRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {
 			$oDocument = DocumentFetch::Fetch($class, (int)$id, $att_code);
 		} catch (MCPDocumentException $e) {
-			throw new ResourceReadException($e->getMessage());
+			throw ResourceRefusal::Because($e->getMessage());
 		}
 
 		return DocumentAccess::ContentFor($oDocument, $uri);

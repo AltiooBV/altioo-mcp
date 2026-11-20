@@ -12,7 +12,7 @@ use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\Dictionary;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
 /**
@@ -212,7 +212,7 @@ abstract class AbstractMCPTool
 	 * the closure, in the tool's own source (doc/adr/0014).
 	 *
 	 * @param \Closure():mixed $fCall
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 * @since 1.3.0
 	 */
 	protected static function portalRefusal(\Closure $fCall): mixed
@@ -220,7 +220,7 @@ abstract class AbstractMCPTool
 		try {
 			return $fCall();
 		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
+			throw ToolRefusal::Because($oException->getMessage());
 		}
 	}
 }

@@ -23,13 +23,13 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use DBObject;
 use DBObjectSet;
 use DeletionPlan;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Delete an existing iTop object.
@@ -121,7 +121,7 @@ class ObjectDelete extends AbstractMCPTool
 	 * @param bool $obsolete_ok Delete an obsolete object even though this account hides them
 	 * @param string|null $comment Why the object is being deleted, recorded on the audit row
 	 * @return array The result of the deletion operation
-	 * @throws ToolCallException if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if access is denied, if the object is not found, or if the deletion plan has a stopper.
 	 */
 	public static function execute(
 		string  $class,
@@ -137,34 +137,34 @@ class ObjectDelete extends AbstractMCPTool
 		$simulate = DryRun::Simulated($simulate);
 
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
+			throw ToolRefusal::Because("Invalid ID. Please specify a valid object ID.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException("The database is in read-only mode, cannot delete objects.");
+			throw ToolRefusal::Because("The database is in read-only mode, cannot delete objects.");
 		}
 
 		if (MetaModel::IsAbstract($class)) {
-			throw new ToolCallException("Class '{$class}' is abstract, cannot delete.");
+			throw ToolRefusal::Because("Class '{$class}' is abstract, cannot delete.");
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE)) {
-			throw new ToolCallException("Access denied: cannot delete objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot delete objects of class '{$class}'.");
 		}
 
 		// Check access rights on the specific object before retrieving it, to avoid information leaks about the existence of the object
@@ -172,7 +172,7 @@ class ObjectDelete extends AbstractMCPTool
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
 		// Fetch() instantiates the leaf from the finalclass column it has
@@ -186,24 +186,24 @@ class ObjectDelete extends AbstractMCPTool
 		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (ExclusionPolicy::ExcludesClass($sFinalClass) || !UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			// Even if the rights are allowed, this is not the correct class to use.
-			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the delete with the correct final class."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the delete with the correct final class."); // hide that the object exists
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				"Access denied: cannot delete objects of class '{$class}'.".self::retirementHint($oObject, $sFinalClass)
 			);
 		}
 		if ($oObject->IsReadOnly()) {
-			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot delete object.");
+			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot delete object.");
 		}
 
 		// Before the plan is computed: an object this account cannot see in its
@@ -215,7 +215,7 @@ class ObjectDelete extends AbstractMCPTool
 		$oDeletionPlan = new DeletionPlan();
 		if (!$oObject->CheckToDelete($oDeletionPlan)) {
 			$aIssues = $oDeletionPlan->GetIssues();
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				"Object {$class}::{$id} cannot be deleted."
 				.(empty($aIssues)
 					? ' Some related objects must be deleted or updated explicitly first.'
@@ -234,7 +234,7 @@ class ObjectDelete extends AbstractMCPTool
 			// tool's own source, once the call is known to commit and before it writes.
 			$sCapRefusal = WriteCap::RefusalFor(1);
 			if ($sCapRefusal !== null) {
-				throw new ToolCallException($sCapRefusal);
+				throw ToolRefusal::Because($sCapRefusal);
 			}
 
 			// Said before the write: a deletion also updates the objects that
@@ -259,7 +259,7 @@ class ObjectDelete extends AbstractMCPTool
 				// attached - and only ever on positive evidence, since the
 				// opposite mistake says a thing is gone when it is not.
 				if (!WriteOutcome::IsGone($class, $id)) {
-					throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
+					throw ToolRefusal::Because(ErrorReport::OpaqueFailure("Failed to delete {$class}::{$id}", $e));
 				}
 
 				return ToolOutput::StructuredWrite(['class' => $class]

@@ -20,11 +20,11 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use utils;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The console's global search, as a tool.
@@ -144,7 +144,7 @@ class ObjectFindByName extends AbstractMCPTool
 	 *
 	 * @return mixed The matching objects, each with the class it belongs to
 	 *
-	 * @throws ToolCallException When the text is too short to search on, or the class is unknown.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the text is too short to search on, or the class is unknown.
 	 */
 	public static function execute(
 		string $name,
@@ -154,7 +154,7 @@ class ObjectFindByName extends AbstractMCPTool
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException('Invalid limit. Please specify a limit between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
+			throw ToolRefusal::Because('Invalid limit. Please specify a limit between '.self::MIN_LIMIT.' and '.self::MAX_LIMIT.'.');
 		}
 
 		$aNeedles   = self::needles($name);
@@ -241,13 +241,13 @@ class ObjectFindByName extends AbstractMCPTool
 	 *
 	 * @return array<int, string>
 	 *
-	 * @throws ToolCallException When nothing long enough is left to search on.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When nothing long enough is left to search on.
 	 */
 	private static function needles(string $sText): array
 	{
 		$sText = trim($sText);
 		if ($sText === '') {
-			throw new ToolCallException('Nothing to search for: name is empty.');
+			throw ToolRefusal::Because('Nothing to search for: name is empty.');
 		}
 
 		if (preg_match('/^"(.*)"$/', $sText, $aMatches) === 1) {
@@ -269,7 +269,7 @@ class ObjectFindByName extends AbstractMCPTool
 		}
 
 		if (empty($aKept)) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'Nothing to search for: %s shorter than %d characters, which is this instance\'s minimum. Search for a longer word.',
 				empty($aTooShort) ? 'the text is' : 'every word given is',
 				$iMin
@@ -289,7 +289,7 @@ class ObjectFindByName extends AbstractMCPTool
 	 * @return array{classes: array<int, string>, withheld: int} The classes to scan,
 	 *         and how many were dropped for want of the bulk read right.
 	 *
-	 * @throws ToolCallException When the named class is unknown, not this caller's to
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the named class is unknown, not this caller's to
 	 *         see, or readable one object at a time but not searchable.
 	 */
 	private static function searchableClasses(string $sClass): array
@@ -298,14 +298,14 @@ class ObjectFindByName extends AbstractMCPTool
 			$aCandidates = MetaModel::GetClasses('searchable');
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
+				throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass));
 			}
 
 			if (ChangeLogReservation::IsReserved($sClass)) {
-				throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+				throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-				throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
+				throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 			}
 
 			$aCandidates = MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL);
@@ -344,7 +344,7 @@ class ObjectFindByName extends AbstractMCPTool
 		// whether any object is there, so it is not the oracle that the
 		// "unknown class" wording above exists to close.
 		if ($sClass !== '' && $aClasses === [] && $iWithheld > 0) {
-			throw new ToolCallException("Bulk read access denied to class '{$sClass}'.");
+			throw ToolRefusal::Because("Bulk read access denied to class '{$sClass}'.");
 		}
 
 		return ['classes' => $aClasses, 'withheld' => $iWithheld];

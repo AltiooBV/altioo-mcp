@@ -20,11 +20,12 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Search iTop objects by class name with optional field filters.
@@ -97,7 +98,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	 * @param bool $actions Also report, per object, the write gates answered for that object and the stimuli its state accepts; same page limit
 	 * @param string $archived 'exclude' (default), 'include' or 'only'
 	 * @return array An array containing the class, filters, total count, limit, offset, and list of matching objects with their attributes
-	 * @throws ToolCallException if the class is unknown or access is denied.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown or access is denied.
 	 */
 	public static function execute(
 		string $class,
@@ -113,26 +114,26 @@ class ObjectSearchByClass extends AbstractObjectSearch
 	): mixed
 	{
 		if ($limit < self::MIN_LIMIT || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException("Invalid limit. Please specify a limit between ".self::MIN_LIMIT." and ".self::MAX_LIMIT.".");
+			throw ToolRefusal::Because("Invalid limit. Please specify a limit between ".self::MIN_LIMIT." and ".self::MAX_LIMIT.".");
 		}
 
 		if ($offset < self::MIN_OFFSET) {
-			throw new ToolCallException("Invalid offset. Please specify a non-negative offset.");
+			throw ToolRefusal::Because("Invalid offset. Please specify a non-negative offset.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_BULK_READ)) {
-			throw new ToolCallException("Bulk read access denied to class '{$class}'.");
+			throw ToolRefusal::Because("Bulk read access denied to class '{$class}'.");
 		}
 
 		$oSearch = DBObjectSearch::FromOQL("SELECT {$class}");
@@ -144,23 +145,23 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			if (!MetaModel::IsValidAttCode($class, $sAttCode)
 				|| ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)
 				|| ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($class, (string)$sAttCode), $class)) {
-				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
 			// A filter is one value to match. A list is the caller's mistake, answered in the words
 			// core_object_count uses, and not handed to the search to fail as a server-side error (RT-7).
 			if (is_array($value)) {
-				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
 			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
 			if ($sRefusal !== null) {
-				throw new ToolCallException($sRefusal);
+				throw ToolRefusal::Because($sRefusal);
 			}
 			try {
 				$oSearch->AddCondition($sAttCode, $value, '=');
 			} catch (\CoreException) {
 				// iTop's own refusal of a code its search cannot use (an image, say): the caller's
 				// mistake, not the server's, and not one to hand to the opaque failure below.
-				throw new ToolCallException("Attribute '{$sAttCode}' on class '{$class}' cannot be used as a filter.");
+				throw ToolRefusal::Because("Attribute '{$sAttCode}' on class '{$class}' cannot be used as a filter.");
 			}
 		}
 
@@ -243,11 +244,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			// Building a DBObjectSet runs no query - it assigns and returns -
 			// so a bad filter value can only surface here, where the set is
 			// first read. Probing for it beforehand caught nothing.
-			throw new ToolCallException("Invalid filter condition. ".$e->getMessage());
+			throw ToolRefusal::Because("Invalid filter condition. ".$e->getMessage());
 		} catch (\Throwable $e) {
 			// The OQLException above is the one a caller can act on, and it
 			// keeps its message. Anything else came out of the query layer.
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to execute the search', $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to execute the search', $e));
 		}
 	}
 

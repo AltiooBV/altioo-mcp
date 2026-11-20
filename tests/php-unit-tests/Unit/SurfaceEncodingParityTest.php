@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Mcp\Exception\ResourceReadException;
+use Mcp\Server\Exception\ResourceReadException;
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__).'/bootstrap.php';

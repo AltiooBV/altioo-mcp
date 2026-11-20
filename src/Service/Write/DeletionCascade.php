@@ -14,10 +14,10 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
 use DBObjectSet;
 use DeletionPlan;
-use Mcp\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What a deletion would take with it: the cascade checked against the caller's rights, and the plan described to the caller.
@@ -99,7 +99,7 @@ final class DeletionCascade
 	 * @param DeletionPlan $oPlan  A plan already computed by CheckToDelete().
 	 * @param string       $sWhat  What is being deleted, e.g. "UserRequest::12", named in the refusal.
 	 *
-	 * @throws ToolCallException When the cascade reaches something this caller may not touch.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the cascade reaches something this caller may not touch.
 	 *
 	 * @since 1.0.0
 	 */
@@ -112,7 +112,7 @@ final class DeletionCascade
 			foreach (array_keys($aClasses) as $sReached) {
 				/** @psalm-suppress InvalidCast */
 				if (ExclusionPolicy::ExcludesClass((string)$sReached)) {
-					throw new ToolCallException("{$sWhat} cannot be deleted here: it reaches related objects this channel does not serve. Do it in the iTop console.");
+					throw ToolRefusal::Because("{$sWhat} cannot be deleted here: it reaches related objects this channel does not serve. Do it in the iTop console.");
 				}
 			}
 		}
@@ -150,7 +150,7 @@ final class DeletionCascade
 			return;
 		}
 
-		throw new ToolCallException(sprintf(
+		throw ToolRefusal::Because(sprintf(
 			'%s cannot be deleted: iTop\'s cascading rules would reach objects this user is not allowed to touch. %s '
 			.'This endpoint checks the whole cascade, not just the object named in the call. '
 			.'Ask an administrator for the missing rights, or delete the related objects explicitly first.',
