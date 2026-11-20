@@ -17,6 +17,9 @@ use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
 use Altioo\iTop\Extension\MCP\Test\Support\MixedParameterPackTool;
+use Altioo\iTop\Extension\MCP\Test\Support\PackThrowingTheSdkClass;
+use Altioo\iTop\Extension\MCP\Test\Support\PackWrittenAgainstSdk09;
+use Altioo\iTop\Extension\MCP\Test\Support\ReadPackTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassInheriting;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassNoAsk;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
@@ -269,5 +272,37 @@ class ElementContractCheckerTest extends TestCase
 			}
 			$this->assertSame([], $aLoose, "{$sClass}::execute() takes a parameter that would receive a stdClass for a nested object");
 		}
+	}
+	/**
+	 * ADR 0024: the SDK's 0.9 exception names are aliases until 3.0, and a pack is told to move off them while it is
+	 * a warning and not a fatal.
+	 */
+	public function testAPackThatNamesTheSdkOldExceptionsIsWarnedAboutThem(): void
+	{
+		$aViolations = ElementContract::Violations(new PackWrittenAgainstSdk09());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Exception\\ToolCallException', $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Exception\\ResourceReadException', $aViolations[0]);
+		$this->assertStringContainsString('until 3.0', $aViolations[0]);
+		$this->assertStringContainsString('ToolRefusal::Because()', $aViolations[0]);
+	}
+
+	public function testAPackThatThrowsTheSdkClassDirectlyIsPointedToTheModulesRefusal(): void
+	{
+		$aViolations = ElementContract::Violations(new PackThrowingTheSdkClass());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringContainsString('throws the SDK', $aViolations[0]);
+		$this->assertStringContainsString('Mcp\\Server\\Exception\\ToolCallException', $aViolations[0]);
+		$this->assertStringNotContainsString('until 3.0', $aViolations[0], 'the new name is not deprecated, only the habit of writing it');
+	}
+
+	/** A pack that names neither, and the module's own tools, are left alone. */
+	public function testAPackThatUsesTheModulesRefusalsIsNotWarned(): void
+	{
+		$this->assertSame([], ElementContract::Violations(new ReadPackTool()));
+		$this->assertSame([], ElementContract::Violations(new ClassList()));
 	}
 }
