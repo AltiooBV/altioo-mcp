@@ -18,7 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObjectSet;
-use Mcp\Server\Exception\ToolCallException;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
@@ -150,7 +150,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 	 *
 	 * @return mixed What was appended, or would be
 	 *
-	 * @throws ToolCallException When the ticket cannot be read, cannot be written, or does not exist.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the ticket cannot be read, cannot be written, or does not exist.
 	 */
 	public static function execute(
 		int    $id,
@@ -166,7 +166,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 		$simulate = DryRun::Simulated($simulate);
 
 		if (trim($message) === '') {
-			throw new ToolCallException('The message is empty.');
+			throw ToolRefusal::Because('The message is empty.');
 		}
 
 		// What the operator excluded is not this tool's to touch, whatever
@@ -176,14 +176,14 @@ class TicketAddLogEntry extends AbstractMCPTool
 		// would also ask AccessGrants::RefusalFor() and
 		// ChangeLogReservation::IsReserved(); neither applies to UserRequest.
 		if (!ExclusionPolicy::Serves('UserRequest')) {
-			throw new ToolCallException(ClassRefusal::Unreadable('UserRequest'));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable('UserRequest'));
 		}
 
 		// Nothing here replaces UserRights. The framework authenticated the
 		// caller and checked the endpoint gates; what this particular user may
 		// do to this particular object is still this tool's job to ask.
 		if (!UserRights::IsActionAllowed('UserRequest', UR_ACTION_MODIFY)) {
-			throw new ToolCallException('Access denied: cannot modify tickets.');
+			throw ToolRefusal::Because('Access denied: cannot modify tickets.');
 		}
 
 		// Object-level rights are the point: "may modify a ticket" and "may
@@ -193,15 +193,15 @@ class TicketAddLogEntry extends AbstractMCPTool
 		if ($oSet->Count() === 0) {
 			// Not found and not yours are answered alike, so that the tool
 			// cannot be used to discover which ticket ids exist.
-			throw new ToolCallException("Ticket {$id} not found.");
+			throw ToolRefusal::Because("Ticket {$id} not found.");
 		}
 		if (!UserRights::IsActionAllowed('UserRequest', UR_ACTION_MODIFY, $oSet)) {
-			throw new ToolCallException("Access denied: cannot modify ticket {$id}.");
+			throw ToolRefusal::Because("Access denied: cannot modify ticket {$id}.");
 		}
 
 		$oTicket = $oSet->Fetch();
 		if ($oTicket->IsReadOnly()) {
-			throw new ToolCallException("Ticket {$id} is read-only.");
+			throw ToolRefusal::Because("Ticket {$id} is read-only.");
 		}
 
 		// One validator for every write this module makes: WriteValues::Validated() is what the core tools
@@ -214,7 +214,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 		// and an append from a plain string.
 		[$aValues, $aIssues] = WriteValues::Validated($oTicket, 'UserRequest', [self::LOG_ATTRIBUTE => $message], $oSet);
 		if ($aIssues !== []) {
-			throw new ToolCallException('Failed to add the entry: '.implode(' ', $aIssues));
+			throw ToolRefusal::Because('Failed to add the entry: '.implode(' ', $aIssues));
 		}
 		foreach ($aValues as $sAttCode => $mValue) {
 			$oTicket->Set($sAttCode, $mValue);
@@ -229,7 +229,7 @@ class TicketAddLogEntry extends AbstractMCPTool
 			// commit and before it writes, with the objects it will write - here, the ticket - and never for a dry run.
 			$sCapRefusal = WriteCap::RefusalFor(1);
 			if ($sCapRefusal !== null) {
-				throw new ToolCallException($sCapRefusal);
+				throw ToolRefusal::Because($sCapRefusal);
 			}
 			// Said before the write, because the change record is built by the write itself: the tool is named on
 			// it and the caller's reason goes to the audit row.

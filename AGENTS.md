@@ -116,3 +116,6 @@ Settings agent skills read here.
   ([0023](doc/adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)).
   Also: an `MCP-advisory` credential is not served a pack's write-graded tools (absent, answered as unknown); core tools rehearse
   through `DryRun::Simulated()`, so decide it in `ServedElements::isHidden()` and add no per-pack exception ([0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)).
+  Also: a pack throws `Api\ToolRefusal::Because()` and `Api\ResourceRefusal::Because()`, never the SDK's exception classes (they are `final`, and the SDK moves
+  them); the SDK's 0.9 names are aliases in `sdk-aliases.php` until 3.0, and an SDK release that renames another name a pack can reach adds it there with its
+  test ([0024](doc/adr/0024-the-pack-contract-names-this-modules-exceptions.md)).

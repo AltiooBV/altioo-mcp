@@ -51,8 +51,8 @@ module's `datamodel` array so it is in place before `register.php` names a class
 ```
 
 **Do not ship `mcp/sdk` — put it in `require-dev`.** It is a genuine *runtime* dependency of
-your code: your tools type-hint `Mcp\Schema\ToolAnnotations` and throw `Mcp\Server\Exception\ToolCallException`,
-and both have to resolve when a client calls them. `require-dev` is not a mislabelling of that,
+your code: your tools type-hint `Mcp\Schema\ToolAnnotations`, and what they throw is the SDK's exception (made by
+`ToolRefusal::Because()`, below), and both have to resolve when a client calls them. `require-dev` is not a mislabelling of that,
 it is where the dependency is satisfied from — this module vendors the SDK and loads it from
 its own `datamodel` array, and iTop includes a module's datamodel files after those of the
 modules it depends on, so `Mcp\*` is already registered by the time anything of yours is
@@ -70,8 +70,28 @@ Installing it and deleting `vendor/mcp` before packaging does **not** work:
 entries outlive the files and the first call fatals on a missing include. Pin the same
 constraint this module vendors, published as `MCPModule::SDK_CONSTRAINT`, so that what you
 compile against is what will be loaded. The types that are part of the contract described here
-are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Server\Exception\ToolCallException`
-and `Mcp\Server\Exception\ResourceReadException`.
+are `Mcp\Schema\ToolAnnotations` and `Mcp\Schema\Annotations`. **Exceptions are not on that list any more:
+a pack throws `Api\ToolRefusal` and `Api\ResourceRefusal`** ([ADR 0024](adr/0024-the-pack-contract-names-this-modules-exceptions.md)).
+
+**Raising a refusal.** `throw ToolRefusal::Because('Ticket 42 is read-only.')` in a tool, and
+`throw ResourceRefusal::Because('...')` in a resource or a resource template. The message reaches the client as the
+tool's error and is what a model acts on, so it says what to change. The SDK declares its `ToolCallException` and
+`ResourceReadException` `final`, so these are not exception types that extend them: `Because()` returns the SDK's own
+exception, which is what the SDK catches, and `ToolRefusal::Is($e)` asks whether something caught is one. The point is
+where the SDK's name is written: it moved in 0.10 (from `Mcp\Exception` to `Mcp\Server\Exception`) and the SDK says it is
+being split into packages, so a pack that names it is rewritten by every such move and one that goes through `Api\` is not.
+
+**A pack written for 2.0 or 2.1 before this keeps working until 3.0.** The names `mcp/sdk` 0.9 gave its exceptions
+(`Mcp\Exception\ToolCallException`, `ResourceReadException` and 22 others) are aliases of the new classes, loaded before any
+pack code, so a `throw` or a `catch` of the old name behaves as it did. They are deprecated and removed in 3.0:
+`Testing\ElementContract` warns about a pack that names one, or throws the SDK's class directly.
+
+**The dev pin is `^0.10.0`** (`MCPModule::SDK_CONSTRAINT`). A pack still pinned to `^0.9.0` compiles and tests against
+the SDK the module no longer ships, and the aliases hide that from its own CI until 3.0.
+
+**Parameters.** From SDK 0.10 a nested JSON object reaches an `execute()` parameter typed `mixed`, `object`, `\stdClass` or
+not at all as a `\stdClass`, where 0.9 gave an array. Type the parameter `array` (the SDK then hands arrays at every level,
+as the core tools get them), or an `is_array()` check on it passes the object by. `ElementContract` warns.
 
 **Versioning, and what it applies to.** The extension follows semver over the surface a pack
 touches, and that surface is defined in the source rather than in this paragraph. **A class
@@ -121,7 +141,7 @@ calls them. Read the tags rather than this table: the tags are what a test enfor
 - **The write cap.** When the operator sets `mcp_max_writes_per_hour` ([ADR 0019](adr/0019-an-operator-can-cap-committed-writes-per-credential.md)),
   a write tool asks `WriteCap::RefusalFor($iObjects)` once it knows the call will commit (never for a
   dry run), with the number of objects it is about to create, change, delete or attach to, and
-  throws the string it gets back as a `ToolCallException`. A bulk tool asks once for the whole batch.
+  throws the string it gets back as a `ToolRefusal`. A bulk tool asks once for the whole batch.
   What a call wrote is counted from the change iTop recorded, so a tool that does not ask is still
   counted, and the credential's next call is refused; asking is what keeps it from going over.
 - **The dry run, and the advisory scope.** A write tool calls `DryRun::Simulated($simulate)` first, before anything
@@ -174,7 +194,7 @@ tools declare `execute()` static; an instance method works equally well.
 ```php
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Mcp\Server\Exception\ToolCallException;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 use Mcp\Schema\ToolAnnotations;
 
 class TicketAddLogEntry extends AbstractMCPTool
@@ -214,7 +234,7 @@ class TicketAddLogEntry extends AbstractMCPTool
     public static function execute(int $id, string $message): mixed
     {
         // Always go through UserRights / MetaModel — never raw SQL.
-        // Throw ToolCallException for anything the caller should be told.
+        // Throw ToolRefusal::Because('...') for anything the caller should be told.
 
         return ToolOutput::Json(['id' => $id, 'added' => true]);
     }
@@ -575,8 +595,8 @@ exactly this reason — the identifier no longer tells the two apart, and the cl
 
 - Authentication, the profile gate, token scope checking and CORS are handled before your code
   runs. Inside `execute()` / `read()` / `get()` you have an authenticated iTop session.
-- Exceptions are caught at the entry point. `ToolCallException` and `ResourceReadException`
-  messages reach the client; anything else is answered generically and correlated to
+- Exceptions are caught at the entry point. What `ToolRefusal::Because()` and `ResourceRefusal::Because()` make
+  reaches the client with its message; anything else is answered generically and correlated to
   `log/error.log` by a reference, so internal detail (SQL, class names) does not leak.
 - Your call is audited as an `AltiooEventMCPService` under the same rules as the core tools.
 - Your element is registered only if it honours the contract above, and only if the operator

@@ -6,7 +6,7 @@
 
   "_comment_mcp_sdk": [
     "mcp/sdk is a REAL RUNTIME dependency of this pack: the tools below type-hint",
-    "ToolAnnotations and throw ToolCallException, and both have to resolve when a",
+    "ToolAnnotations, and what they throw is the SDK's exception (made by ToolRefusal::Because()); both have to resolve when a",
     "client calls them. It is nevertheless in require-dev, and that is not a",
     "mislabelling - it is where the dependency is satisfied from. altioo-mcp",
     "vendors the SDK and loads it from its own datamodel array, and iTop includes",
