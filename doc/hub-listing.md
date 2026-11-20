@@ -66,7 +66,7 @@ Application management / Integration
 | Prerequisites | `authent-token` ≥ 2.2.1 and `itop-structure` ≥ 3.2.0 — both ship with iTop |
 | Licence | AGPL-3.0-or-later, same as iTop |
 | Price | Free |
-| Tested on | *(per release — copy the **Tested on** line from that version's [CHANGELOG.md](../CHANGELOG.md) entry)* |
+| Tested on | 2.1.0: iTop **3.2.3-3** and **3.3.0-1**, each on PHP **8.2** and **8.4**, installed through iTop's own unattended setup and exercised by iTop's module validation suite, the module's integration suite and the endpoint over HTTP; the unit suite on PHP 8.2, 8.3 and 8.4. What did not run is in the **Tested on** line of its [CHANGELOG.md](../CHANGELOG.md) entry, which is the one to copy next time |
 
 The two version rows come from
 [`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) and `composer.json`, and a test
