@@ -127,6 +127,17 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 			throw new ToolCallException("Bulk read access denied to class '{$class}'.");
 		}
 
+		// Every other class the query names - a joined one, a sub-query's, a union branch's - is asked the
+		// same, in the same words as selecting it: a join answers whether a row of that class matches, which is
+		// reading it (ADR 0023). The selected class is among them and has answered above.
+		foreach (ExclusionSearches::ClassesNamed($oql) as $sNamed) {
+			if (ChangeLogReservation::IsReserved($sNamed)
+				|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_READ)
+				|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_BULK_READ)) {
+				throw new ToolCallException(ClassRefusal::Unreadable($sNamed));
+			}
+		}
+
 		$aOrderBy = self::orderBy($class, $order_by, $order_direction);
 		$aFields = self::fieldsForPage($class, $output_fields, $limit);
 

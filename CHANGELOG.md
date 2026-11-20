@@ -27,6 +27,16 @@ entry itself, not left to be inferred from it.
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
 
+**Read before upgrading.**
+
+- **An OQL query that joins or sub-queries a class the account may not read is now refused** ([ADR 0023](doc/adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)). The search
+  asked the account's rights of the class a query selects and of no other, so with the stock `Support Agent` profile `SELECT Person AS P JOIN UserLocal AS U ON U.contactid = P.id WHERE U.login LIKE "p%"`
+  answered whether such a login exists, and the same shape over `URP_UserProfile` and `PersonalToken` answered which accounts hold a profile or a token scope: a yes or a no at a time, within the account's silo,
+  which a steered assistant can use as an oracle. iTop's own console answers those queries, which is why this was served; this channel is narrower than the console on purpose. Every class the parsed query names (a joined class, a
+  sub-query's at any depth, a union branch's) is now held to the read check of the class it selects, and a refusal is worded as a direct `SELECT` of that class is. It applies to `core_object_search_by_oql`,
+  `core_object_count` with `oql`, and an OQL string given as an external key's value. **Visible to operators:** a saved prompt or an assistant's query that joined a class its account does not read
+  is refused where it was served; an account's own joins over classes it reads are unchanged. Not a security fix for the 1.x lines (no `release/1.N` change): it narrows the channel below iTop's own search.
+
 ### Fixed
 
 - **Security: in portal mode a link set was served with every row and every attribute.** `core_object_get` checked the object it was

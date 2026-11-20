@@ -253,7 +253,7 @@ a `scope` attribute that can hold an `MCP*` value, if it carries an `AttributeOn
 the type iTop verifies a login against, which stores a salted hash that cannot be read back, as
 opposed to the recoverable types an object's own secrets live in — or if iTop files it under its
 `addon/userrights` category. So a
-credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused.
+credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused to an account that holds the right to read them; a query may not reach one by a join or a sub-query that the account could not select it by ([ADR 0023](doc/adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)).
 
 `mcp_allow_access_administration` (default `false`) lets an instance opt into that
 administration where an operator wants it — onboarding a user, retiring a leaked token. It opts

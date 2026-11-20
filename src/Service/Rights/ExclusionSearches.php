@@ -259,7 +259,31 @@ final class ExclusionSearches
 		return null;
 	}
 
-	private const UNPROVEN_QUERY = 'This query cannot be checked against what this channel serves, so it is refused. Select from one class and filter on its attributes.';
+	/**
+	 * Every class a query names, from the query as iTop parses it: the class it returns, each joined class, the class of every
+	 * sub-query at any depth and every branch of a union. The one walk both the exclusions ({@see OqlRefusal()}) and the read
+	 * check of ADR 0023 stand on, so that a join or a sub-query is asked about like a selected class.
+	 *
+	 * Plumbing only: it decides nothing. A tool asks UserRights of each class in its own source (ADR 0014).
+	 *
+	 * @return array<int, string>
+	 * @throws \LogicException when the query cannot be parsed; the caller has parsed it already, so it fails closed.
+	 * @since 2.1.0
+	 */
+	public static function ClassesNamed(string $sOql): array
+	{
+		try {
+			if (!class_exists('OqlInterpreter')) {
+				require_once(APPROOT.'core/oql/check_oql.php');
+			}
+
+			return array_values(array_unique(self::allClassesOf((new \OqlInterpreter($sOql))->ParseQuery())));
+		} catch (Throwable $e) {
+			throw new \LogicException('A query this channel cannot read the classes of.', 0, $e);
+		}
+	}
+
+	private const UNPROVEN_QUERY ='This query cannot be checked against what this channel serves, so it is refused. Select from one class and filter on its attributes.';
 
 	/**
 	 * The classes of a parsed query other than the one it returns: joined classes, the classes of every

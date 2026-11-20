@@ -275,6 +275,17 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
 		}
 
+		// A join or a sub-query is asked like the selected class, in the same words (ADR 0023).
+		if ($sOql !== '') {
+			foreach (ExclusionSearches::ClassesNamed($sOql) as $sNamed) {
+				if (ChangeLogReservation::IsReserved($sNamed)
+					|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_READ)
+					|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_BULK_READ)) {
+					throw new ToolCallException(ClassRefusal::Unreadable($sNamed));
+				}
+			}
+		}
+
 		self::applyArchived($oSearch, $sClass, $sArchived);
 
 		if ($sOql === '') {

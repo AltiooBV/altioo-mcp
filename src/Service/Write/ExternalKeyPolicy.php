@@ -8,10 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
@@ -19,6 +21,7 @@ use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
 use Throwable;
+use UserRights;
 
 /**
  * Whether an external key, or the items of a link set, may point where the caller aimed them: said plainly, before the ORM
@@ -266,6 +269,16 @@ final class ExternalKeyPolicy
 		$sUnproved = ExclusionSearches::OqlRefusal($sValue);
 		if ($sUnproved !== null) {
 			return $sUnproved.' '.$sHow;
+		}
+
+		// A join or a sub-query on a class the account may not read is refused as selecting it is (ADR 0023): the
+		// query would answer whether a row of that class matches. CheckQuery has made sure each class exists.
+		foreach (ExclusionSearches::ClassesNamed($sValue) as $sNamed) {
+			if (ChangeLogReservation::IsReserved($sNamed)
+				|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_READ)
+				|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_BULK_READ)) {
+				return ClassRefusal::Unreadable($sNamed).' '.$sHow;
+			}
 		}
 
 		try {
