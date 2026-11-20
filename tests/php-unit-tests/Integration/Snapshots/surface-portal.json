@@ -1,15 +1,12 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
     "generated": "2026-11-20",
-    "sdk": "v0.9.0",
+    "sdk": "v0.10.0",
     "surface": {
         "protocolVersion": "2025-06-18",
         "capabilities": {
-            "logging": {},
             "completions": {},
-            "resources": {
-                "subscribe": true
-            },
+            "resources": {},
             "tools": {}
         },
         "serverName": "Altioo iTop MCP Base",

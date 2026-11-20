@@ -17,14 +17,15 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Answers an HTTP DELETE with 405: this endpoint keeps no session, so there is nothing to end.
  *
- * The SDK's transport answers a DELETE carrying any well-formed `Mcp-Session-Id` with 200, which tells a
- * client it ended something. It ended nothing: the id is real but carries nothing, and the session store
- * accepts any UUID (StatelessSessionStore). The streamable HTTP transport lets a server refuse that
- * teardown - the 2025-06-18 revision's session management says a server "MAY respond to this request
- * with HTTP 405 Method Not Allowed, indicating that the server does not allow clients to terminate
- * sessions" - and the SDK's own StatelessHttpTransport does the same for the 2026-07-28 leg.
+ * Before SDK 0.10 the transport answered a DELETE carrying any well-formed `Mcp-Session-Id` with 200, which
+ * told a client it ended something. It ended nothing: the id was real but carried nothing. The 2025-06-18
+ * revision's session management says a server "MAY respond to this request with HTTP 405 Method Not
+ * Allowed, indicating that the server does not allow clients to terminate sessions".
  *
- * The id is still issued to a client on an earlier revision, because that revision requires it.
+ * Since 0.10 the module keeps no session store at all, and the SDK's own sessionless transport answers a
+ * DELETE the same way (405, `Allow: POST, OPTIONS`, a JSON-RPC error body). This answer is kept for its
+ * words, which say why, and so that the documented behaviour does not depend on a default of the SDK's.
+ * No id is issued to a client of any revision.
  *
  * @internal
  * @since 2.1.0
