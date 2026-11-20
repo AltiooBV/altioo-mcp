@@ -53,10 +53,11 @@ final class ObjectQuery
 	 */
 	public static function ById(string $sClass, int $iId): DBObjectSearch
 	{
-		$sKey = MetaModel::DBGetKey($sClass);
-
+		// `id` is the key in OQL whatever the table calls it: DBGetKey() answers the column, and a class that names it
+		// otherwise (iTop's lnkTriggerAction: `link_id`) made the parser raise an OqlNormalizeException that a read of it
+		// then showed as an unhandled error.
 		$oSearch = DBObjectSearch::FromOQL(
-			"SELECT {$sClass} WHERE {$sKey} = :".self::ID_PARAMETER,
+			"SELECT {$sClass} WHERE id = :".self::ID_PARAMETER,
 			[self::ID_PARAMETER => $iId]
 		);
 		self::keepObsolete($oSearch);
@@ -77,10 +78,8 @@ final class ObjectQuery
 	 */
 	public static function ByIds(string $sClass, array $aIds): DBObjectSearch
 	{
-		$sKey = MetaModel::DBGetKey($sClass);
-
 		$oSearch = DBObjectSearch::FromOQL(
-			"SELECT {$sClass} WHERE {$sKey} IN (:".self::IDS_PARAMETER.')',
+			"SELECT {$sClass} WHERE id IN (:".self::IDS_PARAMETER.')',
 			[self::IDS_PARAMETER => array_values(array_map('intval', $aIds))]
 		);
 		self::keepObsolete($oSearch);
