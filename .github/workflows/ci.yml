@@ -206,6 +206,12 @@ jobs:
       - name: composer audit
         run: composer audit --locked
 
+      # The pinned security scanner has a lock of its own (it is tooling, in no archive), and the audit above reads
+      # only the root one: an advisory on symfony/yaml sat in it unseen (review 2026-11-18, MA-1). Reads the lock
+      # only, so nothing is installed.
+      - name: composer audit, the scanner's lock
+        run: composer audit --locked --working-dir=tools/ci/local/progpilot
+
   # phpcs (the lint job) is a coding-standard linter, not a security scanner,
   # and CodeQL has no PHP support. Psalm's taint-analysis flag would be the
   # relevant feature for a JSON-RPC surface that reaches MetaModel and
