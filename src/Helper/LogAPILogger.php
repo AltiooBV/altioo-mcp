@@ -46,8 +46,23 @@ use LogAPI;
  * Message interpolation
  * ---------------------
  * Implements PSR-3 §1.2: `{placeholder}` tokens in `$message` are replaced
- * with the matching key from `$context`.  Remaining context entries are passed
- * through to LogAPI as-is so they appear in file logs and EventIssue data.
+ * with the matching key from `$context`.
+ *
+ * What reaches LogAPI
+ * -------------------
+ * A reduced context, never the one the caller passed. PSR-3 lets a caller put
+ * an exception under `exception` and the SDK does, on every tool failure and
+ * every unknown tool; and at `debug` it puts the tool's arguments under
+ * `arguments`. LogAPI writes what it is handed to `log/error.log` in full, and
+ * an exception object carries its trace: under PHP's default
+ * `zend.exception_ignore_args = 0` the trace holds the arguments of every
+ * frame, among them the PSR-7 request built from `$_SERVER` - 5 to 24 MB a
+ * call, with a Basic password in it - and the arguments of a call are the
+ * caller's own data. Logs reach more people than the database (guide §6.7).
+ * So an exception becomes its class, its code, its message cut short and a
+ * reference that the audit row of the call carries too; scalars are kept
+ * (strings cut short); any other value becomes a label naming its type; and
+ * `arguments` is dropped.
  *
  * @see https://www.php-fig.org/psr/psr-3/
  * @internal
@@ -72,6 +87,13 @@ class LogAPILogger extends AbstractLogger
 		LogLevel::INFO      => LogAPI::LEVEL_INFO,
 		LogLevel::DEBUG     => LogAPI::LEVEL_DEBUG,
 	];
+
+	/** The longest line a log call may write, and the longest of any one context value. */
+	private const MAX_MESSAGE_BYTES = 1000;
+	private const MAX_VALUE_BYTES = 300;
+
+	/** Context keys never written, whatever they hold: what a caller sent. */
+	private const DROPPED_KEYS = ['arguments', 'params', 'request', 'body'];
 
 	/**
 	 * @var class-string<LogAPI>  Concrete LogAPI subclass to delegate to
@@ -125,8 +147,18 @@ class LogAPILogger extends AbstractLogger
 		}
 
 		$itopLevel       = self::LEVEL_MAP[$level];
-		$interpolated    = $this->interpolate((string) $message, $context);
 		$channel         = $this->resolveChannel($context);
+
+		$sReference = null;
+		$original   = $context;
+		$context    = $this->reduce($context, $sReference);
+		$interpolated = $this->interpolate((string) $message, $original);
+		if ($sReference !== null) {
+			$interpolated = '['.$sReference.'] '.$interpolated;
+		}
+		if (strlen($interpolated) > self::MAX_MESSAGE_BYTES) {
+			$interpolated = mb_strcut($interpolated, 0, self::MAX_MESSAGE_BYTES, 'UTF-8').'…';
+		}
 
 		($this->logClass)::Log($itopLevel, $interpolated, $channel, $context);
 	}
@@ -157,6 +189,56 @@ class LogAPILogger extends AbstractLogger
 	// -------------------------------------------------------------------------
 
 	/**
+	 * The context LogAPI is given: scalars, cut short, and a label for anything else.
+	 *
+	 * @param array<mixed> $context
+	 * @param string|null  $sReference Set when the context carried an exception: the reference the line is filed under.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function reduce(array $context, ?string &$sReference): array
+	{
+		$aReduced = [];
+		foreach ($context as $mKey => $mValue) {
+			$sKey = (string) $mKey;
+
+			if (in_array(strtolower($sKey), self::DROPPED_KEYS, true)) {
+				continue;
+			}
+
+			if ($mValue instanceof \Throwable) {
+				$sReference ??= ErrorReport::NewReference();
+				$aReduced[$sKey.'_class']   = get_class($mValue);
+				$aReduced[$sKey.'_code']    = $mValue->getCode();
+				$aReduced[$sKey.'_message'] = self::cut($mValue->getMessage());
+				continue;
+			}
+
+			if ($mValue === null || is_bool($mValue) || is_int($mValue) || is_float($mValue)) {
+				$aReduced[$sKey] = $mValue;
+			} elseif (is_string($mValue)) {
+				$aReduced[$sKey] = self::cut($mValue);
+			} elseif (is_object($mValue)) {
+				$aReduced[$sKey] = method_exists($mValue, '__toString') ? self::cut((string) $mValue) : '['.get_class($mValue).']';
+			} else {
+				$aReduced[$sKey] = is_array($mValue) ? '[array of '.count($mValue).']' : '['.gettype($mValue).']';
+			}
+		}
+
+		if ($sReference !== null) {
+			$aReduced['error_reference'] = $sReference;
+		}
+
+		return $aReduced;
+	}
+
+	private static function cut(string $sValue): string
+	{
+		// mb_strcut cuts to a byte count without splitting a character.
+		return strlen($sValue) > self::MAX_VALUE_BYTES ? mb_strcut($sValue, 0, self::MAX_VALUE_BYTES, 'UTF-8').'…' : $sValue;
+	}
+
+	/**
 	 * Replaces `{placeholder}` tokens with values from $context.
 	 *
 	 * Per PSR-3: placeholder names MUST be composed of `[A-Za-z0-9_.]` and
@@ -177,8 +259,12 @@ class LogAPILogger extends AbstractLogger
 
 		$replace = [];
 		foreach ($context as $key => $value) {
+			// Never an exception: its text is its trace, which is what the reduced context exists to keep out.
+			if ($value instanceof \Throwable) {
+				continue;
+			}
 			if (is_null($value) || is_scalar($value) || (is_object($value) && method_exists($value, '__toString'))) {
-				$replace['{'.$key.'}'] = (string) $value;
+				$replace['{'.$key.'}'] = self::cut((string) $value);
 			}
 		}
 

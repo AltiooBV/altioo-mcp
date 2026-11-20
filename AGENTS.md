@@ -111,3 +111,5 @@ Settings agent skills read here.
   Also: portal mode serves a pack's element only when it implements `PortalAware` **and** the operator lists it in
   `mcp_portal_extensions` (empty by default; a malformed value opens nothing); a portal-aware element asks
   `ObjectAccess::Current()`, never `UserRights` alone ([0017](doc/adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)).
+  Also: an `MCP-advisory` credential is not served a pack's write-graded tools (absent, answered as unknown); core tools rehearse
+  through `DryRun::Simulated()`, so decide it in `ServedElements::isHidden()` and add no per-pack exception ([0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)).

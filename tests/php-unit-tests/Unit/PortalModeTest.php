@@ -149,8 +149,8 @@ class PortalModeTest extends TestCase
 
 		$this->assertTrue(SourceCalls::OfClass(TokenAudienceGate::class)->HasCall(OAuthResource::class.'::CalledEndpointUrl', 'Check'));
 		$oLog = SourceCalls::OfClass(CallLog::class);
-		$this->assertTrue($oLog->HasCall(PortalMode::class.'::Current', 'LogIfConfigured'));
-		$this->assertStringContainsString("\$oLog->Set('portal',PortalMode::Current()??'')", $oLog->Code('LogIfConfigured'));
+		$this->assertTrue($oLog->HasCall(PortalMode::class.'::Current', 'row'));
+		$this->assertStringContainsString("\$oLog->Set('portal',PortalMode::Current()??'')", $oLog->Code('row'));
 		$this->assertTrue(SourceCalls::OfClass(PortalAdmission::class)->HasCall(PortalMode::class.'::Requested', 'Admit'));
 	}
 

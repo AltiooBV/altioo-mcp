@@ -11,6 +11,11 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Helper\SettingParser;
 use Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
@@ -188,5 +193,36 @@ class WriteCapTest extends TestCase
 	public function testTheExemptToolIsStillAWritingToolWeNamedOnPurpose(): void
 	{
 		$this->assertArrayHasKey('core_set_obsolete_data', MCPRegistry::GetTools());
+	}
+
+	/**
+	 * Review 2026-11-18, HA-8: a link row is an object (ADR 0019: objects, not calls), and the tools that set a link set
+	 * asked the cap for the one object they name, leaving the rows to be counted after the write - 20 objects committed against a
+	 * cap of 3. Each of them now asks for the rows too, in its own source (ADR 0014).
+	 */
+	public function testTheToolsThatSetALinkSetAskTheCapForItsRows(): void
+	{
+		foreach ([ObjectCreate::class, ObjectUpdate::class, ObjectApplyStimulus::class] as $sTool) {
+			$this->assertStringContainsString(
+				'WriteCap::RefusalFor(1+WriteCap::LinkRowsOf($oObject,array_keys($aValidatedValues)))',
+				SourceCalls::OfClass($sTool)->Code(),
+				"{$sTool} asks the cap for one object while its link-set rows go uncounted until after the write"
+			);
+		}
+		$this->assertStringContainsString('WriteCap::LinkEntriesIn($class,$aRow)', SourceCalls::OfClass(ObjectBulkCreate::class)->Code());
+		$this->assertStringContainsString('WriteCap::LinkEntriesIn($class,$fields)', SourceCalls::OfClass(ObjectBulkUpdate::class)->Code());
+	}
+
+	/**
+	 * ADR 0019, 2026-11-19: the bulk update that sends link sets asks for an upper bound, and says so in its refusal.
+	 */
+	public function testABulkUpdateWithLinkSetsAsksForAnUpperBoundAndFlagsIt(): void
+	{
+		$sCode = SourceCalls::OfClass(ObjectBulkUpdate::class)->Code();
+
+		$this->assertStringContainsString('WriteCap::RefusalFor(count($aIds)*(1+$iLinkEntries),$iLinkEntries>0)', $sCode);
+		$this->assertStringContainsString('upper bound', WriteCap::UPPER_BOUND_NOTE);
+		$this->assertStringContainsString('Splitting the call', WriteCap::UPPER_BOUND_NOTE);
+		$this->assertStringContainsString('$bUpperBound?$sAnswered.\' \'.self::UPPER_BOUND_NOTE:$sAnswered', SourceCalls::OfClass(WriteCap::class)->Code('RefusalFor'));
 	}
 }

@@ -135,7 +135,10 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
 		// tool's own source, once the call is known to commit and before it writes.
-		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds));
+		// Each object, and for each the link-set entries the call sends: an upper bound, since an entry an object
+		// already holds is counted too (ADR 0019: objects, not calls).
+		$iLinkEntries = WriteCap::LinkEntriesIn($class, $fields);
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds) * (1 + $iLinkEntries), $iLinkEntries > 0);
 		if ($sCapRefusal !== null) {
 			throw new ToolCallException($sCapRefusal);
 		}

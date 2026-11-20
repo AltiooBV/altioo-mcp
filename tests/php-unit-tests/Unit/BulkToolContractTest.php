@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Mcp\Exception\ToolCallException;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -217,5 +218,30 @@ class BulkToolContractTest extends TestCase
 	private function checkIds(array $aIds): array
 	{
 		return (new ReflectionMethod(AbstractBulkTool::class, 'checkIds'))->invoke(null, $aIds);
+	}
+
+	/**
+	 * Review 2026-11-18, HA-4 and PA-3: AbstractBulkTool kept its own copy of WriteValues::Validated() and it
+	 * drifted - the copy never asked ExclusionPolicy, so core_object_bulk_create committed an attribute the operator
+	 * had excluded (and answered "Unknown attribute" to a name that does not exist, an oracle on the dry run), for a
+	 * narrow console user as for anyone. Two validators for one rule set is how a rule gets forgotten in one of
+	 * them: the bulk tools, the core ones and a pack's, now go through the one.
+	 */
+	public function testTheBulkToolsValidateThroughTheOneValidatorEveryOtherWriteUses(): void
+	{
+		$oSource = SourceCalls::OfClass(AbstractBulkTool::class);
+
+		$this->assertTrue($oSource->HasCall(WriteValues::class.'::Validated', 'validatedValues'), 'validatedValues() no longer delegates to WriteValues::Validated()');
+		$this->assertSame([], $oSource->MethodsCalling('RestUtils::MakeValue'), 'AbstractBulkTool converts caller values itself again: that is a second validator');
+		foreach (['EditPolicy', 'MentionPolicy', 'FormulaPolicy', 'SecretPolicy', 'ExternalKeyPolicy'] as $sPolicy) {
+			$this->assertStringNotContainsString($sPolicy.'::', $oSource->Code(), "AbstractBulkTool asks {$sPolicy} itself: it belongs in WriteValues::Validated(), where every write path gets it");
+		}
+
+		foreach ([ObjectBulkCreate::class, ObjectBulkUpdate::class] as $sTool) {
+			$this->assertTrue(
+				SourceCalls::OfClass($sTool)->HasCallTo('validatedValues'),
+				"{$sTool} writes without validating its values"
+			);
+		}
 	}
 }

@@ -21,6 +21,8 @@ use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolAsking;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackToolMentioning;
 use Altioo\iTop\Extension\MCP\Test\Support\UndescribedTool;
+use Altioo\iTop\Extension\MCP\Test\Support\WritePackToolNoDryRun;
+use Altioo\iTop\Extension\MCP\Test\Support\WritePackToolSimulating;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use PHPUnit\Framework\TestCase;
 
@@ -192,6 +194,33 @@ class ElementContractCheckerTest extends TestCase
 		return array_values(array_filter(
 			ElementContract::Violations($oElement),
 			static fn (string $sFinding): bool => str_contains($sFinding, 'PortalAware')
+		));
+	}
+
+	/**
+	 * Review 2026-11-18, PA-1: the MCP-advisory scope is enforced only by DryRun::Simulated(), which a pack's write tool has to
+	 * call itself and which nothing checked: a tool written from the documentation committed under an advisory credential.
+	 */
+	public function testAWriteToolThatNeverAsksDryRunSimulatedIsWarnedAbout(): void
+	{
+		$aViolations = ElementContract::Violations(new WritePackToolNoDryRun());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aViolations[0]);
+		$this->assertStringContainsString('DryRun::Simulated()', $aViolations[0]);
+		$this->assertStringContainsString('MCP-advisory', $aViolations[0]);
+	}
+
+	public function testAWriteToolThatAsksDryRunSimulatedIsNotWarnedAbout(): void
+	{
+		$this->assertSame([], ElementContract::Violations(new WritePackToolSimulating()));
+	}
+
+	public function testAReadOnlyToolIsNotAskedForIt(): void
+	{
+		$this->assertSame([], array_filter(
+			ElementContract::Violations(new ClassList()),
+			static fn (string $s): bool => str_contains($s, 'DryRun::Simulated()')
 		));
 	}
 }

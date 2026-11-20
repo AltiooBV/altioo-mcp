@@ -25,7 +25,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
  * flag restores the distinction JSON already carried: objects become
  * `stdClass`, lists stay PHP arrays - which is what link sets
  * ({@see \AttributeLinkedSet}) and tag sets require.
- * @api
+ * @internal Not on the surface a pack builds on since 2.1.0 ({@see WriteValues::Validated()} converts values with it and holds every
+ *            other rule of a write; ADR 0016 Amendment 1). It was on the public surface in 1.x and 2.0.
  * @since 1.0.0
  */
 final class RestValue

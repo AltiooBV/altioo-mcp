@@ -10,21 +10,13 @@ namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
-use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
-use Altioo\iTop\Extension\MCP\Service\Write\EditPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\FormulaPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\MentionPolicy;
-use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
-use Altioo\iTop\Extension\MCP\Service\Write\ExternalKeyPolicy;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
-use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use DBObject;
 use DBObjectSet;
 use Mcp\Exception\ToolCallException;
@@ -332,9 +324,6 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 */
 	protected static function validatedValues(string $sClass, array $aFields, ?DBObjectSet $oInstanceSet = null): array
 	{
-		$aValues = [];
-		$aIssues = [];
-
 		$oObject = null;
 		if ($oInstanceSet !== null) {
 			$oInstanceSet->Rewind();
@@ -343,93 +332,14 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		}
 		$oObject ??= MetaModel::NewObject($sClass);
 
-		foreach ($aFields as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
-				$aIssues[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
-				continue;
-			}
-			// With an object in hand, UR_ALLOWED_DEPENDS has been resolved and
-			// anything short of a yes is a no. Without one - a creation, where
-			// there is no object yet to grade - only an outright refusal counts,
-			// because "depends on the object" cannot be answered before the
-			// object exists, and DBInsert() checks it again anyway.
-			$iAllowed = UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY, $oInstanceSet);
-			$bDenied = $oInstanceSet === null
-				? $iAllowed === UR_ALLOWED_NO
-				: $iAllowed !== UR_ALLOWED_YES;
-			if ($bDenied) {
-				$aIssues[] = "Write access denied on attribute '{$sAttCode}'.";
-				continue;
-			}
-			if (!MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
-				$aIssues[] = "Attribute '{$sAttCode}' is not writable.";
-				continue;
-			}
-			// Writable is the ORM's word; this is the console's. The state, what
-			// the lifecycle locks, a stopwatch, a case log's history. See EditPolicy.
-			$sNotEditable = EditPolicy::RefusalFor($oObject, $sAttCode, $value);
-			if ($sNotEditable !== null) {
-				$aIssues[] = $sNotEditable;
-				continue;
-			}
+		// The one validator every write goes through (WriteValues::Validated): exclusions, the attribute right,
+		// the console's lifecycle locks, external keys, mentions, formulas, secrets, dropped set values and a link
+		// set's hidden rows. This method kept a copy of it that drifted - it never asked ExclusionPolicy, so a bulk
+		// create wrote an attribute the operator had excluded (review 2026-11-18, HA-4, PA-3) - and a copy of a
+		// security rule is a second place for it to be forgotten.
+		[$aValues, $aIssues] = WriteValues::Validated($oObject, $sClass, $aFields, $oInstanceSet);
 
-			// Asked before the ORM sees it: an id pointing at nothing is a
-			// mistake the caller can correct, and iTop answers it with an
-			// exception this module can only report opaquely.
-			$sBadTarget = ExternalKeyPolicy::RefusalFor($sClass, $sAttCode, $value);
-			if ($sBadTarget !== null) {
-				$aIssues[] = $sBadTarget;
-				continue;
-			}
-			// A mention is a notification: held to what the console would
-			// have let this user write, and to a per-call cap. See MentionPolicy.
-			$sBadMention = MentionPolicy::RefusalFor($sClass, $sAttCode, $value);
-			if ($sBadMention !== null) {
-				$aIssues[] = $sBadMention;
-				continue;
-			}
-			// Text a spreadsheet would run as a formula. See FormulaPolicy.
-			$sBadFormula = FormulaPolicy::RefusalFor($sClass, $sAttCode, $value);
-			if ($sBadFormula !== null) {
-				$aIssues[] = $sBadFormula;
-				continue;
-			}
-			// A secret the instance logs in to something else with. See SecretPolicy.
-			$sBadSecret = SecretPolicy::RefusalFor($sClass, $sAttCode, $value);
-			if ($sBadSecret !== null) {
-				$aIssues[] = $sBadSecret;
-				continue;
-			}
-
-			try {
-				// The SDK hands us arrays for nested JSON objects; RestUtils
-				// branches on stdClass. See RestValue.
-				$aValues[$sAttCode] = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
-				// iTop's set attributes throw away an element they do not
-				// recognise without saying so - see WritePlan. A value the
-				// caller sent and the object will not hold is a refusal here,
-				// the way a scalar enum already refuses one.
-				$sDropped = WriteValues::RefusalForDroppedSetValues($sClass, $sAttCode, $value, $aValues[$sAttCode]);
-				if ($sDropped !== null) {
-					unset($aValues[$sAttCode]);
-					$aIssues[] = $sDropped;
-					continue;
-				}
-				// What the set would add, change and remove, judged before
-				// Set() hands it to ormLinkSet. See EditPolicy.
-				$sBadLinks = EditPolicy::RefusalForLinkSet($oObject, $sAttCode, $aValues[$sAttCode]);
-				if ($sBadLinks !== null) {
-					unset($aValues[$sAttCode]);
-					$aIssues[] = $sBadLinks;
-					continue;
-				}
-			} catch (\Throwable $e) {
-				$aIssues[] = ErrorReport::RejectedValue("Invalid value for attribute '{$sAttCode}'", $e)
-					.AttributeDescription::ValueHint($sClass, $sAttCode, $value);
-			}
-		}
-
-		return [$aValues, $aIssues];
+		return [$aValues, array_values($aIssues)];
 	}
 
 	/**

@@ -93,7 +93,6 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Write/DryRun.php',
 		'src/Service/Write/EditPolicy.php',
 		'src/Service/Write/MentionPolicy.php',
-		'src/Service/Write/RestValue.php',
 		'src/Service/Write/WriteOutcome.php',
 		'src/Service/Write/WritePlan.php',
 		'src/Service/Write/WriteValues.php',
@@ -209,8 +208,8 @@ class PublicSurfaceTest extends TestCase
 	/**
 	 * And no class is on the list for nothing: each is used by an element
 	 * under src/Core, named by a surface class's signature, or called by the
-	 * example pack (RestValue, on the surface since 1.x, is the one only the
-	 * pack calls).
+	 * example pack (RestValue was the one only the pack called; it left the
+	 * surface in 2.1.0, ADR 0016 Amendment 1).
 	 */
 	public function testEveryExtraIsUsedByACoreElementOrASurfaceSignature(): void
 	{

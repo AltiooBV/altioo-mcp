@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\LineControls;
 use CMDBObject;
 use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
 use Psr\Http\Message\MessageInterface;
@@ -231,7 +232,8 @@ final class ChangeTracking
 			return null;
 		}
 
-		$sComment = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $sComment);
+		// Line and bidirectional controls too, not only ASCII ones: a log forwarder splits on U+2028 and U+0085.
+		$sComment = LineControls::Replace(mb_scrub($sComment, 'UTF-8'));
 		if ($sComment === null) {
 			return null;
 		}

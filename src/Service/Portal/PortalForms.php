@@ -76,10 +76,57 @@ final class PortalForms
 	 */
 	public function Fields(string $sClass, string $sMode, ?DBObject $oObject = null): array
 	{
-		try {
-			$oObject ??= MetaModel::NewObject($sClass);
+		$oObject ??= MetaModel::NewObject($sClass);
 
-			$aForm = self::WithReadOnlyHonoured(ApplicationHelper::GetLoadedFormFromClass($this->aForms, $sClass, $sMode));
+		return $this->prepared(
+			$sClass,
+			$sMode,
+			self::WithReadOnlyHonoured(ApplicationHelper::GetLoadedFormFromClass($this->aForms, $sClass, $sMode)),
+			$oObject,
+			$sMode
+		);
+	}
+
+	/**
+	 * The fields the portal's transition form shows when a user applies a stimulus to an object, with the flags it gives each.
+	 *
+	 * Built as the portal's own ObjectController::ApplyStimulusAction() builds it: the form the portal declares for that
+	 * stimulus on the class (or a parent), else its default one - a list with no fields of its own, so that the
+	 * datamodel's target-state flags decide - plus the stimulus code, then merged by the portal's own PrepareFields() in
+	 * its transition mode. A field the declared form shows read-only, or hides, is not a field the user could have changed
+	 * in the transition, whatever the target state prompts for (review 2026-11-18, RT-11: `team_id` on `ev_reopen`).
+	 *
+	 * @return array<string, int>
+	 * @throws MCPPortalException When the form cannot be prepared.
+	 */
+	public function TransitionFields(string $sClass, string $sStimulus, DBObject $oObject): array
+	{
+		try {
+			$aStimuliForms = ApplicationHelper::GetLoadedFormFromClass($this->aForms, $sClass, ObjectFormManager::ENUM_MODE_APPLY_STIMULUS);
+			$aForm = is_array($aStimuliForms) && isset($aStimuliForms[$sStimulus]) && is_array($aStimuliForms[$sStimulus])
+				? $aStimuliForms[$sStimulus]
+				: ['id' => 'apply-stimulus', 'type' => 'custom_list', 'fields' => [], 'layout' => null];
+			$aForm['stimulus_code'] = $sStimulus;
+		} catch (\Throwable $oException) {
+			throw new MCPPortalException(ErrorReport::OpaqueFailure(
+				sprintf("Could not read the transition form of %s on %s in portal '%s'", $sStimulus, $sClass, $this->sPortal),
+				$oException
+			), 0, $oException);
+		}
+
+		return $this->prepared($sClass, ObjectFormManager::ENUM_MODE_APPLY_STIMULUS, self::WithReadOnlyHonoured($aForm), $oObject, $sStimulus);
+	}
+
+	/**
+	 * A form definition run through the portal's own ObjectFormManager, and the flags it came to.
+	 *
+	 * @param array<string, mixed> $aForm
+	 *
+	 * @return array<string, int>
+	 */
+	private function prepared(string $sClass, string $sMode, array $aForm, DBObject $oObject, string $sNamed): array
+	{
+		try {
 			if (($aForm['layout']['type'] ?? null) === 'twig') {
 				$aForm['layout'] = ['type' => 'xhtml', 'content' => self::rendered((string)$aForm['layout']['content'], $oObject)];
 			}
@@ -96,7 +143,7 @@ final class PortalForms
 			$aFlags = (new \ReflectionProperty(ObjectFormManager::class, 'aFieldsAtts'))->getValue($oManager);
 		} catch (\Throwable $oException) {
 			throw new MCPPortalException(ErrorReport::OpaqueFailure(
-				sprintf("Could not read the '%s' form of %s in portal '%s'", $sMode, $sClass, $this->sPortal),
+				sprintf("Could not read the '%s' form of %s in portal '%s'", $sNamed, $sClass, $this->sPortal),
 				$oException
 			), 0, $oException);
 		}

@@ -15,8 +15,8 @@ in the order you would meet it.
 | `register.php` | One line, declaring the provider. Listed in the module's `datamodel` array |
 | `datamodel.acme-servicedesk.xml` | The `MCP-toolset-acme-servicedesk` token scope, and the title dictionary |
 | `src/AcmeServiceDeskExtensions.php` | The provider: the version guard, the registrations, the server instructions |
-| `src/Tools/TicketAddLogEntry.php` | A write tool: annotations, dry run, `RestValue`, per-object `UserRights`, the operator's exclusions |
-| `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free, and the one element that implements `PortalAware`: see below |
+| `src/Tools/TicketAddLogEntry.php` | A write tool written as a core one is: annotations, `DryRun::Simulated()` first (the advisory scope is enforced there and nowhere else), per-object `UserRights`, `WriteValues::Validated()` (the operator's exclusions, the attribute right, the lifecycle locks, mentions, formulas), `WriteCap::RefusalFor()`, `ChangeTracking::Explain()`, `StructuredWrite()` |
+| `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free, asking `ExclusionPolicy::Serves()` and `ExclusionSearches::Narrowed()` as `doc/extending.md` requires, and the one element that implements `PortalAware`: see below |
 | `src/Prompts/TriageMyQueue.php` | A prompt, and `isAvailable()` keeping it off instances where it would fail |
 | `tests/php-unit-tests/Unit/ContractTest.php` | The whole contract suite, needing neither iTop nor a database |
 | `phpunit.xml.dist` | PHPUnit 9, matching what iTop pins. Points the suite at `tests/php-unit-tests/`, which is where iTop's own Extensions testsuite looks |
@@ -119,6 +119,6 @@ ships in the production autoload rather than under `tests/`.
 ## What it calls
 
 Only the `@api` surface: everything under `Api\`, and `ObjectQuery`, `ObjectSerializer`,
-`RestValue` and `DryRun`. The base extension's unit suite reads this pack's `use` lines
+`WriteValues`, `WriteCap`, `ExclusionPolicy`, `ExclusionSearches` and `DryRun`, among others. The base extension's unit suite reads this pack's `use` lines
 against that list, so a pack that needs more is a reason to widen the list on purpose. The
 surface is described in [`doc/extending.md`](../extending.md#1-depend-on-the-base-module).

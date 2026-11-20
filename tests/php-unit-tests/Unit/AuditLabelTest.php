@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Controller\CallRequest;
+use Altioo\iTop\Extension\MCP\Helper\LineControls;
 use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\MCPResponse;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
@@ -168,7 +170,7 @@ class AuditLabelTest extends TestCase
 	{
 		$sSource = SourceCalls::OfClass(CallLog::class)->Code();
 
-		$this->assertMatchesRegularExpression("/->Set\\('message',self::AuditLabel\\(/", $sSource);
+		$this->assertMatchesRegularExpression("/->Set\\('message',.*self::text\\('message',self::AuditLabel\\(/", $sSource);
 		$this->assertDoesNotMatchRegularExpression("/->Set\\('message',\\\$oResult->message\\)/", $sSource);
 	}
 
@@ -265,5 +267,94 @@ class AuditLabelTest extends TestCase
 		$oParse = new ReflectionMethod(CallRequest::class, 'GetMCPInfoFromRequest');
 
 		return $oParse->invoke(null, $oRequest, new MCPResult());
+	}
+
+	/**
+	 * Review 2026-11-18, HA-12: only ASCII controls were stripped, so U+2028, U+0085 and U+202E survived in
+	 * `client` and in the change comment, which are documented as one line: a log forwarder reads two rows,
+	 * and a right-to-left override reorders what follows it for a reader.
+	 *
+	 * @dataProvider lineAndBidiControlProvider
+	 */
+	public function testUnicodeLineAndBidiControlsAreStrippedToo(string $sControl): void
+	{
+		$this->assertSame('a b', self::label("a{$sControl}b", 255));
+		$this->assertSame('a b', LineControls::Replace("a{$sControl}{$sControl}b"), 'a run is one space');
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function lineAndBidiControlProvider(): array
+	{
+		return [
+			'NEL U+0085' => ["\u{0085}"],
+			'C1 U+009B' => ["\u{009B}"],
+			'LINE SEPARATOR U+2028' => ["\u{2028}"],
+			'PARAGRAPH SEPARATOR U+2029' => ["\u{2029}"],
+			'ALM U+061C' => ["\u{061C}"],
+			'LRM U+200E' => ["\u{200E}"],
+			'RLM U+200F' => ["\u{200F}"],
+			'LRE U+202A' => ["\u{202A}"],
+			'RLO U+202E' => ["\u{202E}"],
+			'LRI U+2066' => ["\u{2066}"],
+			'PDI U+2069' => ["\u{2069}"],
+		];
+	}
+
+	public function testTextThatIsNotAControlIsKept(): void
+	{
+		$this->assertSame("Zo\u{00EB} \u{5C71}\u{7530} \u{1F600} - ok", self::label("Zo\u{00EB} \u{5C71}\u{7530} \u{1F600} - ok", 255));
+		// Close to the ranges, and not in them.
+		$sNear = "a\u{00A0}b\u{2027}c\u{202F}d\u{206A}e";
+		$this->assertSame($sNear, self::label($sNear, 255));
+	}
+
+	/**
+	 * The change comment is one line by the same rule, through its own function.
+	 */
+	public function testTheChangeCommentLosesTheSameCharacters(): void
+	{
+		$sComment = (new ReflectionMethod(ChangeTracking::class, 'oneLine'))->invoke(null, "first\u{2028}second\u{202E}third\u{0085}fourth\nfifth");
+
+		$this->assertSame('first second third fourth fifth', $sComment);
+	}
+
+	/**
+	 * Review 2026-11-18, HA-7: the audit row is the trail and what the write cap counts from, and a
+	 * caller could make its insert fail (a character of four bytes on a 3-byte table, a message past a
+	 * TEXT column's size). The insert is retried once with only what the server built, the caller's text
+	 * is fitted to its column, and the failure line carries no statement. A source contract: CallLog
+	 * needs the datamodel to run, and the integration suite runs it (AuditRowSurvivesTest).
+	 */
+	public function testAFailedInsertIsRetriedOnceWithOnlyWhatTheServerBuilt(): void
+	{
+		$oSource = SourceCalls::OfClass(CallLog::class);
+		$sLog = $oSource->Code('LogIfConfigured');
+
+		$this->assertSame(1, substr_count($sLog, 'self::row($oResult,false)'), 'the full row is built once');
+		$this->assertSame(1, substr_count($sLog, 'self::row($oResult,true)'), 'the retry builds a reduced row, once');
+		$this->assertLessThan((int) strpos($sLog, 'self::row($oResult,true)'), (int) strpos($sLog, 'self::row($oResult,false)'));
+		$this->assertStringNotContainsString('getMessage', $sLog, 'the message of a failed INSERT is the statement, with the values in it');
+		$this->assertStringNotContainsString('getMessage', $oSource->Code('AuditAdmissionRefusal'));
+
+		// Nothing the caller wrote is set on a reduced row.
+		$sRow = $oSource->Code('row');
+		foreach (['client', 'change_comment'] as $sColumn) {
+			$this->assertStringContainsString("'{$sColumn}',\$bReduced?", $sRow, "{$sColumn} is set on a reduced row");
+		}
+		$this->assertStringContainsString("if(!\$bReduced&&MetaModel::GetModuleSetting", $sRow, 'request_params and refusal_text are set on a reduced row');
+		$this->assertStringContainsString('if(!$bReduced){', $oSource->Code('describeChange'), 'changed_objects, which names objects, is left off a reduced row');
+	}
+
+	public function testEveryCallerTextColumnIsFittedToItsColumn(): void
+	{
+		$oSource = SourceCalls::OfClass(CallLog::class);
+		$sRow = $oSource->Code('row');
+
+		foreach (['message', 'mcp_name', 'client', 'change_comment', 'request_params', 'refusal_text'] as $sColumn) {
+			$this->assertStringContainsString("self::text('{$sColumn}'", $sRow, "{$sColumn} is stored as the caller wrote it");
+		}
+		// The message column is a TEXT column too: the review's 70 000-character tool name was quoted in it, uncut.
+		$this->assertStringContainsString("self::text('message',self::AuditLabel(\$oResult->message,null),self::TEXT_BYTES)", $sRow);
+		$this->assertStringContainsString("preg_replace('/[\\x{10000}-\\x{10FFFF}]/u'", $oSource->Code('text'));
 	}
 }

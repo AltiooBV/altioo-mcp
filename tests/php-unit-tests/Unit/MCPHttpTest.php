@@ -453,4 +453,28 @@ class MCPHttpTest extends TestCase
 			'suffixed'  => ['application/vnd.acme+json'],
 		];
 	}
+
+	/**
+	 * Review 2026-11-18, RT-2: under Basic the password stayed in $_SERVER for the whole call
+	 * (PHP_AUTH_PW, and the header base64 of it), and the PSR-7 request is built from $_SERVER.
+	 */
+	public function testForgettingTheCredentialDropsWhatBasicLeftInTheServerArray(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Basic '.base64_encode('someone:hunter2');
+		$_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = $_SERVER['HTTP_AUTHORIZATION'];
+		$_SERVER['PHP_AUTH_USER'] = 'someone';
+		$_SERVER['PHP_AUTH_PW'] = 'hunter2';
+		$_SERVER['PHP_AUTH_DIGEST'] = 'digest-response';
+
+		MCPHttp::PromoteBearerToAuthToken();
+		$this->assertTrue(MCPHttp::CarriesACredential(), 'Basic must still be seen until the login has run');
+		MCPHttp::ForgetAuthToken();
+
+		$this->assertStringNotContainsString('hunter2', serialize($_SERVER));
+		$this->assertStringNotContainsString(base64_encode('someone:hunter2'), serialize($_SERVER));
+		$this->assertArrayNotHasKey('PHP_AUTH_PW', $_SERVER);
+		$this->assertArrayNotHasKey('PHP_AUTH_DIGEST', $_SERVER);
+		$this->assertArrayNotHasKey('HTTP_AUTHORIZATION', $_SERVER);
+		$this->assertArrayNotHasKey('REDIRECT_HTTP_AUTHORIZATION', $_SERVER);
+	}
 }

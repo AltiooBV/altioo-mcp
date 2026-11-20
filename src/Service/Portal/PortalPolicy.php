@@ -574,6 +574,20 @@ final class PortalPolicy
 	}
 
 	/**
+	 * The fields the portal's transition form shows when the user applies a stimulus, with the flags it gives each.
+	 *
+	 * @see PortalForms::TransitionFields()
+	 *
+	 * @return array<string, int>
+	 *
+	 * @throws MCPPortalException
+	 */
+	public function TransitionFields(string $sClass, string $sStimulus, DBObject $oObject): array
+	{
+		return $this->oForms->TransitionFields($sClass, $sStimulus, $oObject);
+	}
+
+	/**
 	 * The stimuli the user may apply to objects of a class, code => label.
 	 *
 	 * The portal's lifecycle (a deny-list), UserRights, and a write scope:

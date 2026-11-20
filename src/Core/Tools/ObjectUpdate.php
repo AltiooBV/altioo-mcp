@@ -307,7 +307,8 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
 		// tool's own source, once the call is known to commit and before it writes.
-		$sCapRefusal = WriteCap::RefusalFor(1);
+		// The object and the link rows the call would add, change or remove: a link row is an object the cap counts (ADR 0019).
+		$sCapRefusal = WriteCap::RefusalFor(1 + WriteCap::LinkRowsOf($oObject, array_keys($aValidatedValues)));
 		if ($sCapRefusal !== null) {
 			throw new ToolCallException($sCapRefusal);
 		}

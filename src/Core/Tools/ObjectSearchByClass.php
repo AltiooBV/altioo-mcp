@@ -139,14 +139,24 @@ class ObjectSearchByClass extends AbstractObjectSearch
 		self::applyArchived($oSearch, $class, $archived);
 
 		foreach ($filters as $sAttCode => $value) {
-			if (!MetaModel::IsValidAttCode($class, $sAttCode) || ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)) {
+			// A masked attribute is read one prefix at a time by whoever may filter on it, so it is unknown
+			// here, as it is to core_object_count (review 2026-11-18, RT-3).
+			if (!MetaModel::IsValidAttCode($class, $sAttCode)
+				|| ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)
+				|| ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($class, (string)$sAttCode), $class)) {
 				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
 			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
 			if ($sRefusal !== null) {
 				throw new ToolCallException($sRefusal);
 			}
-			$oSearch->AddCondition($sAttCode, $value, '=');
+			try {
+				$oSearch->AddCondition($sAttCode, $value, '=');
+			} catch (\CoreException) {
+				// iTop's own refusal of a code its search cannot use (an image, say): the caller's
+				// mistake, not the server's, and not one to hand to the opaque failure below.
+				throw new ToolCallException("Attribute '{$sAttCode}' on class '{$class}' cannot be used as a filter.");
+			}
 		}
 
 		$aOrderBy = self::orderBy($class, $order_by, $order_direction);

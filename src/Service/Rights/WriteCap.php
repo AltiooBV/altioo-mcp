@@ -12,8 +12,10 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use CMDBChange;
+use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
+use MetaModel;
 use Throwable;
 
 /**
@@ -56,9 +58,13 @@ final class WriteCap
 	 * @param int $iObjects How many objects the call is about to create, change, delete, move through
 	 *                      a stimulus or attach to. A bulk call asks once for all of them.
 	 *
+	 * @param bool $bUpperBound The count is an upper bound, not what the write will record (a bulk update that sends link-set entries:
+	 *                          the objects are not loaded to tell which entries they already hold). A refusal then says so, and that
+	 *                          splitting the call helps.
+	 *
 	 * @since 2.0.0
 	 */
-	public static function RefusalFor(int $iObjects): ?string
+	public static function RefusalFor(int $iObjects, bool $bUpperBound = false): ?string
 	{
 		$iCap = Settings::GetMaxWritesPerHour();
 		if ($iCap === 0) {
@@ -79,9 +85,115 @@ final class WriteCap
 		// The operator's log names the setting; a portal user is not told the console's vocabulary.
 		ErrorReport::Log('A write was refused by the write cap: '.$sRefusal);
 
-		return PortalMode::Current() === null
+		$sAnswered = PortalMode::Current() === null
 			? $sRefusal
 			: self::Decide($iCap, $bTrailCounts, $aRows, self::$iReserved, $iObjects, $iNow, true);
+
+		return $bUpperBound ? $sAnswered.' '.self::UPPER_BOUND_NOTE : $sAnswered;
+	}
+
+	/** Said after a refusal whose count is an upper bound (a bulk update that sends link-set entries). */
+	public const UPPER_BOUND_NOTE = 'That count is an upper bound: it counts every link-set entry the call sends for every object, including entries an object already holds. Splitting the call into smaller ones helps.';
+
+	/**
+	 * The link rows a write is about to add, change or remove, for the attributes it set, to be added to the objects a tool asks for.
+	 *
+	 * The cap counts objects (ADR 0019): "objects, not calls", and a link row is an object - a ticket created with
+	 * 19 `contacts_list` entries writes 20 of them, and a tool that asked for 1 let the call through and only the next one
+	 * was refused (review 2026-11-18, HA-8). Asked once the values are Set() and before the write: the object's own link set
+	 * holds what the write would add, change and remove, which is what iTop will record, and a complete list that repeats
+	 * rows already there counts none of them.
+	 *
+	 * @param array<int, string|int> $aAttCodes The attributes this call set.
+	 *
+	 * @since 2.1.0
+	 */
+	public static function LinkRowsOf(DBObject $oObject, array $aAttCodes): int
+	{
+		$iRows = 0;
+		foreach ($aAttCodes as $mAttCode) {
+			$sAttCode = (string)$mAttCode;
+			try {
+				if (!MetaModel::IsValidAttCode(get_class($oObject), $sAttCode) || !MetaModel::GetAttributeDef(get_class($oObject), $sAttCode)->IsLinkSet()) {
+					continue;
+				}
+				$mSet = $oObject->Get($sAttCode);
+				if (!$mSet instanceof \ormLinkSet) {
+					continue;
+				}
+				if ($oObject->IsNew()) {
+					$iRows += $mSet->Count();
+					continue;
+				}
+				$oAttDef = MetaModel::GetAttributeDef(get_class($oObject), $sAttCode);
+				$sAdditionalKey = ($oAttDef->IsIndirect() && !$oAttDef->DuplicatesAllowed()) ? $oAttDef->GetExtKeyToRemote() : null;
+				$oOriginal = $mSet->GetOriginalSet() ?? DBObjectSet::FromScratch($mSet->GetClass());
+				// The comparison ormLinkSet and EditPolicy make: what the write would add, change and remove.
+				$aDiff = (new \DBObjectSetComparator($oOriginal, $mSet, [$oAttDef->GetExtKeyToMe()], $sAdditionalKey))->GetDifferences();
+				$iRows += count($aDiff['added']) + count($aDiff['removed']);
+				foreach ($aDiff['modified'] as $oLink) {
+					// iTop lists a row the caller repeated as modified and writes nothing for it: only a row that differs counts.
+					$iRows += self::differsFromStored($oLink) ? 1 : 0;
+				}
+			} catch (Throwable $e) {
+				// What cannot be counted is counted as the whole set: over, never under.
+				try {
+					$mSet = $oObject->Get($sAttCode);
+					$iRows += $mSet instanceof \ormLinkSet ? $mSet->Count() : 0;
+				} catch (Throwable $e2) {
+					$iRows += 1;
+				}
+			}
+		}
+
+		return $iRows;
+	}
+
+	private static function differsFromStored(DBObject $oLink): bool
+	{
+		try {
+			$oStored = MetaModel::GetObject(get_class($oLink), (int)$oLink->GetKey(), false, true);
+			if ($oStored === null) {
+				return true;
+			}
+			foreach ($oLink->ListChanges() as $sAttCode => $mValue) {
+				if (!is_scalar($mValue) && $mValue !== null) {
+					return true;
+				}
+				if ((string)$oStored->Get((string)$sAttCode) !== (string)$mValue) {
+					return true;
+				}
+			}
+
+			return false;
+		} catch (Throwable $e) {
+			return true;
+		}
+	}
+
+	/**
+	 * The link-set entries a caller sent for a class, before any object exists to ask: every entry of every link set in
+	 * the fields. Exact for a creation; for a write to objects that already hold rows, an upper bound, since an entry the
+	 * object has already is counted too.
+	 *
+	 * @param array<array-key, mixed> $aFields
+	 *
+	 * @since 2.1.0
+	 */
+	public static function LinkEntriesIn(string $sClass, array $aFields): int
+	{
+		$iEntries = 0;
+		foreach ($aFields as $mAttCode => $mValue) {
+			try {
+				if (is_array($mValue) && MetaModel::IsValidAttCode($sClass, (string)$mAttCode) && MetaModel::GetAttributeDef($sClass, (string)$mAttCode)->IsLinkSet()) {
+					$iEntries += count($mValue);
+				}
+			} catch (Throwable $e) {
+				$iEntries += is_array($mValue) ? count($mValue) : 0;
+			}
+		}
+
+		return $iEntries;
 	}
 
 	/**

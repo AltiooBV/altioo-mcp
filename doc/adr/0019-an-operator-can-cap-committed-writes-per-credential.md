@@ -17,7 +17,12 @@ addresses; this limits committed objects.
 
 - **What counts.** Objects, not calls: a bulk call counts its objects. A dry run never counts and never asks. An
   attachment counts its host object. A delete counts the object asked for; what the cascade takes with it is recorded
-  in the change and counted afterwards, so it can make the next call refuse sooner, never this one.
+  in the change and counted afterwards, so it can make the next call refuse sooner, never this one. A link row is an
+  object and is counted before the write (see "Link rows are objects" below).
+  *2026-11-19, Guy Couronne: a bulk update that sends link sets keeps its upper bound,* objects × (1 + the link entries the
+  call sends), since the objects are not loaded to tell which entries each already holds (create, update and stimulus are
+  exact). Its refusal says the count is an upper bound and that splitting the call helps (`WriteCap::UPPER_BOUND_NOTE`).
+  Rejected: loading every object of a bulk call to count exactly, a read per object before a write the operator wanted capped.
 - **Bulk is refused whole, before it starts.** A bulk call asks once for all its ids; if it would pass the cap nothing is
   written. The alternative, a partial bulk, leaves an operator reading which half was committed. A call larger than the cap
   itself says so, since waiting would never free enough room.
@@ -45,6 +50,12 @@ addresses; this limits committed objects.
   One named exemption, `core_set_obsolete_data`: a display preference of the caller's own, with no change and no object.
   A core tool's signatures do not change (ADR 0014). A call allowed is reserved for the rest of its request, so a request
   carrying several calls cannot spend the room twice.
+- **Link rows are objects, and are counted before the write.** A create, an update or a stimulus asks for the object plus the
+  link rows its call would add, change or remove (`WriteCap::LinkRowsOf()`, read from the object's own link set once its values
+  are set; a complete list that repeats rows already there counts none of them); a bulk create asks for its rows plus every
+  link-set entry they send, and a bulk update for each object plus the entries the call sends, an upper bound since it does not
+  load them (`WriteCap::LinkEntriesIn()`). Review 2026-11-18, HA-8: they were counted only after the write, so one call with 19
+  entries committed 20 objects against a cap of 3. The delete cascade stays counted afterwards.
 - **A pack (ADR 0016).** `WriteCap` is `@api` and on `PublicSurfaceTest::EXTRA_SURFACE`; `doc/extending.md` says a pack's
   write tool asks it with its object count.
 - **The refusal** is one line: the cap, the setting's name, how many more the call would write and the minutes until

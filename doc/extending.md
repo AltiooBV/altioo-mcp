@@ -88,7 +88,7 @@ with what a core tool builds with. `PublicSurfaceTest::EXTRA_SURFACE` lists the 
 | Rights | `Service\Rights\ExclusionPolicy`, `Service\Rights\ExclusionSearches`, `Service\Rights\AccessGrants`, `Service\Rights\ChangeLogReservation`, `Service\Rights\AccessPolicy`, `Service\Rights\GateGrades`, `Service\Rights\ServedAccess`, `Service\Rights\WriteCap` |
 | Access | `Service\Access\ObjectAccess`, `Service\Access\DocumentFetch` |
 | Read | `Service\Read\ObjectQuery`, `Service\Read\ObjectSerializer`, `Service\Read\OutputFields`, `Service\Read\UntrustedMarker`, `Service\Read\ObjectHistory`, `Service\Read\ObjectGrades`, `Service\Read\DocumentAccess`, `Service\Read\DatamodelReader`, `Service\Read\ClassCatalog`, `Service\Read\AttributeDescription`, `Service\Read\CurrentUserReader` |
-| Write | `Service\Write\DryRun`, `Service\Write\RestValue`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
+| Write | `Service\Write\DryRun`, `Service\Write\WritePlan`, `Service\Write\WriteValues`, `Service\Write\WriteOutcome`, `Service\Write\EditPolicy`, `Service\Write\MentionPolicy`, `Service\Write\DeletionCascade` |
 | Portal | `Service\Portal\PortalPolicy`, `Service\Portal\PortalBricks`, `Service\Portal\PortalRows`, `Service\Portal\PortalDescription`, `Service\Portal\PortalAware` |
 | Audit | `Service\Audit\ReadSummary` |
 | Helper | `Helper\Settings`, `Helper\SettingNames`, `Helper\ErrorReport`, `Helper\ClassRefusal`, `Helper\JsonPayload`, `Helper\ObjectId`, `Helper\PortalMode` |
@@ -117,6 +117,16 @@ calls them. Read the tags rather than this table: the tags are what a test enfor
   throws the string it gets back as a `ToolCallException`. A bulk tool asks once for the whole batch.
   What a call wrote is counted from the change iTop recorded, so a tool that does not ask is still
   counted, and the credential's next call is refused; asking is what keeps it from going over.
+- **The dry run, and the advisory scope.** A write tool calls `DryRun::Simulated($simulate)` first, before anything
+  reads `$simulate`, and uses its answer from then on. For a caller that asked to rehearse it answers true; for a token
+  scoped `MCP-advisory` it answers true **whatever the caller sent**. An advisory credential is **not served a pack's write-graded
+  tools at all** ([ADR 0022](adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)): they are absent from `tools/list`
+  and answered as unknown when called by name, because the server cannot tell whether a pack's tool rehearses. So your write tool
+  is invisible to such a credential whatever it does; the call is still what makes the audit row (`simulate`, `forced_by_credential`) true, and
+  `ElementContract::Violations()` warns about a tool that writes (annotated not read-only) and never calls it. A pack's read-only
+  tools are served. Answer through
+  `ToolOutput::StructuredWrite()` and declare `DryRun::ForcedSchemaProperties()`, so a rehearsal by force says so. An
+  `AbstractBulkTool` does not do this for you either: its `execute()` is yours.
 - **The caller's view of an object.** `ObjectAccess::Current()` answers in the mode the request is
   served in; `Readable()`, `Hides()` and the `RefusalTo…()` methods are what the core tools ask
   instead of `UserRights` alone.
@@ -283,27 +293,31 @@ the words — *allowed* means any of these lets you in, *required* means all of 
 For any-of semantics on a single element, override `isAvailable()` and test the profiles
 yourself.
 
-Writing values back to iTop, from a tool of your own:
+Writing values back to iTop, from a tool of your own, goes through one function:
 
 ```php
-use Altioo\iTop\Extension\MCP\Service\Write\RestValue;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 
-$realValue = RestUtils::MakeValue($sClass, $sAttCode, RestValue::FromDecodedJson($value));
+[$aValues, $aIssues] = WriteValues::Validated($oObject, $sClass, [$sAttCode => $value], $oInstanceSet);
 ```
 
-The MCP SDK decodes inbound JSON with `json_decode($input, true)`, so a nested JSON object
-reaches you as a PHP array — while `RestUtils` branches on `stdClass` to tell search criteria
-from an id, and a caselog append from a plain string. Without that call the wrong branch is
-taken silently. Scalars pass through untouched and JSON lists stay arrays, which is what link
-sets and tag sets need.
+`WriteValues::Validated()` is what every core write tool asks, and it holds in one place what a hand-written copy
+forgets: the operator's excluded attributes (answered as an unknown attribute), the right to modify the attribute on
+this object, what the console's form would let the user change in the object's state, external keys, the mention cap,
+the spreadsheet-formula rule, secrets, a set that would lose what was sent, and the conversion itself. It returns the
+values ready to `Set()` and the reasons for each one it refused. Converting with `RestUtils::MakeValue()` yourself
+is a second validator, and the bulk tools once did exactly that and skipped the exclusions. The conversion
+needs care the SDK makes necessary (it decodes inbound JSON with `json_decode($input, true)`, so a nested object reaches a
+tool as an array while `RestUtils` branches on `stdClass`), and `Validated()` does it: `RestValue`, which did it, is
+internal since 2.1.0 and a pack no longer calls it.
 
-**Two base classes worth extending instead of `AbstractMCPTool`**, both under `Abstract/` and
+**Two base classes worth extending instead of `AbstractMCPTool`**, both in `Api\` and
 both covered by the versioning policy above:
 
 | Extend | When | What you stop having to write |
 |---|---|---|
 | `AbstractObjectSearch` | Your tool returns a set of objects | Paging, ordering, field selection, and `has_more` / `next_offset` |
-| `AbstractBulkTool` | Your tool acts on a list of ids | The bulk right check, the per-object right check, id validation, the dry run |
+| `AbstractBulkTool` | Your tool acts on a list of ids | The bulk right check, the per-object right check, id validation, the per-attribute checks of a write (`validatedValues()`, which is `WriteValues::Validated()`: exclusions, attribute rights, the lifecycle, mentions, formulas), and the shape of the report. **Not** the dry run and not the write cap: your `execute()` asks `DryRun::Simulated()` and `WriteCap::RefusalFor()` itself, as the core bulk tools do (see "Use the checks a core tool uses" above) |
 
 Neither declares a namespace — that is yours, and the registry refuses `core` from anything
 outside this module. The reason to prefer them over copying is not brevity in either case.

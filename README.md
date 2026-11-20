@@ -706,7 +706,7 @@ portal is served as customised:
   portal's form leaves settable *and* one the console's form would ([doc/adr/0004](doc/adr/0004-writes-follow-the-console-form.md)),
   so a case log only gains entries; an external key or a link may point only at what the user
   can read; a stimulus must be one the portal's lifecycle allows, that UserRights grants on the
-  object, from its current state; and a creation starts from a row of the action's list, takes
+  object, from its current state, and sets only the fields the portal's own transition form leaves editable for it (an edit-form field is changed with `core_object_update` first); and a creation starts from a row of the action's list, takes
   the class the action names or its factory method chooses, and is preset by the action's
   rules, run by the portal's own helper — in the stock portal, the caller and organisation
   from the user's contact and the service from the subcategory
@@ -802,7 +802,7 @@ credentials of different strength.
 | `MCP-write` | Read, create and modify — **not** delete |
 | `MCP-delete` | Tools that declare `destructiveHint` |
 | `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects`. The base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server` |
-| `MCP-advisory` | **Every write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing |
+| `MCP-advisory` | **Every write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing. This module's own write tools are served and rehearse; **a tool pack's write tools are not served at all** (absent from `tools/list`, answered as an unknown tool when called by name), since only the pack's author could make them rehearse and the server cannot check it ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)). A pack's read-only tools are still served |
 
 `MCP-advisory` is a modifier rather than a grade, and it is the trust tier between "may read" and
 "may write": pair it with `MCP-write` and the integration can compute and show exactly what it

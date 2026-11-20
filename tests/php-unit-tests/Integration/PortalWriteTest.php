@@ -181,6 +181,63 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		}
 	}
 
+	/**
+	 * Review 2026-11-18, RT-11: `Prompted()` took the datamodel's target-state flags, so a transition set fields the portal's own
+	 * transition form shows read-only or not at all. On `ev_reopen` of a resolved ticket the stock portal's form holds `public_log`
+	 * (editable), `org_id` and `team_id` (read-only) and no `agent_id`, and a requester routed their own ticket to a team and an agent.
+	 */
+	public function testATransitionDoesNotSetWhatThePortalsTransitionFormShowsReadOnlyOrNotAtAll(): void
+	{
+		$aStimuli = array_column(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iResolved))['object']['stimuli']['available'] ?? [], 'stimulus');
+		if (!in_array('ev_reopen', $aStimuli, true)) {
+			$this->markTestSkipped('This portal does not offer ev_reopen on a resolved request.');
+		}
+
+		$aOwn = ['request_type' => 'incident', 'public_log' => 'Reopening, the problem is back.'];
+		try {
+			$aDry = ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen', $aOwn));
+			$this->assertTrue($aDry['simulated'], 'the control: what the portal form lets the user set is accepted');
+		} catch (ToolCallException $oException) {
+			$this->markTestSkipped('This datamodel asks for more on reopening than this test supplies: '.$oException->getMessage());
+		}
+
+		foreach (['agent_id' => $this->iContact, 'team_id' => 1] as $sCode => $mValue) {
+			try {
+				ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen', $aOwn + [$sCode => $mValue], false);
+				$this->fail("{$sCode} was set by a transition the portal form shows it read-only or not at all on");
+			} catch (ToolCallException $oException) {
+				$this->assertStringContainsString("'{$sCode}' is not a field the portal's", $oException->getMessage());
+			}
+		}
+		$oAfter = MetaModel::GetObject('UserRequest', $this->iResolved, true, true);
+		$this->assertSame('resolved', $oAfter->Get('status'), 'a refused transition moved the request');
+		$this->assertSame(0, (int)$oAfter->Get('agent_id'));
+	}
+
+	/**
+	 * ADR 0005, amended 2026-11-19 (Guy Couronne): a stimulus sets the fields of the portal's transition form and no longer the edit
+	 * form's as well. `contacts_list` is a field of the stock edit form and not of the reopen transition form, which the portal never
+	 * lets a transition submit; the refusal names what the transition does take and where to change the rest.
+	 */
+	public function testATransitionDoesNotTakeAFieldOfTheEditFormOnly(): void
+	{
+		$aStimuli = array_column(ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iResolved))['object']['stimuli']['available'] ?? [], 'stimulus');
+		if (!in_array('ev_reopen', $aStimuli, true)) {
+			$this->markTestSkipped('This portal does not offer ev_reopen on a resolved request.');
+		}
+		$aEdit = ObjectUpdate::execute('UserRequest', $this->iResolved, ['contacts_list' => [['contact_id' => $this->iContact]]]);
+		$this->assertTrue(ToolOutput::Decode($aEdit)['valid'], 'the control: the edit form does take contacts_list');
+
+		try {
+			ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_reopen', ['request_type' => 'incident', 'contacts_list' => [['contact_id' => $this->iContact]]]);
+			$this->fail('a transition took a field only the edit form leaves settable');
+		} catch (ToolCallException $oException) {
+			$this->assertStringContainsString("'contacts_list' is not a field the portal's transition form lets you set", $oException->getMessage());
+			$this->assertStringContainsString('core_object_update', $oException->getMessage());
+			$this->assertStringContainsString('request_type', $oException->getMessage());
+		}
+	}
+
 	private function refusalOfContact(mixed $mKey): string
 	{
 		try {

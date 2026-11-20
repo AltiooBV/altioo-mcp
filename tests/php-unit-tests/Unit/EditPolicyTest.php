@@ -33,9 +33,9 @@ class EditPolicyTest extends TestCase
 
 	/** Every tool that turns a caller's fields into attribute values. */
 	private const WRITE_PATHS = [
-		// The create, the update, the stimulus and the portal's writes share one copy.
+		// The create, the update, the stimulus, the portal's writes and the bulk tools share one copy
+		// (AbstractBulkTool::validatedValues() delegates to it: BulkToolContractTest holds that).
 		'src/Service/Write/WriteValues.php',
-		'src/Api/AbstractBulkTool.php',
 	];
 
 	/** Where values are Set() and the external keys can then be judged. */

@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Controller;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\LineControls;
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
@@ -22,6 +23,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use AltiooEventMCPService;
 use CMDBChange;
+use CMDBSource;
 use CMDBObject;
 use MetaModel;
 use Throwable;
@@ -41,6 +43,16 @@ use utils;
  */
 final class CallLog
 {
+	/** What a TEXT column holds, in bytes. */
+	private const TEXT_BYTES = 65535;
+
+	/**
+	 * Per attribute of the audit class: whether its column takes characters of four bytes.
+	 *
+	 * @var array<string, bool>
+	 */
+	private static array $aFourByteColumns = [];
+
 	public static function LogIfConfigured(MCPResult $oResult): void
 	{
 		if (!Settings::LogsCalls()) {
@@ -65,66 +77,100 @@ final class CallLog
 		}
 
 		try {
-			$oLog = new AltiooEventMCPService();
-			$oLog->SetTrim('userinfo', UserRights::GetUser());
-			$oLog->Set('message', self::AuditLabel($oResult->message, null) ?? '');
-			$oLog->Set('mcp_method', $sMethod);
-			$oLog->Set('mcp_name', $oResult->mcpName ?? '');
-			$oLog->Set('client', $oResult->client ?? '');
-			// Which portal served the call: empty for the console's. A portal
-			// user allowed into two is served one per connection, and the row
-			// is where an administrator learns which (doc/adr/0007).
-			$oLog->Set('portal', PortalMode::Current() ?? '');
-			$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
-			// Whether this was a rehearsal. The parameters themselves are kept
-			// only at debug level, so without this a later review of this log -
-			// which is the log such a review reads first - cannot tell a dry
-			// run from a write that happened.
-			$oLog->Set('simulate', self::effectiveSimulate(self::simulateGrade($oResult->requestParams)));
-			// Which credential, and what it changed. The row named neither: it
-			// said a write by "claude" succeeded, where "claude" is a login
-			// string and the write had no subject. Both halves are links, so a
-			// reviewer gets from the row to the token and to the change in one
-			// click each, and `changed_objects` keeps the readable answer for
-			// after the change rows are purged.
-			self::describeCredential($oLog);
-			self::describeUser($oLog);
-			// Whether the exclusions were lifted for this account (doc/adr/0013): every exempt call is listable.
-			$oLog->Set('exempt', ExclusionPolicy::IsExempt() ? 'yes' : 'no');
-			self::describeChange($oLog);
-			self::describeReads($oLog);
-			$oLog->Set('change_comment', ChangeTracking::Comment() ?? '');
-			// What the row could not answer before: how long the call took, how
-			// much it sent back - the two numbers that tell a slow instance from
-			// a client filling its context - and which log entry explains it.
-			if ($oResult->durationMs !== null) {
-				$oLog->Set('duration_ms', $oResult->durationMs);
-			}
-			if ($oResult->responseBytes !== null) {
-				$oLog->Set('response_bytes', $oResult->responseBytes);
-			}
-			// The controller's own reference first, then every one a tool minted
-			// on the way - which used to reach the iTop log and nothing else,
-			// leaving this column empty on every error row and the identifier
-			// the caller was told to quote resolvable by nobody.
-			$aReferences = ErrorReport::MintedReferences();
-			if ($oResult->errorReference !== null && $oResult->errorReference !== '') {
-				array_unshift($aReferences, $oResult->errorReference);
-			}
-			$oLog->Set('error_ref', self::truncate(implode(' ', array_unique($aReferences)), 255));
-			// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
-			if (MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL) === Settings::LOG_LEVEL_DEBUG) {
-				$oLog->Set('request_params', self::truncate($oResult->requestParams, 65535));
-				// And what the tool said when it refused, which can quote the value it
-				// refused: the same standing as the parameters, and cleared with them
-				// when the person is anonymised.
-				$oLog->Set('refusal_text', self::truncate(self::AuditLabel($oResult->toolText, null), 65535) ?? '');
-			}
-			$oLog->DBInsertNoReload();
+			self::row($oResult, false)->DBInsertNoReload();
+
+			return;
 		} catch (Throwable $e) {
-			// Never let audit logging take down a request that already succeeded.
-			ErrorReport::Log('Failed to log AltiooEventMCPService: '.$e->getMessage());
+			// Never let audit logging take down a request that already succeeded. The class and the
+			// code only: the message of a failed INSERT is the statement, and its values are text the
+			// caller chose - which is where retention and anonymisation do not reach (the log file).
+			ErrorReport::Log('Failed to log AltiooEventMCPService: '.get_class($e).' (code '.$e->getCode().'); retrying with what the server built');
 		}
+
+		// The row is the trail, and what the write cap counts from (ADR 0019): a caller must not be able
+		// to lose it by choosing text the table will not hold. Once more, with only what the server built.
+		try {
+			self::row($oResult, true)->DBInsertNoReload();
+		} catch (Throwable $e) {
+			ErrorReport::Log('Failed to log AltiooEventMCPService, reduced: '.get_class($e).' (code '.$e->getCode().')');
+		}
+	}
+
+	/**
+	 * The audit row for a call, not yet written.
+	 *
+	 * @param bool $bReduced Only what the server itself built: the credential, the account, the method,
+	 *                       the status, the change and the counts. Nothing the caller wrote - not its name
+	 *                       for a tool or for itself, its comment, its parameters, a refusal's text or the
+	 *                       message that may quote any of them - since one of those is what made the first
+	 *                       attempt fail. A tool name is kept when it is an identifier the server could have issued.
+	 */
+	private static function row(MCPResult $oResult, bool $bReduced): AltiooEventMCPService
+	{
+		$sMethod = (string)$oResult->mcpMethod;
+
+		$oLog = new AltiooEventMCPService();
+		$oLog->SetTrim('userinfo', UserRights::GetUser());
+		$oLog->Set('message', $bReduced
+			? 'The text of this call could not be stored; what the server recorded of it is in the other columns.'
+			: (self::text('message', self::AuditLabel($oResult->message, null), self::TEXT_BYTES) ?? ''));
+		$oLog->Set('mcp_method', $sMethod);
+		$sName = $oResult->mcpName ?? '';
+		$oLog->Set('mcp_name', $bReduced
+			? (preg_match('/^[A-Za-z0-9_.:\/-]{1,128}$/', $sName) === 1 ? $sName : '')
+			: (self::text('mcp_name', $sName) ?? ''));
+		$oLog->Set('client', $bReduced ? '' : (self::text('client', $oResult->client ?? '') ?? ''));
+		// Which portal served the call: empty for the console's. A portal
+		// user allowed into two is served one per connection, and the row
+		// is where an administrator learns which (doc/adr/0007).
+		$oLog->Set('portal', PortalMode::Current() ?? '');
+		$oLog->Set('status', $oResult->isSuccess() ? 'success' : 'error');
+		// Whether this was a rehearsal. The parameters themselves are kept
+		// only at debug level, so without this a later review of this log -
+		// which is the log such a review reads first - cannot tell a dry
+		// run from a write that happened.
+		$oLog->Set('simulate', self::effectiveSimulate(self::simulateGrade($oResult->requestParams)));
+		// Which credential, and what it changed. The row named neither: it
+		// said a write by "claude" succeeded, where "claude" is a login
+		// string and the write had no subject. Both halves are links, so a
+		// reviewer gets from the row to the token and to the change in one
+		// click each, and `changed_objects` keeps the readable answer for
+		// after the change rows are purged.
+		self::describeCredential($oLog);
+		self::describeUser($oLog);
+		// Whether the exclusions were lifted for this account (doc/adr/0013): every exempt call is listable.
+		$oLog->Set('exempt', ExclusionPolicy::IsExempt() ? 'yes' : 'no');
+		self::describeChange($oLog, $bReduced);
+		self::describeReads($oLog);
+		$oLog->Set('change_comment', $bReduced ? '' : (self::text('change_comment', ChangeTracking::Comment() ?? '') ?? ''));
+		// What the row could not answer before: how long the call took, how
+		// much it sent back - the two numbers that tell a slow instance from
+		// a client filling its context - and which log entry explains it.
+		if ($oResult->durationMs !== null) {
+			$oLog->Set('duration_ms', $oResult->durationMs);
+		}
+		if ($oResult->responseBytes !== null) {
+			$oLog->Set('response_bytes', $oResult->responseBytes);
+		}
+		// The controller's own reference first, then every one a tool minted
+		// on the way - which used to reach the iTop log and nothing else,
+		// leaving this column empty on every error row and the identifier
+		// the caller was told to quote resolvable by nobody.
+		$aReferences = ErrorReport::MintedReferences();
+		if ($oResult->errorReference !== null && $oResult->errorReference !== '') {
+			array_unshift($aReferences, $oResult->errorReference);
+		}
+		$oLog->Set('error_ref', self::truncate(implode(' ', array_unique($aReferences)), 255));
+		// Log request parameters only for debug level to avoid filling the logs with too much data in case of errors
+		if (!$bReduced && MetaModel::GetModuleSetting(MCPModule::MODULE_NAME, Settings::MODULE_SETTING_LOG_LEVEL, Settings::DEFAULT_LOG_LEVEL) === Settings::LOG_LEVEL_DEBUG) {
+			$oLog->Set('request_params', self::text('request_params', $oResult->requestParams, self::TEXT_BYTES));
+			// And what the tool said when it refused, which can quote the value it
+			// refused: the same standing as the parameters, and cleared with them
+			// when the person is anonymised.
+			$oLog->Set('refusal_text', self::text('refusal_text', self::AuditLabel($oResult->toolText, null), self::TEXT_BYTES) ?? '');
+		}
+
+		return $oLog;
 	}
 
 	/**
@@ -155,7 +201,7 @@ final class CallLog
 			self::describeUser($oLog);
 			$oLog->DBInsertNoReload();
 		} catch (Throwable $e) {
-			ErrorReport::Log('Failed to log a portal admission refusal: '.$e->getMessage());
+			ErrorReport::Log('Failed to log a portal admission refusal: '.get_class($e).' (code '.$e->getCode().')');
 		}
 	}
 
@@ -230,7 +276,7 @@ final class CallLog
 	{
 		$sReads = ReadSummary::Compose();
 		if ($sReads !== '') {
-			$oLog->Set('read_objects', self::truncate($sReads, 65535));
+			$oLog->Set('read_objects', self::truncate($sReads, self::TEXT_BYTES));
 		}
 	}
 
@@ -248,7 +294,7 @@ final class CallLog
 	 *
 	 * @since 1.0.0
 	 */
-	private static function describeChange(AltiooEventMCPService $oLog): void
+	private static function describeChange(AltiooEventMCPService $oLog, bool $bReduced = false): void
 	{
 		$oChange = CMDBObject::GetCurrentChange(false);
 		if ($oChange === null) {
@@ -262,7 +308,10 @@ final class CallLog
 
 		$oLog->Set('change_id', $iChangeId);
 		$oLog->Set('written_objects', ChangeSummary::ObjectsOfChange($iChangeId));
-		$oLog->Set('changed_objects', self::truncate(ChangeSummary::OfChange($iChangeId), 65535));
+		if (!$bReduced) {
+			// The readable answer names the objects, and so carries their text: what the reduced row leaves out.
+			$oLog->Set('changed_objects', self::text('changed_objects', ChangeSummary::OfChange($iChangeId), self::TEXT_BYTES));
+		}
 	}
 
 	 /**
@@ -291,6 +340,69 @@ final class CallLog
 		$sEllipsis = '...';
 
 		return mb_strcut($sValue, 0, $iMaxBytes - strlen($sEllipsis)).$sEllipsis;
+	}
+
+	/**
+	 * Caller text made to fit the column it is stored in, so the insert cannot fail on it.
+	 *
+	 * Two things make an INSERT fail on text the caller chose: more bytes than a TEXT column holds, and a
+	 * character outside the column's character set. The second is the one that is easy to miss: a table
+	 * still in 3-byte utf8 (an instance upgraded from before iTop 3.1 can have one) refuses any character
+	 * outside the Basic Multilingual Plane - an emoji - under a strict SQL mode, and the row, which the
+	 * write cap counts from, is lost with it. On such a column the character is replaced by U+FFFD; on a
+	 * utf8mb4 one the text is stored as it came.
+	 *
+	 * @param int|null $iMaxBytes The column's size when it is a TEXT column; null for a short column,
+	 *                            which AuditLabel() has already cut in characters.
+	 */
+	private static function text(string $sAttCode, ?string $sValue, ?int $iMaxBytes = null): ?string
+	{
+		if ($sValue === null) {
+			return null;
+		}
+
+		if (!self::columnStoresFourByteCharacters($sAttCode)) {
+			$sValue = preg_replace('/[\x{10000}-\x{10FFFF}]/u', "\u{FFFD}", mb_scrub($sValue, 'UTF-8')) ?? '';
+		}
+
+		return $iMaxBytes === null ? $sValue : self::truncate($sValue, $iMaxBytes);
+	}
+
+	/**
+	 * Whether the column an attribute of the audit class is stored in takes characters of four bytes.
+	 *
+	 * Read from the database once per attribute, and answered "no" when it cannot be read: replacing
+	 * a character that would have been stored is a smaller loss than the row.
+	 */
+	private static function columnStoresFourByteCharacters(string $sAttCode): bool
+	{
+		if (array_key_exists($sAttCode, self::$aFourByteColumns)) {
+			return self::$aFourByteColumns[$sAttCode];
+		}
+
+		try {
+			$oAttDef = MetaModel::GetAttributeDef(AltiooEventMCPService::class, $sAttCode);
+			$aColumns = $oAttDef->GetSQLColumns();
+			$sColumn = (string)array_key_first($aColumns);
+			$sTable = MetaModel::DBGetTable(AltiooEventMCPService::class, $sAttCode);
+			$aInfo = CMDBSource::GetTableInfo($sTable);
+			$sCharset = strtolower((string)($aInfo['Fields'][$sColumn]['Charset'] ?? ''));
+			self::$aFourByteColumns[$sAttCode] = $sCharset === 'utf8mb4' || $sCharset === 'utf32' || $sCharset === 'utf16';
+		} catch (Throwable) {
+			self::$aFourByteColumns[$sAttCode] = false;
+		}
+
+		return self::$aFourByteColumns[$sAttCode];
+	}
+
+	/**
+	 * Forgets what was read of the columns' character sets, for a test that changes one.
+	 *
+	 * @internal
+	 */
+	public static function ForgetColumnCharsets(): void
+	{
+		self::$aFourByteColumns = [];
 	}
 
 	/**
@@ -401,7 +513,7 @@ final class CallLog
 
 		// Invalid UTF-8 would make the /u pattern fail outright; what is left
 		// after scrubbing still shows the reviewer that something odd arrived.
-		$sValue = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', mb_scrub($mValue, 'UTF-8')) ?? '');
+		$sValue = trim(LineControls::Replace(mb_scrub($mValue, 'UTF-8')) ?? '');
 		if ($sValue === '') {
 			return null;
 		}

@@ -73,8 +73,8 @@ class OrmFailureRedactionTest extends TestCase
 
 		foreach ([
 			// The create, the update and the stimulus convert through it.
+			// The bulk tools validate through WriteValues too (BulkToolContractTest).
 			'Altioo\\iTop\\Extension\\MCP\\Service\\Write\\WriteValues',
-			'Altioo\\iTop\\Extension\\MCP\\Api\\AbstractBulkTool',
 		] as $sClass) {
 			$this->assertTrue(
 				SourceCalls::OfClass($sClass)->HasCall(ExternalKeyPolicy::class.'::RefusalFor'),

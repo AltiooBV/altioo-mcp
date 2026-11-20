@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
-use Altioo\iTop\Extension\MCP\Service\Rights\ExcludingModelReflection;
+use Altioo\iTop\Extension\MCP\Service\Read\SearchableModelReflection;
 use DBObjectSearch;
 use Mcp\Exception\ToolCallException;
 use MetaModel;
@@ -142,10 +142,11 @@ final class ObjectQuery
 		try {
 			$oInterpreter = new \OqlInterpreter($oql);
 			$oQuery = $oInterpreter->ParseQuery();
-			// Against the datamodel as this channel serves it (doc/adr/0012): a class or an attribute the
-			// operator excluded is unknown to the checker, so the query is refused in its own words, in
+			// Against the datamodel as this channel lets a search use it (doc/adr/0012; and review 2026-11-18, RT-3,
+			// for what is masked): a class or an attribute the operator excluded, and an attribute the endpoint
+			// masks on output, is unknown to the checker, so the query is refused in its own words, in
 			// a join, a sub-query or a condition alike - and a query it cannot prove is refused.
-			$oQuery->Check(new ExcludingModelReflection(), $oql);
+			$oQuery->Check(new SearchableModelReflection(), $oql);
 		} catch (\OQLException $e) {
 			$sReason = method_exists($e, 'GetUserFriendlyDescription')
 				? (string)$e->GetUserFriendlyDescription()
