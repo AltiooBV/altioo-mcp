@@ -381,6 +381,11 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 					'type'        => 'integer',
 					'description' => 'Of those, the ones that did not. Read their messages: a bulk call reports each object separately because it can partly succeed.',
 				],
+				'all_succeeded' => [
+					'type'        => 'boolean',
+					'description' => 'true when every object succeeded, or would have in a dry run; false when at least one did not, which leaves the call partly done. '
+						.'The call is not an error either way (isError stays false: a partly failed bulk call is a result), so read this or the per-object status rather than inferring success from the envelope.',
+				],
 				'objects'   => [
 					'type'        => 'array',
 					'description' => 'One entry per object, in the order they were given.',
@@ -472,6 +477,8 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 			'total'     => count($aOutcomes),
 			'succeeded' => $iOk,
 			'failed'    => count($aOutcomes) - $iOk,
+			// The envelope's isError says the call was served, not that every object was done (AC-1).
+			'all_succeeded' => $iOk === count($aOutcomes),
 			'objects'   => $aOutcomes,
 		];
 	}

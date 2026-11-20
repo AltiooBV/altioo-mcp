@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate;
 use Mcp\Exception\ToolCallException;
+use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Test\Support\SourceCalls;
@@ -242,6 +243,30 @@ class BulkToolContractTest extends TestCase
 				SourceCalls::OfClass($sTool)->HasCallTo('validatedValues'),
 				"{$sTool} writes without validating its values"
 			);
+		}
+	}
+
+	/**
+	 * Review 2026-11-18, AC-2: an id that an earlier entry of the same call deleted by cascade read as "not found" on a real run,
+	 * where the dry run had said it would be deleted. The tool asks what the earlier plans took along before it looks an entry up.
+	 */
+	public function testTheDeleteToolAsksTheCascadeBeforeItLooksAnEntryUp(): void
+	{
+		$oSource = SourceCalls::OfClass(ObjectBulkDelete::class);
+
+		$this->assertTrue($oSource->CallsInSequence([
+			DeletionCascade::class.'::CascadeOf',
+			ObjectBulkDelete::class.'::objectFor',
+		], 'execute'), 'execute() looks an entry up before it asks whether an earlier one took it along');
+		$this->assertTrue($oSource->HasCall(DeletionCascade::class.'::NoteCascade', 'deleteOne'), 'a deletion no longer records what it takes with it');
+	}
+
+	/** AC-1: every bulk report says at its top whether every object was done. */
+	public function testTheBulkReportCarriesAWholeCallFlagAndTheSchemaDeclaresIt(): void
+	{
+		$this->assertStringContainsString("'all_succeeded'", SourceCalls::OfClass(AbstractBulkTool::class)->Code('report'));
+		foreach ([new ObjectBulkCreate(), new ObjectBulkUpdate(), new ObjectBulkDelete()] as $oTool) {
+			$this->assertArrayHasKey('all_succeeded', $oTool->getOutputSchema()['properties'], get_class($oTool));
 		}
 	}
 }

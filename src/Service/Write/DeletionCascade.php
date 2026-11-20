@@ -14,6 +14,7 @@ use DBObject;
 use DBObjectSet;
 use DeletionPlan;
 use Mcp\Exception\ToolCallException;
+use MetaModel;
 use Throwable;
 use UserRights;
 
@@ -271,6 +272,41 @@ final class DeletionCascade
 		} catch (Throwable $e) {
 			return null;
 		}
+	}
+
+	/**
+	 * Remembers what the deletion of one object of a call takes with it, so that a later entry of the same call that is among
+	 * those objects can be reported as what it is (review 2026-11-18, AC-2). The objects are named by hierarchy and id, which is
+	 * how iTop keys them, so a subclass and its parent are the same object.
+	 *
+	 * @param array<string, string> $aLedger Hierarchy and id => the entry (`Class::id`) whose deletion took it. Filled.
+	 *
+	 * @since 2.1.0
+	 */
+	public static function NoteCascade(DeletionPlan $oPlan, string $sClass, int $iId, array &$aLedger): void
+	{
+		$sRoot = MetaModel::GetRootClass($sClass);
+		foreach ($oPlan->ListDeletes() as $sDeletedClass => $aEntries) {
+			foreach (array_keys($aEntries) as $iDeletedId) {
+				$sDeletedRoot = MetaModel::GetRootClass((string)$sDeletedClass);
+				if ((int)$iDeletedId === $iId && $sDeletedRoot === $sRoot) {
+					continue; // the entry itself
+				}
+				$aLedger[$sDeletedRoot.'::'.(int)$iDeletedId] ??= "{$sClass}::{$iId}";
+			}
+		}
+	}
+
+	/**
+	 * The entry of the call whose deletion took this object along, or null when none did.
+	 *
+	 * @param array<string, string> $aLedger As {@see NoteCascade()} filled it.
+	 *
+	 * @since 2.1.0
+	 */
+	public static function CascadeOf(string $sClass, int $iId, array $aLedger): ?string
+	{
+		return $aLedger[MetaModel::GetRootClass($sClass).'::'.$iId] ?? null;
 	}
 
 	/**
