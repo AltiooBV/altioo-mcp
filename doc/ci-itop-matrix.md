@@ -5,7 +5,7 @@ administrator actually has, which is "will this install on my iTop and still wor
 is only answered by installing it — and by installing it on every version the listing claims,
 because the version that breaks is rarely the one being developed against.
 
-[`itop-matrix.yml`](../.github/workflows/itop-matrix.yml) does that on every pull request, and
+[`itop-matrix.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/itop-matrix.yml) does that on every pull request, and
 on a schedule, which matters more: nothing in this repository changes when Combodo publishes
 3.2.4, and that is exactly when the claim on the Hub listing quietly stops being true.
 
@@ -18,7 +18,7 @@ on a schedule, which matters more: nothing in this repository changes when Combo
 | A row in `priv_module_install`, at this version | The setup completing without installing the module, or installing a stale copy left in `extensions/` by an earlier run |
 | A row in `priv_extension_install`, `source = extensions` | The module arriving by some route other than the one a user's install takes |
 | `env-production/altioo-mcp` exists | Recorded as installed, but not compiled to where iTop loads it from |
-| iTop's `ModuleIntegration` suite ([`module-validation.sh`](../tools/ci/module-validation.sh)) | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
+| iTop's `ModuleIntegration` suite ([`module-validation.sh`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/module-validation.sh)) | Dictionary entries that do not resolve in the compiled environment. Combodo's test, run against our module |
 | The module's own `Integration` suite | Everything that needs a live `MetaModel`, `UserRights` and a database |
 | `itop-smoke.php` | Module settings, the audit class, the token scopes and the profile — the pieces the security model is made of, checked in the instance rather than in a fixture |
 | `http-smoke.sh` | The endpoint over the wire: refused without a credential — asked of both the compiled URL and the one under `extensions/`, since a boot that fatals answers `500` there and `401` nowhere — then `initialize` and `tools/list` with a credential; then, through `checks/portal-smoke.sh`, a portal-only user with a personal token — served the portal's tools and none of the console's (`core_object_delete` absent though the token holds `MCP-delete`), no request but their own, nothing the portal's form leaves read-only, and a `portal_id` they may not enter refused rather than replaced. Its fixture is made by `checks/module-smoke.php` and handed over as `PORTAL_SMOKE` |
@@ -38,14 +38,14 @@ the extension unselectable.
 
 ## Which versions
 
-[`.github/itop-support.json`](../.github/itop-support.json) declares **branches**, never
+[`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) declares **branches**, never
 patches:
 
 ```json
 { "branch": "3.2", "php": ["8.2", "8.4"] }
 ```
 
-[`resolve-itop-versions.php`](../tools/ci/resolve-itop-versions.php) turns each branch into the
+[`resolve-itop-versions.php`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/resolve-itop-versions.php) turns each branch into the
 newest patch of that branch at run time, by reading the tags of `Combodo/iTop`. So the Monday
 run installs whatever Combodo released last week without anybody editing a workflow. Run it
 locally to see what CI will use:
@@ -181,7 +181,7 @@ range `composer.json` declares, a MariaDB, and somewhere disposable to install a
 and few working machines have all three — the one this was last run on has PHP 8.5, which the
 extension does not support.
 
-[`tools/ci/local/run.sh`](../tools/ci/local/run.sh) supplies all three from Docker and needs
+[`tools/ci/local/run.sh`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/local/run.sh) supplies all three from Docker and needs
 nothing else installed:
 
 ```bash
@@ -249,7 +249,7 @@ will not load its config. Three ways, and only one of them is honest:
   the file we would go on not running it, silently — the same failure as a suite that skips itself
   and reports green.
 - **Run the entries that exist, under their config, and say which ones did not.** This is what
-  [`module-validation.sh`](../tools/ci/module-validation.sh) does.
+  [`module-validation.sh`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/module-validation.sh) does.
 
 It reads the `<file>` list out of `<testsuites>`, partitions it into present and missing, writes a
 copy of their config with the missing lines dropped — a copy, beside the original, because the

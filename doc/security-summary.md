@@ -58,7 +58,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 
 | | |
 |---|---|
-| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/release.yml) |
 | **Signed by** | a job of its own that runs none of this repository's code and none of its dependencies. The unit suite, which installs and executes the development dependencies, and the build, which installs the production ones, each run in a separate read-only job; the signing job only downloads the build's files, checks the zip against the digest the build job reported, and attests it |
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
@@ -184,11 +184,11 @@ to 1.2 keep the old `(MCP: tool)` suffix and are not reached by the anonymizer's
 |---|---|
 | Threat model, hardening, disclosure, support period | [SECURITY.md](../SECURITY.md) |
 | Install footprint, configuration, data flow, troubleshooting | [README.md](../README.md) |
-| Supported iTop branches | [`.github/itop-support.json`](../.github/itop-support.json) |
+| Supported iTop branches | [`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) |
 | Supported PHP range | `composer.json` (`require.php`); `itop-support.json` names the versions CI installs on |
 | What each version changed, and what this project treats as breaking | [CHANGELOG.md](../CHANGELOG.md) |
 | Dependency versions and licences | `composer.lock`, `sbom.cyclonedx.json`, `licenses.json` |
-| How the archive is built and signed | [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| How the archive is built and signed | [`.github/workflows/release.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/release.yml) |
 | What has to be true before a tag | [doc/release-checklist.md](release-checklist.md) |
 
 If a questionnaire asks something this page does not answer, that is worth an issue — the point

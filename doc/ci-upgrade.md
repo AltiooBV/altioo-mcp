@@ -5,7 +5,7 @@ cannot lose anything, because there is nothing there to lose. The question it le
 unanswered is the one every client past their first install has: **what happens to the
 instance I already have.**
 
-[`upgrade.yml`](../.github/workflows/upgrade.yml) answers it by doing what they do — install
+[`upgrade.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/upgrade.yml) answers it by doing what they do — install
 an older version, use it, drop the new files over it, re-run the setup — and then looking for
 what should still be there.
 
@@ -38,7 +38,7 @@ see [Running it](#running-it) below for the hand-driven form.
 
 ## What is seeded, and what each thing catches
 
-[`upgrade-fixture.php`](../tools/ci/upgrade-fixture.php), before the upgrade:
+[`upgrade-fixture.php`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/upgrade-fixture.php), before the upgrade:
 
 | Fixture | What its loss would mean |
 |---|---|
@@ -50,7 +50,7 @@ see [Running it](#running-it) below for the hand-driven form.
 
 ## What the upgrade script asserts
 
-[`upgrade-module.sh`](../tools/ci/upgrade-module.sh), after the setup:
+[`upgrade-module.sh`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/upgrade-module.sh), after the setup:
 
 - the setup exited `0` and printed `installed!` — necessary, and on its own worth nothing
   (see the same point in [ci-itop-matrix.md](ci-itop-matrix.md));

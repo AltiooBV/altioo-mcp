@@ -620,7 +620,7 @@ you grant.
 Follow [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security)
 — the version-pinned page for the current LTS, deliberately rather than the wiki's `latest:`
 namespace, which tracks the development branch and has been observed recommending parameters
-and files that do not exist on 3.2 ([doc/itop-branch-notes.md](doc/itop-branch-notes.md) §1
+and files that do not exist on 3.2 ([doc/itop-branch-notes.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-branch-notes.md) §1
 records two). In particular, and specifically relevant here:
 
 - Serve iTop over **HTTPS with HSTS**. A bearer token on a plaintext connection is a shared secret.

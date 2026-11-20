@@ -945,4 +945,57 @@ class ModuleMetadataTest extends TestCase
 
 		$this->assertSame([], $aMissing, 'These files carry no licence header');
 	}
+
+	/**
+	 * Review 2026-11-18, IO-4: shipped documents linked by relative path to files `exclude.txt` keeps out of the archive
+	 * (`.github/`, `tools/`, `doc/itop-branch-notes.md`, the screenshots), so on an installed copy the link points at nothing -
+	 * the approver page's "how the archive is built" among them. Such a link is the repository's GitHub URL.
+	 */
+	public function testNoShippedDocumentLinksRelativelyToAFileTheArchiveLeavesOut(): void
+	{
+		$sRoot = realpath(self::ROOT);
+		$aLeftOut = array_values(array_filter(
+			self::excludedFromPackage(),
+			static fn (string $sPath): bool => $sPath !== '' && !str_contains($sPath, '*') && !str_starts_with($sPath, '.')
+		));
+		$aLeftOut = array_merge($aLeftOut, ['.github', '.claude', '.git']);
+		$fLeftOut = static function (string $sRelative) use ($aLeftOut): bool {
+			foreach ($aLeftOut as $sPath) {
+				if ($sRelative === $sPath || str_starts_with($sRelative, $sPath.'/')) {
+					return true;
+				}
+			}
+
+			return false;
+		};
+
+		$aDocuments = array_merge(glob($sRoot.'/*.md') ?: [], glob($sRoot.'/doc/*.md') ?: [], glob($sRoot.'/doc/adr/*.md') ?: [], glob($sRoot.'/doc/example-pack/*.md') ?: []);
+		$aOffenders = [];
+		foreach ($aDocuments as $sDocument) {
+			$sRelativeDocument = substr($sDocument, strlen($sRoot) + 1);
+			if ($fLeftOut($sRelativeDocument)) {
+				continue; // not shipped itself
+			}
+			preg_match_all('/\]\(([^)\s#]+)(?:#[^)]*)?\)/', (string)file_get_contents($sDocument), $aMatches);
+			foreach ($aMatches[1] as $sTarget) {
+				if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $sTarget) === 1) {
+					continue; // a URL
+				}
+				$aParts = [];
+				foreach (explode('/', dirname($sRelativeDocument).'/'.$sTarget) as $sPart) {
+					if ($sPart === '..') {
+						array_pop($aParts);
+					} elseif ($sPart !== '.' && $sPart !== '') {
+						$aParts[] = $sPart;
+					}
+				}
+				$sResolved = implode('/', $aParts);
+				if ($fLeftOut($sResolved)) {
+					$aOffenders[] = $sRelativeDocument.' -> '.$sTarget;
+				}
+			}
+		}
+
+		$this->assertSame([], $aOffenders, "These shipped documents link by relative path to what the archive leaves out:\n".implode("\n", $aOffenders));
+	}
 }

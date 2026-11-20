@@ -28,7 +28,7 @@ iTop extension that adds a Model Context Protocol (MCP) server to your instance 
 plain text, and hyphens survive a copy-paste into the Hub form or `composer.json` unchanged.
 
 **It names no iTop or PHP version, deliberately.** Every other copy of that claim is checked
-against [`.github/itop-support.json`](../.github/itop-support.json) by `ModuleMetadataTest` —
+against [`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) by `ModuleMetadataTest` —
 the README's Requirements table, the Compatibility block below, the sentence in
 `extension.xml`. The About box is the one surface no test can reach, so a version put there is
 the one that goes stale in silence. Requirements belong in the README, which is one click away
@@ -69,7 +69,7 @@ Application management / Integration
 | Tested on | *(per release — copy the **Tested on** line from that version's [CHANGELOG.md](../CHANGELOG.md) entry)* |
 
 The two version rows come from
-[`.github/itop-support.json`](../.github/itop-support.json) and `composer.json`, and a test
+[`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) and `composer.json`, and a test
 fails if this file stops agreeing with them. Do not edit them here to match a release; edit
 them there and the Hub copy follows. Which PHP an evaluator can actually use on their own patch
 is iTop's answer, not ours — the setup warns about a PHP it has not validated rather than
@@ -162,7 +162,7 @@ no console UI, configuration is module parameters.
 The set exists to answer one question an evaluator has and the prose cannot settle: *does it
 really refuse, and does it really show me first?* Four, in this order.
 
-They are in [`assets/img/screenshots/`](../assets/img/screenshots), already captured and
+They are in [`assets/img/screenshots/`](https://github.com/AltiooBV/altioo-mcp/tree/main/assets/img/screenshots), already captured and
 stripped of metadata. Upload those; the notes below are what to reshoot *against* if an
 instance or a release makes one of them wrong.
 
