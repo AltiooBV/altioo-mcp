@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
@@ -544,8 +545,14 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			return null;
 		}
 		$oObject = (new DBObjectSet(ObjectQuery::ById($sTarget, $iId)))->Fetch();
+		if ($oObject === null) {
+			return null;
+		}
 
-		return $oObject === null ? null : (string)$oObject->GetName();
+		// The name is the object's text, handed to the model: a read, recorded as every other read is (DO-1).
+		ReadSummary::Note(get_class($oObject), (int)$oObject->GetKey());
+
+		return (string)$oObject->GetName();
 	}
 
 	/** The portal's: a target its scopes show this user, which UserRights does not decide. */
@@ -564,7 +571,12 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		}
 		$oQuery->AddCondition('id', $iId, '=');
 		$oObject = (new DBObjectSet($oQuery))->Fetch();
+		if ($oObject === null) {
+			return null;
+		}
 
-		return $oObject === null ? null : (string)$oObject->GetName();
+		ReadSummary::Note(get_class($oObject), (int)$oObject->GetKey());
+
+		return (string)$oObject->GetName();
 	}
 }

@@ -177,6 +177,7 @@ what said so.
   2026-11-18 found it untrue on an earlier build). The troubleshooting section now lists exactly which requests leave a row and which do not: a CORS preflight, a `405`, a body that names no method, a method `log_mcp_method` does not list, and **a valid token of a disabled user**. For that last one iTop's own login ends the request with the text `Bad user` (HTTP `200`, `text/html`)
   before the module can answer, with no row; refusing it first would mean repeating iTop's token lookup, so it is documented and left.
 - **An array as a filter value on `core_object_search_by_class` was answered as a server-side failure.** `{"filters": {"title": ["a", "b"]}}` got "the cause is server-side" and an error reference; `core_object_count` already refused it as the caller's mistake. Both now refuse it in the count's words (`Unknown attribute '<code>' on class '<class>'.`): a filter is one value to match.
+- **A count grouped by an external key left `read_objects` empty.** `core_object_count` with `group_by` on a key answers with the names and ids of the objects it points at, which is a read; the audit row's `read_objects`, the column that answers "was this person's ticket sent to the model?", stayed empty. The objects whose names a group carries are now noted, as every other read notes its objects (the console's and the portal's alike). A count grouped by an enum or a plain value still notes nothing.
 
 ### Added
 
