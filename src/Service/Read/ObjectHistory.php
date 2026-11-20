@@ -203,22 +203,26 @@ final class ObjectHistory
 	 * portal mode (ADR 0017).
 	 *
 	 * @param \Closure(DBObjectSearch): ?DBSearch $fBound The query narrowed to what the user may read of it, null for none.
-	 * @param \Closure(string): bool        $fShows Whether the user is shown that attribute of $oObject.
+	 * @param \Closure(string): bool        $fShows Whether the user is shown that attribute of $oObject. The rows about one it hides are left out of
+	 *                                      the query, so `total` counts what is returned and no more.
+	 * @param (\Closure(string, int): ?string)|null $fNameOf The name of the object of a class that an id of a changed key points at, or null when the user is not
+	 *                                      shown it: the entries of a key then carry `from_name` and `to_name` beside the ids, as the portal shows a name.
 	 *
 	 * @return array<string, mixed>
 	 */
-	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0): array
+	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0, ?\Closure $fNameOf = null): array
 	{
-		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows);
+		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows, $fNameOf);
 	}
 
 	/**
 	 * @param (\Closure(DBObjectSearch): ?DBSearch)|null $fBound
 	 * @param (\Closure(string): bool)|null        $fShows
+	 * @param (\Closure(string, int): ?string)|null $fNameOf
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows): array
+	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows, ?\Closure $fNameOf = null): array
 	{
 		$sClass = get_class($oObject);
 		$iKey = (int)$oObject->GetKey();
@@ -239,6 +243,17 @@ final class ObjectHistory
 		// show them (doc/adr/0012). A row names its attribute only on the subclass that records one.
 		$aArgs = [];
 		$aExcluded = ExclusionPolicy::ExcludedAttributes($sClass);
+		// The attributes a portal's form hides are left out the same way, so `total` counts the entries that are
+		// returned and no more: it counted the rows it then dropped, and paging showed how many times staff had
+		// touched a field the user is not shown (review 2026-11-18, RT-12).
+		if ($fShows !== null) {
+			foreach (array_keys(MetaModel::ListAttributeDefs($sClass)) as $sCode) {
+				if (!$fShows((string)$sCode)) {
+					$aExcluded[] = (string)$sCode;
+				}
+			}
+			$aExcluded = array_values(array_unique($aExcluded));
+		}
 		if ($aExcluded !== []) {
 			$oSearch = \DBObjectSearch::FromOQL(sprintf(
 				'SELECT %1$s AS o WHERE o.objclass = :class AND o.objkey = :key%2$s AND o.id NOT IN (SELECT %3$s AS a WHERE a.objclass = :class AND a.objkey = :key AND a.attcode IN (%4$s))',
@@ -267,6 +282,7 @@ final class ObjectHistory
 
 			$aEntry = self::masked($aEntry, $sClass);
 			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
+			$aEntry = self::withNames($aEntry, $sClass, $fNameOf);
 
 			$aEntries[] = $aEntry;
 		}
@@ -283,6 +299,39 @@ final class ObjectHistory
 			'total'     => $iTotal,
 			'entries'   => $aEntries,
 		];
+	}
+
+	/**
+	 * The name of what a changed key pointed at, where the caller gave a way to say it: the portal shows `Agent: Jane Doe`, not
+	 * `agent_id: 58` (review 2026-11-18, RT-12). Beside the ids, which stay; null where the user is not shown the object.
+	 *
+	 * @param array<string, mixed>                   $aEntry
+	 * @param (\Closure(string, int): ?string)|null $fNameOf
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withNames(array $aEntry, string $sClass, ?\Closure $fNameOf): array
+	{
+		$sAttCode = (string)($aEntry['attribute'] ?? '');
+		if ($fNameOf === null || $sAttCode === '' || !MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			return $aEntry;
+		}
+
+		try {
+			$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+			if (!$oAttDef->IsExternalKey()) {
+				return $aEntry;
+			}
+			$sTarget = $oAttDef->GetTargetClass();
+			foreach (['from', 'to'] as $sSide) {
+				$sId = $aEntry[$sSide] ?? null;
+				$aEntry[$sSide.'_name'] = is_string($sId) && ctype_digit($sId) && (int)$sId > 0 ? $fNameOf($sTarget, (int)$sId) : null;
+			}
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not name a changed key of '.$sClass.'::'.$sAttCode.' for the history: '.get_class($e));
+		}
+
+		return $aEntry;
 	}
 
 	/**

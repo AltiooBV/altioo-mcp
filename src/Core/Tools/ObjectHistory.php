@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
@@ -190,7 +191,18 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			$fShows,
 			$sAttCode,
 			$limit,
-			$offset
+			$offset,
+			// In the portal, the name of a key's old and new target where the user is shown the object, as the portal
+			// says it; the console's caller reads the object itself.
+			PortalMode::Current() === null ? null : static function (string $sTarget, int $iTarget) use ($oAccess): ?string {
+				$oTarget = ExclusionPolicy::Serves($sTarget) && !ExclusionPolicy::ExcludesAttribute($sTarget, 'friendlyname') ? $oAccess->Readable($sTarget, $iTarget) : null;
+				if ($oTarget === null) {
+					return null;
+				}
+				ReadSummary::Note(get_class($oTarget), (int)$oTarget->GetKey());
+
+				return (string)$oTarget->GetName();
+			}
 		);
 
 		// Before and after values and case-log entries are what other people
