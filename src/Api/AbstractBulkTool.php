@@ -406,7 +406,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 					],
 				],
 			],
-			'required'   => ['class', 'simulated', 'forced_by_credential', 'forced_reason', 'total', 'succeeded', 'failed', 'objects'],
+			'required'   => ['class', 'simulated', 'forced_by_credential', 'forced_reason', 'total', 'succeeded', 'failed', 'all_succeeded', 'objects'],
 		];
 	}
 

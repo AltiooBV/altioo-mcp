@@ -91,7 +91,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 	#[\Override]
 	public function getDescription(): ?string
 	{
-		return 'List what this account\'s credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see; rows from before 2.0.0 read 0 whatever they changed), and the reason given. Only your own calls; there is no way to ask for anyone else\'s. Read "coverage" for what the record cannot show.';
+		return 'List what this account\'s credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see; 0 on rows before 2.0.0), and the reason given. Only your own calls, never anyone else\'s. Read "coverage" for what the record cannot show.';
 	}
 
 	#[\Override]

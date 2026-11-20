@@ -190,6 +190,7 @@
                         "total",
                         "succeeded",
                         "failed",
+                        "all_succeeded",
                         "objects"
                     ]
                 }

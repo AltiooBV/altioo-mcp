@@ -105,7 +105,7 @@ class MyActivityContractTest extends TestCase
 		$sCode = (string)file_get_contents(dirname(__DIR__, 3).'/src/Core/Tools/MyActivity.php');
 
 		$this->assertGreaterThanOrEqual(3, substr_count($sCode, 'before 2.0.0'), 'the description, the notes and the coverage each say it');
-		$this->assertStringContainsString('rows from before 2.0.0 read 0', (string)(new MyActivity())->getDescription());
+		$this->assertStringContainsString('0 on rows before 2.0.0', (string)(new MyActivity())->getDescription());
 	}
 
 	/**
