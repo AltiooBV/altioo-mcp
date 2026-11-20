@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
@@ -287,12 +288,13 @@ final class DeletionCascade
 	{
 		$sRoot = MetaModel::GetRootClass($sClass);
 		foreach ($oPlan->ListDeletes() as $sDeletedClass => $aEntries) {
-			foreach (array_keys($aEntries) as $iDeletedId) {
+			foreach (array_keys($aEntries) as $mDeletedId) {
+				$iDeletedId = ObjectId::Normalise($mDeletedId);
 				$sDeletedRoot = MetaModel::GetRootClass((string)$sDeletedClass);
-				if ((int)$iDeletedId === $iId && $sDeletedRoot === $sRoot) {
+				if ($iDeletedId === null || ($iDeletedId === $iId && $sDeletedRoot === $sRoot)) {
 					continue; // the entry itself
 				}
-				$aLedger[$sDeletedRoot.'::'.(int)$iDeletedId] ??= "{$sClass}::{$iId}";
+				$aLedger[$sDeletedRoot.'::'.$iDeletedId] ??= "{$sClass}::{$iId}";
 			}
 		}
 	}

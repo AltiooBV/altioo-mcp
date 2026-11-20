@@ -247,7 +247,7 @@ final class ObjectHistory
 		// returned and no more: it counted the rows it then dropped, and paging showed how many times staff had
 		// touched a field the user is not shown (review 2026-11-18, RT-12).
 		if ($fShows !== null) {
-			foreach (array_keys(MetaModel::ListAttributeDefs($sClass)) as $sCode) {
+			foreach (MetaModel::ListAttributeDefs($sClass) as $sCode => $oAttDef) {
 				if (!$fShows((string)$sCode)) {
 					$aExcluded[] = (string)$sCode;
 				}
