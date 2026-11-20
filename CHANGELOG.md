@@ -21,7 +21,7 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [2.1.0] - Unreleased
+## [2.1.0] - 2026-11-20
 
 **The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Eighteen entries under *Fixed* are marked Security (two of them concern tool packs); none
 needs a migration. An advisory token's rehearsal is now also recorded and answered as one: a token carrying `MCP-advisory`
