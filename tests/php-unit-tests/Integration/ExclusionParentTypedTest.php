@@ -18,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
@@ -256,6 +257,39 @@ class ExclusionParentTypedTest extends ItopDataTestCaseAlias
 		}
 		$aLink = ToolOutput::Decode(ClassSchema::execute('lnkContactToTicket', 'all'));
 		$this->assertStringNotContainsString('contact_', json_encode($aLink['attributes'] ?? []), 'the schema of the link class names a field through the key');
+	}
+
+	/**
+	 * RE-2 N-2: an attribute whose allowed values are class names listed the excluded class (`target_class` of a trigger,
+	 * a parent's `finalclass`), and a value that named one was accepted where an unknown one was refused with the list.
+	 */
+	public function testNoAttributeWhoseValuesAreClassesListsAnExcludedClass(): void
+	{
+		$this->assertArrayHasKey('Person', MetaModel::GetAttributeDef('Contact', 'finalclass')->GetAllowedValues(), 'the control: the datamodel lists Person');
+		$this->assertArrayHasKey('Person', MetaModel::GetAttributeDef('TriggerOnObjectCreate', 'target_class')->GetAllowedValues());
+
+		$this->exclude(['Person']);
+
+		$aSchema = ToolOutput::Decode(ClassSchema::execute('TriggerOnObjectCreate', 'attributes', 'target_class'))['attributes']['target_class'];
+		$this->assertArrayNotHasKey('Person', (array)$aSchema['values'], 'target_class lists the excluded class');
+		$this->assertStringNotContainsString('"Person"', json_encode($aSchema['values']));
+		$this->assertSame(
+			count(MetaModel::GetAttributeDef('TriggerOnObjectCreate', 'target_class')->GetAllowedValues()) - 1,
+			$aSchema['valuesTotal'] ?? count((array)$aSchema['values']),
+			'exactly the excluded class is left out of the list and its total'
+		);
+
+		// A value naming the excluded class is refused as one the datamodel does not have, with the same list.
+		$this->assertAbsentLikeAnUnknownName(
+			fn (string $a) => ObjectSearchByClass::execute('Contact', ['finalclass' => $a], 10, 0),
+			'Person',
+			'search on finalclass'
+		);
+
+		// A parent's finalclass lists the classes under it: the excluded one is left out and its sibling is not.
+		$aFinal = AttributeDescription::ServedValues(MetaModel::GetAttributeDef('Contact', 'finalclass'));
+		$this->assertArrayNotHasKey('Person', (array)$aFinal, 'the finalclass of Contact lists the excluded subclass');
+		$this->assertArrayHasKey('Team', (array)$aFinal, 'the control: a class that is served is still listed');
 	}
 
 	public function testFindingByNameNeverReachesTheNameOfAnExcludedPerson(): void

@@ -16,8 +16,10 @@ use Altioo\iTop\Extension\MCP\Service\Rights\SecretPolicy;
 use AttributeCaseLog;
 use AttributeDate;
 use AttributeDateTime;
+use AttributeClass;
 use AttributeDefinition;
 use AttributeExternalKey;
+use AttributeFinalClass;
 use AttributeLinkedSet;
 use AttributeLinkedSetIndirect;
 use MetaModel;
@@ -148,7 +150,7 @@ final class AttributeDescription
 			return ['values' => null, 'targetClass' => $sListed, 'valuesHint' => 'Search the target class for the object you want, then pass its id.'];
 		}
 
-		$aValues = $oAttDef->GetAllowedValues();
+		$aValues = self::ServedValues($oAttDef);
 		if (!is_array($aValues) || count($aValues) <= self::MAX_ALLOWED_VALUES) {
 			return ['values' => self::codeKeyed($aValues)];
 		}
@@ -158,6 +160,38 @@ final class AttributeDescription
 			'valuesTruncated' => true,
 			'valuesTotal'     => count($aValues),
 		];
+	}
+
+	/**
+	 * The allowed values of an attribute, less the classes the operator excluded where the values are classes.
+	 *
+	 * The values of an `AttributeClass` (`target_class` of a trigger, `scope_class` of a synchronisation source) and of
+	 * an `AttributeFinalClass` (a parent's `finalclass`) are class names. An excluded class is absent from every
+	 * route, so it is absent from this list too, and a value naming one is as unknown as one the datamodel has
+	 * not (doc/adr/0012). Every route that lists, or checks a value against, an attribute's allowed values asks this
+	 * rather than `GetAllowedValues()`.
+	 *
+	 * @return array<array-key, mixed>|null As `GetAllowedValues()` answers.
+	 * @since 2.1.0
+	 */
+	public static function ServedValues(AttributeDefinition $oAttDef): ?array
+	{
+		$aValues = $oAttDef->GetAllowedValues();
+		if (!is_array($aValues) || !self::listsClassNames($oAttDef)) {
+			return is_array($aValues) ? $aValues : null;
+		}
+
+		return array_filter($aValues, static fn ($mLabel, $mCode): bool => !ExclusionPolicy::ExcludesClass((string)$mCode), ARRAY_FILTER_USE_BOTH);
+	}
+
+	/**
+	 * Whether an attribute's allowed values are names of classes: an `AttributeClass` (its values come from the datamodel's
+	 * classes) or an `AttributeFinalClass` (the classes under the one that declares it).
+	 */
+	private static function listsClassNames(AttributeDefinition $oAttDef): bool
+	{
+		/** @psalm-suppress TypeDoesNotContainType iTop's attribute classes are not all in the stubs */
+		return $oAttDef instanceof AttributeClass || $oAttDef instanceof AttributeFinalClass;
 	}
 
 	/**

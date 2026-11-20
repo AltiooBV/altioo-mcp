@@ -23,7 +23,7 @@ entry itself, not left to be inferred from it.
 
 ## [2.1.0] - Unreleased
 
-**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Sixteen entries under *Fixed* are marked Security (two of them concern tool packs); none
+**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Seventeen entries under *Fixed* are marked Security (two of them concern tool packs); none
 needs a migration. An advisory token's rehearsal is now also recorded and answered as one: a token carrying `MCP-advisory`
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
@@ -170,6 +170,11 @@ what said so.
   (editable), `org_id` and `team_id` (read-only) and no `agent_id` - `core_object_apply_stimulus` listed `team_id` and `agent_id` as settable and committed them: a requester routed their own ticket to a team and an agent of their choosing (staff they could already see).
   The fields of a transition are now those of the portal's transition form, built as the portal's `ApplyStimulusAction` builds it and merged by its own `PrepareFields()`, and nothing else: not the edit form's settable fields as well (the portal never lets a transition submit one; an assistant changes an edit-form field with `core_object_update` first). The refusal names the transition's fields and says so ([ADR 0005](doc/adr/0005-portal-mode-writes-follow-the-portal-form.md), amended 2026-11-19).
   **Visible to portal users' assistants:** a transition that set a field the portal does not let the user change is now refused, and names the fields it does accept. Console mode is unchanged. *Affects 1.2 and 1.3, not checked on those trees.*
+- **Security: a schema listed the class an operator had excluded, as the value of an attribute that holds class names** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)). `core_class_schema` and `itop://core/class/{class}` list an attribute's allowed values, and for an
+  attribute whose values *are* classes (iTop's `AttributeClass`: the `target_class` of a trigger, the `scope_class` of a synchronisation source; and `AttributeFinalClass`: a parent's `finalclass`) the list was the datamodel's, whatever `mcp_excluded_classes` said. With `Person`
+  excluded, `TriggerOnObjectCreate.target_class` still named `Person`, and `Contact.finalclass` did, so a class an operator excluded for its name was told to every account that could read a trigger's or a contact's schema (the name, never a row);
+  and `core_object_search_by_class` with `finalclass: "Person"` on `Contact` was accepted where `"Personz"` was refused with the list of values, so the filter was a yes-or-no on the name as well. An excluded class is now **left out of every list of class names**, in both modes, and
+  a value that names one is refused as one the datamodel does not have, with the same list (the portal's field description is held to it too). A class that is served, and a parent of an excluded class, are listed as before. **Affects `release/1.3` too** (exclusions since 1.3.0), for the 1.x patches: not checked on that tree.
 - **Security (tool packs): the example pack, which every pack is copied from, skipped what the core tools hold.** `acme_ticket_add_log_entry` checked rights by hand and so skipped `mcp_max_mentions`, the console's lifecycle locks (it appended to the `public_log`
   of a closed ticket, which iTop flags read-only there), the spreadsheet-formula rule and `ChangeTracking::Explain()`; and `acme_ticket_search_mine` asked neither `ExclusionPolicy::Serves()` nor `ExclusionSearches::Narrowed()`, so for an excluded class it answered
   `total: N, objects: []` (a row count, no values). Both now do what a core tool does: the write tool validates through `WriteValues::Validated()`, asks `WriteCap::RefusalFor()`, explains the change and answers through `ToolOutput::StructuredWrite()`; the read tool
