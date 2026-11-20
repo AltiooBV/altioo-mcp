@@ -123,9 +123,10 @@ re-grants web access to exactly that file and leaves iTop's blanket deny over ev
 under `extensions/` in place, so `src/`, `vendor/`, `tests/` and `composer.json` stay
 unreachable.
 
-**It opens no outbound connection.** iTop never contacts an AI vendor, a model provider or any
-other host on behalf of this extension. Traffic is inbound only: an MCP client connects, and
-that client is what talks to a model. See *Data flow* in the README.
+**It opens no outbound connection.** This extension never contacts an AI vendor, a model provider or any
+other host. Traffic is inbound only: an MCP client connects, and that client is what talks to a
+model. A write it makes is an ordinary change, though, so iTop's own triggers, notifications and
+webhooks fire for it as they do for a change made in the console. See *Data flow* in the README.
 
 **Every request is authenticated by iTop itself** (`LoginWebPage::DoLogin()`), on its own — the
 endpoint is stateless, and a request that carries no credential of its own is refused before the

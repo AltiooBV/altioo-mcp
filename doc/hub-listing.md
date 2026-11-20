@@ -138,7 +138,7 @@ under *Administration → MCP service calls*, with its outcome, duration and res
 summarised on an **MCP activity** dashboard of the last seven days that each administrator can
 customise.
 
-**iTop opens no outbound connection.** Traffic is inbound only; no telemetry, no callbacks.
+**This extension opens no outbound connection.** Traffic is inbound only; no telemetry, no callbacks. (A write it makes is an ordinary change: iTop's own notifications and webhooks fire for it as for the console's.)
 
 **Built to be extended.** Other extensions declare this one as a dependency and register their
 own tools, resources and prompts into it — task-shaped tools for your own workflows belong
