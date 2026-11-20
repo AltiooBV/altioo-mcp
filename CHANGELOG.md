@@ -176,6 +176,7 @@ what said so.
 - **The README said which refusals are audited, and was not exact.** A rejected or invalid token, a wrong password and a request with a malformed `Authorization` header are audited under the method `exceptions`, as every refusal before the login is (this was true from the change that writes the row before the answer; the review of
   2026-11-18 found it untrue on an earlier build). The troubleshooting section now lists exactly which requests leave a row and which do not: a CORS preflight, a `405`, a body that names no method, a method `log_mcp_method` does not list, and **a valid token of a disabled user**. For that last one iTop's own login ends the request with the text `Bad user` (HTTP `200`, `text/html`)
   before the module can answer, with no row; refusing it first would mean repeating iTop's token lookup, so it is documented and left.
+- **An array as a filter value on `core_object_search_by_class` was answered as a server-side failure.** `{"filters": {"title": ["a", "b"]}}` got "the cause is server-side" and an error reference; `core_object_count` already refused it as the caller's mistake. Both now refuse it in the count's words (`Unknown attribute '<code>' on class '<class>'.`): a filter is one value to match.
 
 ### Added
 
