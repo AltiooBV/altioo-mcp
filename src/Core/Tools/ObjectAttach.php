@@ -359,6 +359,12 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$iMax = DocumentAccess::MaxBytes();
 		if (strlen($sData) > $iMax) {
+			if (PortalMode::Current() !== null) {
+				// An operator's setting is not an end user's vocabulary (review 2026-11-18, RT-13): the log keeps it.
+				ErrorReport::Log(sprintf('Refused a %d byte file for a portal user: %s allows %d.', strlen($sData), DocumentAccess::MODULE_SETTING_MAX_BYTES, $iMax));
+				throw new ToolCallException(sprintf('The file is %s, which is more than this connection accepts. Add a smaller one.', DocumentAccess::HumanBytes(strlen($sData))));
+			}
+
 			throw new ToolCallException(sprintf(
 				'The file is %d bytes and this instance accepts at most %d through MCP (%s).',
 				strlen($sData),

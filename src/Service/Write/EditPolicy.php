@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use AttributeCaseLog;
 use AttributeExternalKey;
 use AttributeLinkedSet;
@@ -205,13 +207,22 @@ final class EditPolicy
 				continue;
 			}
 
+			$sFilter = (string)$oAttDef->GetValuesDef()->GetFilterExpression();
+			if (PortalMode::Current() !== null) {
+				// The datamodel's query is staff vocabulary, and an end user cannot act on it: the log keeps it (review
+				// 2026-11-18, RT-13; the same split ADR 0007 makes for a portal that is refused).
+				ErrorReport::Log(sprintf("Refused %s %d as '%s' of a %s for a portal user: the datamodel limits it to: %s", $oAttDef->GetTargetClass(), $iValue, $sAttCode, $sClass, $sFilter));
+				$aRefusals[$sAttCode] = sprintf("%s %d is not a value '%s' accepts on this %s.", $oAttDef->GetTargetClass(), $iValue, $sAttCode, $sClass);
+				continue;
+			}
+
 			$aRefusals[$sAttCode] = sprintf(
 				"%s %d is not a value '%s' accepts on this %s. The datamodel limits it to: %s",
 				$oAttDef->GetTargetClass(),
 				$iValue,
 				$sAttCode,
 				$sClass,
-				$oAttDef->GetValuesDef()->GetFilterExpression()
+				$sFilter
 			);
 		}
 

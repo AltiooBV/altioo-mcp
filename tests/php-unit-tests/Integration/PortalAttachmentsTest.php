@@ -154,15 +154,17 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 			ObjectGetDocument::execute('Attachment', $this->iOwnFile, 'contents');
 			$this->fail('served');
 		} catch (ToolCallException $e) {
-			$this->assertStringContainsString('serves at most', $e->getMessage());
+			// Review 2026-11-18, RT-13: an end user is told in plain words; the operator's setting is in the log.
+			$this->assertStringContainsString('more than this connection serves', $e->getMessage());
+			$this->assertStringNotContainsString(DocumentAccess::MODULE_SETTING_MAX_BYTES, $e->getMessage());
 		}
 
 		$this->expectException(ToolCallException::class);
-		$this->expectExceptionMessage('accepts at most');
+		$this->expectExceptionMessage('more than this connection accepts');
 		ObjectAttach::execute('UserRequest', $this->iOwn, 'big.txt', base64_encode('0123456789'), 'text/plain', null, false);
 	}
 
-	public function testReadingListsTheFilesWithAUriAndSaysWhetherOneMayBeAdded(): void
+	public function testReadingListsTheFilesByIdAndSaysWhetherOneMayBeAdded(): void
 	{
 		$aObject = ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn))['object'];
 
@@ -171,7 +173,10 @@ class PortalAttachmentsTest extends ItopDataTestCaseAlias
 		$this->assertContains($this->iOwnFile, $aIds);
 		$this->assertNotContains($this->iDraft, $aIds);
 		foreach ($aObject['attachments'] as $aFile) {
-			$this->assertSame(DocumentAccess::Uri('Attachment', $aFile['id'], 'contents'), $aFile['uri']);
+			// Review 2026-11-18, RT-13: the uri named a resource template portal mode does not serve. The id is what
+			// core_object_get_document takes, and that tool reads the file (tested below).
+			$this->assertArrayNotHasKey('uri', $aFile);
+			$this->assertArrayHasKey('id', $aFile);
 		}
 
 		$aClass = current(array_filter(ToolOutput::Decode(ClassList::execute())['classes'], static fn (array $a): bool => $a['class'] === 'UserRequest'));
