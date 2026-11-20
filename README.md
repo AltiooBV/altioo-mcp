@@ -415,9 +415,12 @@ supported. Authentication is delegated to iTop itself — see [Granting access](
 The one endpoint answers two protocol eras, and the client picks. A client on **2026-07-28** —
 the revision that dropped the handshake and the session id — is served statelessly by the SDK
 itself and is given no `Mcp-Session-Id` at all. A client on an earlier revision still performs
-`initialize` and still receives a session id, because that is what those revisions require; the
-id is real but carries nothing, since this endpoint stores nothing past the request that made
-it, so an HTTP `DELETE` is answered `405 Method Not Allowed` (`Allow: POST, OPTIONS`): there is no session to end, and none is ever stored. Either way what a request is allowed to do is decided from the credential it brought, not
+`initialize`, and is given no session id either: those revisions let a server assign one, and this
+endpoint keeps no session for it to name, so each later request carries only its credential and
+the revision, in `MCP-Protocol-Version`. An id a client sends anyway is not looked up. An HTTP
+`GET` or `DELETE` is answered `405 Method Not Allowed` (`Allow: POST, OPTIONS`): there is no stream to
+open and no session to end. For the same reason `initialize` offers neither `logging` nor resource
+subscriptions, which need a session to outlive the request. Either way what a request is allowed to do is decided from the credential it brought, not
 from anything a previous request left behind.
 
 ### Sizing the worker pool
@@ -1205,7 +1208,7 @@ These leave **no** row:
 
 - a CORS preflight (`OPTIONS` with an `Origin`): it never reaches a login;
 - a `GET`, `PUT` or `DELETE`, answered `405`, and a body that is not a JSON-RPC request or names no
-  method (a syntax error, a call without its session id): the row is made from a method, and there
+  method (a syntax error, a body that is not a request): the row is made from a method, and there
   is none;
 - a call of a method `log_mcp_method` does not list;
 - **a valid token of a user who is disabled.** iTop's own login stops that request with the text

@@ -113,32 +113,32 @@ both from the one URL.
 
 ### On 2025-06-18 or 2025-11-25: two calls
 
-Every method other than `initialize` is answered `400` — *"A valid session id is REQUIRED for
-non-initialize requests"* — before any handler runs, so the first call has to be the handshake,
-and the second has to carry back the `Mcp-Session-Id` the first one returned.
+This endpoint keeps no session, so `initialize` is answered without an `Mcp-Session-Id` and nothing has to be
+carried from the first call to the second: every request stands on its own credential and names the revision it
+speaks in `MCP-Protocol-Version`. A client that does the handshake first works as it always did; one that skips it
+is served as well.
 
 ```bash
 ENDPOINT=https://<your-itop>/env-production/altioo-mcp/index.php
 TOKEN=<your-itop-token>
 
-# 1. initialize — -D - prints the response headers, which is where the session id is
+# 1. initialize — -D - prints the response headers; there is no Mcp-Session-Id among them
 curl -sS -D - -X POST "$ENDPOINT" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 
-# 2. tools/list — with the mcp-session-id the first call answered with
+# 2. tools/list — nothing from step 1 is carried over
 curl -sS -X POST "$ENDPOINT" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
-  -H "Mcp-Session-Id: <the id from step 1>" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
-The same handshake, with the id read out of the headers for you, is `tools/ci/http-smoke.sh` in
+The same two calls, with the answers checked for you, are `tools/ci/http-smoke.sh` in
 the source repository — it is not in this archive, since nothing under `tools/` is packaged.
 
 ### On 2026-07-28: one call
@@ -172,7 +172,7 @@ optional and the call is served without it.
 - **`401` on step 1** — the credential did not get through. Check the token's scope, check that
   the user holds `MCP Services User` or `Administrator`, and check that `Authorization` reaches
   PHP.
-- **`400` on step 2** — the session id was not sent, or not the one step 1 returned.
+- **`400` on step 2** — a header that does not match the body, or a body that is not one JSON-RPC request (a batch is refused, whatever the revision).
 - **`-32020` on the one-call form** — a required mirror header is missing. The message names
   which: `Missing required Mcp-Method header`, or `Mcp-Name` for a method that has a subject.
   A browser-based client gets this when its preflight was not allowed to send them, which is

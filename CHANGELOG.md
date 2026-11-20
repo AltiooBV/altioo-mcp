@@ -21,6 +21,30 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+**`mcp/sdk` moves from 0.9 to 0.10** (trial port on `feat/sdk-0.10`: which release carries it, and whether the old names keep an alias, is the maintainer's to decide; this entry says what changed on the branch).
+
+**Read before upgrading.**
+
+- **A tool pack written against 2.x stops working until it renames two classes.** 0.10 moved the SDK's exceptions: `Mcp\Exception\ToolCallException` and `Mcp\Exception\ResourceReadException`, the two
+  [doc/extending.md](doc/extending.md) tells a pack to throw, are now `Mcp\Server\Exception\ToolCallException` and `Mcp\Server\Exception\ResourceReadException`, with no alias. A pack that
+  throws the old name answers every call of that tool `-32603 Error while executing tool` (it is a missing class, caught by the SDK as any failure), and a `catch` of the old name silently stops matching. The pack's
+  own pages are not affected (its `register.php` names none of them). The `Mcp\Schema\*` types a pack uses (`ToolAnnotations`, `Annotations`, `Role`, the content classes) did not move and did not change shape.
+  `MCPModule::SDK_CONSTRAINT` is `^0.10.0`, and a unit test now holds it to `composer.json`, which nothing did.
+- **The endpoint no longer issues an `Mcp-Session-Id`, to any protocol revision.** It handed the SDK a store that remembered nothing, and 0.10 (which binds a session to the principal that opened it, and answers `503 Session store is unavailable` for one
+  it cannot read back) refused every handshake-era call after `initialize`. The SDK now serves a handshake-era client over HTTP without sessions, which is what this endpoint always was: `initialize` answers without an id, later calls carry
+  `MCP-Protocol-Version` and their credential, an id a client sends anyway is not looked up, and `GET` and `DELETE` are `405` with `Allow: POST, OPTIONS` (the `DELETE` answer is unchanged from 2.1.0). `Service\Server\Session\StatelessSessionStore` (`@internal`) is removed.
+  **Visible to a client:** the `initialize` result no longer offers `logging` or `resources.subscribe`, which a server without sessions cannot honour past a request (the tool-surface snapshots record it); `server/discover`, which 0.9 did not answer, now does,
+  and carries the same instructions and capabilities as `initialize` for the same caller, and no element.
+- **Arguments are checked more strictly by the SDK.** `arguments` that are not a JSON object (`[]`, which a PHP client encodes an empty map as) are refused `-32602`, and so is a value that cannot be cast to its parameter, such as a list given to
+  a string parameter, where 0.9 answered `-32603` or handed the tool the word `Array`. A batch is refused by the SDK as well, `400` and `-32600`, behind this endpoint's own refusal.
+- **For pack authors: a nested JSON object reaches a tool parameter typed `mixed`, `object`, `\stdClass` or not at all as a `\stdClass`**, where 0.9 handed an array; a parameter typed `array` still receives arrays at every level. Every core tool types its structured
+  arguments `array`, so none of the module's checks changed. `Testing\ElementContract` now warns about such a parameter on a pack's tool.
+
+### Fixed
+
+- **At debug level the SDK's raw request text reached `log/error.log`, cut to 300 bytes.** The SDK logs `Received message payload.` with the whole JSON-RPC body under the key `message` (handshake era), in 0.9.0 and 0.10.0 alike, and the log bridge kept it: the first 300 bytes of
+  a tool call, which holds its arguments, past the reduction of 2.1.0 that drops `arguments`, `params`, `request` and `body`. `message` is dropped too, and a test runs the real SDK through the bridge on both eras and every way a call can end.
+
 ## [2.1.0] - Unreleased
 
 **An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`

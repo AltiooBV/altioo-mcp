@@ -130,9 +130,11 @@ curl -s -D "$HEADERS" -o "$BODY" \
 grep -q '"protocolVersion"' "$BODY" || { echo "--- response ---"; cat "$BODY"; fail "initialize did not return a protocol version"; }
 echo "   server: $(grep -o '"serverInfo":{[^}]*}' "$BODY" || echo 'no serverInfo')"
 
-# Forwarded on every later call, as a client does. Absent when the server is
-# stateless, in which case this is an empty string and changes nothing.
+# The endpoint keeps no session, so initialize issues no id (SDK 0.10 serves a handshake-era client
+# without sessions unless the server asks for them, and this one does not). Read anyway, so that a
+# later call carries one if a change ever starts issuing it, and so that the change is noticed here.
 SESSION=$(grep -i '^mcp-session-id:' "$HEADERS" | tr -d '\r' | cut -d' ' -f2- || true)
+[ -z "$SESSION" ] || fail "initialize issued a session id ($SESSION): this endpoint keeps no session, so none is expected"
 
 curl -s -o /dev/null \
   -X POST "$ENDPOINT" \
