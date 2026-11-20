@@ -10,7 +10,6 @@ namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use JsonException;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
@@ -54,7 +53,7 @@ final class ToolOutput
 	 *
 	 * @param mixed $data Anything json_encode can take: the shape the tool documents.
 	 *
-	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the result cannot be encoded at all.
 	 * @since 1.0.0
 	 */
 	public static function Json($data): TextContent
@@ -64,7 +63,7 @@ final class ToolOutput
 		} catch (JsonException $e) {
 			// The caller gets a tool error it can act on rather than a
 			// protocol error that ends the call.
-			throw new ToolCallException('The result of this call could not be encoded: '.$e->getMessage());
+			throw ToolRefusal::Because('The result of this call could not be encoded: '.$e->getMessage());
 		}
 
 		return new TextContent($sJson);
@@ -90,7 +89,7 @@ final class ToolOutput
 	 *
 	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
 	 *
-	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the result cannot be encoded at all.
 	 * @since 1.0.0
 	 */
 	public static function Structured(array $aData): CallToolResult
@@ -108,7 +107,7 @@ final class ToolOutput
 	 *
 	 * @param array<string, mixed> $aData The shape the tool's getOutputSchema() declares.
 	 *
-	 * @throws ToolCallException When the result cannot be encoded at all.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the result cannot be encoded at all.
 	 * @since 2.1.0
 	 */
 	public static function StructuredWrite(array $aData): CallToolResult
@@ -134,7 +133,7 @@ final class ToolOutput
 	 *
 	 * @return array<mixed> The decoded payload.
 	 *
-	 * @throws ToolCallException When it holds no JSON object that can be read back.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When it holds no JSON object that can be read back.
 	 *
 	 * @since 1.0.0
 	 */
@@ -156,7 +155,7 @@ final class ToolOutput
 		}
 
 		if (!$mResult instanceof TextContent) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'This result carries no readable payload (got %s).',
 				is_object($mResult) ? get_class($mResult) : gettype($mResult)
 			));
@@ -165,11 +164,11 @@ final class ToolOutput
 		try {
 			$mDecoded = json_decode($mResult->text, true, 512, JSON_THROW_ON_ERROR);
 		} catch (JsonException $e) {
-			throw new ToolCallException('This result is not JSON and cannot be extended: '.$e->getMessage());
+			throw ToolRefusal::Because('This result is not JSON and cannot be extended: '.$e->getMessage());
 		}
 
 		if (!is_array($mDecoded)) {
-			throw new ToolCallException('This result is a JSON scalar rather than an object, so there is nothing to add to.');
+			throw ToolRefusal::Because('This result is a JSON scalar rather than an object, so there is nothing to add to.');
 		}
 
 		return $mDecoded;

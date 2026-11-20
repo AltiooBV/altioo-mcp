@@ -12,8 +12,8 @@ use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Read\SearchableModelReflection;
 use DBObjectSearch;
-use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The searches the object tools build for themselves.
@@ -132,7 +132,7 @@ final class ObjectQuery
 	 * Any other OQL error keeps getMessage(), which is where the position and
 	 * the offending token live, and where a caller fixes its own query from.
 	 *
-	 * @throws ToolCallException When the query does not parse or does not match the datamodel.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the query does not parse or does not match the datamodel.
 	 */
 	public static function CheckQuery(string $oql): void
 	{
@@ -155,7 +155,7 @@ final class ObjectQuery
 				$sReason = $e->getMessage();
 			}
 
-			throw new ToolCallException('Invalid OQL query. Reason: '.self::withoutEmptySuggestion($sReason).self::orderByHint($oql));
+			throw ToolRefusal::Because('Invalid OQL query. Reason: '.self::withoutEmptySuggestion($sReason).self::orderByHint($oql));
 		} catch (\Throwable $e) {
 			// An unknown class inside a sub-query reaches iTop's query builder, which refuses it with a
 			// plain exception. It is the same mistake as one the checker names, and is told the same way:
@@ -163,18 +163,18 @@ final class ObjectQuery
 			// told apart from one that does not exist (doc/adr/0012).
 			$sUnknown = self::invalidClassIn($e);
 			if ($sUnknown !== null) {
-				throw new ToolCallException('Invalid OQL query. Reason: Unknown class "'.$sUnknown.'"');
+				throw ToolRefusal::Because('Invalid OQL query. Reason: Unknown class "'.$sUnknown.'"');
 			}
 			// iTop's lexer refuses a character outside the grammar - a ';', a '#' - with a plain
 			// exception whose message it failed to translate into an OQLException. It is the caller's
 			// own mistake, told as one; the character is the one the caller typed, nothing of the exception.
 			$sUnexpected = self::unexpectedCharacterIn($e);
 			if ($sUnexpected !== null) {
-				throw new ToolCallException('Invalid OQL query. Reason: unexpected character '.$sUnexpected);
+				throw ToolRefusal::Because('Invalid OQL query. Reason: unexpected character '.$sUnexpected);
 			}
 			// Not an OQL problem at all - a datamodel that will not reflect, or
 			// something under it. The caller cannot act on that one.
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Could not check the OQL query', $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Could not check the OQL query', $e));
 		}
 	}
 

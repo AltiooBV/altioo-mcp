@@ -15,13 +15,13 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
-use Mcp\Server\Exception\ToolCallException;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What the caller may read of objects, in the mode this request is served in.
@@ -284,12 +284,12 @@ class ObjectAccess
 	 * the caller's class decides, as on the console, where a create action
 	 * means nothing.
 	 *
-	 * @throws ToolCallException When an action or a starting object is given on the console.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When an action or a starting object is given on the console.
 	 */
 	public function Prepared(string $sAction, int $iFromId): ?DBObject
 	{
 		if ($sAction !== '' || $iFromId !== 0) {
-			throw new ToolCallException('action and from_id are a portal\'s create action, and this connection is not served in portal mode: pass class and fields.');
+			throw ToolRefusal::Because('action and from_id are a portal\'s create action, and this connection is not served in portal mode: pass class and fields.');
 		}
 
 		return null;

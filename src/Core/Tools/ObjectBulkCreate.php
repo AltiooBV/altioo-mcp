@@ -25,6 +25,7 @@ use DBObject;
 use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Create several objects of one class in one call.
@@ -128,7 +129,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 	 *
 	 * @return mixed A per-row report
 	 *
-	 * @throws ToolCallException When the class or the bulk right rules out the whole call.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the class or the bulk right rules out the whole call.
 	 */
 	public static function execute(
 		string  $class,
@@ -143,10 +144,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 		$simulate = DryRun::Simulated($simulate);
 
 		if (empty($objects)) {
-			throw new ToolCallException('No objects given.');
+			throw ToolRefusal::Because('No objects given.');
 		}
 		if (count($objects) > self::MAX_OBJECTS) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'This call would create %d objects, and %d is the most one call may. Work in batches of %d.',
 				count($objects),
 				self::MAX_OBJECTS,
@@ -160,7 +161,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		self::checkBulkAllowed($class, UR_ACTION_BULK_MODIFY, UR_ACTION_CREATE, 'create');
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
 		if ($sCreateRefusal !== null) {
-			throw new ToolCallException($sCreateRefusal);
+			throw ToolRefusal::Because($sCreateRefusal);
 		}
 
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
@@ -172,7 +173,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 		}
 		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor($iToWrite);
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Once for the batch, before the loop: the objects created by one call
@@ -236,7 +237,7 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// object and this row may have moved what it reads. See EditPolicy.
 			$aBadKeys = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValues));
 			if (!empty($aBadKeys)) {
-				throw new ToolCallException(implode(' ', $aBadKeys));
+				throw ToolRefusal::Because(implode(' ', $aBadKeys));
 			}
 
 			// Before the check, because the check is what moves them:

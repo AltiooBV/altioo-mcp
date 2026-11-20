@@ -16,8 +16,8 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * One class in detail, as a tool.
@@ -133,7 +133,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	 * @param bool   $required_only Keep only the attributes a write must set
 	 *
 	 * @return mixed The class summary and whichever of rights, attributes, derived, relations and lifecycle were asked for, plus a `reported` block echoing the narrowing
-	 * @throws ToolCallException if the class is unknown or access is denied.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown or access is denied.
 	 */
 	public static function execute(
 		string $class,
@@ -143,7 +143,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	): mixed
 	{
 		if ($class === '') {
-			throw new ToolCallException("Missing class argument.");
+			throw ToolRefusal::Because("Missing class argument.");
 		}
 
 		// In portal mode, the class as the portal offers it: its forms,
@@ -155,7 +155,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 		// Unknown and forbidden answer alike, so calling this tool cannot map
 		// out the classes the caller is not allowed to see.
 		if (!DatamodelReader::IsReadable($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		return ToolOutput::Json(DatamodelReader::Describe($class, $include, $attributes, $required_only));

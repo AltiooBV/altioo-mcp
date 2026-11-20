@@ -21,9 +21,9 @@ use DBObjectSearch;
 use DBObjectSet;
 use DBSearch;
 use MetaModel;
-use Mcp\Server\Exception\ToolCallException;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * {@see ObjectAccess} in portal mode: the console's answer, narrowed by the
@@ -590,21 +590,21 @@ final class PortalAccess extends ObjectAccess
 	 * helper with that object and the rows above it as sources. The client's
 	 * fields are held to the create form afterwards ({@see RefusalToSet()}).
 	 *
-	 * @throws ToolCallException When no action is named, or the portal does not offer it from there.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When no action is named, or the portal does not offer it from there.
 	 * @throws \Altioo\iTop\Extension\MCP\Exception\MCPPortalException When the portal's configuration cannot be read.
 	 */
 	#[\Override]
 	public function Prepared(string $sAction, int $iFromId): DBObject
 	{
 		if ($sAction === '') {
-			throw new ToolCallException('In portal mode a creation runs one of the portal\'s create actions: pass action, from core_class_list, and from_id when it starts from an object.');
+			throw ToolRefusal::Because('In portal mode a creation runs one of the portal\'s create actions: pass action, from core_class_list, and from_id when it starts from an object.');
 		}
 		$aAction = $this->actionOf($sAction);
 		[$oFrom, $aSources] = $this->startingPoint($aAction, $iFromId);
 
 		$sClass = $aAction['class'] ?? $this->oPolicy->ChosenClass((string)$aAction['factory_method'], $oFrom);
 		if (!MetaModel::IsValidClass($sClass) || MetaModel::IsAbstract($sClass) || !$this->oPolicy->MayCreate($sClass)) {
-			throw new ToolCallException('The portal does not let you create what this action creates.');
+			throw ToolRefusal::Because('The portal does not let you create what this action creates.');
 		}
 
 		$oObject = MetaModel::NewObject($sClass);
@@ -627,7 +627,7 @@ final class PortalAccess extends ObjectAccess
 		}
 
 		// Not quoted back: the id is the client's text.
-		throw new ToolCallException('The portal offers no such create action. Call core_class_list for the ones it offers.');
+		throw ToolRefusal::Because('The portal offers no such create action. Call core_class_list for the ones it offers.');
 	}
 
 	/**
@@ -644,7 +644,7 @@ final class PortalAccess extends ObjectAccess
 		$sList = $aAction['from_list'] ?? null;
 		if (!is_string($sList)) {
 			if ($iFromId !== 0) {
-				throw new ToolCallException('This create action starts from nothing: leave from_id out.');
+				throw ToolRefusal::Because('This create action starts from nothing: leave from_id out.');
 			}
 
 			return [null, []];
@@ -652,7 +652,7 @@ final class PortalAccess extends ObjectAccess
 
 		$oFrom = $iFromId > 0 ? PortalRows::RowOf($this->oPolicy, $sList, $iFromId) : null;
 		if ($oFrom === null) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'This create action starts from a %s: from_id must be one listed by core_portal_list on %s.',
 				(string)$aAction['from'],
 				$sList

@@ -27,11 +27,11 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
 use DBObjectSet;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Update attributes on an existing iTop object.
@@ -133,7 +133,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 	 * @param bool $obsolete_ok Act on an obsolete object even though this account hides them
 	 * @param string|null $comment Why the change is being made, recorded on the audit row
 	 * @return array The class and ID of the object, and the attributes the call changes or would change
-	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if access is denied, or if the object is not found.
 	 */
 	public static function execute(
 		string  $class,
@@ -150,37 +150,37 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		$simulate = DryRun::Simulated($simulate);
 
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
+			throw ToolRefusal::Because("Invalid ID. Please specify a valid object ID.");
 		}
 		if (empty($fields)) {
-			throw new ToolCallException('No fields provided for update.');
+			throw ToolRefusal::Because('No fields provided for update.');
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id, $fields);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException("The database is in read-only mode, cannot update objects.");
+			throw ToolRefusal::Because("The database is in read-only mode, cannot update objects.");
 		}
 
 		if (MetaModel::IsAbstract($class)) {
-			throw new ToolCallException("Class '{$class}' is abstract, cannot update.");
+			throw ToolRefusal::Because("Class '{$class}' is abstract, cannot update.");
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY)) {
-			throw new ToolCallException("Access denied: cannot modify objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot modify objects of class '{$class}'.");
 		}
 
 		// What this request's mode adds to UserRights: in portal mode, the
@@ -192,7 +192,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0 || $oAccess->Hides($class, $id)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
 		// Fetch() instantiates the leaf from the finalclass column it has
@@ -206,27 +206,27 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		$sFinalClass = get_class($oObject);
 		if ($sFinalClass !== $class) {
 			if (ExclusionPolicy::ExcludesClass($sFinalClass) || !UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			// Even if the rights are allowed, this is not the correct class to use.
-			throw new ToolCallException("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the update with the correct final class."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the update with the correct final class."); // hide that the object exists
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_MODIFY, $oSet)) {
-			throw new ToolCallException("Access denied: cannot update objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot update objects of class '{$class}'.");
 		}
 		$sModeRefusal = self::portalRefusal(static fn () => $oAccess->RefusalToChange($oObject) ?? $oAccess->RefusalToSet($oObject, $fields));
 		if ($sModeRefusal !== null) {
-			throw new ToolCallException($sModeRefusal);
+			throw ToolRefusal::Because($sModeRefusal);
 		}
 
 		// Get the object
 		if ($oObject->IsReadOnly()) {
-			throw new ToolCallException("Object {$class}::{$id} is in read-only mode, cannot update object.");
+			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot update object.");
 		}
 
 		// Before anything is validated: an object this account cannot see in
@@ -242,7 +242,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		// to pass is in one place, shared with the stimulus and the portal.
 		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, $oInstanceSet);
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Most validations passed, apply the changes
@@ -254,7 +254,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to update due to setting fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to update due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// Once everything is Set(), because a datamodel filter reads the
@@ -262,7 +262,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
 			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to update due to fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()
@@ -310,7 +310,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		// The object and the link rows the call would add, change or remove: a link row is an object the cap counts (ADR 0019).
 		$sCapRefusal = WriteCap::RefusalFor(1 + WriteCap::LinkRowsOf($oObject, array_keys($aValidatedValues)));
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -333,7 +333,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 				]
 				+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)));
 		} catch (\Throwable $e) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure("Failed to update {$class}::{$id}", $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure("Failed to update {$class}::{$id}", $e));
 		}
 	}
 }

@@ -40,6 +40,7 @@ use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * How many objects match, and how many per value of one or two attributes.
@@ -186,7 +187,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 * @param int    $parent_id Portal: a browse level's parent row.
 	 *
 	 * @return mixed The class, the total, the groups, whether there were more, and a note
-	 * @throws ToolCallException When what is asked cannot be answered, in the words of an attribute or class that does not exist.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When what is asked cannot be answered, in the words of an attribute or class that does not exist.
 	 */
 	public static function execute(
 		string $class = '',
@@ -210,9 +211,9 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (\OQLException $oException) {
-			throw new ToolCallException('Invalid filter condition. '.$oException->getMessage());
+			throw ToolRefusal::Because('Invalid filter condition. '.$oException->getMessage());
 		} catch (Throwable $oException) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to count', $oException));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to count', $oException));
 		}
 	}
 
@@ -221,17 +222,17 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 *
 	 * @return array<int, string>
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function groupBy(array $aGroupBy): array
 	{
 		if (count($aGroupBy) > self::MAX_GROUP_BY) {
-			throw new ToolCallException('At most '.self::MAX_GROUP_BY.' attributes can be counted per value of.');
+			throw ToolRefusal::Because('At most '.self::MAX_GROUP_BY.' attributes can be counted per value of.');
 		}
 		$aCodes = [];
 		foreach ($aGroupBy as $mCode) {
 			if (!is_string($mCode)) {
-				throw new ToolCallException('group_by is a list of attribute codes.');
+				throw ToolRefusal::Because('group_by is a list of attribute codes.');
 			}
 			$aCodes[] = trim($mCode);
 		}
@@ -245,24 +246,24 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 *
 	 * @return mixed
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function inConsole(string $sClass, array $aFilters, string $sOql, array $aGroupBy, string $sArchived): mixed
 	{
 		if ($sOql !== '') {
 			if ($sClass !== '' || $aFilters !== []) {
-				throw new ToolCallException('Give class and filters, or oql, not both.');
+				throw ToolRefusal::Because('Give class and filters, or oql, not both.');
 			}
 			ObjectQuery::CheckQuery($sOql);
 			$sUnproved = ExclusionSearches::OqlRefusal($sOql);
 			if ($sUnproved !== null) {
-				throw new ToolCallException($sUnproved);
+				throw ToolRefusal::Because($sUnproved);
 			}
 			$oSearch = DBObjectSearch::FromOQL($sOql);
 			$sClass = $oSearch->GetClass();
 		} else {
 			if (!ExclusionPolicy::Serves($sClass)) {
-				throw new ToolCallException(ClassRefusal::Unreadable($sClass));
+				throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass));
 			}
 			$oSearch = DBObjectSearch::FromOQL("SELECT {$sClass}");
 		}
@@ -273,7 +274,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		if (ChangeLogReservation::IsReserved($sClass)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_READ)
 			|| !UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass));
 		}
 
 		// A join or a sub-query is asked like the selected class, in the same words (ADR 0023).
@@ -282,7 +283,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				if (ChangeLogReservation::IsReserved($sNamed)
 					|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_READ)
 					|| !UserRights::IsActionAllowed($sNamed, UR_ACTION_BULK_READ)) {
-					throw new ToolCallException(ClassRefusal::Unreadable($sNamed));
+					throw ToolRefusal::Because(ClassRefusal::Unreadable($sNamed));
 				}
 			}
 		}
@@ -294,20 +295,20 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				// A count under a condition on a value the account may not read is
 				// that value, read: the same gate as a group, minus the type.
 				if (!self::mayRead($sClass, (string)$sAttCode) || !is_scalar($value)) {
-					throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 				}
 				try {
 					$oSearch->AddCondition((string)$sAttCode, $value, '=');
 				} catch (\CoreException) {
 					// iTop's own refusal of a code its search cannot use (an image, say): the caller's mistake.
-					throw new ToolCallException("Attribute '{$sAttCode}' on class '{$sClass}' cannot be used as a filter.");
+					throw ToolRefusal::Because("Attribute '{$sAttCode}' on class '{$sClass}' cannot be used as a filter.");
 				}
 			}
 		}
 
 		foreach ($aGroupBy as $sAttCode) {
 			if (!self::mayGroupBy($sClass, $sAttCode)) {
-				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 			}
 		}
 
@@ -326,7 +327,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	 *
 	 * @return mixed
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	private static function inPortal(string $sList, string $sTab, int $iParent, array $aGroupBy): mixed
 	{
@@ -341,7 +342,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			// a count must not split by, and it is refused as one that is not
 			// there. The attribute rules apply on top.
 			if (!in_array($sAttCode, $aColumns, true) || !self::mayGroupBy($sClass, $sAttCode)) {
-				throw new ToolCallException("Unknown attribute '{$sAttCode}' on list '".trim($sList)."'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on list '".trim($sList)."'.");
 			}
 		}
 

@@ -19,10 +19,10 @@ use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 
 /**
@@ -105,7 +105,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	 * @param int $id The ID of the object to retrieve, e.g. 123
 	 * @param string $output_fields Comma-separated attribute codes to return; '*' (the default) returns all of them
 	 * @return array An array containing the class and all readable attributes of the object
-	 * @throws ToolCallException if the class is unknown, if access is denied, or if the object is not found.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if access is denied, or if the object is not found.
 	 */
 	public static function execute(
 		string $class,
@@ -114,26 +114,26 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	): mixed
 	{
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID '{$id}'.");
+			throw ToolRefusal::Because("Invalid ID '{$id}'.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
 		[$sFinalClass, $aObject] = self::portalRefusal(static function () use ($oAccess, $class, $id, $output_fields): array {
 			// The object gate before the object is read, so that a refusal
 			// cannot tell that it exists; the leaf's own rights are asked too.
-			$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
+			$oObject = $oAccess->Readable($class, $id) ?? throw ToolRefusal::Because("Object {$class}::{$id} not found.");
 			$sFinalClass = get_class($oObject);
 
 			$aFields = self::fieldsOf($oAccess, $oObject, $output_fields);
@@ -196,7 +196,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 		$aRequested = array_values(array_diff(array_filter(array_map('trim', explode(',', $sOutputFields)), 'strlen'), ['id', 'class']));
 		$aHidden = array_values(array_diff($aRequested, $aVisible));
 		if ($aHidden !== []) {
-			throw new ToolCallException(OutputFields::UnknownAttributes($aHidden, $sClass));
+			throw ToolRefusal::Because(OutputFields::UnknownAttributes($aHidden, $sClass));
 		}
 
 		return $aRequested;

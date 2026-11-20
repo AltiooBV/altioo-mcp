@@ -26,10 +26,10 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Create a new iTop object.
@@ -164,7 +164,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 	 * @param string $action In portal mode, the portal's create action that decides the class and presets the object
 	 * @param int $from_id In portal mode, the object the create action starts from
 	 * @return mixed The class and ID of the newly created object, or what creating it would write
-	 * @throws ToolCallException if the class is unknown, if it's abstract, if access is denied, or if any provided attribute is invalid or not writable.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if it's abstract, if access is denied, or if any provided attribute is invalid or not writable.
 	 */
 	public static function execute(
 		string  $class = '',
@@ -191,34 +191,34 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		$aAction = $oPrepared === null ? [] : ['action' => trim($action)];
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 		// A field iTop requires is excluded: no create could pass, and the setting is said to be why.
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);
 		if ($sCreateRefusal !== null) {
-			throw new ToolCallException($sCreateRefusal);
+			throw ToolRefusal::Because($sCreateRefusal);
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, null, $fields);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException("The database is in read-only mode, cannot create objects.");
+			throw ToolRefusal::Because("The database is in read-only mode, cannot create objects.");
 		}
 
 		if (MetaModel::IsAbstract($class)) {
-			throw new ToolCallException("Cannot create an instance of abstract class '{$class}'.");
+			throw ToolRefusal::Because("Cannot create an instance of abstract class '{$class}'.");
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_CREATE)) {
-			throw new ToolCallException("Access denied: cannot create objects of class '{$class}'.");
+			throw ToolRefusal::Because("Access denied: cannot create objects of class '{$class}'.");
 		}
 
 		$oObject = $oPrepared ?? MetaModel::NewObject($class);
@@ -227,7 +227,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// they set.
 		$sModeRefusal = self::portalRefusal(static fn () => $oAccess->RefusalToSet($oObject, $fields));
 		if ($sModeRefusal !== null) {
-			throw new ToolCallException($sModeRefusal);
+			throw ToolRefusal::Because($sModeRefusal);
 		}
 
 		// Validate fields before applying any changes. Every rule a value has
@@ -235,7 +235,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// the portal; no instance set, since nothing exists yet.
 		[$aValidatedValues, $aIssues] = WriteValues::Validated($oObject, $class, $fields, null);
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to create due to fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to create due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Most validations passed, apply the changes
@@ -247,7 +247,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			}
 		}
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to create due to setting fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to create due to setting fields : ".implode(', ', $aIssues));
 		}
 
 		// Once everything is Set(), because a datamodel filter reads the
@@ -255,7 +255,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
 			+ $oAccess->RefusalsForReach($oObject, array_keys($aValidatedValues));
 		if (!empty($aIssues)) {
-			throw new ToolCallException("Failed to create due to fields : ".implode(', ', $aIssues));
+			throw ToolRefusal::Because("Failed to create due to fields : ".implode(', ', $aIssues));
 		}
 
 		// Before the check, because the check is what moves them: CheckToWrite()
@@ -304,7 +304,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// The object and the link rows the call would add, change or remove: a link row is an object the cap counts (ADR 0019).
 		$sCapRefusal = WriteCap::RefusalFor(1 + WriteCap::LinkRowsOf($oObject, array_keys($aValidatedValues)));
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Said before the write, because the change record is built by the
@@ -346,7 +346,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				// caller could have corrected, so what reaches here is the
 				// instance's problem, described in the instance's vocabulary.
 				// ErrorReport explains the split.
-				throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to create the object', $e));
+				throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to create the object', $e));
 			}
 
 			return ToolOutput::StructuredWrite(['class' => $class]

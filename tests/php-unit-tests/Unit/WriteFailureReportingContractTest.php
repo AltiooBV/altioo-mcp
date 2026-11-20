@@ -93,7 +93,7 @@ class WriteFailureReportingContractTest extends TestCase
 	public function testAFailedCreateStillFails(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/if\(\$iCommittedId===null\)\{[^}]*thrownewToolCallException/',
+			'/if\(\$iCommittedId===null\)\{[^}]*throwToolRefusal::Because/',
 			SourceCalls::OfClass(ObjectCreate::class)->CodeInCatch('execute'),
 			'Nothing written is still an error; only a committed row changes the answer.'
 		);

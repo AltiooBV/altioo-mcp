@@ -24,6 +24,7 @@ use Mcp\Schema\ToolAnnotations;
 use DBObjectSet;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Get objects related to a given iTop object via a named relation.
@@ -141,31 +142,31 @@ class ObjectGetRelated extends AbstractMCPTool
 	): mixed
 	{
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID. Please specify a valid object ID.");
+			throw ToolRefusal::Because("Invalid ID. Please specify a valid object ID.");
 		}
 
 		if (!in_array($direction, [self::DIRECTION_DOWN, self::DIRECTION_UP], true)) {
-			throw new ToolCallException("Invalid direction '{$direction}'. Use 'down' or 'up'.");
+			throw ToolRefusal::Because("Invalid direction '{$direction}'. Use 'down' or 'up'.");
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		if ($depth < self::MIN_DEPTH || $depth > self::MAX_DEPTH) {
-			throw new ToolCallException("Invalid depth. Please specify a depth between ".self::MIN_DEPTH." and ".self::MAX_DEPTH.".");
+			throw ToolRefusal::Because("Invalid depth. Please specify a depth between ".self::MIN_DEPTH." and ".self::MAX_DEPTH.".");
 		}
 		$iMaxRecursionDepth = MetaModel::GetConfig()->Get('relations_max_depth');
 		if ($depth > $iMaxRecursionDepth) {
-			throw new ToolCallException("Requested depth of {$depth} exceeds the maximum allowed depth of {$iMaxRecursionDepth}. Please specify a lower depth.");
+			throw ToolRefusal::Because("Requested depth of {$depth} exceeds the maximum allowed depth of {$iMaxRecursionDepth}. Please specify a lower depth.");
 		}
 
 		// Validate the relation against this class, and in the direction asked
@@ -199,7 +200,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				static fn(array $aDirections): bool => isset($aDirections[$direction])
 			));
 
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				"Invalid relation '%s' for %s in direction '%s'. Available: %s.",
 				$relation,
 				$class,
@@ -213,7 +214,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		$oSet = new DBObjectSet($oSearch);
 		// Based on GetRelated - object search manages read access
 		if ($oSet->Count() === 0) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+			throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 		}
 
 		// Fetch() instantiates the leaf from the finalclass column it has
@@ -226,16 +227,16 @@ class ObjectGetRelated extends AbstractMCPTool
 
 		$sFinalClass = get_class($oObject);
 		if (ExclusionPolicy::ExcludesClass($sFinalClass)) {
-			throw new ToolCallException("Object {$class}::{$id} not found."); // as an object that is not there
+			throw ToolRefusal::Because("Object {$class}::{$id} not found."); // as an object that is not there
 		}
 		if ($sFinalClass !== $class) {
 			if (!UserRights::IsActionAllowed($sFinalClass, UR_ACTION_READ)) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			$oSetFinal = new DBObjectSet(ObjectQuery::ById($sFinalClass, $id));
 			// Based on GetRelated - object search manages read access
 			if ($oSetFinal->Count() === 0) {
-				throw new ToolCallException("Object {$class}::{$id} not found."); // hide that the object exists
+				throw ToolRefusal::Because("Object {$class}::{$id} not found."); // hide that the object exists
 			}
 			// Walk the relation from the class the object actually is: a
 			// relation is declared per class, and the parent's may not be the
@@ -264,7 +265,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			// own answer and keeps its wording.
 			throw $e;
 		} catch (\Throwable $e) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure(
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure(
 				"Failed to walk '{$relation}' from {$class}::{$id}",
 				$e
 			));

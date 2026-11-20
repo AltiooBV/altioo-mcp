@@ -32,6 +32,7 @@ use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use Throwable;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What this account's credentials did through this endpoint, from the audit
@@ -141,22 +142,22 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 	 * @param int    $offset Calls to skip
 	 *
 	 * @return mixed The calls, newest first, and what the record cannot show
-	 * @throws ToolCallException When the date is not one, or the account has no key to select by.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the date is not one, or the account has no key to select by.
 	 */
 	public static function execute(string $since = '', int $limit = self::DEFAULT_LIMIT, int $offset = 0): mixed
 	{
 		if ($limit < 1 || $limit > self::MAX_LIMIT) {
-			throw new ToolCallException('Invalid limit. Please specify a limit between 1 and '.self::MAX_LIMIT.'.');
+			throw ToolRefusal::Because('Invalid limit. Please specify a limit between 1 and '.self::MAX_LIMIT.'.');
 		}
 		if ($offset < 0) {
-			throw new ToolCallException('Invalid offset. Please specify a non-negative offset.');
+			throw ToolRefusal::Because('Invalid offset. Please specify a non-negative offset.');
 		}
 
 		$sFrom = null;
 		if (trim($since) !== '') {
 			$iTime = strtotime(trim($since));
 			if ($iTime === false) {
-				throw new ToolCallException('since is not a date: use 2026-11-01 or 2026-11-01 09:30:00.');
+				throw ToolRefusal::Because('since is not a date: use 2026-11-01 or 2026-11-01 09:30:00.');
 			}
 			$sFrom = date('Y-m-d H:i:s', $iTime);
 		}
@@ -165,7 +166,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		// value from the request.
 		$iUser = (int)CMDBChange::GetCurrentUserId();
 		if ($iUser < 1) {
-			throw new ToolCallException('This session has no account to look up the activity of.');
+			throw ToolRefusal::Because('This session has no account to look up the activity of.');
 		}
 
 		try {
@@ -197,9 +198,9 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 		} catch (ToolCallException $oException) {
 			throw $oException;
 		} catch (MCPPortalException $oException) {
-			throw new ToolCallException($oException->getMessage());
+			throw ToolRefusal::Because($oException->getMessage());
 		} catch (Throwable $oException) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to read your activity', $oException));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to read your activity', $oException));
 		}
 	}
 

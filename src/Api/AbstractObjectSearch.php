@@ -17,7 +17,6 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;
@@ -103,12 +102,12 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 * include archived objects gets obsolete ones as well, and that is worth
 	 * knowing rather than hiding.
 	 *
-	 * @throws ToolCallException When the class has no archived state and the caller asked for only those.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the class has no archived state and the caller asked for only those.
 	 */
 	protected static function applyArchived(DBObjectSearch $oSearch, string $sClass, string $sArchived): void
 	{
 		if (!in_array($sArchived, [self::ARCHIVED_EXCLUDE, self::ARCHIVED_INCLUDE, self::ARCHIVED_ONLY], true)) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				"Invalid archived '%s'. Use '%s', '%s' or '%s'.",
 				$sArchived,
 				self::ARCHIVED_EXCLUDE,
@@ -123,7 +122,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			// Refused rather than answered with an empty set: "no archived
 			// ones" and "this class cannot have any" are different facts, and
 			// the second one read as the first is the silent wrong answer.
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				"Class '{$sClass}' has no archived state, so there are no archived objects of it to return. "
 				."Archiving is declared per class hierarchy; core_class_schema reports archive_flag where it exists."
 			);
@@ -223,12 +222,12 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 *
 	 * @return array<string, bool> As DBObjectSet expects it: attribute code => ascending.
 	 *
-	 * @throws ToolCallException When the attribute cannot be sorted on by this caller.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the attribute cannot be sorted on by this caller.
 	 */
 	protected static function orderBy(string $sClass, string $sOrderBy, string $sDirection): array
 	{
 		if (!in_array($sDirection, [self::SORT_ASC, self::SORT_DESC], true)) {
-			throw new ToolCallException("Invalid order_direction '{$sDirection}'. Use '".self::SORT_ASC."' or '".self::SORT_DESC."'.");
+			throw ToolRefusal::Because("Invalid order_direction '{$sDirection}'. Use '".self::SORT_ASC."' or '".self::SORT_DESC."'.");
 		}
 
 		$bAscending = $sDirection === self::SORT_ASC;
@@ -248,13 +247,13 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 				&& (!MetaModel::IsValidAttCode($sClass, $sOrderBy)
 					|| ExclusionPolicy::ExcludesAttribute($sClass, $sOrderBy)
 					|| self::isMasked($sClass, $sOrderBy))) {
-				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
+				throw ToolRefusal::Because("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
 			}
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
 				&& UserRights::IsActionAllowedOnAttribute($sClass, $sOrderBy, UR_ACTION_READ) === UR_ALLOWED_NO) {
 				// Ordering by an attribute reports on its values, so it takes
 				// the same right as reading it.
-				throw new ToolCallException("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
+				throw ToolRefusal::Because("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
 			}
 
 			$aOrderBy = [$sOrderBy => $bAscending];
@@ -404,13 +403,13 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 * Asked of the page the call would return, so that a query matching a
 	 * handful of objects is served under the default limit.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	protected static function refuseUnattributablePage(bool $bAudit, int $iPage, bool $bActions = false): void
 	{
 		foreach (['audit' => $bAudit, 'actions' => $bActions] as $sArgument => $bAsked) {
 			if ($bAsked && $iPage > ObjectHistory::MAX_AUDIT_PAGE) {
-				throw new ToolCallException(sprintf(
+				throw ToolRefusal::Because(sprintf(
 					'%s is available for up to %d objects at a time; this page would hold %d. Pass limit=%d and page with next_offset, or drop %s and ask about the objects that matter one at a time.',
 					$sArgument,
 					ObjectHistory::MAX_AUDIT_PAGE,
@@ -450,14 +449,14 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 	 *
 	 * @return array<int, string>|null
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	protected static function fieldsForPage(string $sClass, string $sOutputFields, int $iLimit): ?array
 	{
 		$aFields = OutputFields::ParseFieldList($sClass, $sOutputFields);
 
 		if ($aFields === null && $iLimit > self::MAX_LIMIT_ALL_FIELDS) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'Asking for every attribute of %d objects returns more than any client can read. Either name the attributes you need in output_fields, or lower limit to %d or less.',
 				$iLimit,
 				self::MAX_LIMIT_ALL_FIELDS

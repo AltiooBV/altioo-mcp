@@ -10,8 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Read;
 
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * The `output_fields` argument: its spelling in a tool's schema, its parsing into the attribute
@@ -44,7 +44,7 @@ final class OutputFields
 	 *
 	 * @return array<int, string>|null The attribute codes to report, or null for all of them.
 	 *
-	 * @throws ToolCallException When a code is not an attribute of the class.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When a code is not an attribute of the class.
 	 * @since 1.0.0
 	 */
 	public static function ParseFieldList(string $sClass, string $sOutputFields): ?array
@@ -82,7 +82,7 @@ final class OutputFields
 		}
 
 		if (!empty($aUnknown)) {
-			throw new ToolCallException(self::UnknownAttributes($aUnknown, $sClass));
+			throw ToolRefusal::Because(self::UnknownAttributes($aUnknown, $sClass));
 		}
 
 		return $aFields;

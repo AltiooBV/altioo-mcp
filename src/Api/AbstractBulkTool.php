@@ -19,7 +19,6 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObject;
 use DBObjectSet;
-use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use RestUtils;
 use UserRights;
@@ -127,38 +126,38 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 * @param int $iBulkAction   UR_ACTION_BULK_MODIFY or UR_ACTION_BULK_DELETE.
 	 * @param int $iSingleAction The single-object right the bulk one sits on top of.
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	protected static function checkBulkAllowed(string $sClass, int $iBulkAction, int $iSingleAction, string $sVerb): void
 	{
 		if (!ExclusionPolicy::Serves($sClass)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($sClass));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass));
 		}
 
 		if (ChangeLogReservation::IsReserved($sClass)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass);
 		if ($sAccessRefusal !== null) {
-			throw new ToolCallException($sAccessRefusal);
+			throw ToolRefusal::Because($sAccessRefusal);
 		}
 		if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read
 		}
 		if (MetaModel::DBIsReadOnly()) {
-			throw new ToolCallException("The database is in read-only mode, cannot {$sVerb} objects.");
+			throw ToolRefusal::Because("The database is in read-only mode, cannot {$sVerb} objects.");
 		}
 		if (MetaModel::IsAbstract($sClass)) {
-			throw new ToolCallException("Class '{$sClass}' is abstract; act on the final class of each object instead.");
+			throw ToolRefusal::Because("Class '{$sClass}' is abstract; act on the final class of each object instead.");
 		}
 		if (!UserRights::IsActionAllowed($sClass, $iSingleAction)) {
-			throw new ToolCallException("Access denied: cannot {$sVerb} objects of class '{$sClass}'.");
+			throw ToolRefusal::Because("Access denied: cannot {$sVerb} objects of class '{$sClass}'.");
 		}
 		if (!UserRights::IsActionAllowed($sClass, $iBulkAction)) {
 			// Deliberately its own message: the caller may well be allowed to
 			// do this one object at a time, and that is the useful thing to
 			// know.
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				"Access denied: this user may not {$sVerb} objects of class '{$sClass}' in bulk. "
 				."Acting on them one at a time may still be allowed."
 			);
@@ -170,15 +169,15 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 *
 	 * @return array<int, int>
 	 *
-	 * @throws ToolCallException
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
 	 */
 	protected static function checkIds(array $aIds): array
 	{
 		if (empty($aIds)) {
-			throw new ToolCallException('No ids given.');
+			throw ToolRefusal::Because('No ids given.');
 		}
 		if (count($aIds) > self::MAX_OBJECTS) {
-			throw new ToolCallException(sprintf(
+			throw ToolRefusal::Because(sprintf(
 				'This call would touch %d objects, and %d is the most one call may. Work in batches of %d.',
 				count($aIds),
 				self::MAX_OBJECTS,
@@ -189,11 +188,11 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		$aClean = [];
 		foreach ($aIds as $mId) {
 			if (!is_int($mId) && !(is_string($mId) && ctype_digit($mId))) {
-				throw new ToolCallException('Ids must be integers; got '.var_export($mId, true).'.');
+				throw ToolRefusal::Because('Ids must be integers; got '.var_export($mId, true).'.');
 			}
 			$iId = (int)$mId;
 			if ($iId < 1) {
-				throw new ToolCallException("Invalid id '{$iId}'.");
+				throw ToolRefusal::Because("Invalid id '{$iId}'.");
 			}
 			$aClean[$iId] = $iId;
 		}
@@ -267,7 +266,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 	 *
 	 * @param array<string, mixed> $aFields
 	 *
-	 * @throws ToolCallException When an attribute is refused for the class outright.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When an attribute is refused for the class outright.
 	 */
 	protected static function checkAttributesWritable(string $sClass, array $aFields): void
 	{
@@ -288,7 +287,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		}
 
 		if (!empty($aRefused)) {
-			throw new ToolCallException(
+			throw ToolRefusal::Because(
 				'This call cannot be made on any object of this class: '.implode(' ', $aRefused)
 			);
 		}

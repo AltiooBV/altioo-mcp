@@ -19,12 +19,12 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use DBObjectSearch;
 use DBSearch;
 use MetaModel;
 use UserRights;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * What happened to one object, and who did it.
@@ -137,7 +137,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 	 * @param int $limit Maximum number of entries to return (default 50, max 500)
 	 * @param int $offset Number of entries to skip for paging
 	 * @return mixed An array containing the class, the id, the attribute asked about, the paging, the number of recorded operations and the entries themselves
-	 * @throws ToolCallException if the class is unknown, if the object is not found, or if the attribute is not one the class declares.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if the object is not found, or if the attribute is not one the class declares.
 	 */
 	public static function execute(
 		string $class,
@@ -148,32 +148,32 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 	): mixed
 	{
 		if ($id < 1) {
-			throw new ToolCallException("Invalid ID '{$id}'.");
+			throw ToolRefusal::Because("Invalid ID '{$id}'.");
 		}
 		if ($limit < 1 || $limit > HistoryReader::MAX_LIMIT) {
-			throw new ToolCallException('Invalid limit. Please specify a limit between 1 and '.HistoryReader::MAX_LIMIT.'.');
+			throw ToolRefusal::Because('Invalid limit. Please specify a limit between 1 and '.HistoryReader::MAX_LIMIT.'.');
 		}
 		if ($offset < 0) {
-			throw new ToolCallException('Invalid offset. Please specify a non-negative offset.');
+			throw ToolRefusal::Because('Invalid offset. Please specify a non-negative offset.');
 		}
 
 		if (!ExclusionPolicy::Serves($class)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class));
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class));
 		}
 
 		$oAccess = self::portalRefusal(static fn () => ObjectAccess::Current());
 
 		// The portal's refusal first, so that it is phrased as the portal's.
 		if (!$oAccess->ShowsHistory()) {
-			throw new ToolCallException('The portal shows no history. Call core_class_list for what it offers.');
+			throw ToolRefusal::Because('The portal shows no history. Call core_class_list for what it offers.');
 		}
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {
-			throw new ToolCallException(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
+			throw ToolRefusal::Because(ClassRefusal::Unreadable($class)); // exists, but not for this account to read
 		}
 
 		// The object gate before the log is read, so that a history request
 		// cannot report the existence of something a plain read would deny.
-		$oObject = $oAccess->Readable($class, $id) ?? throw new ToolCallException("Object {$class}::{$id} not found.");
+		$oObject = $oAccess->Readable($class, $id) ?? throw ToolRefusal::Because("Object {$class}::{$id} not found.");
 		$sFinalClass = get_class($oObject);
 
 		$fShows = self::portalRefusal(static fn () => $oAccess->ShownOf($oObject));
@@ -182,7 +182,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 		// this cannot map out what the portal withholds.
 		$sAttCode = trim($att_code);
 		if ($sAttCode !== '' && (!MetaModel::IsValidAttCode($sFinalClass, $sAttCode) || !$fShows($sAttCode))) {
-			throw new ToolCallException(OutputFields::UnknownAttributes([$sAttCode], $sFinalClass));
+			throw ToolRefusal::Because(OutputFields::UnknownAttributes([$sAttCode], $sFinalClass));
 		}
 
 		$aHistory = HistoryReader::Within(

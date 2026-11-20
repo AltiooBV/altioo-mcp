@@ -31,7 +31,8 @@
   "autoload": {
     "psr-4": {
       "Altioo\\iTop\\Extension\\MCP\\": "src"
-    }
+    },
+    "files": ["sdk-aliases.php"]
   },
   "autoload-dev": {
     "psr-4": {

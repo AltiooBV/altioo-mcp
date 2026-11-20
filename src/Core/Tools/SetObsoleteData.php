@@ -13,10 +13,10 @@ use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use appUserPreferences;
 use utils;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Turns the caller's own "Show obsolete data" preference on or off.
@@ -132,7 +132,7 @@ class SetObsoleteData extends AbstractMCPTool
 	 * @param bool $simulate When true (the default), the change is reported and not stored
 	 *
 	 * @return mixed The preference as it now stands, what it was, and whether the call moved it
-	 * @throws ToolCallException if the preference cannot be stored.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the preference cannot be stored.
 	 */
 	public static function execute(bool $visible, bool $simulate = DryRun::SIMULATE_BY_DEFAULT): mixed
 	{
@@ -147,7 +147,7 @@ class SetObsoleteData extends AbstractMCPTool
 		// a version or a pack makes it one.
 		$sRefusal = AccessGrants::RefusalFor(self::PREFERENCE_CLASS);
 		if ($sRefusal !== null) {
-			throw new ToolCallException($sRefusal);
+			throw ToolRefusal::Because($sRefusal);
 		}
 
 		// Read before the write, and read the effective value rather than the
@@ -172,7 +172,7 @@ class SetObsoleteData extends AbstractMCPTool
 		try {
 			appUserPreferences::SetPref('show_obsolete_data', $visible);
 		} catch (\Throwable $e) {
-			throw new ToolCallException(ErrorReport::OpaqueFailure('Failed to store the preference', $e));
+			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to store the preference', $e));
 		}
 
 		return ToolOutput::StructuredWrite([

@@ -23,6 +23,7 @@ use DBObject;
 use DBObjectSet;
 use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * Set the same attributes on a list of objects.
@@ -106,7 +107,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	 *
 	 * @return mixed A per-object report
 	 *
-	 * @throws ToolCallException When the class, the ids or the bulk right rule out the whole call.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the class, the ids or the bulk right rule out the whole call.
 	 */
 	public static function execute(
 		string  $class,
@@ -122,7 +123,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		$simulate = DryRun::Simulated($simulate);
 
 		if (empty($fields)) {
-			throw new ToolCallException('No fields provided for update.');
+			throw ToolRefusal::Because('No fields provided for update.');
 		}
 
 		$aIds = self::checkIds($ids);
@@ -140,7 +141,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		$iLinkEntries = WriteCap::LinkEntriesIn($class, $fields);
 		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds) * (1 + $iLinkEntries), $iLinkEntries > 0);
 		if ($sCapRefusal !== null) {
-			throw new ToolCallException($sCapRefusal);
+			throw ToolRefusal::Because($sCapRefusal);
 		}
 
 		// Once for the batch, before the loop: forty objects changed by one
@@ -182,7 +183,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// object and this row may have moved what it reads. See EditPolicy.
 				$aBadKeys = EditPolicy::RefusalsForExternalKeys($mObject, array_keys($aValues));
 				if (!empty($aBadKeys)) {
-					throw new ToolCallException(implode(' ', $aBadKeys));
+					throw ToolRefusal::Because(implode(' ', $aBadKeys));
 				}
 
 				// Before the check, because the check is what moves them:

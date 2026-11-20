@@ -12,9 +12,9 @@ use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
-use Mcp\Server\Exception\ResourceReadException;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
+use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
 
 /**
  * @internal
@@ -62,20 +62,20 @@ class ClassDetail extends AbstractMCPResourceTemplate
 	 * @param string $class The {class} variable extracted from the URI, e.g. 'UserRequest'
 	 * @return string A JSON-encoded array containing class details - the same
 	 *                payload core_class_schema returns, encoded the same way
-	 * @throws ResourceReadException if the class is missing, unknown, access is denied, or the result cannot be encoded.
+	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) if the class is missing, unknown, access is denied, or the result cannot be encoded.
 	 */
 	public function read(string $uri, string $class): mixed
 	{
 		$sClass = $class;
 
 		if ($sClass === '') {
-			throw new ResourceReadException("Missing class argument.");
+			throw ResourceRefusal::Because("Missing class argument.");
 		}
 
 		// Unknown and forbidden answer alike, so reading this template cannot
 		// map out the classes the caller is not allowed to see.
 		if (!DatamodelReader::IsReadable($sClass)) {
-			throw new ResourceReadException(ClassRefusal::Unreadable($sClass));
+			throw ResourceRefusal::Because(ClassRefusal::Unreadable($sClass));
 		}
 
 		return ResourceOutput::Json(DatamodelReader::Describe($sClass));

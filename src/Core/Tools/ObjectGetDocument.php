@@ -16,9 +16,9 @@ use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
-use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\ToolAnnotations;
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
 /**
  * One document, named explicitly, per call.
@@ -124,7 +124,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 	 *
 	 * @return mixed The untrusted-text notice, then the document as image content or as an embedded file
 	 *
-	 * @throws ToolCallException When the object, the attribute or the document cannot be read.
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the object, the attribute or the document cannot be read.
 	 */
 	public static function execute(
 		string $class,
@@ -135,13 +135,13 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is a real way into the change log and not a formality.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw new ToolCallException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
 		}
 
 		try {
 			$oDocument = DocumentFetch::Fetch($class, $id, $att_code);
 		} catch (MCPDocumentException $e) {
-			throw new ToolCallException($e->getMessage());
+			throw ToolRefusal::Because($e->getMessage());
 		}
 
 		// The notice first: the file is whatever its author put in it, and the
