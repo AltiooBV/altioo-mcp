@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
@@ -92,8 +93,8 @@ final class WriteCap
 		return $bUpperBound ? $sAnswered.' '.self::UPPER_BOUND_NOTE : $sAnswered;
 	}
 
-	/** Said after a refusal whose count is an upper bound (a bulk update that sends link-set entries). */
-	public const UPPER_BOUND_NOTE = 'That count is an upper bound: it counts every link-set entry the call sends for every object, including entries an object already holds. Splitting the call into smaller ones helps.';
+	/** Said after a refusal whose count is an upper bound (a bulk update that names a link set). */
+	public const UPPER_BOUND_NOTE = 'That count is an upper bound: for every object it counts each link-set entry the call sends and each row the named link sets hold now, including entries an object already holds. Splitting the call into smaller ones helps.';
 
 	/**
 	 * The link rows a write is about to add, change or remove, for the attributes it set, to be added to the objects a tool asks for.
@@ -173,8 +174,9 @@ final class WriteCap
 
 	/**
 	 * The link-set entries a caller sent for a class, before any object exists to ask: every entry of every link set in
-	 * the fields. Exact for a creation; for a write to objects that already hold rows, an upper bound, since an entry the
-	 * object has already is counted too.
+	 * the fields. Exact for a creation. For a write to objects that already hold rows it is the additions' side of an
+	 * upper bound: an entry the object has already is counted too, and the rows a write removes are not counted here at
+	 * all, so a bulk update adds {@see LinkRowsHeldBy()}.
 	 *
 	 * @param array<array-key, mixed> $aFields
 	 *
@@ -194,6 +196,49 @@ final class WriteCap
 		}
 
 		return $iEntries;
+	}
+
+	/**
+	 * The link rows the objects of a bulk update hold now in each link set the call names: what the call can remove, which
+	 * {@see LinkEntriesIn()} does not see (`"contacts_list": []` sends no entry and removes every row; review 2026-11-20, N-4).
+	 * One counting query per link set over all the ids, never an object loaded (ADR 0019). With the cap off it counts nothing,
+	 * and a link set it cannot count refuses the call, as every other count the cap cannot read does.
+	 *
+	 * @param array<array-key, mixed> $aIds    The ids of the objects, as the tool validated them.
+	 * @param array<array-key, mixed> $aFields The attributes the call sets.
+	 *
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When a link set cannot be counted.
+	 * @since 2.1.0
+	 */
+	public static function LinkRowsHeldBy(string $sClass, array $aIds, array $aFields): int
+	{
+		if ($aIds === [] || Settings::GetMaxWritesPerHour() === 0) {
+			return 0;
+		}
+
+		$iRows = 0;
+		foreach (array_keys($aFields) as $mAttCode) {
+			try {
+				if (!MetaModel::IsValidAttCode($sClass, (string)$mAttCode)) {
+					continue;
+				}
+				$oAttDef = MetaModel::GetAttributeDef($sClass, (string)$mAttCode);
+				if (!$oAttDef->IsLinkSet()) {
+					continue;
+				}
+				foreach (array_chunk(array_map('intval', array_values($aIds)), 500) as $aChunk) {
+					$oSearch = new DBObjectSearch($oAttDef->GetLinkedClass());
+					$oSearch->AddCondition($oAttDef->GetExtKeyToMe(), $aChunk, 'IN');
+					$iRows += (new DBObjectSet($oSearch))->Count();
+				}
+			} catch (Throwable $e) {
+				ErrorReport::Log('The write cap could not count the link rows a bulk update can remove, so the call is refused ('.get_class($e).').');
+
+				throw ToolRefusal::Because('Writes are refused: the link rows this call could remove cannot be counted now. Reads are not affected. Ask your administrator.');
+			}
+		}
+
+		return $iRows;
 	}
 
 	/**

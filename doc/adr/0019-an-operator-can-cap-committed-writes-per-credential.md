@@ -23,6 +23,13 @@ addresses; this limits committed objects.
   call sends), since the objects are not loaded to tell which entries each already holds (create, update and stimulus are
   exact). Its refusal says the count is an upper bound and that splitting the call helps (`WriteCap::UPPER_BOUND_NOTE`).
   Rejected: loading every object of a bulk call to count exactly, a read per object before a write the operator wanted capped.
+  *2026-11-20, Guy Couronne (re-review N-4): a bulk update counts the rows it can remove as well.* The bound counted the entries the
+  call sends and not the rows it takes away, so `"contacts_list": []` on N tickets asked for N while every link row of every ticket went:
+  one call could remove an unbounded number of objects against a small cap. The bound is now, per object, 1 + the entries sent, plus the
+  rows each named link set holds now over all the ids (`WriteCap::LinkRowsHeldBy()`: **one counting query per link set**, no object loaded,
+  and none at all when the cap is off). It stays an upper bound (an entry an object already holds is counted twice) and the refusal says
+  so. A link set that cannot be counted refuses the call, as every count the cap cannot read does. A create, an update and a stimulus
+  were already exact, removals included (`LinkRowsOf()` compares the set before and after).
 - **Bulk is refused whole, before it starts.** A bulk call asks once for all its ids; if it would pass the cap nothing is
   written. The alternative, a partial bulk, leaves an operator reading which half was committed. A call larger than the cap
   itself says so, since waiting would never free enough room.

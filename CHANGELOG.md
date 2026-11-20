@@ -23,7 +23,7 @@ entry itself, not left to be inferred from it.
 
 ## [2.1.0] - Unreleased
 
-**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Seventeen entries under *Fixed* are marked Security (two of them concern tool packs); none
+**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Eighteen entries under *Fixed* are marked Security (two of them concern tool packs); none
 needs a migration. An advisory token's rehearsal is now also recorded and answered as one: a token carrying `MCP-advisory`
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
@@ -166,6 +166,10 @@ what said so.
   the one object it names, so with a cap of 3 and 2 spent a single `core_object_create` with 19 `contacts_list` entries was accepted and committed 20 objects before the next call was refused. A create, an update and a stimulus now ask for the object plus the link rows the
   call would add, change or remove (a complete list that repeats rows already there counts none of them), `core_object_bulk_create` for its rows plus every link-set entry they send, and `core_object_bulk_update` for each object plus the entries the
   call sends (an upper bound: it does not load the objects, and a refusal says so and that splitting the call helps; [ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)). **Visible to operators with `mcp_max_writes_per_hour` set:** a write that sets a link set can now be refused for more objects than before, and the refusal says how many the call would write. Cap-only, 2.x.
+- **Security: a bulk update could remove an unbounded number of link rows against a small write cap** ([ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md), amended 2026-11-20). The entry above counted the link entries a bulk update *sends*, so
+  `core_object_bulk_update` with `"contacts_list": []` on 100 tickets asked the cap for 100 objects while every link row of every ticket was removed (the same change through `core_object_update` asks for the object and its rows, and was refused);
+  the audit row recorded the true count only afterwards, so the next call was refused, not this one. The bound now counts, for every object, the entries sent **and the rows each named link set holds now**, from one counting query per link set over the ids (no object is loaded, and nothing is counted
+  with the cap off). It remains an upper bound and the refusal says so; a link set that cannot be counted refuses the call. **Visible to operators with `mcp_max_writes_per_hour` set:** a bulk update that names a link set can be refused for more objects than before, the more so when it empties one. Cap-only, 2.x.
 - **Security: in portal mode a stimulus could set fields the portal's own transition form shows read-only or not at all.** The fields a transition accepted were the ones the datamodel's target state prompts for, so on `ev_reopen` of a resolved ticket - where the stock portal's form holds `public_log`
   (editable), `org_id` and `team_id` (read-only) and no `agent_id` - `core_object_apply_stimulus` listed `team_id` and `agent_id` as settable and committed them: a requester routed their own ticket to a team and an agent of their choosing (staff they could already see).
   The fields of a transition are now those of the portal's transition form, built as the portal's `ApplyStimulusAction` builds it and merged by its own `PrepareFields()`, and nothing else: not the edit form's settable fields as well (the portal never lets a transition submit one; an assistant changes an edit-form field with `core_object_update` first). The refusal names the transition's fields and says so ([ADR 0005](doc/adr/0005-portal-mode-writes-follow-the-portal-form.md), amended 2026-11-19).
