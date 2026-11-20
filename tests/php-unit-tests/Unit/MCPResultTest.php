@@ -59,20 +59,33 @@ class MCPResultTest extends TestCase
 
 	/**
 	 * MCPResponse::PrepareException() json_encodes the result
-	 * directly, so the public shape is part of the wire contract.
+	 * directly, so the public shape is part of the wire contract: the code and the words, nothing else.
 	 */
-	public function testSerialisesToJsonWithPublicProperties(): void
+	public function testSerialisesToTheCodeAndTheWords(): void
 	{
 		$oResult = new MCPResult(MCPResult::INTERNAL_ERROR, 'boom');
-		$oResult->mcpMethod = 'tools/call';
+
+		$this->assertSame(['code' => MCPResult::INTERNAL_ERROR, 'message' => 'boom'], json_decode(json_encode($oResult), true));
+	}
+
+	/**
+	 * Review 2026-11-18, RT-8: a request refused before any tool ran was answered with the audit row's own fields,
+	 * `mcpMethod`, `mcpName` and `requestParams`, which named this module's internals to the caller and held a constant or null.
+	 */
+	public function testTheAuditContextNeverReachesTheCaller(): void
+	{
+		$oResult = new MCPResult(MCPResult::UNAUTHORIZED, 'No credential was sent.');
+		$oResult->mcpMethod = 'exceptions';
 		$oResult->mcpName = 'ObjectGet';
+		$oResult->requestParams = '{"name":"x"}';
+		$oResult->client = 'a client';
 
 		$aDecoded = json_decode(json_encode($oResult), true);
 
-		$this->assertSame(MCPResult::INTERNAL_ERROR, $aDecoded['code']);
-		$this->assertSame('boom', $aDecoded['message']);
-		$this->assertSame('tools/call', $aDecoded['mcpMethod']);
-		$this->assertSame('ObjectGet', $aDecoded['mcpName']);
+		foreach (['mcpMethod', 'mcpName', 'requestParams', 'client'] as $sField) {
+			$this->assertArrayNotHasKey($sField, $aDecoded);
+		}
+		$this->assertStringNotContainsString('mcp', strtolower(json_encode($oResult)));
 	}
 
 	/**

@@ -701,10 +701,13 @@ records two). In particular, and specifically relevant here:
   # http {} context - both headers, or switching to Auth-Token walks around the limit
   limit_req_zone  "$http_authorization$http_auth_token" zone=mcp_token:10m rate=5r/s;
   limit_conn_zone "$http_authorization$http_auth_token" zone=mcp_token_conn:10m;
+  # a request with no credential has an empty key there, and nginx does not count a request with an empty key
+  limit_req_zone  $binary_remote_addr zone=mcp_addr:10m rate=10r/s;
 
   # server {} context
   location ~ ^/(env-[^/]+|extensions)/altioo-mcp/index\.php$ {
       limit_req  zone=mcp_token burst=20 nodelay;
+      limit_req  zone=mcp_addr  burst=40 nodelay;
       limit_conn mcp_token_conn 4;
       limit_req_status  429;
       limit_conn_status 429;
@@ -712,7 +715,11 @@ records two). In particular, and specifically relevant here:
   }
   ```
 
-  Key on both headers a token can arrive in, `Authorization` and `Auth-Token`. The zone holds
+  Key on both headers a token can arrive in, `Authorization` and `Auth-Token`. **Limit anonymous traffic by
+  client address too**, as the second zone does: a request that brings no credential has nothing to key
+  on, it is answered `401` and still leaves an audit row (method `exceptions`), so with no address limit an
+  anonymous caller can grow the audit table as fast as the server answers; `mcp_audit_retention_days` bounds
+  that growth only after the fact. The zone holds
   them in the web server's memory, as the web server
   already does for every request it handles. On Apache, `mod_qos` does the same job. Beyond
   per-token limits, the PHP-FPM pool's `pm.max_children` is what bounds the whole instance: keep

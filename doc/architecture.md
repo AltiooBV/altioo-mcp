@@ -263,7 +263,7 @@ the source wins where they differ. Names carry no namespace: `Controller\Gate\Lo
 [How one request flows](#how-one-request-flows).
 
 A refusal from a gate is **not** a JSON-RPC error. It is a plain JSON body
-`{"code": 1, "message": "…", "mcpMethod": "exceptions", …}` with the HTTP status in the table
+`{"code": 1, "message": "…"}` with the HTTP status in the table
 (`MCPResponse::PrepareException`, `MCPController::buildErrorResult`), and a `401`
 adds `WWW-Authenticate: Bearer realm="iTop MCP"`, with `error="invalid_token"` and
 `resource_metadata="…"` where the table says so. Everything from step 14 on is the MCP SDK's own

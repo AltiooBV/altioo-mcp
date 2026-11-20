@@ -90,6 +90,34 @@ for URL in "$ENDPOINT" "$ALT_ENDPOINT"; do
     || fail "an unauthenticated call to $PATH_ONLY was answered $STATUS, expected 401"
 done
 
+# What the refusals before the login look like on the wire, and which of them leave an audit row (review
+# 2026-11-18: RT-5, RT-8, HA-13). A malformed Authorization header is no credential: a 401, never the warning
+# iTop's own Basic login raises on it. A bad token is audited under the method `exceptions`, as the README says.
+# A CORS preflight sets no cookie. A refusal's body is the code and the words, not the audit row's own fields.
+echo "2b. malformed credentials are refused 401, a refusal is audited, a preflight sets no cookie"
+REFUSAL_BODY=$(mktemp)
+for AUTH in 'Bearer' 'Basic !!!!' "Basic $(printf 'nocolon' | base64)"; do
+  STATUS=$(curl -s -o "$REFUSAL_BODY" -w '%{http_code}' -X POST "$ENDPOINT" \
+    -H 'Content-Type: application/json' -H "Authorization: ${AUTH}" -d "$INITIALIZE")
+  echo "   HTTP $STATUS   Authorization: ${AUTH}"
+  [ "$STATUS" = "401" ] || fail "a malformed Authorization header ('${AUTH}') was answered $STATUS, expected 401"
+  grep -q 'Undefined array key' "$REFUSAL_BODY" "$ITOP_DIR/log/error.log" 2>/dev/null && fail "a malformed Authorization header reached iTop's Basic login"
+done
+BODY_REFUSED=$(curl -s -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H 'Authorization: Bearer not-a-token' -d "$INITIALIZE")
+case "$BODY_REFUSED" in *mcpMethod*|*requestParams*|*mcpName*) fail "a refusal names the audit row's own fields: $BODY_REFUSED" ;; esac
+PREFLIGHT_HEADERS=$(mktemp)
+curl -s -D "$PREFLIGHT_HEADERS" -o /dev/null -X OPTIONS "$ENDPOINT" -H 'Origin: https://app.example' -H 'Access-Control-Request-Method: POST'
+grep -qi '^set-cookie:' "$PREFLIGHT_HEADERS" && fail "a CORS preflight was answered with a Set-Cookie"
+if [ -n "${DB_NAME:-}" ] && [ -n "${DB_HOST:-}" ]; then
+  # shellcheck source=itop-db.sh
+  . "$MODULE_SRC/tools/ci/itop-db.sh"
+  EXCEPTION_ROWS=$(itop_sql "SELECT COUNT(*) FROM \`${DB_PREFIX:-}priv_altioo_event_mcp_service\` WHERE mcp_method = 'exceptions' AND status = 'error'")
+  echo "   rows under the method 'exceptions': ${EXCEPTION_ROWS:-0}"
+  [ "${EXCEPTION_ROWS:-0}" -ge 4 ] || fail "the refusals before the login left fewer audit rows than the README says (every one but a preflight)"
+else
+  echo "   no DB_HOST/DB_NAME: the audit rows are not read back"
+fi
+
 echo "3. initialize, with a token"
 HEADERS=$(mktemp); BODY=$(mktemp)
 curl -s -D "$HEADERS" -o "$BODY" \

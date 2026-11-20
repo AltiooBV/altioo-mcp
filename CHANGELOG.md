@@ -169,6 +169,13 @@ what said so.
 - **An empty or malformed `Authorization` header was counted as a credential and reached iTop's Basic login.** `Bearer` alone, `Basic !!!!` and a Basic value with no colon once decoded passed the credential check, and iTop's own login split them on a colon without checking:
   "Undefined array key 1", a server path in a `200` where `display_errors` is on and a misleading `401` where it is off. Such a header is now no credential: the request is answered the `401` and the audit row of a request that brought none, and the header
   is dropped before iTop's login can read it, beside an `Auth-Token` as well. A usable Basic or bearer header is untouched.
+- **A CORS preflight set a session cookie and left a session file, and a refusal named the audit row's own fields.** iTop's startup opens a session before the endpoint's first line runs, and a preflight (`OPTIONS` with an `Origin`) was answered
+  by the first gate without ending it: `204` with a `Set-Cookie` and one session file per preflight, against the README's "the endpoint sets none". The session the request opened is now ended before the preflight is answered (one a browser's cookie named is kept, as on every other refusal). A request refused before any tool ran was
+  answered `{"code":1,"message":"…","mcpMethod":"exceptions","mcpName":null,"requestParams":null}`: the last three are the audit row's fields, null or a constant here, and are no longer sent. A refusal is `{"code":…,"message":…}`. SECURITY.md's rate-limit example now
+  limits anonymous traffic by client address as well (a request with no credential has nothing to key on and still leaves an audit row).
+- **The README said which refusals are audited, and was not exact.** A rejected or invalid token, a wrong password and a request with a malformed `Authorization` header are audited under the method `exceptions`, as every refusal before the login is (this was true from the change that writes the row before the answer; the review of
+  2026-11-18 found it untrue on an earlier build). The troubleshooting section now lists exactly which requests leave a row and which do not: a CORS preflight, a `405`, a body that names no method, a method `log_mcp_method` does not list, and **a valid token of a disabled user**. For that last one iTop's own login ends the request with the text `Bad user` (HTTP `200`, `text/html`)
+  before the module can answer, with no row; refusing it first would mean repeating iTop's token lookup, so it is documented and left.
 
 ### Added
 

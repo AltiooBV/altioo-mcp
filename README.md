@@ -763,7 +763,8 @@ cookie: a request that brings no credential of its own is refused `401` before t
 even looked at, and one that brings a credential has its session reset before the login runs.
 Either way the cookie decides nothing — and the endpoint sets none: the session iTop's login
 opens is destroyed before the answer is sent, so no `Set-Cookie` goes out and no session file
-stays behind.
+stays behind, a CORS preflight included. The one answer that is not the module's is iTop's own to a
+valid token of a *disabled* user, which iTop's login ends itself (see *Troubleshooting*).
 
 **3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
 shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits
@@ -1179,10 +1180,33 @@ an audit log.
 `initialize`. That row is written whenever a client connects, at every log level — unless the
 client speaks `2026-07-28`, which has no `initialize` to write a row for; for one of those,
 look for the method it actually called instead. Then look for
-one with the method `exceptions`: every refusal that lands before the login — the 403 on the
-host, the 415 on the media type, the 401 on a request that brought no credential — is caught at
-the entry point and audited under that method, so such a row means the request did arrive and
-was turned away, and case 2 below is fixed with a module parameter.
+one with the method `exceptions`: such a row means the request did arrive and was turned away,
+and case 2 below is fixed with a module parameter.
+
+**Exactly which requests leave a row** (with `log_mcp_service` on and the method in
+`log_mcp_method`; `exceptions` is in the default list):
+
+- Every refusal the endpoint itself answers before or at the login, under the method
+  `exceptions`, with a user only where the login had got that far: the `403` on the host or the
+  origin, the `415` on the media type, the `401` on a request that brought no credential (an empty
+  or malformed `Authorization` header counts as none), the `401` on a token sent as a URL
+  parameter, and the `401` on a credential iTop did not accept — an unknown, expired or revoked
+  token, a wrong password, a token with no MCP scope — as well as a profile this instance does not
+  let through.
+- A refused JSON-RPC batch, as one row of method `batch`, whatever `log_mcp_method` says.
+- Every call of a method in `log_mcp_method`, under that method's name.
+
+These leave **no** row:
+
+- a CORS preflight (`OPTIONS` with an `Origin`): it never reaches a login;
+- a `GET`, `PUT` or `DELETE`, answered `405`, and a body that is not a JSON-RPC request or names no
+  method (a syntax error, a call without its session id): the row is made from a method, and there
+  is none;
+- a call of a method `log_mcp_method` does not list;
+- **a valid token of a user who is disabled.** iTop's own login stops that request with the text
+  `Bad user` (HTTP `200`, `text/html`, and iTop sets its session cookie) before this module can
+  answer it, and the module does not repeat iTop's token lookup to refuse it first. The line is in
+  `log/error.log` (`Bad user`, with the stack of the login), under the log's `IssueLog` channel.
 
 No row at all is not yet proof that nothing arrived. `log_mcp_service => false` writes no rows
 whatsoever, and a `log_mcp_method` list that does not name a method suppresses that method's

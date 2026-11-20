@@ -110,6 +110,11 @@ final class MCPController
 					$bKeepSession = false;
 				}
 				if (!(new $sGate())->Check($oKPI)) {
+					// A gate that answers the request itself (the CORS preflight) ends it here, and iTop's startup has
+					// already opened a session and queued its cookie: a preflight sets none and leaves no file (review
+					// 2026-11-18, RT-8). A session a browser's cookie named is kept, as on every other refusal.
+					self::discardRequestSession($bKeepSession);
+
 					return;
 				}
 			}
