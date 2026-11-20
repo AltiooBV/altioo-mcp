@@ -161,6 +161,7 @@ class LogAPILogger extends AbstractLogger
 		if ($sReference !== null) {
 			$interpolated = '['.$sReference.'] '.$interpolated;
 		}
+		$interpolated = self::oneLine($interpolated);
 		if (strlen($interpolated) > self::MAX_MESSAGE_BYTES) {
 			$interpolated = mb_strcut($interpolated, 0, self::MAX_MESSAGE_BYTES, 'UTF-8').'…';
 		}
@@ -205,7 +206,7 @@ class LogAPILogger extends AbstractLogger
 	{
 		$aReduced = [];
 		foreach ($context as $mKey => $mValue) {
-			$sKey = (string) $mKey;
+			$sKey = self::oneLine((string) $mKey);
 
 			if (in_array(strtolower($sKey), self::DROPPED_KEYS, true)) {
 				continue;
@@ -239,8 +240,20 @@ class LogAPILogger extends AbstractLogger
 
 	private static function cut(string $sValue): string
 	{
+		$sValue = self::oneLine($sValue);
+
 		// mb_strcut cuts to a byte count without splitting a character.
 		return strlen($sValue) > self::MAX_VALUE_BYTES ? mb_strcut($sValue, 0, self::MAX_VALUE_BYTES, 'UTF-8').'…' : $sValue;
+	}
+
+	/**
+	 * The text without the characters that make one line of a log read as two (see LineControls). A caller's text reaches this
+	 * logger - a tool name it made up, a client name - and log/error.log is read by people and forwarded by lines: a newline in it
+	 * writes a line of its own that starts with whatever header the caller chose (review 2026-11-20, N-3).
+	 */
+	private static function oneLine(string $sText): string
+	{
+		return LineControls::Replace(mb_scrub($sText, 'UTF-8')) ?? '';
 	}
 
 	/**

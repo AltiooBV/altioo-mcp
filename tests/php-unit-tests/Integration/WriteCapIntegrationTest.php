@@ -341,6 +341,40 @@ class WriteCapIntegrationTest extends ItopDataTestCaseAlias
 		}
 	}
 
+	/**
+	 * Review 2026-11-20, N-4: the bound counted the entries a bulk update sends and not the rows it removes, so `"contacts_list": []`
+	 * on N tickets asked for N while every link row of every ticket went. The rows the named sets hold now are counted too.
+	 */
+	public function testABulkUpdateThatEmptiesALinkSetIsCountedForTheRowsItRemoves(): void
+	{
+		[$iOrg, $aPeople, $iTicket] = $this->ticketWithPeople(6);
+		$iOther = (int)$this->CreateUserRequest(2, ['org_id' => $iOrg, 'caller_id' => $aPeople[0]])->GetKey();
+		foreach ([$iTicket, $iOther] as $iId) {
+			foreach ($aPeople as $iPerson) {
+				$this->createObject('lnkContactToTicket', ['ticket_id' => $iId, 'contact_id' => $iPerson]);
+			}
+		}
+		CMDBObject::SetCurrentChange(null);
+		$this->cap(5);
+
+		try {
+			$this->call(
+				fn () => ObjectBulkUpdate::execute('UserRequest', [$iTicket, $iOther], ['contacts_list' => []], false),
+				'{}'
+			);
+			$this->fail('two tickets that hold six link rows each, emptied, against a cap of five: the old bound was two');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('This call would write 14 objects', $e->getMessage(), 'the two tickets and the twelve rows that go');
+			$this->assertStringContainsString('That count is an upper bound', $e->getMessage());
+		}
+		$this->assertSame(12, (new DBObjectSet(DBObjectSearch::FromOQL('SELECT lnkContactToTicket WHERE ticket_id IN (:a, :b)'), [], ['a' => $iTicket, 'b' => $iOther]))->Count(), 'the refused call removed nothing');
+
+		// With room for them it empties both, and counts what it wrote.
+		$this->cap(20);
+		$this->call(fn () => ObjectBulkUpdate::execute('UserRequest', [$iTicket, $iOther], ['contacts_list' => []], false), '{}');
+		$this->assertSame(0, (new DBObjectSet(DBObjectSearch::FromOQL('SELECT lnkContactToTicket WHERE ticket_id IN (:a, :b)'), [], ['a' => $iTicket, 'b' => $iOther]))->Count());
+	}
+
 	public function testABulkUpdateWithoutLinkSetsIsRefusedWithoutTheUpperBoundNote(): void
 	{
 		$this->cap(2);

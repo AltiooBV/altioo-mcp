@@ -7,7 +7,14 @@ a verification date.
 ```
 VERIFIED    iTop 3.2.2 source, paths cited inline
 AS OF       August 2026
-RE-VERIFIED 2026-11-11, against the source tags 3.2.3-3 and 3.3.0-1: branch status (§1),
+RE-VERIFIED 2026-11-20, for 2.1.0, against Combodo/iTop's tag list and the raw source of tags
+            3.2.3-3 and 3.3.0-1: no newer tag exists on any branch (3.3.0-1 is still the
+            newest 3.3, 3.2.3-3 the newest 3.2, 3.1.3, 3.0.4 and 2.7.13 the last of their
+            lines, nothing above 3.3), so branch status (§1) holds as written; `PHP_MIN_VERSION`
+            and `PHP_NOT_VALIDATED_VERSION` (§2) read again on both tags and unchanged. The paths
+            cited elsewhere are not re-read: they were checked on 2026-11-11 against these same
+            two tags, which have not moved on.
+            2026-11-11, against the source tags 3.2.3-3 and 3.3.0-1: branch status (§1),
             PHP constants (§2), the extension.xml elements read (§5), the harness pin (§8),
             and every path cited here. 3.3.0-1 changes seven files from 3.3.0, all in setup
             (the extension map, the wizard's audit step) and their tests: none cited here.

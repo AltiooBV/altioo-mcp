@@ -95,7 +95,7 @@ sequenceDiagram
 
   alt Token given directly
     alt Console user
-      P->>I: My Account, Personal tokens: MCP scope
+      P->>I: My Account, Personal tokens: MCP scope, and an expiry when the operator requires one
     else Portal user
       A->>I: User management, Personal tokens: MCP scope and an expiry
     end
@@ -118,11 +118,16 @@ sequenceDiagram
   opt altioo-oauth-server installed and the token came from a grant
     M->>O: Granted for the URL called? (in-process)
   end
+  opt mcp_token_max_days above 0, console mode
+    M->>I: Does the token expire within that many days?
+  end
   M->>I: Each tool: UserRights, or in portal mode the portal's rules
   alt Accepted
     M-->>C: Result
   else Token refused
     M-->>C: 401 invalid_token, so an OAuth client refreshes or connects again
+  else Token lives too long, or in portal mode longer than mcp_portal_token_max_days
+    M-->>C: 401 without invalid_token: a token with an expiry is needed, not a refresh
   end
 ```
 
@@ -176,9 +181,9 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 
 | Folder | Holds |
 |---|---|
-| `Controller` | The endpoint, `MCPController`, with `CallRequest`, `CallLog` and `MCPResponse`; each check a request passes is one class under `Controller\Gate`, run from one ordered list |
+| `Controller` | The endpoint, `MCPController`, with `CallRequest`, `CallLog`, `MCPResponse` and `PreparedAnswer` (the answer, held back until the audit row is written), `BatchRefusal` and `RequestSession`; each check a request passes is one class under `Controller\Gate`, run from one ordered list |
 | `Hook` | What iTop calls into: `AuditHousekeeping`, the background process |
-| `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), opens and closes the request's state (`RequestScope`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and its session store |
+| `Service\Server` | Builds the MCP server for one request from the registry (`MCPService`), opens and closes the request's state (`RequestScope`), what a caller is served (`ServedElements`), the warnings about stale settings (`SettingsWarnings`), and the answer to a `DELETE` (`NoSessionTeardownMiddleware`): the endpoint keeps no session |
 | `Core` | The core tools, resources, resource templates and prompts, and `ServerInstructions` |
 | `Service\Portal` | The portal: `PortalPolicy` and what it is compiled from (with `PortalLists`, the columns it lists), `PortalAccess` (the portal's `ObjectAccess`, which also decides the rows of a link set), the description and the rows a list is built from |
 | `Service\Write` | Turning a caller's fields into a checked write: `DryRun`, `WritePlan`, `WriteValues`, `DeletionCascade`, `WriteOutcome` and the rules a value must pass (`EditPolicy`, `MentionPolicy`, `FormulaPolicy`, `ExternalKeyPolicy`) |
@@ -187,29 +192,39 @@ top rank, `Helper`, `Model` and `Exception` the bottom one):
 | `Service\Rights` | The rules everything above asks: `TokenScopes`, `AccessPolicy`, `ServedAccess`, `ExclusionPolicy` (with `ExclusionSettings` and `ExclusionSearches`), `SecretPolicy`, the barrier on access-granting classes (`AccessGrants` and its parts) and the grading of a class's rights |
 | `Service\Audit` | The audit trail: `AuditRetention`, `ChangeSummary`, `ReadSummary` |
 | `Helper`, `Model`, `Exception` | Small stateless utilities and per-request facts (`Settings` and its catalogue `SettingNames`, `MCPLog`, `PortalMode`, `ObjectId`, `MCPHttp`), the value object `MCPResult`, and the exceptions |
-| `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`; the classes beside it that a pack may call are on the `@api` surface below. iTop has no equivalent folder |
+| `Api` | What a pack extends or calls: the abstract elements, `iMCPServiceProvider`, `MCPRegistry`, `MCPExtensionCollector`, `ToolOutput`, `ResourceOutput`, `ToolRefusal`, `ResourceRefusal`, `ChangeTracking`, `MCPModule` and `Testing\ElementContract`; the classes beside it that a pack may call are on the `@api` surface below. iTop has no equivalent folder |
 
 ### How one request flows
 
 The arrows above are import rules; this is the order things happen in, for a call that
 succeeds.
 
-1. **`Controller\MCPController`** receives the request and runs `Controller\Gate`'s gates in the
+1. **`Controller\MCPController`** receives the request. Before any gate runs, `Controller\RequestSession`
+   records whether the PHP session iTop opened at start-up is one a browser's cookie named and that holds
+   something, a console user's session, which this request must not end. It then runs `Controller\Gate`'s gates in the
    order of its `GATES` list: `PreflightGate`, `HostIsServedGate`, `BodyIsJsonGate`,
    `CredentialPresentedGate`, `TokenNotAParameterGate`, `LoginGate`, `McpProfileGate`,
    `TokenLoginAccountedForGate`, `TokenAudienceGate`, `ConsoleTokenLifetimeGate`. Each lets the request go on or answers
    it. The list is the code's (`MCPController::GATES`), the order is the security property, and
    the reason is on `Controller\Gate\iGate`: each gate stands where it does because of a side effect
-   it must come before. What each one answers is the R1–R13 rows of the table under
+   it must come before. What each one answers is the R1–R13 rows, and R21 for the last, of the table under
    [Troubleshooting](#1-the-request-path). `PortalAdmission`,
    which `LoginGate` uses, calls `Service\Server\RequestScope::EnterPortal()` for a portal-only
-   user, which sets the portal and the access that answers for it together.
+   user, which sets the portal and the access that answers for it together. However the request
+   ends (a gate's answer, a preflight, the batch refusal, the served answer, an exception) the
+   controller ends the session the login opened and withdraws the cookies, and leaves a resumed
+   console session as it found it.
 2. The controller decides the caller's `Service\Rights\AccessPolicy`, opens the request with it
-   (`RequestScope::Open()` remembers it and the token's identity), and drops the credential.
+   (`RequestScope::Open()` remembers it and the token's identity), and drops the credential. Only
+   then, with the caller known, it refuses a body that is a JSON array (`Controller\BatchRefusal`: R22),
+   so that one audit row never stands for N calls.
 3. **`Service\Server\MCPService::run()`** builds the MCP server for the request: it takes the
    elements `Api\MCPRegistry` holds, the core ones from `Core\CoreExtensions` and a pack's from
    its `iMCPServiceProvider`, and leaves out those the operator disabled or the caller's
-   `AccessPolicy` does not serve.
+   `AccessPolicy` does not serve. The server has no session store (`mcp/sdk` 0.10): the transport
+   serves a handshake-era client without sessions, issues no `Mcp-Session-Id`, and answers `GET` and
+   `DELETE` with `405`; around it sit the SDK's CORS and DNS-rebinding middleware and
+   `NoSessionTeardownMiddleware`.
 4. The server hands the call to a **`Core`** tool, or to a pack's tool extending `Api\AbstractMCPTool`.
    The tool states its own security checks in its own source
    ([ADR 0014](adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md)).
@@ -247,6 +262,9 @@ succeeds.
   controller, the policies before every value conversion) are contract tests that read PHP tokens through
   `Support\SourceCalls`, resolving `X::m(` through the file's `use` lines, so a comment or a string that
   names a call does not count and a rename needs no edit.
+- **The order of a request** (the gate list, the audit row written before the answer, the session ended
+  on every path) is `RequestPipelineOrderTest`; the token-lifetime gate's own calls are
+  `ConsoleTokenLifetimeTest`.
 - **The version** is `ModuleMetadataTest`; the tool packs' contract is `Api\Testing\ElementContract`.
 
 ## Troubleshooting: where a request stops
@@ -266,8 +284,9 @@ A refusal from a gate is **not** a JSON-RPC error. It is a plain JSON body
 `{"code": 1, "message": "…"}` with the HTTP status in the table
 (`MCPResponse::PrepareException`, `MCPController::buildErrorResult`), and a `401`
 adds `WWW-Authenticate: Bearer realm="iTop MCP"`, with `error="invalid_token"` and
-`resource_metadata="…"` where the table says so. Everything from step 14 on is the MCP SDK's own
-JSON-RPC, or a tool's result.
+`resource_metadata="…"` where the table says so. Everything from R15 on is the MCP SDK's own
+JSON-RPC, or a tool's result; R22, the refusal of a batch, is the controller's own and is
+JSON-RPC-shaped.
 
 ### 1. The request path
 
@@ -277,15 +296,17 @@ flowchart TD
   g1{"PreflightGate<br/>OPTIONS with an Origin?"}
   g2{"HostIsServedGate<br/>Origin host, else Host,<br/>in mcp_allowed_hosts?"}
   g3{"BodyIsJsonGate<br/>a POST carries JSON?"}
-  g4{"CredentialPresentedGate<br/>a bearer, Auth-Token<br/>or login?"}
+  g4{"CredentialPresentedGate<br/>a bearer, a well-formed Basic,<br/>Auth-Token or login?"}
   g5{"TokenNotAParameterGate<br/>token in the URL?"}
   g6{"LoginGate<br/>LoginWebPage::DoLogin"}
   adm{"PortalAdmission::Admit<br/>a portal-only user"}
   g7{"McpProfileGate<br/>holds an mcp_allowed_profiles profile?"}
   g8{"TokenLoginAccountedForGate<br/>login mode matches a token?"}
   g9{"TokenAudienceGate<br/>token granted for this URL?"}
+  g10{"ConsoleTokenLifetimeGate<br/>console token within mcp_token_max_days?<br/>0 means not asked"}
   pol["ServedElements::AccessPolicyOfCurrentRequest<br/>capabilities, read-only, token scopes"]
   mal{"AccessPolicy::SettingsAreMalformed<br/>capabilities, toolsets or exclusions?"}
+  bat{"BatchRefusal::IsBatch<br/>body is a JSON array?"}
   run["MCPService::run<br/>builds the server from the registry"]
   sdk{"SDK transport<br/>method, body, JSON-RPC"}
   look{"tools/call<br/>tool served to this caller?"}
@@ -303,7 +324,8 @@ flowchart TD
   r8["R7 for a portal user, R8 to R11"]:::stop
   r12["R12: 401 token not accounted for"]:::stop
   r13["R13: 401 wrong URL for the token"]:::stop
-  r14["R14: serves nothing"]:::stop
+  r21["R21: 401 console token lives too long"]:::stop
+  r22["R22: 400 batch refused"]:::stop
   r15["R15 to R17: JSON-RPC or SDK error"]:::stop
   r18["R18: 200 isError, see diagram 2"]:::stop
   r19["R19: -32603, R20: 500"]:::stop
@@ -329,10 +351,14 @@ flowchart TD
   g8 -- no --> r12
   g8 -- yes --> g9
   g9 -- no --> r13
-  g9 -- yes --> pol
+  g9 -- yes --> g10
+  g10 -- no --> r21
+  g10 -- yes --> pol
   pol --> mal
-  mal -- yes --> r14
-  mal -- no --> run
+  mal -- "yes: AccessPolicy::Nothing, nothing is served (R14)" --> bat
+  mal -- no --> bat
+  bat -- yes --> r22
+  bat -- no --> run
   run --> sdk
   sdk -- "refused" --> r15
   sdk -- "accepted" --> look
@@ -355,7 +381,7 @@ belongs to, so a client's symptom is found by the text or the status in the firs
 | R1 | `204`, CORS headers, no body. Not a refusal: the browser's preflight | `PreflightGate` | `PreflightGate::Check` → `MCPResponse::EmitPreflight` |
 | R2 | `403`, `{"code": 2, "message": "This host is not served by the MCP endpoint."}`. Log: *Refused an MCP request: neither its Origin (…) nor its Host (…) is in 'mcp_allowed_hosts'. Set that module parameter to the hostname this instance is served under.* The name that was refused is only in the log | `HostIsServedGate` | `HostIsServedGate::Check` (`MCPHttp::IsAllowedHost`, `Settings::GetAllowedHosts`); status by `MCPController::buildErrorResult` |
 | R3 | `415`, code `2`, *A POST to the MCP endpoint must carry Content-Type: application/json.* | `BodyIsJsonGate` | `BodyIsJsonGate::Check` (`MCPHttp::IsJsonMediaType`) |
-| R4 | `401`, code `1`, *No credential was sent. The MCP endpoint needs one on every request: a bearer token in the Authorization header, an Auth-Token header, or a login. A browser session does not count.* The challenge carries `resource_metadata` when an OAuth resource is configured | `CredentialPresentedGate` | `CredentialPresentedGate::Check` (`MCPHttp::CarriesACredential`); challenge by `MCPResponse::BearerChallenge` |
+| R4 | `401`, code `1`, *No credential was sent. The MCP endpoint needs one on every request: a bearer token in the Authorization header, an Auth-Token header, or a login. A browser session does not count.* An `Authorization` header that is neither a bearer token nor a `Basic` value decoding to `user:password` (`Bearer` alone, `Basic !!!!`) counts as no credential and is answered here, not by iTop's login. The challenge carries `resource_metadata` when an OAuth resource is configured | `CredentialPresentedGate` | `CredentialPresentedGate::Check` (`MCPHttp::CarriesACredential`); challenge by `MCPResponse::BearerChallenge` |
 | R5 | `401`, *Send the token in the Authorization header (Bearer) or the Auth-Token header. A token passed as the auth_token request parameter is refused: a URL is written to access logs.* Log: *Refused an MCP request carrying auth_token as a request parameter.* | `TokenNotAParameterGate` | `TokenNotAParameterGate::Check` (`MCPHttp::CarriesATokenAsAParameter`) |
 | R6 | `401` with `error="invalid_token"`: *The token was not accepted: it is unknown, has expired or been revoked, or carries no MCP scope. Refresh it, or connect again.* For a login and password instead of a token: *The login or password was not accepted.* An unexpected iTop answer reads *Unknown authentication error (retCode=…)* | `LoginGate` | `LoginGate::Check` → `AuthRefusal::CreateAuthException` → `AuthRefusal::createWrongCredentialsException` |
 | R7 | `401`, *This user is not authorized to use the MCP services. (By default, the profile "MCP Services User" or "Administrator" is required; the profiles this instance accepts are set by the mcp_allowed_profiles module parameter.)* Log: *Refused an MCP request: '<user>' holds none of the profiles in 'mcp_allowed_profiles' (…)*, saying when the list is empty | `McpProfileGate`, and `PortalAdmission` for a portal-only user without the profile | `McpProfileGate::Check` (`Settings::IsAccessRestricted`, `AllowedProfiles::UserHasMCPProfile`) → `AuthRefusal::createProfileException` |
@@ -366,12 +392,14 @@ belongs to, so a client's symptom is found by the text or the status in the firs
 | R12 | `401`, *Send the token in the Authorization header (Bearer) or the Auth-Token header.* Log: *iTop logged it in under login mode '…' with a token this module was not shown, so the token's scopes could not be applied.* | `TokenLoginAccountedForGate` | `TokenLoginAccountedForGate::Check` (`TokenScopes::LoginIsAccountedFor`) |
 | R13 | `401`, *This token was granted for another URL of this endpoint, such as another portal's. Connect again from this URL to consent to it.* Log names the OAuth resource the token was granted for and the URL called ([ADR 0007](adr/0007-the-connection-names-its-portal.md)). Only when altioo-oauth-server is installed | `TokenAudienceGate` | `TokenAudienceGate::Check` (`OAuthResource::CalledEndpointUrl`) |
 | R14 | **No error.** The client authenticates, then finds no tools, resources or prompts, and `tools/call` answers as R15. Log, once per request: *Itop configuration parameter for exclusions: … Nothing is served to anyone until it is corrected.* (or *Itop configuration parameter 'mcp_capabilities' should be an array instead of …. Nothing is served until it is corrected.*, and the same for `mcp_enabled_toolsets`). This is how a setting that cannot be honoured stops the endpoint ([ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md), Amendment 2) | `ServedElements::AccessPolicyOfCurrentRequest` | `AccessPolicy::SettingsAreMalformed` (`Settings::AccessListsAreMalformed`, `ExclusionPolicy::IsMalformed`) → `AccessPolicy::Nothing`; the log line by `ExclusionPolicy::state` |
-| R15 | JSON-RPC `-32602`, *Tool not found: "name".* The tool is unregistered, or hidden from this caller: in portal mode, not `PortalAware` or a pack's element the operator did not list in `mcp_portal_extensions` ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)), a toolset or grade the policy or token does not serve, named in the disabled list, or a required profile the caller lacks. Also `-32602` *Invalid parameters for tool 'name': …* for an argument the input schema refuses | `MCPService::registerTools` leaves it out; the SDK answers | `ServedElements::isHidden`; `Mcp\Server\Handler\Request\CallToolHandler::handle` (in `vendor/mcp/sdk`) |
-| R16 | The SDK's own transport answers: `-32700` parse error (HTTP `400` on the stateless leg), `405` *Method Not Allowed* with `Allow: POST, OPTIONS` for a GET (the endpoint keeps no session, so the SDK serves it sessionless, since 0.10) and for a DELETE, which `NoSessionTeardownMiddleware` answers before the transport, `413` for a body over the limit, `400` for malformed JSON, a JSON array (a batch, which the controller refuses first) or a header that does not match the body (`-32020`). | the SDK transport | `MCPService::run`, `MCPService::middleware`, `NoSessionTeardownMiddleware`; `Mcp\Server\Transport\StreamableHttpTransport` (in `vendor/mcp/sdk`) |
+| R15 | JSON-RPC `-32602`, *Tool not found: "name".* The tool is unregistered, or hidden from this caller: in portal mode, not `PortalAware` or a pack's element the operator did not list in `mcp_portal_extensions` ([ADR 0017](adr/0017-a-pack-element-may-serve-the-portal-when-the-operator-lists-it.md)), a toolset or grade the policy or token does not serve, an `MCP-advisory` credential and a pack's tool that is not read-only ([ADR 0022](adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)), named in the disabled list, or a required profile the caller lacks. Also `-32602` *Invalid parameters for tool 'name': …* for an argument the input schema refuses | `MCPService::registerTools` leaves it out; the SDK answers | `ServedElements::isHidden`; `Mcp\Server\Handler\Request\CallToolHandler::handle` (in `vendor/mcp/sdk`) |
+| R16 | The SDK's own transport answers: `-32700` parse error (HTTP `400` on the stateless leg), `405` *Method Not Allowed* with `Allow: POST, OPTIONS` for a GET (the endpoint keeps no session, so the SDK serves it sessionless, since 0.10) and for a DELETE, which `NoSessionTeardownMiddleware` answers before the transport, `413` for a body over the limit, `400` for malformed JSON or a header that does not match the body (`-32020`). The SDK refuses a JSON array (a batch) too, `400` and `-32600`, but the controller's own refusal, R22, comes first and is the one a client reads. | the SDK transport | `MCPService::run`, `MCPService::middleware`, `NoSessionTeardownMiddleware`; `Mcp\Server\Transport\StreamableHttpTransport` (in `vendor/mcp/sdk`) |
 | R17 | `403`, `Content-Type: text/plain`, body *Forbidden: Invalid Host header.* or *Forbidden: Invalid Origin header.* Not skipped unless `mcp_allowed_hosts` holds `*` | the SDK's `DnsRebindingProtectionMiddleware`, a second check after `HostIsServedGate` | `MCPService::middleware`; `Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware` (in `vendor/mcp/sdk`) |
-| R18 | HTTP `200`, JSON-RPC success, `result.isError: true`, the tool's own text. The audit row says only *The tool refused the call*; the text is kept at `log_mcp_level` `debug` | the tool | A tool throws `Mcp\Server\Exception\ToolCallException`; the audit row is made by `MCPResponse::buildResultFromBody`. For `core_object_get` see [diagram 2](#2-what-core_object_get-checks) |
+| R18 | HTTP `200`, JSON-RPC success, `result.isError: true`, the tool's own text. The audit row says only *The tool refused the call*; the text is kept at `log_mcp_level` `debug` | the tool | A tool throws `Api\ToolRefusal::Because()`, which returns the SDK's `Mcp\Server\Exception\ToolCallException` ([ADR 0024](adr/0024-the-pack-contract-names-this-modules-exceptions.md)); the audit row is made by `MCPResponse::buildResultFromBody`. For `core_object_get` see [diagram 2](#2-what-core_object_get-checks) |
 | R19 | JSON-RPC `-32603`, *Error while executing tool* | the tool: an exception that is not a `ToolCallException`, which is a bug in the tool | `CallToolHandler::handle` (in `vendor/mcp/sdk`) |
 | R20 | HTTP `500`, `{"code": 100, "message": "The MCP request could not be completed. Server log reference: <ref>"}`. Log: *[<ref>] Unhandled <Class>: …*. An unexpected failure before or after the SDK answered | `MCPController::serve`, the `catch (Throwable)` | `MCPController::buildErrorResult`, `ErrorReport::NewReference`, `MCPResponse::PrepareException` |
+| R21 | `401`, code `1`, and **no** `error="invalid_token"`: a refresh would not help. *A token must expire within N days. Ask for a personal token with an expiry date no later than YYYY-MM-DD, or set one on this token.* · for an application token, which has no expiry: *An application token has no expiry date, so it cannot be used while tokens must expire within N days. Ask for a personal token with an expiry date no later than YYYY-MM-DD.* · for a malformed `mcp_token_max_days`: *Tokens are refused until an administrator corrects this endpoint's token lifetime setting.* Log names the account and `mcp_token_max_days`. Only for a console-mode request logged in with a token, and only when the setting is not `0`, its default ([ADR 0020](adr/0020-an-operator-can-bound-how-long-a-console-token-lives.md)); portal mode has R10 | `ConsoleTokenLifetimeGate` | `ConsoleTokenLifetimeGate::Check` (`Settings::GetTokenMaxDays`, `PortalMode::TokenIsBounded`, `PresentedToken::Expiration`, `PresentedToken::CanExpire`) |
+| R22 | HTTP `400` with a **JSON-RPC** body, `{"jsonrpc": "2.0", "id": null, "error": {"code": -32600, "message": "Batch requests are not accepted. Send one JSON-RPC request per HTTP request."}}`, not the plain shape of the gates. One audit row, method `batch`, always audited. Only for a caller that passed every gate: an unauthenticated batch is R4 to R13 | the controller, after the policy is decided and before `MCPService::run` | `BatchRefusal::IsBatch` → `BatchRefusal::Refuse` → `MCPResponse::PrepareBatchRefusal`; the row by `CallLog::LogIfConfigured` |
 
 Two things the diagram cannot show:
 
@@ -412,9 +440,10 @@ flowchart TD
   fc["console: every attribute,<br/>or the ones named"]
   fp["portal: the fields of the<br/>view form for this object"]
   ser["ObjectSerializer::Serialize"]
-  drop1["attribute excluded:<br/>left out, no trace"]
+  drop1["attribute excluded, or a key or link set typed<br/>on the parent of an excluded class:<br/>left out, no trace"]
   drop2["attribute the account may not read:<br/>left out, no trace"]
   mask["sensitive attribute:<br/>shown as *****"]
+  lnk["link set, portal mode: only the rows whose remote<br/>object is in the read scope, only the columns<br/>the portal lists: LinkedRows::Of"]
   aud["audit block<br/>console only"]
   rt["rights and stimuli<br/>for this object, now"]
   ext["Extras<br/>portal: attachments,<br/>may_attach, settable_fields"]
@@ -458,6 +487,7 @@ flowchart TD
   ser --> drop1
   ser --> drop2
   ser --> mask
+  ser --> lnk
   ser --> aud
   aud --> rt
   rt --> ext
@@ -492,6 +522,8 @@ What a successful answer leaves out or adds, with no error and no marker in the 
 | An excluded attribute is **absent**, for a named field list as for "all" | [ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md) | `ObjectSerializer::Serialize` → `ExclusionPolicy::ExcludesAttribute` |
 | An attribute the account may not read is absent; one graded "depends" is asked again on this object | iTop's `UserRights` | `ObjectSerializer::MayReadAttribute` |
 | A sensitive attribute is `*****`, converted before its value is read | password and secret types, and the outbound tokens `AccessGrantFamilies` names | `ObjectSerializer::Value`, `ObjectSerializer::IsSensitive` (`AccessGrantFamilies::IsOutboundSecret`) |
+| **Portal: a link set shows only the rows the portal shows**, with the columns the portal lists for the remote class; the total counts the rows shown, never those hidden. Console: the datamodel's own set. The same holds wherever a write or `core_portal_list` reports a link set | [ADR 0006](adr/0006-one-tool-surface-the-portal-is-a-policy.md) | `ObjectSerializer::Value` → `LinkedRows::Of` → `PortalAccess::LinkedRows` |
+| An excluded class is not among the allowed values of an attribute that holds class names (`AttributeClass`, `AttributeFinalClass`): the schema (`core_class_schema`), the search's value check and the portal's field description leave it out, and a value naming it is refused as one the datamodel does not have | [ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md) | `AttributeDescription::ServedValues` → `ExclusionPolicy::ExcludesClass` |
 | Console: every attribute the above leaves. **Portal: only the fields the portal's view form shows for this object**, with the friendly name of an external key | the console's form governs *writes* ([ADR 0004](adr/0004-writes-follow-the-console-form.md)), not reads | `ObjectAccess::VisibleFields` (`null`: all); `PortalAccess::VisibleFields` (`PortalPolicy::Fields`, `PortalAccess::Shown`) |
 | `audit`: created and last changed, by whom. Not in portal mode | | `ObjectAccess::Attribution`; `PortalAccess::Attribution` answers `null` |
 | `rights` and `stimuli`: what may be done to *this* object now. In portal mode every gate but `modify` is `no`, `modify` needs the portal's write scope, and the stimuli are the portal's | | `ObjectAccess::RightsOn`, `StimuliOn`; `PortalAccess::RightsOn`, `StimuliOn` |
@@ -514,18 +546,19 @@ object's state ([ADR 0004](adr/0004-writes-follow-the-console-form.md)) and, in 
 ([ADR 0005](adr/0005-portal-mode-writes-follow-the-portal-form.md)); the schema `core_class_schema`
 returns is not the test. The tools are served in both modes
 ([ADR 0006](adr/0006-one-tool-surface-the-portal-is-a-policy.md)). `core_object_delete` and the bulk
-tools are not `PortalAware`, so portal mode does not serve them (R15).
+tools are not `PortalAware`, so portal mode does not serve them (R15). The bulk tools run the same
+validator (`WriteValues::Validated`) and ask the same write cap (W22), once for the whole call.
 
 ```mermaid
 flowchart TD
   inv(["tools/call<br/>core_object_update, _create or _apply_stimulus"])
   hid{"served to this caller?<br/>ServedElements::isHidden"}
-  sim["DryRun::Simulated<br/>simulate=true by default,<br/>and forced by an advisory token"]
+  sim["DryRun::Simulated<br/>simulate=true by default,<br/>and forced by an advisory credential"]
   arg{"arguments<br/>id, fields or stimulus present"}
   prep["create, portal mode:<br/>ObjectAccess::Current then Prepared<br/>runs the portal's create action"]
   cls{"class gates<br/>Serves, IsReserved,<br/>RefusalToCreate, AccessGrants::RefusalFor,<br/>read right"}
   env{"environment gates<br/>DBIsReadOnly, IsAbstract,<br/>lifecycle, modify or create right"}
-  obj{"update, stimulus: the object<br/>Hides, final class, modify right,<br/>IsReadOnly"}
+  obj{"update, stimulus: the object<br/>Hides, final class, modify right on it,<br/>IsReadOnly: update asks it after the portal form check,<br/>stimulus before it, with an empty state"}
   mode{"RefusalToChange, RefusalToApply,<br/>RefusalToSet<br/>portal mode only"}
   stim{"stimulus only<br/>transition from this state,<br/>IsStimulusAllowed"}
   obs{"update only<br/>WritePlan::RefuseHiddenObsolete"}
@@ -533,11 +566,12 @@ flowchart TD
   reach{"RefusalsForExternalKeys,<br/>RefusalsForReach"}
   mand{"stimulus only<br/>mandatory in the target state?"}
   chk{"DryRun::Check, WritePlan::CheckRequested<br/>iTop's CheckToWrite"}
-  chg["ChangeTracking: origin custom-extension,<br/>userinfo left to iTop, the plain name"]
   simq{"simulate?"}
-  out1(["200: simulated true,<br/>after, changes, overridden, defaulted"])
+  out1(["200: simulated true,<br/>after, changes, overridden, defaulted,<br/>forced_by_credential, forced_reason"])
+  cap{"WriteCap::RefusalFor<br/>1 + the link rows this write touches<br/>mcp_max_writes_per_hour, off by default"}
+  chg["ChangeTracking::Explain: origin custom-extension,<br/>userinfo left to iTop, the plain name"]
   wr["DBUpdate, DBInsert<br/>or ApplyStimulus"]
-  out2(["200: simulated false,<br/>the same fields"])
+  out2(["200: simulated false,<br/>the same fields, and links_kept in portal mode"])
 
   w19["W19: Tool not found"]:::stop
   w20["W20: portal create action refused"]:::stop
@@ -551,6 +585,7 @@ flowchart TD
   w16["W16: a field refused"]:::stop
   w17["W17: mandatory missing"]:::stop
   w18["W18: not writable as described"]:::stop
+  w22["W22: write cap"]:::stop
   w21["W21: write failed"]:::stop
 
   inv --> hid
@@ -580,24 +615,26 @@ flowchart TD
   mand -- missing --> w17
   mand --> chk
   chk -- refused --> w18
-  chk --> chg
-  chg --> simq
+  chk --> simq
   simq -- yes --> out1
-  simq -- no --> wr
+  simq -- no --> cap
+  cap -- refused --> w22
+  cap --> chg
+  chg --> wr
   wr -- failed --> w21
   wr --> out2
 
   classDef stop fill:#fde8e8,stroke:#b42318,color:#7a1a12
 ```
 
-Every row is `HTTP 200` with `result.isError: true` and this text (R18), except W19. Rows that
+Every row is `HTTP 200` with `result.isError: true` and this text (R18), except W19. The order of the boxes is that of `core_object_update`; `core_object_apply_stimulus` asks `IsReadOnly` before the portal form check, as the object box says. Rows that
 speak of a class or an object use the same words as diagram 2, so that an excluded class and an
 unknown one cannot be told apart.
 
 | # | The client sees | Step | Produced by |
 |---|---|---|---|
-| W19 | The write tool is **not there**: `tools/list` omits it and a call gets `-32602` *Tool not found: "core_object_update".* No refusal text exists for a read-only instance (`mcp_read_only`), a token without a write grade, or a toolset that is not served | `ServedElements::isHidden` → `AccessPolicy::allowsTool`; the policy is decided by `ServedElements::AccessPolicyOfCurrentRequest` | see R15 |
-| – | **Nothing changed and no error:** `simulated: true`. `simulate` defaults to `true`; a token carrying the `MCP-advisory` scope rehearses every write whatever `simulate` says | `DryRun::Simulated` (`AccessPolicy::isAdvisory`, `AccessPolicy::FromScopes`, `MCPContext::SCOPE_ADVISORY`) | the three `execute()` methods |
+| W19 | The write tool is **not there**: `tools/list` omits it and a call gets `-32602` *Tool not found: "core_object_update".* No refusal text exists for a read-only instance (`mcp_read_only`), a token without a write grade, a toolset that is not served, or, for a pack's write tool, an `MCP-advisory` credential ([ADR 0022](adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md); this module's own write tools are served to it and rehearse) | `ServedElements::isHidden` → `AccessPolicy::allowsTool`; the policy is decided by `ServedElements::AccessPolicyOfCurrentRequest` | see R15 |
+| – | **Nothing changed and no error:** `simulated: true`. `simulate` defaults to `true`; a token carrying the `MCP-advisory` scope rehearses every write whatever `simulate` says, and the answer then says so with `forced_by_credential: true` and a plain-words `forced_reason` (empty otherwise). The audit row's `simulate` is the effective value, not the one sent | `DryRun::Simulated` (`AccessPolicy::isAdvisory`, `AccessPolicy::FromScopes`, `MCPContext::SCOPE_ADVISORY`); `DryRun::AnnotateForced` through `ToolOutput::StructuredWrite`; `CallLog::effectiveSimulate` | the three `execute()` methods |
 | W20 | Create in portal mode: *In portal mode a creation runs one of the portal's create actions: pass action, from core_class_list, and from_id when it starts from an object.* · *The portal offers no such create action. Call core_class_list for the ones it offers.* · *This create action starts from nothing: leave from_id out.* · *This create action starts from a <kind>: from_id must be one listed by core_portal_list on <list>.* (the id is not a row of the action's `from_list`, or of a list above it) · *The portal does not let you create what this action creates.* In the console, `action` or `from_id` gives *action and from_id are a portal's create action, and this connection is not served in portal mode: pass class and fields.* | the start of `ObjectCreate::execute` | `ObjectAccess::Prepared`; portal `PortalAccess::Prepared` → `actionOf`, `startingPoint` (`PortalRows::RowOf`, `PortalPolicy::MayCreate`) |
 | W1 | The class sentence of S1 (unknown class, **excluded class**, no read right). For update, create and stimulus alike | class gate | `ExclusionPolicy::Serves`, `UserRights::IsActionAllowed`; text `ClassRefusal::Unreadable` |
 | W2 | *Class 'X' is the change log, which is served by core_object_history only.* | class gate | `ChangeLogReservation::IsReserved` |
@@ -609,7 +646,7 @@ unknown one cannot be told apart.
 | W8 | *Access denied: cannot modify objects of class 'X'.* · *Access denied: cannot create objects of class 'X'.* · on the object: *Access denied: cannot update objects of class 'X'.* · *Access denied: cannot apply stimulus 's' to this object of class 'X'.* | environment gate, then the object | `UserRights::IsActionAllowed`, `UserRights::IsStimulusAllowed` |
 | W9 | *Object X::id not found.* No such object, an excluded class or the change log, outside the portal's read scope, or a subclass the caller may not read | object gate | `ObjectAccess::Hides`; `PortalAccess::Hides` (`ChangeLogReservation::IsReserved`, `ExclusionPolicy::ExcludesClass`, `PortalPolicy::Readable`) |
 | W10 | *Object X::id is of class 'F'. Rerun the update with the correct final class.* (`apply stimulus`). Said only when F is readable and not excluded; otherwise W9 | object gate | `ObjectUpdate::execute`, `ObjectApplyStimulus::execute` |
-| W11 | *Object X::id is in read-only mode, cannot update object.* (`apply stimulus on object`) | object gate | `DBObject::IsReadOnly` |
+| W11 | *Object X::id is in read-only mode, cannot update object.* (`apply stimulus on object`); a stimulus on an object with no state also says *Object X::id is in an invalid state, cannot apply stimulus.* For an update the portal's W12 check is asked first | object gate | `DBObject::IsReadOnly` |
 | W12 | Portal mode: *The portal lets you read C id but not change it.* (the object is outside the write scope) · *The portal does not offer 's' on C id in state 'st'. It offers: a, b.* or *It offers none in this state.* · *'f' is not a field the portal's <create | edit | transition> form lets you set. Fields you may set: …* A key that is not an attribute code reads *A key is not a field …*. The console's answer to the same fields is W16 | portal form and lifecycle | `PortalAccess::RefusalToChange`, `RefusalToApply`, `RefusalToSet` (`PortalPolicy::WriteSet`, `PortalPolicy::StimuliOn`, `PortalAccess::Settable`) |
 | W13 | Stimulus (W8 for the right): *Invalid stimulus 's' on C::id in state 'st'. Available: a, b.* or *… No transitions available.* · *Access denied: cannot apply stimulus …* (W8) | the transition | `ObjectApplyStimulus::execute` (`MetaModel::EnumTransitions`) |
 | W14 | *Stimulus cannot be empty. Please specify a valid stimulus code.* · *No fields provided for update.* · *Invalid ID. Please specify a valid object ID.* | arguments, the first check after `DryRun::Simulated` | `ObjectUpdate::execute`, `ObjectApplyStimulus::execute` |
@@ -618,6 +655,7 @@ unknown one cannot be told apart.
 | W17 | Stimulus: *Missing mandatory attribute(s) for applying stimulus 's': a, b.* or *Stimulus 's' cannot be applied: the target state requires mandatory attribute(s) this call cannot set: a (write access denied for this user) … Retrying will not help …* | the target state's mandatory list | `ObjectApplyStimulus::execute`, `whyItCannotBeSet`, `missingMandatoryMessage` |
 | W18 | *C::id cannot be written as described: <iTop's issues>* (`A C cannot be written …` for a create), the issues without those about excluded attributes. Or *… iTop overwrites this attribute from other attributes, so the value was never stored - but it is not a legal value either …* | iTop's `CheckToWrite`, then the overwritten fields | `DryRun::Check` (`ExclusionPolicy::WithoutExcluded`); `WritePlan::CheckRequested` |
 | W21 | *Failed to update C::id. The cause is server-side … recorded in the iTop log, and on this call's own audit row, under reference <ref>.* · *Failed to apply stimulus 's' on C::id.* · a create that was committed and then failed answers with the new id and a `warning` | the write | `ErrorReport::OpaqueFailure` in each `execute()`; `WriteOutcome::CommittedId` for a create |
+| W22 | *This credential has reached its write cap of N objects per hour (mcp_max_writes_per_hour); this call would write M more. Room frees up in about K minutes. Dry runs are not affected.* · *This call would write N objects, more than the cap of C per hour on this credential (mcp_max_writes_per_hour). Write fewer, or ask your administrator.* · when the cap cannot be honoured every write is refused and no read is: *Writes are refused: 'mcp_max_writes_per_hour' is not a non-negative integer. …* · *… is set and this instance cannot count writes now. …* A portal user reads the same without the setting's name. Off by default (`0`). It counts objects, not calls: the object and every link row the write adds, changes or removes ([ADR 0019](adr/0019-an-operator-can-cap-committed-writes-per-credential.md)). The bulk tools ask the same cap once for the whole call; `core_object_bulk_update` asks for `ids × (1 + the link entries it sends) + the rows the link sets it names hold now`, so `contacts_list: []` on N tickets counts the rows it removes, as an upper bound whose refusal adds that splitting the call helps (`WriteCap::UPPER_BOUND_NOTE`), and a link set that cannot be counted refuses the call: *Writes are refused: the link rows this call could remove cannot be counted now. Reads are not affected. Ask your administrator.* | after the rehearsal branch, before the write | `WriteCap::RefusalFor` (`WriteCap::Decide`, `WriteCap::LinkRowsOf`; for a bulk update `WriteCap::LinkEntriesIn`, `WriteCap::LinkRowsHeldBy`), called in each `execute()` |
 
 The field issues behind W16, in the order `WriteValues::Validated` asks them. The first that fires is
 the one reported for that field:
@@ -629,10 +667,16 @@ the one reported for that field:
 | *Attribute 'f' is the lifecycle state of C. …* (a new object starts in its initial state; an existing one changes through `core_object_apply_stimulus`) | ADR 0004 | `EditPolicy::RefusalFor` (`stateRefusal`) |
 | *Attribute 'f' is not editable while this C is in state 'st'. …* · *… is not editable when a C is created (initial state 'st'). …* · *… is read-only on this C.* · *… is kept up to date by a synchronisation data source …* | the console form's flags for this state; a stimulus may set what its transition prompts for | `EditPolicy::RefusalFor` (`flagsRefusal`, `isPromptedBy`) |
 | *Attribute 'f' is a stopwatch, an SLA timer …* · *Attribute 'f' is a case log: send the new entry as text, or as {"add_item": …}* | stopwatch, case log | `EditPolicy::RefusalFor` (`caseLogRefusal`) |
-| *Give 'f' the id of a T, taken from a list the portal shows.* · *'f' links a T the portal does not show you.* · *… is not a value 'f' accepts on this C. The datamodel limits it to: …* | external key: the target must be readable, and among the allowed values | `ExternalKeyPolicy::RefusalFor`, `EditPolicy::RefusalsForExternalKeys` |
+| *Give 'f' the id of a T, taken from a list the portal shows.* · *'f' links a T the portal does not show you.* · *… is not a value 'f' accepts on this C. The datamodel limits it to: …* | external key: the target must be readable, and among the allowed values. An OQL string given as the key's value that joins or sub-queries a class the account may not read is refused as a direct `SELECT` of that class is ([ADR 0023](adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)); a row object that names an excluded or unknown key reads *Unknown attribute 'k' on class 'C'.* | `ExternalKeyPolicy::RefusalFor`, `RefusalForExternalKeyQuery`, `RefusalForExcludedKeys`, `EditPolicy::RefusalsForExternalKeys` |
 | a mention, a formula or a secret that may not be written: *The value for 'f' is a secret this instance keeps … unless mcp_allow_privilege_escalation is on* | | `MentionPolicy::RefusalFor`, `FormulaPolicy::RefusalFor`, `SecretPolicy::RefusalFor` |
 | *Attribute 'f' is not edited from the C it belongs to. …* · *… only accepts additions …* · *… this account may not <verb> T objects.* | a link set follows the console's rules | `EditPolicy::RefusalForLinkSet`, `WriteValues::RefusalForDroppedSetValues` |
 | *Invalid value for attribute 'f'* followed by a hint | the value does not convert | `ErrorReport::RejectedValue`, `AttributeDescription::ValueHint` |
+
+**What a portal write leaves alone.** In portal mode a write to a link set is completed with the rows the
+portal hides from the user before it is compared, so it changes what the user can see and keeps the rest,
+as the portal's own form does; the answer says so with `links_kept`, generically, never whether any such
+row exists. `changes` and `applied` are filtered by what the portal shows
+(`PortalAccess::KeepHiddenLinks`, `PortalAccess::Disclosed`, `WriteOutcome::LinksKept`).
 
 **Where the change is attributed.** `ChangeTracking::ForRequest` (called from `MCPService::run`,
 before anything can write) and `ChangeTracking::Explain` (called by each tool just before it
@@ -745,18 +789,23 @@ row is missing, because that would say the row exists.
 | the row is outside the user's **read scope** | the scope is what makes a list "the user's own" (their tickets, their organisation); the module adds nothing to it and removes nothing from it | the portal's `scopes` for the user's profiles, and the object's caller, organisation or team | `PortalPolicy::Bounded` → `PortalPolicy::ReadSet` (iTop's `ScopeValidatorHelper`) |
 | the row's class is **excluded**, or only a **subclass** of the list's class is | an excluded class makes the whole list absent (L1); rows of an excluded subclass are filtered out with no trace | `mcp_excluded_classes` | `ExclusionPolicy::Serves`; `ExclusionSearches::Narrowed` ([ADR 0012](adr/0012-this-channel-can-exclude-classes-and-attributes.md)) |
 | the user has no `UserRights` read on the class | the list is absent (L1) | the user's profiles | `PortalPolicy::ReadSet` |
-| `search` was passed | every word must appear in a column the list shows (or the friendly name); a word in a column the list does not show matches nothing | drop `search`; the columns are the brick's fields, **without the excluded attributes** | `PortalList::addSearch`; `PortalBricks::withoutExcluded` |
+| `search` was passed | every word must appear in a column the list shows (or the friendly name); a word in a column the list does not show matches nothing | drop `search`; the columns are the brick's fields, **without the excluded attributes**, and without a name an exclusion reaches (a friendly name made of an excluded part, a key typed on the parent of an excluded class): *This list shows no column a search can look in* can follow from that | `PortalList::addSearch`; `PortalBricks::withoutExcluded` |
 | the row exists in the list but not on the page | `limit` defaults to 20 and the order is `id` descending (first column ascending for a browse level) | follow `next_offset` while `has_more` | `PortalList::order`, `PortalList::execute` |
 | the row is listed, but `core_object_get` says *Object X::id not found.* | `core_object_get` also asks `UserRights` for this object, which a list does not | the user's rights on that object | `ObjectAccess::Readable` (called by `PortalAccess::Readable`) |
 
 A column of a row is missing for the same kind of reason: the list shows the brick's columns, minus
-the excluded attributes, minus those the account may not read, with a secret masked
-(`ObjectSerializer::Serialize`, as diagram 2).
+the excluded attributes, minus those the account may not read, with a secret masked; a link-set
+column shows only the rows the portal shows (`ObjectSerializer::Serialize` and `LinkedRows::Of`, as diagram 2).
 
 ## What it leaves out
 
 - **Components** — the classes inside a folder. The code under `src/` is the reference; the
   folders above are as far down as this page goes.
+- **Files outside `src/`** — `sdk-aliases.php`, at the module root and loaded by composer's `autoload.files`,
+  gives a tool pack written for 2.0 the SDK exception names that `mcp/sdk` 0.10 moved, until 3.0
+  ([ADR 0024](adr/0024-the-pack-contract-names-this-modules-exceptions.md)). It is a compatibility
+  shim for packs, not a container; what else the install adds is in
+  [README, What the install changes](../README.md#what-the-install-changes).
 - **Deployment** — the web server, the `.htaccess` / `web.config` pair, the compiled
   `env-production/` copy: [README, Endpoint](../README.md#endpoint) and
   [SECURITY.md, Hardening the deployment](../SECURITY.md#hardening-the-deployment).

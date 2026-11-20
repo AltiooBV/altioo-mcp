@@ -49,6 +49,7 @@ this endpoint is not.
 
 | Version | Status |
 |---|---|
+| 2.1.x | **Supported.** Released 2026-11-20, security fixes until 2031-11-20 |
 | 2.0.x | **Supported.** Released 2026-11-16, security fixes until 2031-11-16 |
 | 1.3.x | **Supported.** Released 2026-11-11, security fixes until 2031-11-11 |
 | 1.2.x | **Supported.** Released 2026-11-05, security fixes until 2031-11-05 |
@@ -64,7 +65,7 @@ branch that Combodo has retired is not tested against.
 
 **Five years of security fixes from the release date of a minor version.**
 
-`2.0.x` was released on **2026-11-16**, so its window runs to **2031-11-16**; `1.3.x` was released on **2026-11-11** and runs to **2031-11-11**; `1.2.x` was released on
+`2.1.x` was released on **2026-11-20**, so its window runs to **2031-11-20**; `2.0.x` was released on **2026-11-16** and runs to **2031-11-16**; `1.3.x` was released on **2026-11-11** and runs to **2031-11-11**; `1.2.x` was released on
 **2026-11-05** and runs to **2031-11-05**; `1.1.x` was released
 on **2026-09-30** and runs to **2031-09-30**; `1.0.x` was released on **2026-09-20** and runs to
 **2031-09-20**. The date is the day the

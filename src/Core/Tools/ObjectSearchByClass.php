@@ -289,7 +289,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			return null;
 		}
 
-		$aValues = $oAttDef->GetAllowedValues();
+		// An excluded class is not a value of a class-valued attribute: 'Person' is refused as 'Zzz' is, and not listed.
+		$aValues = AttributeDescription::ServedValues($oAttDef);
 		if (!is_array($aValues) || $aValues === [] || count($aValues) > AttributeDescription::MAX_ALLOWED_VALUES) {
 			return null;
 		}

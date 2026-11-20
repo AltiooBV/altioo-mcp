@@ -220,7 +220,9 @@ class WriteCapTest extends TestCase
 	{
 		$sCode = SourceCalls::OfClass(ObjectBulkUpdate::class)->Code();
 
-		$this->assertStringContainsString('WriteCap::RefusalFor(count($aIds)*(1+$iLinkEntries),$iLinkEntries>0)', $sCode);
+		// The rows the named link sets hold now are counted beside the entries sent (re-review N-4, ADR 0019, 2026-11-20).
+		$this->assertStringContainsString('WriteCap::LinkRowsHeldBy($class,$aIds,$fields)', $sCode);
+		$this->assertStringContainsString('WriteCap::RefusalFor(count($aIds)*(1+$iLinkEntries)+$iHeldRows,$bNamesLinkSet)', $sCode);
 		$this->assertStringContainsString('upper bound', WriteCap::UPPER_BOUND_NOTE);
 		$this->assertStringContainsString('Splitting the call', WriteCap::UPPER_BOUND_NOTE);
 		$this->assertStringContainsString('$bUpperBound?$sAnswered.\' \'.self::UPPER_BOUND_NOTE:$sAnswered', SourceCalls::OfClass(WriteCap::class)->Code('RefusalFor'));

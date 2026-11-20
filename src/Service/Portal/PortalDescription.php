@@ -332,7 +332,7 @@ final class PortalDescription
 		} elseif ($oAttDef->IsLinkSet()) {
 			$aField['linked_class'] = $oAttDef->GetLinkedClass();
 		} elseif ($oAttDef->IsScalar()) {
-			$aValues = $oAttDef->GetAllowedValues();
+			$aValues = AttributeDescription::ServedValues($oAttDef);
 			if (is_array($aValues) && $aValues !== []) {
 				$aField['values'] = (object)array_slice($aValues, 0, AttributeDescription::MAX_ALLOWED_VALUES, true);
 				if (count($aValues) > AttributeDescription::MAX_ALLOWED_VALUES) {

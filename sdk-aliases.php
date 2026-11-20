@@ -60,7 +60,9 @@ foreach ([
 ] as $sShortName) {
 	$sOld = 'Mcp\\Exception\\'.$sShortName;
 	$sNew = 'Mcp\\Server\\Exception\\'.$sShortName;
-	if (!class_exists($sOld, false) && !interface_exists($sOld, false)) {
+	// Only when the SDK's own class can be had, which it can once composer's autoloader is registered and which it cannot when this
+	// file is requested on its own: there it does nothing and says nothing, instead of a warning naming the install path per name.
+	if (!class_exists($sOld, false) && !interface_exists($sOld, false) && (class_exists($sNew) || interface_exists($sNew))) {
 		class_alias($sNew, $sOld);
 	}
 }

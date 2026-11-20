@@ -136,10 +136,13 @@ class ObjectBulkUpdate extends AbstractBulkTool
 
 		// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
 		// tool's own source, once the call is known to commit and before it writes.
-		// Each object, and for each the link-set entries the call sends: an upper bound, since an entry an object
-		// already holds is counted too (ADR 0019: objects, not calls).
+		// Each object, the link-set entries the call sends for each, and the rows those link sets hold now, which the call can
+		// remove (`"contacts_list": []` sends none and removes them all; one counting query per link set, no object loaded): an upper
+		// bound, since an entry an object already holds is counted twice (ADR 0019: objects, not calls).
 		$iLinkEntries = WriteCap::LinkEntriesIn($class, $fields);
-		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds) * (1 + $iLinkEntries), $iLinkEntries > 0);
+		$iHeldRows = $simulate ? 0 : WriteCap::LinkRowsHeldBy($class, $aIds, $fields);
+		$bNamesLinkSet = $iLinkEntries > 0 || $iHeldRows > 0;
+		$sCapRefusal = $simulate ? null : WriteCap::RefusalFor(count($aIds) * (1 + $iLinkEntries) + $iHeldRows, $bNamesLinkSet);
 		if ($sCapRefusal !== null) {
 			throw ToolRefusal::Because($sCapRefusal);
 		}

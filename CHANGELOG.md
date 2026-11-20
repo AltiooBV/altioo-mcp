@@ -21,11 +21,14 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
-## [2.1.0] - Unreleased
+## [2.1.0] - 2026-11-20
 
-**An advisory token's rehearsal is now recorded and answered as one.** A token carrying `MCP-advisory`
+**The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Eighteen entries under *Fixed* are marked Security (two of them concern tool packs); none
+needs a migration. An advisory token's rehearsal is now also recorded and answered as one: a token carrying `MCP-advisory`
 has always rehearsed every write whatever the caller sent, and nothing was written. What was wrong is
 what said so.
+
+**Nothing to migrate.** The datamodel gained no class or attribute (two comments and one dictionary label were reworded), the installer gained no step, no module parameter was added and no default moved. Downgrading is unsupported, as for every release.
 
 **Read before upgrading.**
 
@@ -65,6 +68,18 @@ what said so.
   a string parameter, where 0.9 answered `-32603` or handed the tool the word `Array`. A batch is refused by the SDK as well, `400` and `-32600`, behind this endpoint's own refusal.
 - **For pack authors: a nested JSON object reaches a tool parameter typed `mixed`, `object`, `\stdClass` or not at all as a `\stdClass`**, where 0.9 handed an array; a parameter typed `array` still receives arrays at every level. Every core tool types its structured
   arguments `array`, so none of the module's checks changed. `Testing\ElementContract` warns about such a parameter on a pack's tool.
+- **A refusal before any tool ran is `{"code":…,"message":…}` and nothing more.** 2.0.0 also sent `mcpMethod`, `mcpName` and `requestParams`, which are the audit row's own fields and were null or a constant there
+  (*Fixed*, the CORS entry). A client that read one of them reads `undefined` now; none was ever a field of the protocol. A request whose `Authorization` header is empty or malformed (`Bearer` alone, `Basic !!!!`) is answered the `401` of a request that brought no credential, instead of reaching iTop's Basic login.
+- **For pack authors: `Service\Write\RestValue` is no longer on the surface** ([ADR 0016](doc/adr/0016-what-the-core-tools-use-is-public.md), Amendment 1; *Removed*). It is `@internal`: the class stays and works in 2.1.0, with no promise after it. Write through `WriteValues::Validated()`.
+  This is the one place the changelog's rule of a deprecation a minor before a removal from the surface is waived, once, and the entry says why.
+- **For operators with tool packs: an `MCP-advisory` credential is no longer served a pack's write tools** ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)): absent from `tools/list`, an unknown tool when named. This module's own write tools still rehearse for it.
+- **For operators: other behaviour changes that a client, a saved prompt or a dashboard may notice**, each with its own entry under *Fixed* or *Added*: with `Person` or another class excluded, the keys and link sets typed on its parent (`contacts_list` of every ticket and CI) are excluded as well;
+  a portal user's assistant reads a link set's rows with fewer attributes, and a stimulus that sets a field the portal's transition form does not offer is refused; with `mcp_max_writes_per_hour` set, a write that sets a link set can be refused for more objects than before; the audit row's `simulate` column reads `yes` for every
+  rehearsal (a forced one and one that left `simulate` out included; earlier rows keep `no`) and `duration_ms` stops at the decision of the answer; a filter or a sort on an attribute the endpoint masks is refused as an unknown one; an excluded class is no longer listed as a value of an attribute that holds class names (a trigger's `target_class`, a parent's `finalclass`); a half-failed bulk call carries `all_succeeded: false`.
+- **Runtime libraries were refreshed with `composer.lock`** (*Changed*); the licences did not change.
+
+**Tested on.** iTop **3.2.3-3** and **3.3.0-1**, each on PHP **8.2** and **8.4** — installed through iTop's own unattended setup by the local CI runner (`tools/ci/local/run.sh matrix`), then exercised by iTop's module validation suite, the module's integration suite (494 tests) and by calling the endpoint over HTTP, portal mode included. The unit suite (3209 tests, with the linter and Psalm) ran on 8.2, 8.3 and 8.4, and `composer audit --locked` is clean on both locks. **Not run on this tree:** the upgrade workflow (on the merged `main`, before the four fixes of the 2026-11-20 re-review, it upgraded from v1.0.0 and from v2.0.0 on iTop 3.2.3-3 and PHP 8.2, and passed; iTop 3.3, PHP 8.4 and the 1.x minors between are not covered by it), the model evals, a real MCP client, and the web server's file rules (Apache, IIS, php-fpm, nginx).
+
 ### Fixed
 
 - **Security: in portal mode a link set was served with every row and every attribute.** `core_object_get` checked the object it was
@@ -125,6 +140,8 @@ what said so.
 - **Security: tool arguments reached the log at Debug through the context key `message`, on 0.9 as well.** The SDK logs `Received message payload.` with the whole JSON-RPC body under `message` (handshake era; the 2026-07-28 leg does not), in `mcp/sdk` 0.9.0 and 0.10.0 alike. The reduction above kept
   strings under keys it did not know, cut to 300 bytes, so with `log_level_min` at `Debug` for the module's channel the first 300 bytes of every handshake-era request, its method and the start of its arguments, reached `log/error.log`. `message` is now dropped with `arguments`, `params`, `request` and `body`, and
   `SdkLogHygieneTest` runs the real SDK through the bridge on both protocol eras and on five endings of a call (it failed on 6 of 10 cases before). Needs Debug enabled. *Not checked on the 1.x lines.*
+- **A tool name with a newline in it could forge lines in `log/error.log`.** The log bridge cut a caller's text short and stripped no line control, so a call to a tool named `zz`, a line break and `2026-11-20 12:00:00 | Error | 1 | FORGED-LINE | MCPLog |||` (any valid credential, a read-only one included) wrote a line of its own that *started* with the forged header: three times in one call (the message, the `name` of the context, the exception's text).
+  The message and every text of the context now go through `LineControls`, as the audit row's labels did (the ASCII, C1 and Unicode line controls and the bidirectional marks become one space). The text is kept, on one line. Not a security fix by the project's own reading (the file is an operator's and the call is audited), recorded as found by the re-review of 2026-11-20. *Likely affects every 1.x line (the logger bridge dates from 1.0.0); not checked on those trees.*
 - **Security: a caller could make the audit row of its own call fail to be written.** A failed insert dropped the row, and the row is what `mcp_max_writes_per_hour` counts from: a committed write whose `comment` or client name held an emoji on an
   audit table still in 3-byte utf8 (an instance upgraded from before iTop 3.1 can have one), or a refused call whose tool name of 70 000 characters was quoted in the row's message, left no row and spent none of the cap, and iTop wrote the failed `INSERT`
   with its values into `error.log`, where retention and anonymisation never reach. Caller text is now fitted to its column before the insert (a character the column's character set cannot hold becomes U+FFFD; a message is cut to what its
@@ -153,10 +170,19 @@ what said so.
   the one object it names, so with a cap of 3 and 2 spent a single `core_object_create` with 19 `contacts_list` entries was accepted and committed 20 objects before the next call was refused. A create, an update and a stimulus now ask for the object plus the link rows the
   call would add, change or remove (a complete list that repeats rows already there counts none of them), `core_object_bulk_create` for its rows plus every link-set entry they send, and `core_object_bulk_update` for each object plus the entries the
   call sends (an upper bound: it does not load the objects, and a refusal says so and that splitting the call helps; [ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md)). **Visible to operators with `mcp_max_writes_per_hour` set:** a write that sets a link set can now be refused for more objects than before, and the refusal says how many the call would write. Cap-only, 2.x.
+- **Security: a bulk update could remove an unbounded number of link rows against a small write cap** ([ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md), amended 2026-11-20). The entry above counted the link entries a bulk update *sends*, so
+  `core_object_bulk_update` with `"contacts_list": []` on 100 tickets asked the cap for 100 objects while every link row of every ticket was removed (the same change through `core_object_update` asks for the object and its rows, and was refused);
+  the audit row recorded the true count only afterwards, so the next call was refused, not this one. The bound now counts, for every object, the entries sent **and the rows each named link set holds now**, from one counting query per link set over the ids (no object is loaded, and nothing is counted
+  with the cap off). It remains an upper bound and the refusal says so; a link set that cannot be counted refuses the call. **Visible to operators with `mcp_max_writes_per_hour` set:** a bulk update that names a link set can be refused for more objects than before, the more so when it empties one. Cap-only, 2.x.
 - **Security: in portal mode a stimulus could set fields the portal's own transition form shows read-only or not at all.** The fields a transition accepted were the ones the datamodel's target state prompts for, so on `ev_reopen` of a resolved ticket - where the stock portal's form holds `public_log`
   (editable), `org_id` and `team_id` (read-only) and no `agent_id` - `core_object_apply_stimulus` listed `team_id` and `agent_id` as settable and committed them: a requester routed their own ticket to a team and an agent of their choosing (staff they could already see).
   The fields of a transition are now those of the portal's transition form, built as the portal's `ApplyStimulusAction` builds it and merged by its own `PrepareFields()`, and nothing else: not the edit form's settable fields as well (the portal never lets a transition submit one; an assistant changes an edit-form field with `core_object_update` first). The refusal names the transition's fields and says so ([ADR 0005](doc/adr/0005-portal-mode-writes-follow-the-portal-form.md), amended 2026-11-19).
   **Visible to portal users' assistants:** a transition that set a field the portal does not let the user change is now refused, and names the fields it does accept. Console mode is unchanged. *Affects 1.2 and 1.3, not checked on those trees.*
+- **Security: a schema listed the class an operator had excluded, as the value of an attribute that holds class names** ([ADR 0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)). `core_class_schema` and `itop://core/class/{class}` list an attribute's allowed values, and for an
+  attribute whose values *are* classes (iTop's `AttributeClass`: the `target_class` of a trigger, the `scope_class` of a synchronisation source; and `AttributeFinalClass`: a parent's `finalclass`) the list was the datamodel's, whatever `mcp_excluded_classes` said. With `Person`
+  excluded, `TriggerOnObjectCreate.target_class` still named `Person`, and `Contact.finalclass` did, so a class an operator excluded for its name was told to every account that could read a trigger's or a contact's schema (the name, never a row);
+  and `core_object_search_by_class` with `finalclass: "Person"` on `Contact` was accepted where `"Personz"` was refused with the list of values, so the filter was a yes-or-no on the name as well. An excluded class is now **left out of every list of class names**, in both modes, and
+  a value that names one is refused as one the datamodel does not have, with the same list (the portal's field description is held to it too). A class that is served, and a parent of an excluded class, are listed as before. **Affects `release/1.3` too** (exclusions since 1.3.0), for the 1.x patches: not checked on that tree.
 - **Security (tool packs): the example pack, which every pack is copied from, skipped what the core tools hold.** `acme_ticket_add_log_entry` checked rights by hand and so skipped `mcp_max_mentions`, the console's lifecycle locks (it appended to the `public_log`
   of a closed ticket, which iTop flags read-only there), the spreadsheet-formula rule and `ChangeTracking::Explain()`; and `acme_ticket_search_mine` asked neither `ExclusionPolicy::Serves()` nor `ExclusionSearches::Narrowed()`, so for an excluded class it answered
   `total: N, objects: []` (a row count, no values). Both now do what a core tool does: the write tool validates through `WriteValues::Validated()`, asks `WriteCap::RefusalFor()`, explains the change and answers through `ToolOutput::StructuredWrite()`; the read tool
@@ -166,6 +192,8 @@ what said so.
   A tool that is not this module's own and is not read-only is now left out of the server built for an advisory credential: absent from `tools/list`, and answered as an unknown tool when called by name. This module's own write tools are unchanged (they are served and rehearse),
   and a pack's read-only tools are still served. **Operators with packs installed:** advisory tokens lose the pack's write tools; nothing else changes. `doc/extending.md` says so and still asks a pack to call `DryRun::Simulated()`, `ElementContract::Violations()` warns when it does not, and the example
   pack's write tool calls it. The README's "every write tool it can reach rehearses" is true again. An opt-in for a pack that rehearses is not built; ADR 0022 names it as the path if a real pack needs one.
+- **`sdk-aliases.php`, requested on its own, printed a warning per name.** On a server that applies neither the module's `.htaccess` nor its `web.config`, the file answered `200` and, with `display_errors` on, 24 warnings naming the install path (`class_alias` of names the vendor autoloader had not loaded); `register.php`, `model.altioo-mcp.php` and `module.altioo-mcp.php` fail the same way when requested
+  directly, so it was no new kind of exposure. Each alias is now made only when the SDK's own class can be had, so a direct request does nothing and says nothing; loaded by composer's `autoload.files` the file is as eager as before and still leaves a name already taken alone. The files stay refused over HTTP by the same rules as `composer.json` ([SECURITY.md](SECURITY.md#hardening-the-deployment)).
 - **The audit row's `simulate` column recorded the caller's request, not what ran.** A call with
   `simulate: false` that the advisory credential turned into a rehearsal was logged `no` and read, to
   anyone reviewing the log, as a write that happened; and a write that left `simulate` out, which
@@ -235,6 +263,13 @@ what said so.
   `objects_you_cannot_see` also counts objects that are gone.
 - **`core_current_user` reports `access.advisory`**, and `advisory_means` when it is true, beside
   `capabilities`; the server instructions tell an advisory credential that its writes rehearse.
+
+### Changed
+
+- **`mcp/sdk` is `^0.10.0`** (locked at v0.10.0), and the runtime libraries moved with the lock: `doctrine/deprecations` 1.1.6 to 1.2.0, `opis/json-schema` 2.6.0 to 2.6.2, `phpstan/phpdoc-parser` 2.3.9 to 2.4.1,
+  `symfony/deprecation-contracts` v3.7.1 to v3.8.1 and `webmozart/assert` 2.5.0 to 2.5.1. The set of packages is the one 2.0.0 shipped and every licence is unchanged (the SDK and the `opis/*` libraries Apache-2.0, the rest MIT); `composer.json` gained
+  `autoload.files` for `sdk-aliases.php`. What the SDK's move changes for a client and a pack is under *Read before upgrading*.
+- **The audit row's `duration_ms` is the time to decide the answer**, no longer the time to write it to the client (*Fixed*, the entry on a client that hung up; the attribute's help text says so in both languages).
 
 ### Removed
 

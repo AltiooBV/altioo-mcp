@@ -87,6 +87,20 @@ class SdkAliasesTest extends TestCase
 		$this->assertFileExists(dirname(__DIR__, 3).'/sdk-aliases.php');
 	}
 
+	/**
+	 * Review 2026-11-20, N-5: requested on its own (a server that applies neither .htaccess nor web.config), the file raised one
+	 * warning per name, each naming the install path. Run alone, in a process of its own with no autoloader, it does nothing and says nothing.
+	 */
+	public function testTheAliasFileRequestedOnItsOwnSaysNothing(): void
+	{
+		$sFile = dirname(__DIR__, 3).'/sdk-aliases.php';
+		$aOutput = [];
+		exec(escapeshellarg(PHP_BINARY).' -n -d display_errors=1 -d error_reporting=-1 -d html_errors=0 '.escapeshellarg($sFile).' 2>&1', $aOutput, $iStatus);
+
+		$this->assertSame([], $aOutput, 'the file printed something when requested without the vendor autoloader: '.implode("\n", array_slice($aOutput, 0, 3)));
+		$this->assertSame(0, $iStatus);
+	}
+
 	public function testTheAliasFileShips(): void
 	{
 		$sExcluded = (string)file_get_contents(dirname(__DIR__, 3).'/exclude.txt');
