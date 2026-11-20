@@ -198,6 +198,18 @@ final class ElementContract
 			);
 		}
 
+		// SDK 0.10 keeps the JSON types of the arguments: a nested object reaches a parameter typed array as an array at every
+		// level, but one typed mixed, object, \stdClass or not at all as a \stdClass. A check written for 0.9, an is_array() on
+		// the value or on anything inside it, then passes an object by instead of refusing it.
+		$aLoose = self::parametersThatReceiveObjects($oTool);
+		if ($aLoose !== []) {
+			$aWarnings[] = self::WARNING.sprintf(
+				'execute() of "%s" takes %s with no scalar or array type. A nested JSON object reaches such a parameter as a \stdClass, not as an array, so an is_array() check on it, or on anything inside it, lets the value through unexamined. Declare it array (the SDK then hands arrays at every level) or handle \stdClass as well.',
+				$oTool->getQualifiedName(),
+				implode(', ', array_map(static fn (string $sName): string => '$'.$sName, $aLoose))
+			);
+		}
+
 		$aOutputSchema = $oTool->getOutputSchema();
 		if ($aOutputSchema !== null && ($aOutputSchema['type'] ?? null) !== 'object') {
 			$aWarnings[] = self::WARNING.'getOutputSchema() is not a JSON Schema of type "object", so a client validating structured content against it will reject every result.';
@@ -210,6 +222,36 @@ final class ElementContract
 		// assertion this class exists to support.
 
 		return $aWarnings;
+	}
+
+	/**
+	 * The parameters of a tool's execute() that are not typed as a scalar or an array: untyped, mixed, object, \stdClass, or a
+	 * union that holds one of them. An execute() that cannot be read is not this check's to report.
+	 *
+	 * @return array<int, string> Their names.
+	 */
+	private static function parametersThatReceiveObjects(AbstractMCPTool $oTool): array
+	{
+		try {
+			$aParameters = (new ReflectionMethod($oTool, 'execute'))->getParameters();
+		} catch (\ReflectionException) {
+			return [];
+		}
+
+		$aLoose = [];
+		foreach ($aParameters as $oParameter) {
+			$oType = $oParameter->getType();
+			$aMembers = $oType instanceof \ReflectionUnionType ? $oType->getTypes() : [$oType];
+			foreach ($aMembers as $oMember) {
+				$sName = $oMember instanceof \ReflectionNamedType ? ltrim($oMember->getName(), '\\') : null;
+				if ($oMember === null || in_array($sName, ['mixed', 'object', 'stdClass'], true)) {
+					$aLoose[] = $oParameter->getName();
+					break;
+				}
+			}
+		}
+
+		return $aLoose;
 	}
 
 	/**

@@ -49,7 +49,7 @@ class MCPModule
 	 *
 	 * @since 1.0.0
 	 */
-	const SDK_CONSTRAINT = '^0.9.0';
+	const SDK_CONSTRAINT = '^0.10.0';
 
 	/**
 	 * The licence this module is distributed under, and where its source is.

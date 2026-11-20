@@ -314,8 +314,9 @@ this object, what the console's form would let the user change in the object's s
 the spreadsheet-formula rule, secrets, a set that would lose what was sent, and the conversion itself. It returns the
 values ready to `Set()` and the reasons for each one it refused. Converting with `RestUtils::MakeValue()` yourself
 is a second validator, and the bulk tools once did exactly that and skipped the exclusions. The conversion
-needs care the SDK makes necessary (it decodes inbound JSON with `json_decode($input, true)`, so a nested object reaches a
-tool as an array while `RestUtils` branches on `stdClass`), and `Validated()` does it: `RestValue`, which did it, is
+needs care the SDK makes necessary (a nested object reaches a tool parameter typed `array` as an array at every level, while
+`RestUtils` branches on `stdClass`; and from SDK 0.10 one typed `mixed`, `object`, `\stdClass` or not at all receives a
+`\stdClass`, which an `is_array()` check passes by), and `Validated()` does it: `RestValue`, which did it, is
 internal since 2.1.0 and a pack no longer calls it.
 
 **Two base classes worth extending instead of `AbstractMCPTool`**, both in `Api\` and

@@ -9,12 +9,14 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPRegistrationException;
+use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
 use Altioo\iTop\Extension\MCP\Test\Support\BadlyNamedTool;
 use Altioo\iTop\Extension\MCP\Test\Support\FixturePrompt;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureResource;
 use Altioo\iTop\Extension\MCP\Test\Support\FixtureTool;
+use Altioo\iTop\Extension\MCP\Test\Support\MixedParameterPackTool;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassInheriting;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwareCoreSubclassNoAsk;
 use Altioo\iTop\Extension\MCP\Test\Support\PortalAwarePackTool;
@@ -222,5 +224,50 @@ class ElementContractCheckerTest extends TestCase
 			ElementContract::Violations(new ClassList()),
 			static fn (string $s): bool => str_contains($s, 'DryRun::Simulated()')
 		));
+	}
+	/**
+	 * SDK 0.10: a nested JSON object reaches a parameter typed mixed, object, \stdClass or not at all as a \stdClass. A pack that
+	 * guards with is_array() on such a parameter lets an object through, so the checker says so, naming the parameters.
+	 */
+	public function testAToolWhoseParametersWouldReceiveAStdClassIsWarnedAbout(): void
+	{
+		$aViolations = ElementContract::Violations(new MixedParameterPackTool());
+
+		$this->assertCount(1, $aViolations);
+		$this->assertStringStartsWith(ElementContract::WARNING, $aViolations[0]);
+		$this->assertStringContainsString('$fields, $filters', $aViolations[0]);
+		$this->assertStringNotContainsString('$ids', $aViolations[0], 'an array-typed parameter receives arrays at every level');
+		$this->assertStringNotContainsString('$name', $aViolations[0], 'a scalar union is not an object');
+	}
+
+	/**
+	 * What the contract tests of a security check rely on: every structured argument of a core tool is typed array, so the SDK
+	 * hands it over as an array at every level and the tool's own is_array() checks keep meaning what they meant.
+	 */
+	public function testNoCoreToolTakesAParameterThatWouldReceiveAStdClass(): void
+	{
+		$aFiles = glob(dirname(__DIR__, 3).'/src/Core/Tools/*.php');
+		$this->assertNotEmpty($aFiles);
+
+		foreach ($aFiles as $sFile) {
+			$sClass = 'Altioo\\iTop\\Extension\\MCP\\Core\\Tools\\'.basename($sFile, '.php');
+			$oReflection = new \ReflectionClass($sClass);
+			if ($oReflection->isAbstract() || !$oReflection->isSubclassOf(AbstractMCPTool::class)) {
+				continue;
+			}
+
+			$aLoose = [];
+			foreach ($oReflection->getMethod('execute')->getParameters() as $oParameter) {
+				$oType = $oParameter->getType();
+				$aMembers = $oType instanceof \ReflectionUnionType ? $oType->getTypes() : [$oType];
+				foreach ($aMembers as $oMember) {
+					if ($oMember === null || !$oMember instanceof \ReflectionNamedType
+						|| in_array(ltrim($oMember->getName(), '\\'), ['mixed', 'object', 'stdClass'], true)) {
+						$aLoose[] = $oParameter->getName();
+					}
+				}
+			}
+			$this->assertSame([], $aLoose, "{$sClass}::execute() takes a parameter that would receive a stdClass for a nested object");
+		}
 	}
 }

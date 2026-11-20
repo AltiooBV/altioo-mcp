@@ -587,6 +587,18 @@ class ModuleMetadataTest extends TestCase
 	}
 
 	/**
+	 * A tool pack pins the SDK to this constant (doc/extending.md), so that what it compiles against is what the module loads.
+	 * Nothing held it to composer.json: a bump of the one that forgot the other would leave every pack compiling against an SDK the
+	 * module does not ship (the 0.10 port found it still saying ^0.9.0).
+	 */
+	public function testThePackConstraintOnTheSdkIsTheOneTheModuleRequires(): void
+	{
+		$aComposer = json_decode((string)file_get_contents(self::ROOT.'/composer.json'), true);
+
+		$this->assertSame($aComposer['require']['mcp/sdk'] ?? null, \Altioo\iTop\Extension\MCP\Api\MCPModule::SDK_CONSTRAINT);
+	}
+
+	/**
 	 * A version that says 1.0.0 while the changelog says everything is
 	 * unreleased reads as "not released yet", whatever the version claims.
 	 */
