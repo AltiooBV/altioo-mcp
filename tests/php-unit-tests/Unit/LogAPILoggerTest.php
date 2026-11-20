@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\LineControls;
 use Altioo\iTop\Extension\MCP\Helper\LogAPILogger;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -258,6 +259,29 @@ class LogAPILoggerTest extends TestCase
 		$this->assertSame('Executing tool', TestIssueLog::$aRecorded[0]['message']);
 		$this->assertSame(['name' => 'core_object_create'], TestIssueLog::$aRecorded[0]['context']);
 		$this->assertSame(['name' => 'x'], TestIssueLog::$aRecorded[1]['context']);
+	}
+
+	/**
+	 * Review 2026-11-20, N-3: a tool name with a newline in it (any credential can send one) wrote a line of its own into
+	 * log/error.log that started with a forged header, in the message and twice in the context.
+	 */
+	public function testNoLineControlOfACallersTextReachesTheLogToMakeALineOfItsOwn(): void
+	{
+		$sForged = "zz\n2026-11-20 12:00:00 | Error | 1 | FORGED-LINE | MCPLog |||\r\narray (\u{2028}\u{85}";
+
+		$this->logger()->warning('Unknown tool {name}.', ['name' => $sForged, 'exception' => new \RuntimeException("Tool '{$sForged}' not found")]);
+
+		$aCall = $this->lastCall();
+		$sAll = $aCall['message'].' '.json_encode($aCall['context'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		$this->assertDoesNotMatchRegularExpression(LineControls::PATTERN, $aCall['message'], 'the message holds a line control');
+		foreach ($aCall['context'] as $sKey => $mValue) {
+			$this->assertDoesNotMatchRegularExpression(LineControls::PATTERN, (string)$sKey);
+			if (is_string($mValue)) {
+				$this->assertDoesNotMatchRegularExpression(LineControls::PATTERN, $mValue, "context '{$sKey}' holds a line control");
+			}
+		}
+		$this->assertStringContainsString('FORGED-LINE', $sAll, 'the text itself is kept: it is one line now, not an absent one');
+		$this->assertStringNotContainsString("\n", $aCall['message']);
 	}
 
 	public function testOtherNonScalarValuesBecomeALabel(): void
