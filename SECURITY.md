@@ -123,9 +123,10 @@ re-grants web access to exactly that file and leaves iTop's blanket deny over ev
 under `extensions/` in place, so `src/`, `vendor/`, `tests/` and `composer.json` stay
 unreachable.
 
-**It opens no outbound connection.** iTop never contacts an AI vendor, a model provider or any
-other host on behalf of this extension. Traffic is inbound only: an MCP client connects, and
-that client is what talks to a model. See *Data flow* in the README.
+**It opens no outbound connection.** This extension never contacts an AI vendor, a model provider or any
+other host. Traffic is inbound only: an MCP client connects, and that client is what talks to a
+model. A write it makes is an ordinary change, though, so iTop's own triggers, notifications and
+webhooks fire for it as they do for a change made in the console. See *Data flow* in the README.
 
 **Every request is authenticated by iTop itself** (`LoginWebPage::DoLogin()`), on its own — the
 endpoint is stateless, and a request that carries no credential of its own is refused before the
@@ -253,7 +254,7 @@ a `scope` attribute that can hold an `MCP*` value, if it carries an `AttributeOn
 the type iTop verifies a login against, which stores a salted hash that cannot be read back, as
 opposed to the recoverable types an object's own secrets live in — or if iTop files it under its
 `addon/userrights` category. So a
-credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused.
+credential class a later iTop version introduces is covered before anyone here has heard of it. Reading them is not refused to an account that holds the right to read them; a query may not reach one by a join or a sub-query that the account could not select it by ([ADR 0023](doc/adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)).
 
 `mcp_allow_access_administration` (default `false`) lets an instance opt into that
 administration where an operator wants it — onboarding a user, retiring a leaked token. It opts
@@ -619,7 +620,7 @@ you grant.
 Follow [iTop's security guidance](https://www.itophub.io/wiki/page?id=3_2_0:install:security)
 — the version-pinned page for the current LTS, deliberately rather than the wiki's `latest:`
 namespace, which tracks the development branch and has been observed recommending parameters
-and files that do not exist on 3.2 ([doc/itop-branch-notes.md](doc/itop-branch-notes.md) §1
+and files that do not exist on 3.2 ([doc/itop-branch-notes.md](https://github.com/AltiooBV/altioo-mcp/blob/main/doc/itop-branch-notes.md) §1
 records two). In particular, and specifically relevant here:
 
 - Serve iTop over **HTTPS with HSTS**. A bearer token on a plaintext connection is a shared secret.
@@ -701,10 +702,13 @@ records two). In particular, and specifically relevant here:
   # http {} context - both headers, or switching to Auth-Token walks around the limit
   limit_req_zone  "$http_authorization$http_auth_token" zone=mcp_token:10m rate=5r/s;
   limit_conn_zone "$http_authorization$http_auth_token" zone=mcp_token_conn:10m;
+  # a request with no credential has an empty key there, and nginx does not count a request with an empty key
+  limit_req_zone  $binary_remote_addr zone=mcp_addr:10m rate=10r/s;
 
   # server {} context
   location ~ ^/(env-[^/]+|extensions)/altioo-mcp/index\.php$ {
       limit_req  zone=mcp_token burst=20 nodelay;
+      limit_req  zone=mcp_addr  burst=40 nodelay;
       limit_conn mcp_token_conn 4;
       limit_req_status  429;
       limit_conn_status 429;
@@ -712,7 +716,11 @@ records two). In particular, and specifically relevant here:
   }
   ```
 
-  Key on both headers a token can arrive in, `Authorization` and `Auth-Token`. The zone holds
+  Key on both headers a token can arrive in, `Authorization` and `Auth-Token`. **Limit anonymous traffic by
+  client address too**, as the second zone does: a request that brings no credential has nothing to key
+  on, it is answered `401` and still leaves an audit row (method `exceptions`), so with no address limit an
+  anonymous caller can grow the audit table as fast as the server answers; `mcp_audit_retention_days` bounds
+  that growth only after the fact. The zone holds
   them in the web server's memory, as the web server
   already does for every request it handles. On Apache, `mod_qos` does the same job. Beyond
   per-token limits, the PHP-FPM pool's `pm.max_children` is what bounds the whole instance: keep

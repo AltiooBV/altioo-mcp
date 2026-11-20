@@ -146,6 +146,11 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				|| ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($class, (string)$sAttCode), $class)) {
 				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
+			// A filter is one value to match. A list is the caller's mistake, answered in the words
+			// core_object_count uses, and not handed to the search to fail as a server-side error (RT-7).
+			if (is_array($value)) {
+				throw new ToolCallException("Unknown attribute '{$sAttCode}' on class '{$class}'.");
+			}
 			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
 			if ($sRefusal !== null) {
 				throw new ToolCallException($sRefusal);

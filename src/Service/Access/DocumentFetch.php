@@ -10,6 +10,8 @@ namespace Altioo\iTop\Extension\MCP\Service\Access;
 
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
@@ -159,6 +161,11 @@ final class DocumentFetch
 			// Refused rather than cut. Half a PDF is not a smaller PDF, and a
 			// caller told the size can decide what to do about it - which is
 			// more than it could do with a corrupt file it was not warned about.
+			if (PortalMode::Current() !== null) {
+				ErrorReport::Log(sprintf('Refused a %d byte document for a portal user: %s allows %d.', $iBytes, DocumentAccess::MODULE_SETTING_MAX_BYTES, $iMax));
+				throw new MCPDocumentException(sprintf("'%s' is %s, which is more than this connection serves. Download it from the portal instead.", $value->GetFileName(), DocumentAccess::HumanBytes($iBytes)));
+			}
+
 			throw new MCPDocumentException(sprintf(
 				"'%s' is %s and this instance serves at most %s through MCP (%s). Download it from the console instead.",
 				$value->GetFileName(),

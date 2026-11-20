@@ -58,6 +58,13 @@ its own `datamodel` array, and iTop includes a module's datamodel files after th
 modules it depends on, so `Mcp\*` is already registered by the time anything of yours is
 autoloaded. Two copies in one process resolve to whichever autoloader answered first.
 
+The same holds for the other libraries this module's autoloader carries and iTop ships as well
+(`psr/log`, `psr/http-factory`, `psr/container` and `webmozart/assert`, besides the SDK): the module's
+autoloader is prepended and authoritative, registered after iTop's during startup, so for those too the copy
+that answers is this module's, at the version in its `composer.lock`, and not the one iTop's own tree
+declares, which can be a different major. Do not ship them either (`require-dev`, as for the SDK), and do not write
+code that depends on iTop's version of one of them being the one that runs.
+
 Installing it and deleting `vendor/mcp` before packaging does **not** work:
 `classmap-authoritative` has already written those classes into `autoload_classmap.php`, so the
 entries outlive the files and the first call fatals on a missing include. Pin the same

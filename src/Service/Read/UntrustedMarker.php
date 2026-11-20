@@ -119,6 +119,18 @@ final class UntrustedMarker
 			}
 		}
 
+		// The change line the attribution quotes is free text too: iTop's own REST, a CSV import and a synchronisation
+		// write whatever their caller put there as `userinfo` (review 2026-11-18, HA-11). This module's own writes keep it
+		// to the user's plain name (ADR 0009), which is why it is not the only thing it can hold.
+		$aAudit = $aData['audit'] ?? null;
+		if (is_array($aAudit)) {
+			foreach (['created', 'last_updated'] as $sWhen) {
+				if (is_array($aAudit[$sWhen] ?? null) && ($aAudit[$sWhen]['who'] ?? '') !== '') {
+					$aFields[] = 'audit.'.$sWhen.'.who';
+				}
+			}
+		}
+
 		return $aFields;
 	}
 

@@ -161,6 +161,21 @@ final class AttributeDescription
 	}
 
 	/**
+	 * Whether the `values` an attribute lists are names of objects, which people wrote, and not codes the datamodel declares:
+	 * a link set's, where it lists any. The schema marks those as it marks the same names anywhere else (ADR 0008).
+	 *
+	 * @since 2.1.0
+	 */
+	public static function ListsObjectNames(string $sClass, string $sAttCode): bool
+	{
+		try {
+			return self::classOfListedObjects(MetaModel::GetAttributeDef($sClass, $sAttCode)) !== null;
+		} catch (\Throwable $e) {
+			return false;
+		}
+	}
+
+	/**
 	 * The class whose objects an attribute lists as its values - a link set's: the class it links, or the one
 	 * its link class leads to - or null for an attribute whose values are not objects.
 	 */

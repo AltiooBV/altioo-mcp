@@ -120,14 +120,28 @@ class ObjectBulkDelete extends AbstractBulkTool
 		ChangeTracking::Explain($comment);
 
 		$aOutcomes = [];
+		// What the deletions made so far take with them, by hierarchy and id => the entry whose cascade it is in.
+		$aCascade = [];
 		foreach ($aIds as $iRow => $iId) {
+			$sVia = DeletionCascade::CascadeOf($class, $iId, $aCascade);
+			if ($sVia !== null && !$simulate) {
+				// Deleted already, as part of the cascade of an earlier entry of this very call. Looking it up now
+				// would answer "not found" and read as a failure, where the dry run said it would be deleted (AC-2).
+				$aOutcomes[] = self::outcome($iId, $iRow, true, "Deleted: it went with the cascade of {$sVia}, an earlier entry of this call.");
+				continue;
+			}
+
 			$mObject = self::objectFor($class, $iId, UR_ACTION_DELETE, 'delete');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
 				continue;
 			}
 
-			$aOutcomes[] = self::deleteOne($mObject, $class, $iId, $iRow, $simulate);
+			$aOutcome = self::deleteOne($mObject, $class, $iId, $iRow, $simulate, $aCascade);
+			if ($sVia !== null && $aOutcome['status'] === 'ok') {
+				$aOutcome['message'] = "Would be deleted. It is also in the cascade of {$sVia}, an earlier entry of this call, so a real run deletes it with that one.";
+			}
+			$aOutcomes[] = $aOutcome;
 		}
 
 		// An entry that never got as far as a plan still reports one, empty:
@@ -138,9 +152,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 	}
 
 	/**
+	 * @param array<string, string> $aCascade Filled with what this deletion takes with it: hierarchy and id => this entry.
+	 *
 	 * @return array<string, mixed>
 	 */
-	private static function deleteOne(DBObject $oObject, string $sClass, int $iId, int $iRow, bool $bSimulate): array
+	private static function deleteOne(DBObject $oObject, string $sClass, int $iId, int $iRow, bool $bSimulate, array &$aCascade): array
 	{
 		// Per row, because checkBulkAllowed() saw only the class: whether a
 		// row is the caller's own access is a property of the row.
@@ -179,6 +195,10 @@ class ObjectBulkDelete extends AbstractBulkTool
 				return self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("{$sClass}::{$iId} could not be deleted", $e));
 			}
 		}
+
+		// What this deletion takes with it, so that a later entry of the same call that is among them is
+		// reported as what it is (the plan of a dry run lists the same objects as the real one).
+		DeletionCascade::NoteCascade($oPlan, $sClass, $iId, $aCascade);
 
 		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
 		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan);

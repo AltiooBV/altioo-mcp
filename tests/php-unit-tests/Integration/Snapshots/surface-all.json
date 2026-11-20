@@ -1,6 +1,6 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
-    "generated": "2026-11-16",
+    "generated": "2026-11-20",
     "sdk": "v0.9.0",
     "surface": {
         "protocolVersion": "2025-06-18",
@@ -158,7 +158,7 @@
                     },
                     "required": []
                 },
-                "description": "List what this account's credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see), and the reason given. Only your own calls; there is no way to ask for anyone else's. Read \"coverage\" for what the record cannot show.",
+                "description": "List what this account's credentials did through this endpoint, newest first: when, which tool, whether it was a dry run or failed, the objects it changed or read that you may still see, how many it wrote (written: above 0 beside an empty changed means objects you can no longer see; 0 on rows before 2.0.0), and the reason given. Only your own calls, never anyone else's. Read \"coverage\" for what the record cannot show.",
                 "annotations": {
                     "title": "My Activity",
                     "readOnlyHint": true,
@@ -498,6 +498,10 @@
                             "type": "integer",
                             "description": "Of those, the ones that did not. Read their messages: a bulk call reports each object separately because it can partly succeed."
                         },
+                        "all_succeeded": {
+                            "type": "boolean",
+                            "description": "true when every object succeeded, or would have in a dry run; false when at least one did not, which leaves the call partly done. The call is not an error either way (isError stays false: a partly failed bulk call is a result), so read this or the per-object status rather than inferring success from the envelope."
+                        },
                         "objects": {
                             "type": "array",
                             "description": "One entry per object, in the order they were given.",
@@ -572,6 +576,7 @@
                         "total",
                         "succeeded",
                         "failed",
+                        "all_succeeded",
                         "objects"
                     ]
                 }
@@ -654,6 +659,10 @@
                         "failed": {
                             "type": "integer",
                             "description": "Of those, the ones that did not. Read their messages: a bulk call reports each object separately because it can partly succeed."
+                        },
+                        "all_succeeded": {
+                            "type": "boolean",
+                            "description": "true when every object succeeded, or would have in a dry run; false when at least one did not, which leaves the call partly done. The call is not an error either way (isError stays false: a partly failed bulk call is a result), so read this or the per-object status rather than inferring success from the envelope."
                         },
                         "objects": {
                             "type": "array",
@@ -746,6 +755,7 @@
                         "total",
                         "succeeded",
                         "failed",
+                        "all_succeeded",
                         "objects"
                     ]
                 }
@@ -838,6 +848,10 @@
                             "type": "integer",
                             "description": "Of those, the ones that did not. Read their messages: a bulk call reports each object separately because it can partly succeed."
                         },
+                        "all_succeeded": {
+                            "type": "boolean",
+                            "description": "true when every object succeeded, or would have in a dry run; false when at least one did not, which leaves the call partly done. The call is not an error either way (isError stays false: a partly failed bulk call is a result), so read this or the per-object status rather than inferring success from the envelope."
+                        },
                         "objects": {
                             "type": "array",
                             "description": "One entry per object, in the order they were given.",
@@ -898,6 +912,7 @@
                         "total",
                         "succeeded",
                         "failed",
+                        "all_succeeded",
                         "objects"
                     ]
                 }

@@ -104,6 +104,27 @@ class ReadObjectsAuditTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * Review 2026-11-18, DO-1: a count grouped by an external key answers with the names of the objects the key points at, which is a
+	 * read, and the row's `read_objects` stayed empty, though it is the answer to "was this person's data sent to the model?".
+	 */
+	public function testACountGroupedByAKeyNotesTheObjectsItNamed(): void
+	{
+		$oResult = $this->call('core_object_count', ['class' => 'UserRequest', 'filters' => ['title' => self::SECRET], 'group_by' => ['caller_id']]);
+		$this->assertFalse($oResult->isError ?? false, json_encode($oResult));
+
+		$sLine = ReadSummary::Compose();
+		$this->assertMatchesRegularExpression('/\bPerson: [\d, ]*\b'.$this->iPerson.'\b/', $sLine, 'the group named a person the audit row does not: "'.$sLine.'"');
+		$this->assertStringNotContainsString(self::SECRET, $sLine);
+	}
+
+	public function testACountGroupedByAnEnumNotesNothing(): void
+	{
+		$this->call('core_object_count', ['class' => 'UserRequest', 'filters' => ['title' => self::SECRET], 'group_by' => ['status']]);
+
+		$this->assertSame('', ReadSummary::Compose());
+	}
+
+	/**
 	 * A search that matches nothing returned nothing, and the audit row says
 	 * so rather than naming what the query asked about.
 	 */

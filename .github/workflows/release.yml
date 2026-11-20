@@ -132,6 +132,11 @@ jobs:
       - name: Advisories against the locked versions
         run: composer audit --locked
 
+      # The pinned scanner's own lock (tools/ci/local/progpilot): tooling that never ships, audited beside the root
+      # lock so that the next advisory on it is seen here as well (review 2026-11-18, MA-1).
+      - name: Advisories against the scanner's locked versions
+        run: composer audit --locked --working-dir=tools/ci/local/progpilot
+
       # What store users unzip into extensions/: production dependencies only,
       # nothing from require-dev, and vendor/ present because they will never
       # run composer themselves.

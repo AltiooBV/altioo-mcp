@@ -24,8 +24,9 @@ that an AI assistant can search, read and update CMDB and ticketing objects. It 
 inside iTop, against `MetaModel` and `UserRights` directly: there is no external service, no
 copy of your datamodel anywhere, and no path by which a caller sees or changes more than the
 user they authenticated as could through the console — or, for a portal-only user holding the
-MCP profile, through their portal (portal mode; `mcp_portals` turns it off). iTop itself
-opens no outbound connection
+MCP profile, through their portal (portal mode; `mcp_portals` turns it off). The extension
+opens no outbound connection (a write it makes is an ordinary change, so iTop's own
+notifications and webhooks fire for it as they would for the console's)
 — the MCP client is what talks to a model, and it is the client, not this extension, that
 decides which one.
 
@@ -57,7 +58,7 @@ instance moves until you install a new version of the extension. See *Dependenci
 
 | | |
 |---|---|
-| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| **Built by** | GitHub Actions, from a tagged commit, on the lowest supported PHP. [`.github/workflows/release.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/release.yml) |
 | **Signed by** | a job of its own that runs none of this repository's code and none of its dependencies. The unit suite, which installs and executes the development dependencies, and the build, which installs the production ones, each run in a separate read-only job; the signing job only downloads the build's files, checks the zip against the digest the build job reported, and attests it |
 | **Never built by** | a developer working directory. `workflow_dispatch` runs the same build without publishing, so the packaging is exercised without anyone assembling a zip by hand |
 | **Integrity** | `<archive>.zip.sha256`, published beside the archive |
@@ -106,7 +107,7 @@ the [README](../README.md#what-the-install-changes):
 - one table, `AltiooEventMCPService`, the audit trail;
 - one profile, `MCP Services User`, which grants no data rights of its own;
 - the `MCP*` values on the `scope` field of `PersonalToken` and `UserToken` — the four grades
-  and one per toolset, ten in all — added through `_delta="if_exists"`, so no core class is
+  the `MCP-advisory` modifier and one per toolset, eleven in all — added through `_delta="if_exists"`, so no core class is
   redefined;
 - one file, `index.php`, published as `env-production/altioo-mcp/index.php` in the compiled
   environment and answering on the same terms at the `extensions/` path it was unpacked to;
@@ -159,7 +160,7 @@ text that came from outside the organisation — not a permission boundary; the 
 
 | Question | Answer |
 |---|---|
-| **Does anything leave the instance?** | **Nothing.** No telemetry, no usage statistics, no error reporting, no licence check, no callback. This is a property of the code, not a setting: there is no outbound HTTP client anywhere in `src/` |
+| **Does anything leave the instance?** | **Nothing from this extension.** No telemetry, no usage statistics, no error reporting, no licence check, no callback. This is a property of the code, not a setting: there is no outbound HTTP client anywhere in `src/`. A write it makes is an ordinary change, so iTop's own notifications and webhooks fire for it as for a change made in the console |
 | **What personal data does it store?** | Only in the audit trail it adds. One `AltiooEventMCPService` row per audited call: the calling user (as a login string and as a link to the account), a link to the token they authenticated with, the client as it declared itself (unverified) — on every row for a `2026-07-28` client that sends its `clientInfo`, and on the `initialize` row only for an earlier one — the JSON-RPC method, the element invoked, the outcome, whether it was a rehearsal, the duration, the response size, and — for a write — the `CMDBChange` and the list of objects it touched, or — for a read — the list of objects it returned. Those lists are `Class::id` and attribute *names*, never attribute values |
 | **Where** | `priv_altioo_event_mcp_service`, inside your own iTop database, with iTop's other event classes. Reached in the console, by administrators only, under *Administration → MCP service calls*; *MCP activity* beside it is a dashboard of the last seven days. There are no alerts: the trail is watched, not pushed |
 | **Retention** | **Yours to set, with `mcp_audit_retention_days`** (default `0`, keep everything). iTop has no retention of its own for its event log, so without it the table grows with use. An hourly background process run by iTop's cron deletes rows older than the setting. The same process follows iTop on anonymisation: when the person behind a row's account is anonymised, the row's login string is brought up to date and its request parameters and reason are cleared. A user deleted before their person is anonymised, and rows from before 1.3, keep the login until retention removes them |
@@ -183,11 +184,11 @@ to 1.2 keep the old `(MCP: tool)` suffix and are not reached by the anonymizer's
 |---|---|
 | Threat model, hardening, disclosure, support period | [SECURITY.md](../SECURITY.md) |
 | Install footprint, configuration, data flow, troubleshooting | [README.md](../README.md) |
-| Supported iTop branches | [`.github/itop-support.json`](../.github/itop-support.json) |
+| Supported iTop branches | [`.github/itop-support.json`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/itop-support.json) |
 | Supported PHP range | `composer.json` (`require.php`); `itop-support.json` names the versions CI installs on |
 | What each version changed, and what this project treats as breaking | [CHANGELOG.md](../CHANGELOG.md) |
 | Dependency versions and licences | `composer.lock`, `sbom.cyclonedx.json`, `licenses.json` |
-| How the archive is built and signed | [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
+| How the archive is built and signed | [`.github/workflows/release.yml`](https://github.com/AltiooBV/altioo-mcp/blob/main/.github/workflows/release.yml) |
 | What has to be true before a tag | [doc/release-checklist.md](release-checklist.md) |
 
 If a questionnaire asks something this page does not answer, that is worth an issue — the point

@@ -135,12 +135,12 @@ class MCPResult implements \JsonSerializable
 	 */
 	public function jsonSerialize(): array
 	{
+		// What the caller reads, and no more. The method, tool name and parameters above are what the audit
+		// row is made from; they named this module's internal fields to a caller whose request was refused
+		// before any tool ran, and were null or a constant there (review 2026-11-18, RT-8).
 		return [
-			'code'          => $this->code,
-			'message'       => $this->message,
-			'mcpMethod'     => $this->mcpMethod,
-			'mcpName'       => $this->mcpName,
-			'requestParams' => $this->requestParams,
+			'code'    => $this->code,
+			'message' => $this->message,
 		];
 	}
 }

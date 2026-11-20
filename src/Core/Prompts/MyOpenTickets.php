@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use MetaModel;
 use UserRights;
 
@@ -117,6 +118,12 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 			return false;
 		}
 
+		// A class the operator excludes is absent from every route of this channel (ADR 0012), so a prompt that
+		// tells the model to search it would be answered "unknown class" (review 2026-11-18, AC-3).
+		if (!ExclusionPolicy::Serves(self::TICKET_CLASS)) {
+			return false;
+		}
+
 		return !empty(self::availableContactAttributes());
 	}
 
@@ -153,7 +160,8 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 			if (!MetaModel::IsValidAttCode(self::TICKET_CLASS, $sAttCode)) {
 				continue;
 			}
-			if (UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+			if (UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO
+				|| ExclusionPolicy::ExcludesAttribute(self::TICKET_CLASS, $sAttCode)) {
 				continue;
 			}
 
@@ -167,6 +175,7 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 	private static function hasOperationalStatus(): bool
 	{
 		return MetaModel::IsValidAttCode(self::TICKET_CLASS, self::OPERATIONAL_STATUS)
+			&& !ExclusionPolicy::ExcludesAttribute(self::TICKET_CLASS, self::OPERATIONAL_STATUS)
 			&& UserRights::IsActionAllowedOnAttribute(self::TICKET_CLASS, self::OPERATIONAL_STATUS, UR_ACTION_READ) !== UR_ALLOWED_NO;
 	}
 
@@ -194,6 +203,7 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 			static fn (array $aList): bool => $aList['kind'] === PortalBricks::BRICK_MANAGE
 				&& MetaModel::IsValidClass((string)$aList['class'])
 				&& is_a((string)$aList['class'], self::TICKET_CLASS, true)
+				&& ExclusionPolicy::Serves((string)$aList['class'])
 				&& $oPolicy->ReadSet((string)$aList['class']) !== null
 		));
 	}

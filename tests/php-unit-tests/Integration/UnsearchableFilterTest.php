@@ -52,4 +52,18 @@ class UnsearchableFilterTest extends ItopDataTestCaseAlias
 		$this->assertStringNotContainsString('server-side', $sSearch);
 		$this->assertStringNotContainsString('reference', $sSearch);
 	}
+
+	/**
+	 * Review 2026-11-18, RT-7: `{"title": ["a", "b"]}` was answered "the cause is server-side" with an error reference by the search
+	 * and as the caller's mistake by the count. One value is matched, and a list is refused in the count's words by both.
+	 */
+	public function testAListAsAFilterValueIsTheCallersErrorOnBothTools(): void
+	{
+		$sSearch = $this->refusal(fn () => ObjectSearchByClass::execute('Person', ['first_name' => ['a', 'b']]));
+		$sCount = $this->refusal(fn () => ObjectCount::execute('Person', ['first_name' => ['a', 'b']]));
+
+		$this->assertSame("Unknown attribute 'first_name' on class 'Person'.", $sCount);
+		$this->assertSame($sCount, $sSearch);
+		$this->assertStringNotContainsString('server-side', $sSearch);
+	}
 }

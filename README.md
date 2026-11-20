@@ -163,7 +163,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
-| `core_object_search_by_oql` | Search objects with an OQL query; `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
+| `core_object_search_by_oql` | Search objects with an OQL query (every class it joins or sub-queries must be one the account may read); `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
 | `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
 | `core_object_count` | How many objects match, and optionally how many per value of one or two attributes ("open tickets per team" without paging every ticket): `class` and `filters`, or `oql`, and `group_by`, at most 100 groups, each with the value and, for an enum or an external key whose target the caller may read, its label. Only simple attributes the caller may read can be grouped by or filtered on, and any refusal reads as an attribute or class that does not exist. The count is the database's, taken before object-level rights remove rows, so it can exceed what the caller could list; the answer says so. In portal mode it counts one of the portal's lists (`list`, `tab`, `parent_id`), per column the list shows that its class has |
 | `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts. Served in portal mode too, under the portal's limits: the view form's fields, its attachments, the rows of its link sets that the portal shows, and no attribution |
@@ -467,6 +467,11 @@ Then:
 The archive ships its own `vendor/` directory — do **not** run `composer install` on a
 production instance.
 
+**Upgrading from 1.x with a tool pack installed:** move every pack written for 1.x out of
+`extensions/` before the setup, and put back its 2.x version afterwards. A 1.x pack's
+`register.php` names a class 2.0 renamed, and iTop includes it on every request, so left in place
+it takes every page of the instance down (see the 2.1.0 entry of [CHANGELOG.md](CHANGELOG.md)).
+
 Nothing is reachable yet at this point: the endpoint answers `401` until someone holds one of
 the allowed profiles *and* presents a credential. See [Granting access](#granting-access).
 
@@ -501,9 +506,9 @@ again afterwards:
 
 | | |
 |---|---|
-| **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others. The setup adds its columns to the table on upgrade (the latest three, `client`, `read_objects` and `user_id`, are nullable: an existing row simply holds nothing there) |
+| **One table** | `AltiooEventMCPService`, the audit trail — one row per audited MCP call. It inherits `Event`, so it lives in iTop's event log alongside the others. The setup adds its columns to the table on upgrade, and every column added since 1.0.0 is nullable or has a default: a row that predates one holds nothing there (`client`, `read_objects`, `change_comment`, `refusal_text`, …), or its default (`exempt` is `no`, `written_objects` is `0`) |
 | **One profile** | `MCP Services User`. It grants no data rights of its own; it marks a user as allowed through the endpoint, exactly as `REST Services User` does for REST/JSON |
-| **Enum values** | The `MCP*` values on the `scope` field of `PersonalToken` and `UserToken` — the four grades and one per toolset, ten in all (`_delta="if_exists"`, so no core class is redefined) |
+| **Enum values** | The `MCP*` values on the `scope` field of `PersonalToken` and `UserToken` — the four grades, the `MCP-advisory` modifier and one per toolset, eleven in all (`_delta="if_exists"`, so no core class is redefined) |
 | **One file** | `index.php`. Clients are given it as `env-production/altioo-mcp/index.php`, in the compiled environment. The module's `.htaccess` / `web.config` are copied beside it and deny everything under it but that one file — and the same pair ships under `extensions/`, where it re-grants that directory's `index.php` through iTop's deny. So the file answers at both paths, on identical terms: same code, same authentication, one of the two published |
 | **Module parameters** | The `altioo-mcp` block in `conf/<env>/config-itop.php`, written by the setup with the defaults in [Configuration](#configuration) |
 | **One background process** | `AuditHousekeeping`, run hourly by iTop's own cron (`iBackgroundProcess`): it deletes audit rows past `mcp_audit_retention_days` (off by default) and brings the rows of an anonymised person in step with iTop's history. It opens no connection and does nothing at all on an instance where cron does not run |
@@ -763,7 +768,8 @@ cookie: a request that brings no credential of its own is refused `401` before t
 even looked at, and one that brings a credential has its session reset before the login runs.
 Either way the cookie decides nothing — and the endpoint sets none: the session iTop's login
 opens is destroyed before the answer is sent, so no `Set-Cookie` goes out and no session file
-stays behind.
+stays behind, a CORS preflight included. The one answer that is not the module's is iTop's own to a
+valid token of a *disabled* user, which iTop's login ends itself (see *Troubleshooting*).
 
 **3. The instance's capability grading.** `mcp_capabilities` — with `mcp_read_only` as its
 shorthand — is an instance-wide floor on what anyone may do, and `mcp_enabled_toolsets` limits
@@ -801,7 +807,7 @@ credentials of different strength.
 | `MCP-read` | Only tools that declare `readOnlyHint` |
 | `MCP-write` | Read, create and modify — **not** delete |
 | `MCP-delete` | Tools that declare `destructiveHint` |
-| `MCP-toolset-<name>` | Restricted to one toolset, e.g. `MCP-toolset-objects`. The base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server` |
+| `MCP-toolset-<name>` | Restricts the connection to one toolset, e.g. `MCP-toolset-objects`. It is not a grade: on its own it serves **every** tool of that toolset at every grade, the write and delete tools of `objects` included — add `MCP-read` to make the toolset read-only. The base extension ships `datamodel`, `objects`, `relations`, `documents`, `history` and `server` |
 | `MCP-advisory` | **Every write tool it can reach rehearses.** `simulate` is forced true whatever the caller passes — propose changes, commit nothing. This module's own write tools are served and rehearse; **a tool pack's write tools are not served at all** (absent from `tools/list`, answered as an unknown tool when called by name), since only the pack's author could make them rehearse and the server cannot check it ([ADR 0022](doc/adr/0022-an-advisory-credential-is-not-served-a-packs-write-tools.md)). A pack's read-only tools are still served |
 
 `MCP-advisory` is a modifier rather than a grade, and it is the trust tier between "may read" and
@@ -820,7 +826,7 @@ session. A token whose scopes cannot be read falls back to read-only rather than
 
 They combine, and the grades are a union: `MCP-write` is read *and* write, because granting
 write without read describes nothing anyone means by it. `MCP-read` together with
-`MCP-toolset-objects` is read access to the object tools and nothing else. A token scoped
+`MCP-toolset-objects` is read access to the object tools and nothing else (the grade comes from `MCP-read`; `MCP-toolset-objects` alone is not read access). A token scoped
 this way can only ever be *narrower* than the instance configuration and narrower than the
 user's own profiles — it never widens either.
 
@@ -1002,7 +1008,7 @@ value is reported the same way and serves nothing until it is corrected.
 | `log_mcp_service` | `true` | Write an `AltiooEventMCPService` audit entry per call |
 | `mcp_audit_retention_days` | `0` | Days an audit row is kept before an hourly background process deletes it, oldest first. `0` keeps everything, as before. **iTop has no retention of its own for its event log**, so without this the table only grows. A value that is not a non-negative integer reads as `0` and is logged to `log/error.log`. The process also brings the rows of an anonymised person in step with iTop's history (see [Data flow and privacy](#data-flow-and-privacy)) whether this is on or not; it needs iTop's cron to be running |
 | `mcp_max_writes_per_hour` | `0` | The most objects one credential may create, change, delete, move through a stimulus or attach to in a rolling hour; `0` is no cap, so nothing changes on upgrade. A credential is a personal token (an `altioo-oauth-server` grant is one), an application token, or, for a console session or Basic, the user's own calls. A bulk call counts its objects and is refused whole before it starts; a dry run never counts. It counts from the audit rows (`written_objects`), so it needs `log_mcp_service` on, `tools/call` in `log_mcp_method` and `log_mcp_level` below `error`: **when it cannot count, or the value is not a non-negative integer, every write is refused** (reads are served) and `log/error.log` says why. The refusal names the cap and when room frees up, never another credential's count. Calls at the very same moment can overshoot it, so it complements rate limiting at the web server ([SECURITY.md](SECURITY.md#hardening-the-deployment)); it does not replace it. [ADR 0019](doc/adr/0019-an-operator-can-cap-committed-writes-per-credential.md) |
-| `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first |
+| `log_mcp_method` | see above | Which MCP methods are audited. `initialize` is the record that a client connected, and is written whatever `log_mcp_level` says, because a successful connection is the one success worth a row. A client on `2026-07-28` sends no `initialize`, so it has no connection row at all — its first audited row is whatever it called first. A refused JSON-RPC batch is the exception to the list: it is always written, as a row of method `batch`, whatever this setting names |
 | `log_mcp_level` | `info` | `info` records every audited call, which is what makes "every call is audited" true of an instance nobody configured; `error` narrows the trail to failures and connections, for an instance where the volume is not worth it; `debug` additionally records the raw request parameters and, for a call a tool refused, the tool's own text (*Refusal text*), and is a troubleshooting setting, not a standing one |
 
 ### Start read-only
@@ -1179,10 +1185,33 @@ an audit log.
 `initialize`. That row is written whenever a client connects, at every log level — unless the
 client speaks `2026-07-28`, which has no `initialize` to write a row for; for one of those,
 look for the method it actually called instead. Then look for
-one with the method `exceptions`: every refusal that lands before the login — the 403 on the
-host, the 415 on the media type, the 401 on a request that brought no credential — is caught at
-the entry point and audited under that method, so such a row means the request did arrive and
-was turned away, and case 2 below is fixed with a module parameter.
+one with the method `exceptions`: such a row means the request did arrive and was turned away,
+and case 2 below is fixed with a module parameter.
+
+**Exactly which requests leave a row** (with `log_mcp_service` on and the method in
+`log_mcp_method`; `exceptions` is in the default list):
+
+- Every refusal the endpoint itself answers before or at the login, under the method
+  `exceptions`, with a user only where the login had got that far: the `403` on the host or the
+  origin, the `415` on the media type, the `401` on a request that brought no credential (an empty
+  or malformed `Authorization` header counts as none), the `401` on a token sent as a URL
+  parameter, and the `401` on a credential iTop did not accept — an unknown, expired or revoked
+  token, a wrong password, a token with no MCP scope — as well as a profile this instance does not
+  let through.
+- A refused JSON-RPC batch, as one row of method `batch`, whatever `log_mcp_method` says.
+- Every call of a method in `log_mcp_method`, under that method's name.
+
+These leave **no** row:
+
+- a CORS preflight (`OPTIONS` with an `Origin`): it never reaches a login;
+- a `GET`, `PUT` or `DELETE`, answered `405`, and a body that is not a JSON-RPC request or names no
+  method (a syntax error, a call without its session id): the row is made from a method, and there
+  is none;
+- a call of a method `log_mcp_method` does not list;
+- **a valid token of a user who is disabled.** iTop's own login stops that request with the text
+  `Bad user` (HTTP `200`, `text/html`, and iTop sets its session cookie) before this module can
+  answer it, and the module does not repeat iTop's token lookup to refuse it first. The line is in
+  `log/error.log` (`Bad user`, with the stack of the login), under the log's `IssueLog` channel.
 
 No row at all is not yet proof that nothing arrived. `log_mcp_service => false` writes no rows
 whatsoever, and a `log_mcp_method` list that does not name a method suppresses that method's
@@ -1312,10 +1341,15 @@ top of it. Build your own with the extension points above, or have
 "MCP" tends to read as "my ticket data now goes to an AI vendor". It is worth being exact
 about what this module does and does not do, because that is the question a DPO will ask.
 
-**iTop opens no outbound connection.** This extension makes no HTTP call to any model provider,
+**This extension opens no outbound connection.** It makes no HTTP call to any model provider,
 to Altioo, or to anywhere else. It sends no telemetry, no usage statistics and no error
-reports. Traffic is inbound only: an MCP client connects to your endpoint, authenticates as an
+reports. Its traffic is inbound only: an MCP client connects to your endpoint, authenticates as an
 iTop user, and receives exactly what that user is allowed to read.
+
+**What it cannot promise is what the rest of iTop does.** A write made here is an ordinary
+change, so the instance's own triggers and actions fire for it as they do for the same change in
+the console: an e-mail notification, a webhook, a synchronisation. Those connect wherever your
+instance has been configured to, and the audit row's `change_id` finds the change that fired them.
 
 **The client is the data controller's real question.** Whatever the assistant reads, its own
 provider then processes under that provider's terms — that is a property of the client you

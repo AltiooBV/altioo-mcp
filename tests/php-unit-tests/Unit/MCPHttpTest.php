@@ -224,6 +224,56 @@ class MCPHttpTest extends TestCase
 		$this->assertFalse(MCPHttp::CarriesACredential());
 	}
 
+	/**
+	 * Review 2026-11-18, RT-5: iTop's LoginBasic claims any Authorization header and splits it on a colon without checking, so
+	 * these reached it and raised "Undefined array key 1". None of them is a credential a login could use.
+	 *
+	 * @return array<string, array{0: string}>
+	 */
+	public static function unusableAuthorizationProvider(): array
+	{
+		return [
+			'bearer alone' => ['Bearer'],
+			'bearer and a blank' => ['Bearer '],
+			'bearer and blanks' => ['Bearer      '],
+			'basic alone' => ['Basic'],
+			'basic with junk' => ['Basic !!!!'],
+			'basic with no colon once decoded' => ['Basic '.base64_encode('nocolonhere')],
+			'basic with no user' => ['Basic '.base64_encode(':password')],
+			'another scheme' => ['Digest username="a"'],
+		];
+	}
+
+	/** @dataProvider unusableAuthorizationProvider */
+	public function testAMalformedAuthorizationHeaderIsNoCredential(string $sHeader): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = $sHeader;
+
+		$this->assertFalse(MCPHttp::CarriesACredential());
+	}
+
+	/** @dataProvider unusableAuthorizationProvider */
+	public function testAMalformedAuthorizationHeaderNeverReachesTheLogin(string $sHeader): void
+	{
+		$_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = $sHeader;
+		$_SERVER['HTTP_AUTH_TOKEN'] = 'abc123';
+
+		MCPHttp::PromoteBearerToAuthToken();
+
+		$this->assertArrayNotHasKey('REDIRECT_HTTP_AUTHORIZATION', $_SERVER, 'iTop\'s LoginBasic would read it');
+		$this->assertTrue(MCPHttp::CarriesACredential(), 'the Auth-Token beside it still counts');
+	}
+
+	public function testAUsableBasicHeaderIsKept(): void
+	{
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Basic '.base64_encode('user:pass:with:colons');
+
+		MCPHttp::PromoteBearerToAuthToken();
+
+		$this->assertArrayHasKey('HTTP_AUTHORIZATION', $_SERVER);
+		$this->assertTrue(MCPHttp::CarriesACredential());
+	}
+
 	public function testReadBearerTokenReturnsTheRawCredential(): void
 	{
 		$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer  spaced-out  ';

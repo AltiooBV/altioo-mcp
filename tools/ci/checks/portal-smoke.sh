@@ -143,7 +143,10 @@ else
 
 	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
 	case "$sOut" in *'"may_attach":true'*|*'"may_attach": true'*) echo "   ok  core_object_get says the request takes a file" ;; *) fail "may_attach is not true on the user's own request: ${sOut:0:400}" ;; esac
-	case "$sOut" in *"itop://core/document/Attachment/$iOwnFile/contents"*) echo "   ok  and gives each attachment its uri" ;; *) fail "the attachment has no uri: ${sOut:0:400}" ;; esac
+	# By id, which core_object_get_document takes. Not by uri: it named a resource template portal mode does not serve
+	# (review 2026-11-18, RT-13).
+	case "$sOut" in *"itop://core/document/Attachment/"*) fail "the attachment still carries a uri portal mode does not serve: ${sOut:0:400}" ;; esac
+	case "$sOut" in *'"id":'"$iOwnFile"*|*'"id": '"$iOwnFile"*) echo "   ok  and lists each attachment by id, with no uri the portal does not serve" ;; *) fail "the attachment is not listed by id: ${sOut:0:400}" ;; esac
 
 	sB64=$(printf 'Added over HTTP by the portal smoke.\n' | base64 -w0)
 	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOwn"',"filename":"smoke-added.txt","content_base64":"'"$sB64"'","mimetype":"text/plain"}')

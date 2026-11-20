@@ -11,7 +11,6 @@ namespace Altioo\iTop\Extension\MCP\Service\Portal;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
-use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -574,7 +573,9 @@ final class PortalAccess extends ObjectAccess
 				'filename' => $oDocument instanceof \ormDocument ? $oDocument->GetFileName() : null,
 				'mimetype' => $oDocument instanceof \ormDocument ? $oDocument->GetMimeType() : null,
 				'size'     => $oDocument instanceof \ormDocument ? $oDocument->GetSize() : null,
-				'uri'      => DocumentAccess::Uri('Attachment', (int)$oAttachment->GetKey(), 'contents'),
+				// No `uri`: it names a resource template that portal mode does not serve, so a client that followed it
+				// was answered "Resource not found". core_object_get_document reads the file, by this id (review
+				// 2026-11-18, RT-13; ADR 0011 gates the read in that tool, and a second route would need the same gates).
 			];
 		}
 

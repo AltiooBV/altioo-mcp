@@ -109,8 +109,20 @@ class RequestSessionTest extends TestCase
 		$this->assertStringContainsString('if($sGate===LoginGate::class){$bKeepSession=false;}', $sServe, 'the flag must be cleared at the login gate and nowhere before it');
 		$this->assertSame(1, substr_count($sServe, '$bKeepSession=false;'), 'the flag is cleared in one place only');
 
-		$this->assertSame(3, substr_count($sServe, 'self::discardRequestSession($bKeepSession)'), 'the served, batch and error paths must each pass the flag');
+		$this->assertSame(4, substr_count($sServe, 'self::discardRequestSession($bKeepSession)'), 'the served, batch, error and answered-by-a-gate paths must each pass the flag');
 		$this->assertStringContainsString("if(!\$bKeepSession&&session_id()!==''){", $sDiscard, 'the session is destroyed only when it is not being kept');
+	}
+
+	/**
+	 * Review 2026-11-18, RT-8: a gate that answers the request itself, the CORS preflight, returned from serve() with
+	 * the session iTop's startup had opened still queued, so the answer set a cookie and left a session file for each
+	 * preflight against README and SECURITY.md, which say the endpoint sets none.
+	 */
+	public function testAGateThatAnswersEndsTheSessionItsRequestOpened(): void
+	{
+		$sServe = SourceCalls::OfClass(MCPController::class)->Code('serve');
+
+		$this->assertStringContainsString('if(!(new$sGate())->Check($oKPI)){self::discardRequestSession($bKeepSession);return;}', $sServe);
 	}
 
 	public function testTheSessionDiscardStillComesBeforeTheAnswer(): void
