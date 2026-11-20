@@ -36,6 +36,17 @@ what said so.
   sub-query's at any depth, a union branch's) is now held to the read check of the class it selects, and a refusal is worded as a direct `SELECT` of that class is. It applies to `core_object_search_by_oql`,
   `core_object_count` with `oql`, and an OQL string given as an external key's value. **Visible to operators:** a saved prompt or an assistant's query that joined a class its account does not read
   is refused where it was served; an account's own joins over classes it reads are unchanged. Not a security fix for the 1.x lines (no `release/1.N` change): it narrows the channel below iTop's own search.
+- **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
+  protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
+  `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no
+  `simulate` flag, so `core_my_activity`, the audit list and anything forwarding the rows saw none of the calls
+  individually. A batch is now answered HTTP 400 with JSON-RPC `-32600 Invalid Request`, once the caller is
+  authenticated, and recorded as one row of method `batch` (always audited, whatever `log_mcp_method`
+  lists). The write cap was not bypassed: `WriteCap` reserves what each call is allowed within a request.
+  A client that sent batches has to send its requests one per HTTP request, which every revision requires of it from 2025-06-18.
+- **HTTP `DELETE` is now answered `405`, where 2.0.0 answered `200`.** The endpoint is stateless and stores no session, so there is none to end: a `DELETE` (the MCP transport's way to end a session) is now refused `405 Method Not Allowed` with `Allow: POST, OPTIONS`, instead of a `200` that ended nothing (`NoSessionTeardownMiddleware`). A client that sends it on shutdown and treats anything but a `2xx` as an error has to accept the `405` (the MCP specification allows a server to answer it). `GET` was already `405`.
+- **A 1.x tool pack installed beside 2.x takes every page of the instance down: move it aside before running the setup.** A pack declares `altioo-mcp/1.x.y` as a minimum, so the setup accepts 2.x beside it, and its `register.php` imports a 1.3 class name that 2.0 removed with no alias ([the name table under 2.0.0](#200---2026-11-16)). iTop includes every module's datamodel files, `register.php` among them, from `env-production/autoload.php` on **every request** to the environment, outside the per-provider guard that protects a pack that fails to load at run time, so the `Class not found` is a fatal there: tried on iTop 3.2.3 with a stub 1.x `register.php` (`Registry\MCPExtensionCollector::RegisterServiceProvider(...)`), the console, the portal, the REST endpoint and the MCP endpoint all answered `500`. Before upgrading to 2.x, move every pack written against 1.x out of `extensions/`, run the setup, and put back the version of the pack that is written for 2.x.
+- **For pack authors: two entries of the 2.0.0 name table are not on the surface.** The table under 2.0.0 sends `Helper\FormulaPolicy` to `Service\Write\FormulaPolicy` and `Helper\SecretPolicy` to `Service\Rights\SecretPolicy`; both are `@internal` since 2.0 (the paragraph above that table says so, and the table did not). A pack that called them goes through `WriteValues::Validated()`, which applies both rules and is on the surface. The 2.0.0 entry is left as it was published.
 
 ### Fixed
 
@@ -135,14 +146,6 @@ what said so.
   A tool that is not this module's own and is not read-only is now left out of the server built for an advisory credential: absent from `tools/list`, and answered as an unknown tool when called by name. This module's own write tools are unchanged (they are served and rehearse),
   and a pack's read-only tools are still served. **Operators with packs installed:** advisory tokens lose the pack's write tools; nothing else changes. `doc/extending.md` says so and still asks a pack to call `DryRun::Simulated()`, `ElementContract::Violations()` warns when it does not, and the example
   pack's write tool calls it. The README's "every write tool it can reach rehearses" is true again. An opt-in for a pack that rehearses is not built; ADR 0022 names it as the path if a real pack needs one.
-- **A JSON-RPC batch is refused, so one audit row never stands for N calls.** The endpoint accepted a JSON array of up to 100 requests on every
-  protocol version, though batching is optional in 2025-03-26 and was removed after it. A batch of
-  `tools/call` writes left **one** audit row with no method, no tool name, no parameters and no
-  `simulate` flag, so `core_my_activity`, the audit list and anything forwarding the rows saw none of the calls
-  individually. A batch is now answered HTTP 400 with JSON-RPC `-32600 Invalid Request`, once the caller is
-  authenticated, and recorded as one row of method `batch` (always audited, whatever `log_mcp_method`
-  lists). The write cap was not bypassed: `WriteCap` reserves what each call is allowed within a request.
-  A client that sent batches has to send its requests one per HTTP request, which every revision requires of it from 2025-06-18.
 - **The audit row's `simulate` column recorded the caller's request, not what ran.** A call with
   `simulate: false` that the advisory credential turned into a rehearsal was logged `no` and read, to
   anyone reviewing the log, as a write that happened; and a write that left `simulate` out, which

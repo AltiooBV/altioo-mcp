@@ -467,6 +467,11 @@ Then:
 The archive ships its own `vendor/` directory — do **not** run `composer install` on a
 production instance.
 
+**Upgrading from 1.x with a tool pack installed:** move every pack written for 1.x out of
+`extensions/` before the setup, and put back its 2.x version afterwards. A 1.x pack's
+`register.php` names a class 2.0 renamed, and iTop includes it on every request, so left in place
+it takes every page of the instance down (see the 2.1.0 entry of [CHANGELOG.md](CHANGELOG.md)).
+
 Nothing is reachable yet at this point: the endpoint answers `401` until someone holds one of
 the allowed profiles *and* presents a credential. See [Granting access](#granting-access).
 
