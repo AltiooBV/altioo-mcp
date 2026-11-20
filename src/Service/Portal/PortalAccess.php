@@ -21,7 +21,7 @@ use DBObjectSearch;
 use DBObjectSet;
 use DBSearch;
 use MetaModel;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 

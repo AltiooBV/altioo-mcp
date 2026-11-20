@@ -263,7 +263,7 @@ final class ExternalKeyPolicy
 		// gets the explanation of what a key takes.
 		try {
 			ObjectQuery::CheckQuery($sValue);
-		} catch (\Mcp\Exception\ToolCallException $e) {
+		} catch (\Mcp\Server\Exception\ToolCallException $e) {
 			return $e->getMessage().' '.$sHow;
 		}
 		$sUnproved = ExclusionSearches::OqlRefusal($sValue);

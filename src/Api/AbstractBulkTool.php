@@ -19,7 +19,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\WriteValues;
 use DBObject;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use RestUtils;
 use UserRights;

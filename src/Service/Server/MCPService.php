@@ -22,7 +22,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\Session\StatelessSessionStore;
 use Http\Discovery\Psr17Factory;
 use Mcp\Schema\ResourceTemplate;
-use Mcp\Server;
+use Mcp\Server\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Transport\Http\Middleware\CorsMiddleware;
 use Mcp\Server\Transport\Http\Middleware\DnsRebindingProtectionMiddleware;

@@ -11,7 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 
 require_once __DIR__.'/../bootstrap.php';

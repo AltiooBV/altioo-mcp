@@ -9,7 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Api;
 
 use JsonException;
-use Mcp\Exception\ResourceReadException;
+use Mcp\Server\Exception\ResourceReadException;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 
 /**

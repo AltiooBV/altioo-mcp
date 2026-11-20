@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use JsonException;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;

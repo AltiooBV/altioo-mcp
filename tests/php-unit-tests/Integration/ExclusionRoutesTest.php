@@ -37,7 +37,7 @@ use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use AltiooEventMCPService;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use ormDocument;
 use UserRights;

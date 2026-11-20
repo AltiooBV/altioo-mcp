@@ -22,7 +22,7 @@ use AltiooEventMCPService;
 use CMDBObject;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use UserRights;
 

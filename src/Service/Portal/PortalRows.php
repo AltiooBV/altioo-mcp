@@ -13,7 +13,7 @@ use DBObject;
 use DBObjectSet;
 use DBSearch;
 use DBUnionSearch;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 
 /**

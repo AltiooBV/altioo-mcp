@@ -27,7 +27,7 @@ use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
 use AttributeBlob;
 use DBObject;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use ormDocument;

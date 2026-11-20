@@ -17,7 +17,7 @@ use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use DBObject;
 use DBObjectSearch;
 use DBObjectSet;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 use MetaModel;
 use UserRights;

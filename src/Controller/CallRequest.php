@@ -10,7 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Controller;
 
 use Altioo\iTop\Extension\MCP\Helper\MCPMethod;
 use Altioo\iTop\Extension\MCP\Model\MCPResult;
-use Mcp\Server\Stateless\RequestMeta;
+use Mcp\Schema\RequestMeta;
 use Psr\Http\Message\RequestInterface;
 
 /**

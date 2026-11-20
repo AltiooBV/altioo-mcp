@@ -36,7 +36,7 @@ use DBObjectSearch;
 use DBObjectSet;
 use DBSearch;
 use FieldExpression;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use UserRights;

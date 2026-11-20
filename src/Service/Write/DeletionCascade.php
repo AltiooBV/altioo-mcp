@@ -14,7 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use DBObject;
 use DBObjectSet;
 use DeletionPlan;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 use Throwable;
 use UserRights;

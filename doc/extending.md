@@ -51,7 +51,7 @@ module's `datamodel` array so it is in place before `register.php` names a class
 ```
 
 **Do not ship `mcp/sdk` — put it in `require-dev`.** It is a genuine *runtime* dependency of
-your code: your tools type-hint `Mcp\Schema\ToolAnnotations` and throw `Mcp\Exception\ToolCallException`,
+your code: your tools type-hint `Mcp\Schema\ToolAnnotations` and throw `Mcp\Server\Exception\ToolCallException`,
 and both have to resolve when a client calls them. `require-dev` is not a mislabelling of that,
 it is where the dependency is satisfied from — this module vendors the SDK and loads it from
 its own `datamodel` array, and iTop includes a module's datamodel files after those of the
@@ -70,8 +70,8 @@ Installing it and deleting `vendor/mcp` before packaging does **not** work:
 entries outlive the files and the first call fatals on a missing include. Pin the same
 constraint this module vendors, published as `MCPModule::SDK_CONSTRAINT`, so that what you
 compile against is what will be loaded. The types that are part of the contract described here
-are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Exception\ToolCallException`
-and `Mcp\Exception\ResourceReadException`.
+are `Mcp\Schema\ToolAnnotations`, `Mcp\Schema\Annotations`, `Mcp\Server\Exception\ToolCallException`
+and `Mcp\Server\Exception\ResourceReadException`.
 
 **Versioning, and what it applies to.** The extension follows semver over the surface a pack
 touches, and that surface is defined in the source rather than in this paragraph. **A class
@@ -174,7 +174,7 @@ tools declare `execute()` static; an instance method works equally well.
 ```php
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
-use Mcp\Exception\ToolCallException;
+use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
 
 class TicketAddLogEntry extends AbstractMCPTool
