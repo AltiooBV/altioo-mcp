@@ -1,6 +1,6 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
-    "generated": "2026-11-20",
+    "generated": "2026-11-23",
     "sdk": "v0.10.0",
     "surface": {
         "protocolVersion": "2025-06-18",
@@ -593,6 +593,22 @@
                     "idempotentHint": true,
                     "openWorldHint": false
                 }
+            },
+            {
+                "name": "core_version",
+                "title": "iTop Version",
+                "inputSchema": {
+                    "type": "object",
+                    "required": []
+                },
+                "description": "Report what is running: the iTop version, build and edition, and the name, version, licence and source URL of the MCP extension serving this session. Read it when an answer depends on the iTop version, or when asked what this server is or where its source is. No arguments; reads nothing from the CMDB.",
+                "annotations": {
+                    "title": "iTop Version",
+                    "readOnlyHint": true,
+                    "destructiveHint": false,
+                    "idempotentHint": true,
+                    "openWorldHint": false
+                }
             }
         ],
         "resources": [
@@ -640,7 +656,7 @@
                 "uri": "itop://core/version",
                 "name": "core_version",
                 "title": "iTop Version",
-                "description": "Read the iTop version information, and the identity, licence and source of the MCP extension serving this session.",
+                "description": "Read the iTop version information, and the identity, licence and source of the MCP extension serving this session. The core_version tool returns the same thing for clients that do not read resources.",
                 "mimeType": "application/json",
                 "annotations": {
                     "audience": [
