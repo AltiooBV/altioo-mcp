@@ -80,6 +80,7 @@ class CoreExtensionsTest extends TestCase
 				'core_object_update',
 				'core_portal_list',
 				'core_set_obsolete_data',
+				'core_version',
 			],
 			$this->sortedKeys(MCPRegistry::GetTools())
 		);
@@ -202,6 +203,7 @@ class CoreExtensionsTest extends TestCase
 			'core_object_apply_stimulus'  => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_delete'          => AccessPolicy::CAPABILITY_DELETE,
 			'core_portal_list'            => AccessPolicy::CAPABILITY_READ,
+			'core_version'                => AccessPolicy::CAPABILITY_READ,
 		];
 
 		$aActual = [];
