@@ -75,11 +75,12 @@ class ContextBudgetTest extends TestCase
 		'ObjectUpdate'        => [580, 1230],
 		'PortalList'          => [700, 900],
 		'SetObsoleteData'     => [530, 410],
+		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. */
-	private const TOTAL_DESCRIPTIONS = 13950;
-	private const TOTAL_INPUT_SCHEMAS = 24800;
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. */
+	private const TOTAL_DESCRIPTIONS = 14270;
+	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
 	private const INSTRUCTIONS = 4500;
