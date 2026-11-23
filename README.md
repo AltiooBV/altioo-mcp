@@ -159,6 +159,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 |---|---|
 | `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
+| `core_version` | What is running: iTop's version, build and edition, and this extension's name, version, licence and source URL. Console mode only, like the resource |
 | `core_my_activity` | What this account's credentials did through this endpoint, newest first, from the audit trail: when, which tool, dry run or failed, the objects changed or read **that you may still see** and the reason given. **Your own calls only, selected by your account's key**: there is no argument to name anyone else, and no login is ever matched. "Own" means *the account*: people who share one login see each other's calls. Never returns the raw request parameters or what a tool said. `coverage` says what the record cannot show. **Served in portal mode too** ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)), the one thing a portal serves that the portal has no screen for: there an object is named only if the portal shows it, an attribute code only if the portal's view form shows it, and `coverage` says only that some earlier calls may not be listed. Every portal user with MCP access has it after the upgrade that brings it; `mcp_disabled_tools` withdraws it |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
@@ -314,9 +315,10 @@ the API is tri-state and an add-on that *does* grade per object signals it with
 | `itop://core/class/{class}` | One class in detail: attributes, relations, lifecycle, and the caller's rights on it |
 | `itop://core/document/{class}/{id}/{att_code}` | One document, by the URI a read reported |
 
-`itop://core/classes` and `itop://core/class/{class}` are deliberately served twice — as
-resources, and as the `core_class_list` / `core_class_schema` tools over the same code (the
-document template is doubled the same way, by `core_object_get_document`). Plenty of clients never fetch resources at all,
+**Every resource has a tool twin** that returns the same thing over the same code, and is served
+wherever the resource is ([ADR 0025](doc/adr/0025-every-resource-has-a-tool-twin.md)):
+`core_instructions`, `core_version`, `core_current_user`, `core_class_list`, `core_class_schema`
+and `core_object_get_document`, in the order of the table above. Plenty of clients never fetch resources at all,
 and support for resource *templates* is thinner still; a model that cannot reach the schema
 falls back to guessing attribute codes, and every other tool here is the poorer for it. The
 tool form adds the narrowing a fixed URI cannot offer: a stock datamodel declares several
@@ -1645,8 +1647,8 @@ reading of the licence, not legal advice; your counsel decides for your organisa
 
 ### The source offer is served, not just documented
 
-The `core/version` resource reports the extension's name, version, licence and source URL
-alongside iTop's. That block is the §13 offer in practice: an MCP session has no page to put a
+The `core/version` resource and its twin, the `core_version` tool, report the extension's name,
+version, licence and source URL alongside iTop's. That block is the §13 offer in practice: an MCP session has no page to put a
 footer on, so a client that only ever speaks JSON-RPC to one endpoint has nowhere else to find
 out what it is talking to or where to ask for its source.
 

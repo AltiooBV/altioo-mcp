@@ -21,6 +21,17 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Added
+
+- **`core_version`, the tool twin of `itop://core/version`**: iTop's version, build and edition, and this extension's name,
+  version, licence and source URL, the same payload over the same code (`Core\ServerVersion`). A client that reads no
+  resources was never shown the AGPL §13 source offer that payload carries. In the `server` toolset, read grade, console mode
+  only, as the resource is. One more tool in every console client's `tools/list` (302 bytes of description); the other
+  core tools' definitions are unchanged, so no pinned hash moves except that a new one appears.
+- **Every resource has a tool twin, and a test says so** ([ADR 0025](doc/adr/0025-every-resource-has-a-tool-twin.md)).
+  `ResourceToolTwinTest` fails when a core resource or template has no tool paired with it, or when the tool is not served
+  wherever the resource is; `ResourceToolTwinParityTest` (integration) compares their answers.
+
 ## [2.1.0] - 2026-11-20
 
 **The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Eighteen entries under *Fixed* are marked Security (two of them concern tool packs); none
