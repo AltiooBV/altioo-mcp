@@ -68,13 +68,13 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 
 		return 'Describe '.self::RETURNS.'. '
 			.'Attributes arrive in two blocks: "attributes" can be written - that is what a create or an update needs - and "derived" cannot - computed or structural, including the _friendlyname each external key carries - which on a class with many of them is most of the payload. '
-			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply, and an attribute with a "default" is filled in when you send none. '
+			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply. '
 			.'An attribute with "dependsOn" is declared as deriving from those attributes - a ticket\'s priority from its urgency and impact - so a value you set for it may be recomputed and discarded on the write; set what it derives from instead, and the write reports what it kept under "overridden". '
 			.self::RIGHTS.'. '
 			.'"no" is refused outright: do not attempt it. "yes" means the class check passes and the object may still refuse. "depends" is answered per object. '
 			.'The grades answer for this endpoint and not only for iTop: a class that decides what this endpoint may do - a token, an account, a rights link - is graded "no" for every write whatever your profile says, and "restricted" explains which restriction applies. Reading is never narrowed by it. '
 			.'Attributes carry a JSON Schema "format" and "pattern" where one applies; a date or date-time must match the pattern, since iTop rejects the RFC 3339 form. '
-			.'Each lifecycle state lists the attributes it makes "mandatory" or "prompted" (a transition into it needs those) or "readOnly" (not editable while the object is in it). '
+			.'A lifecycle state lists the attributes it makes "mandatory" or "prompted" (a transition into it needs them) or "readOnly". '
 			.'An external key reports its target class, not its candidate objects: search that class with core_object_search_by_class and pass the id you find. '
 			.'Read this before creating or updating an object of the class, or before applying a stimulus; core_class_list finds the class name.';
 	}

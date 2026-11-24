@@ -105,7 +105,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 				],
 				'may'      => [
 					'type'        => 'string',
-					'description' => 'Keep only the classes this caller may act on through the named gate, and report every gate on each one. Empty (the default) means no such narrowing and no rights reported. "*" reports the gates without narrowing on any of them, which is the one call that answers "what may I do across all of these". A class the named gate refuses outright is dropped, and so is an abstract class for create, bulkCreate, bulkModify and bulkDelete (act on its subclasses); one graded "depends" is kept, because that is the datamodel asking for the object rather than refusing the class. The gates are the ones the tools check: '
+					'description' => 'Keep only the classes this caller may act on through the named gate, and report every gate on each one. Empty (the default) means no such narrowing and no rights reported. "*" reports the gates without narrowing on any of them, which is the one call that answers "what may I do across all of these". A class the named gate refuses outright is dropped, and for create and the bulk gates an abstract class; one graded "depends" is kept, because that is the datamodel asking for the object rather than refusing the class. The gates are the ones the tools check: '
 						.implode(', ', GateGrades::RightsKeys()).'.',
 					'enum'        => GateGrades::MayValues(),
 					'default'     => '',
