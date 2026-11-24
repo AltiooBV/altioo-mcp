@@ -12,11 +12,16 @@ use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
+use DBObjectSet;
+use MetaModel;
+use UserRights;
 use DeletionPlan;
 use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -166,6 +171,40 @@ class ObjectBulkDelete extends AbstractBulkTool
 			return self::outcome($iId, $iRow, false, $sAccessRefusal);
 		}
 
+		// An attachment is removed from its host's edit form in the console, so what the console asks of the host is
+		// asked here: the host exists and is readable and served, the account may modify it (this object, not only the
+		// class), and the attachments module does not freeze it for the back office (closed tickets by default). The
+		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
+		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
+		$oAttachmentHost = null;
+		if (MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $sClass)) {
+			$sHostRefusal = null;
+			$sHostClass = (string)$oObject->Get('item_class');
+			$iHostId = (int)$oObject->Get('item_id');
+			if ($sHostClass === '' || $iHostId < 1) {
+				$sHostRefusal = 'This attachment is attached to no saved object (a draft upload), so it is not deleted here.';
+			} elseif (!MetaModel::IsValidClass($sHostClass) || ExclusionPolicy::ExcludesClass($sHostClass) || !UserRights::IsActionAllowed($sHostClass, UR_ACTION_READ)) {
+				$sHostRefusal = 'The object this attachment belongs to was not found.';
+			} else {
+				$oHostSet = new DBObjectSet(ObjectQuery::ById($sHostClass, $iHostId));
+				$oAttachmentHost = $oHostSet->Count() === 0 ? null : $oHostSet->Fetch();
+				$oHostSet->Rewind();
+				if ($oAttachmentHost === null || ExclusionPolicy::ExcludesClass(get_class($oAttachmentHost))) {
+					$oAttachmentHost = null;
+					$sHostRefusal = 'The object this attachment belongs to was not found.';
+				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
+					$sHostRefusal = 'Access denied: cannot modify the object this attachment belongs to.';
+				} elseif ($oAttachmentHost->IsReadOnly()
+					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
+						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
+					$sHostRefusal = 'The object this attachment belongs to is read-only in its current state, so its attachments cannot be removed.';
+				}
+			}
+			if ($sHostRefusal !== null) {
+				return self::outcome($iId, $iRow, false, $sHostRefusal);
+			}
+		}
+
 		// CheckToDelete() returns a boolean and fills the plan by reference;
 		// the reasons live on the plan.
 		$oPlan = new DeletionPlan();
@@ -187,9 +226,13 @@ class ObjectBulkDelete extends AbstractBulkTool
 		}
 
 		if (!$bSimulate) {
+			$sRemovedFile = $oAttachmentHost === null ? '' : DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
 			try {
 				$oPlan = new DeletionPlan();
 				$oObject->DBDelete($oPlan);
+				if ($oAttachmentHost !== null) {
+					DeletionCascade::AttachmentRemoved($oAttachmentHost, $sRemovedFile);
+				}
 			} catch (\Throwable $e) {
 				// CheckToDelete() above already reported everything the caller
 				// could act on, with the plan's own wording.
