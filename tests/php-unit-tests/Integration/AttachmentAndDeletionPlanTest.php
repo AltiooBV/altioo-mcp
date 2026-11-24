@@ -160,6 +160,24 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * S8: iTop's refusal of a file an image attribute does not take quotes the start of the file; the answer does not.
+	 */
+	public function testARefusedFilesBytesAreNotEchoed(): void
+	{
+		$iOrg = (int)$this->CreateOrganization('AttPic '.bin2hex(random_bytes(4)))->GetKey();
+		$iPerson = (int)$this->CreatePerson(1, $iOrg)->GetKey();
+
+		try {
+			ObjectAttach::execute('Person', $iPerson, 'x.txt', base64_encode('SECRET-BYTES '.str_repeat('A', 300)."\x00\x01"), 'text/plain', 'picture');
+			$this->fail('a text file was accepted as a picture');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('Wrong format', $e->getMessage(), 'the reason is still given');
+			$this->assertStringNotContainsString('SECRET-BYTES', $e->getMessage());
+			$this->assertStringNotContainsString("\x00", $e->getMessage());
+		}
+	}
+
+	/**
 	 * B7: every entry of a plan names its class, and the object itself is not "besides".
 	 */
 	public function testADeletePlanNamesTheClassOfEveryEntryAndLeavesOutTheObjectItself(): void
