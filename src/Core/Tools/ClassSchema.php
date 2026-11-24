@@ -34,6 +34,14 @@ use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
  */
 class ClassSchema extends AbstractMCPTool implements PortalAware
 {
+	/**
+	 * What this returns, in the words its resource twin uses too, so the two
+	 * descriptions cannot say different things about one answer (ADR 0025).
+	 */
+	public const RETURNS = 'one iTop class: attributes, relations, lifecycle states and stimuli, and what this user may do with it';
+
+	/** What the rights block holds, in the words the resource template uses too. */
+	public const RIGHTS = '"rights" grades read, bulkRead, create, bulkCreate, modify, bulkModify, delete and bulkDelete as "yes", "no" or "depends", and each attribute carries the same grade under "modify"';
 
 	public function getNamespace(): string
 	{
@@ -58,11 +66,11 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Describe one iTop class: attributes, relations, lifecycle states and stimuli, and what this user may do with it. '
+		return 'Describe '.self::RETURNS.'. '
 			.'Attributes arrive in two blocks: "attributes" can be written - that is what a create or an update needs - and "derived" cannot - computed or structural, including the _friendlyname each external key carries - which on a class with many of them is most of the payload. '
 			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply. '
 			.'An attribute with "dependsOn" is declared as deriving from those attributes - a ticket\'s priority from its urgency and impact - so a value you set for it may be recomputed and discarded on the write; set what it derives from instead, and the write reports what it kept under "overridden". '
-			.'"rights" grades read, bulkRead, create, bulkCreate, modify, bulkModify, delete and bulkDelete as "yes", "no" or "depends", and each attribute carries the same grade under "modify". '
+			.self::RIGHTS.'. '
 			.'"no" is refused outright: do not attempt it. "yes" means the class check passes and the object may still refuse. "depends" is answered per object. '
 			.'The grades answer for this endpoint and not only for iTop: a class that decides what this endpoint may do - a token, an account, a rights link - is graded "no" for every write whatever your profile says, and "restricted" explains which restriction applies. Reading is never narrowed by it. '
 			.'Attributes carry a JSON Schema "format" and "pattern" where one applies; a date or date-time must match the pattern, since iTop rejects the RFC 3339 form. '

@@ -31,6 +31,11 @@ use Mcp\Schema\ToolAnnotations;
  */
 class Version extends AbstractMCPTool
 {
+	/**
+	 * What this returns, in the words its resource twin uses too, so the two
+	 * descriptions cannot say different things about one answer (ADR 0025).
+	 */
+	public const RETURNS = 'the iTop version, build and edition, and the name, version, licence and source URL of the MCP extension serving this session';
 
 	#[\Override]
 	public function getNamespace(): string
@@ -54,7 +59,7 @@ class Version extends AbstractMCPTool
 	#[\Override]
 	public function getDescription(): ?string
 	{
-		return 'Report what is running: the iTop version, build and edition, and the name, version, licence and source URL of the MCP extension serving this session. Read it when an answer depends on the iTop version, or when asked what this server is or where its source is. No arguments; reads nothing from the CMDB.';
+		return 'Report what is running: '.self::RETURNS.'. Read it when an answer depends on the iTop version, or when asked what this server is or where its source is. No arguments; reads nothing from the CMDB.';
 	}
 
 	#[\Override]

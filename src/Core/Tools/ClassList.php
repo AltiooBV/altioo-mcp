@@ -33,6 +33,11 @@ use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
  */
 class ClassList extends AbstractMCPTool implements PortalAware
 {
+	/**
+	 * What this returns, in the words its resource twin uses too, so the two
+	 * descriptions cannot say different things about one answer (ADR 0025).
+	 */
+	public const RETURNS = 'the iTop classes this user can read, with their label, description and place in the hierarchy';
 
 	public function getNamespace(): string
 	{
@@ -57,7 +62,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'List the iTop classes this user can read, with their label, description and place in the hierarchy. '
+		return 'List '.self::RETURNS.'. '
 			.'A full datamodel holds several hundred, so narrow it: category "bizmodel" keeps the business objects and drops the technical ones, filter matches name, label or description, and may keeps the classes this user may act on - may="create" answers "what can I create here" in one call. '
 			.'A class returned under may carries all eight rights grades, not only the one asked for; may="*" reports that block on every class and drops none. '
 			.'Call core_class_schema next for the attributes of one class.';
