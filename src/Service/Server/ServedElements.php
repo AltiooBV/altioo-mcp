@@ -13,10 +13,15 @@ use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
+use MetaModel;
 use UserRights;
 
 /**
@@ -136,7 +141,64 @@ final class ServedElements
 			return true;
 		}
 
+		if (self::cannotSucceedForThisCaller($sIdentifier, $oElement)) {
+			return true;
+		}
+
 		return self::lacksRequiredProfiles($oElement->requiredProfiles());
+	}
+
+	/**
+	 * Whether one of this module's own tools is served to a caller it can never succeed for: absent, as an
+	 * element that is not available is, rather than listed and refused on every call (review 2026-11-23, C6).
+	 *
+	 * Two cases, both read from what decides the refusal itself:
+	 *
+	 * - `core_object_history` in portal mode, when the portal shows no history: no brick it grants reaches the
+	 *   change log, which is what the tool asks first. A portal that cannot be read does not hide it: the tool
+	 *   then answers in the portal's own words.
+	 * - `core_object_bulk_delete`, when this account may delete no class in bulk that the tool would let it act
+	 *   on (read, delete and bulk delete, a class that exists as objects and is not excluded). The tool
+	 *   refuses every class otherwise; the grant is the account's profile and the answer is the same for the
+	 *   whole request. Console mode only, as the tool is (it is not portal aware).
+	 *
+	 * Only this module's own tools, found by their identifier and by where their class is defined: a pack's
+	 * tool that took the name is not asked. The per-class gates the tool checks beyond these (the access
+	 * grants, a read-only database) stay its own, in its own source (ADR 0014); this hides only what no class can
+	 * pass, so it never hides what could succeed.
+	 */
+	private static function cannotSucceedForThisCaller(string $sIdentifier, object $oElement): bool
+	{
+		if ($sIdentifier !== 'core_object_history' && $sIdentifier !== 'core_object_bulk_delete') {
+			return false;
+		}
+		if (!CoreElement::IsOwn($oElement)) {
+			return false;
+		}
+
+		if ($sIdentifier === 'core_object_history') {
+			if (PortalMode::Current() === null) {
+				return false;
+			}
+			try {
+				return !PortalPolicy::ForCurrentRequest()->ShowsHistory();
+			} catch (MCPPortalException $e) {
+				return false;
+			}
+		}
+
+		foreach (MetaModel::GetClasses() as $sClass) {
+			if (MetaModel::IsAbstract($sClass) || !ExclusionPolicy::Serves($sClass) || ChangeLogReservation::IsReserved($sClass)) {
+				continue;
+			}
+			if (UserRights::IsActionAllowed($sClass, UR_ACTION_BULK_DELETE)
+				&& UserRights::IsActionAllowed($sClass, UR_ACTION_DELETE)
+				&& UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
