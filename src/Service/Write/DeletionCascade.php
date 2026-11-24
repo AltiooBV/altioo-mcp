@@ -403,7 +403,13 @@ final class DeletionCascade
 	 * name is kept for the history line {@see AttachmentRemoved()} writes. Plumbing only: whether the attachment may
 	 * go is decided by the delete tool, in its own source (ADR 0014).
 	 *
+	 * What a listener throws is **not** swallowed: in iTop's form the event is fired before the delete and an
+	 * exception from a listener stops it (EventService::FireEvent() rethrows, at once for an EventException and after
+	 * the other listeners for any other), so another extension's veto holds here too. The caller turns it into a
+	 * refusal that does not repeat the listener's message. Only reading the file's name may fail quietly.
+	 *
 	 * @return string The file's name, '' when it cannot be read.
+	 * @throws Throwable What a listener of EVENT_REMOVE_ATTACHMENT_FROM_OBJECT threw.
 	 * @since 2.2.0
 	 */
 	public static function AttachmentRemoving(DBObject $oHost, DBObject $oAttachment): string
@@ -411,15 +417,15 @@ final class DeletionCascade
 		try {
 			$oBlob = $oAttachment->Get('contents');
 			$sName = $oBlob instanceof \ormDocument ? $oBlob->GetFileName() : '';
-			$aData = ['attachment' => $oAttachment];
-			$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
-
-			return $sName;
 		} catch (Throwable $e) {
-			ErrorReport::Log('Could not tell the host of an attachment that it is being removed: '.$e->getMessage());
-
-			return '';
+			ErrorReport::Log('Could not read the name of an attachment being removed: '.$e->getMessage());
+			$sName = '';
 		}
+
+		$aData = ['attachment' => $oAttachment];
+		$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
+
+		return $sName;
 	}
 
 	/**

@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Combodo\iTop\Service\Events\EventService;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
@@ -233,6 +234,46 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 			$this->assertStringContainsString('cannot edit the object this attachment belongs to', $e->getMessage());
 		}
 		$this->assertNotNull(MetaModel::GetObject('Attachment', $iDeleteOnly, false));
+	}
+
+	/**
+	 * In iTop's form the event fired before an attachment goes can be vetoed by a listener, by throwing. A listener of
+	 * another extension keeps that power here, in both tools, and its message is not repeated to the caller.
+	 */
+	public function testAListenerOfAnotherExtensionCanVetoTheRemoval(): void
+	{
+		$iTicket = $this->aTicket();
+		$iSingle = $this->attachmentOn('UserRequest', $iTicket, 'veto-single.txt');
+		$iBulk = $this->attachmentOn('UserRequest', $iTicket, 'veto-bulk.txt');
+		$bVeto = true;
+		$sId = EventService::RegisterListener(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, static function () use (&$bVeto): void {
+			if ($bVeto) {
+				throw new \Exception('veto-secret-text from another extension');
+			}
+		});
+
+		try {
+			try {
+				ObjectDelete::execute('Attachment', $iSingle, false);
+				$this->fail('the single tool deleted past a listener\'s veto');
+			} catch (ToolCallException $e) {
+				$this->assertStringContainsString('an extension refused it', $e->getMessage());
+				$this->assertStringNotContainsString('veto-secret-text', $e->getMessage(), 'the listener\'s words are repeated');
+			}
+			$this->assertNotNull(MetaModel::GetObject('Attachment', $iSingle, false));
+
+			$aReport = json_decode((string)json_encode(ToolOutput::Decode(ObjectBulkDelete::execute('Attachment', [$iBulk], false))), true);
+			$this->assertSame('error', $aReport['objects'][0]['status']);
+			$this->assertStringContainsString('an extension refused it', $aReport['objects'][0]['message']);
+			$this->assertStringNotContainsString('veto-secret-text', (string)json_encode($aReport));
+			$this->assertNotNull(MetaModel::GetObject('Attachment', $iBulk, false));
+
+			// A dry run fires nothing, and shows the deletion as it would be.
+			$this->assertTrue(ToolOutput::Decode(ObjectDelete::execute('Attachment', $iSingle, true))['simulated']);
+		} finally {
+			$bVeto = false;
+			EventService::UnRegisterListener($sId);
+		}
 	}
 
 	/** @return array<string, array{0: string, 1: bool, 2: string}> */

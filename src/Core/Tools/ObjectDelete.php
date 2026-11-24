@@ -280,7 +280,15 @@ class ObjectDelete extends AbstractMCPTool
 			ChangeTracking::Explain($comment);
 
 			// What the console does when an attachment is removed: the host hears of it first and its history gets a line.
-			$sRemovedFile = $oAttachmentHost === null ? '' : DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+			$sRemovedFile = '';
+			if ($oAttachmentHost !== null) {
+				try {
+					$sRemovedFile = DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+				} catch (\Throwable $e) {
+					// Another extension's listener vetoed the removal, as it can in the console's form. Nothing was deleted.
+					throw ToolRefusal::Because(ErrorReport::OpaqueFailure("The attachment {$class}::{$id} was not removed: an extension refused it", $e));
+				}
+			}
 			try {
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);

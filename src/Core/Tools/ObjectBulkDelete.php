@@ -233,7 +233,15 @@ class ObjectBulkDelete extends AbstractBulkTool
 		}
 
 		if (!$bSimulate) {
-			$sRemovedFile = $oAttachmentHost === null ? '' : DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+			$sRemovedFile = '';
+			if ($oAttachmentHost !== null) {
+				try {
+					$sRemovedFile = DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+				} catch (\Throwable $e) {
+					// Another extension's listener vetoed the removal, as it can in the console's form. Nothing was deleted.
+					return self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("The attachment {$sClass}::{$iId} was not removed: an extension refused it", $e));
+				}
+			}
 			try {
 				$oPlan = new DeletionPlan();
 				$oObject->DBDelete($oPlan);

@@ -37,7 +37,7 @@ real call. What is implemented, for each case:
   class (shared plumbing, left as it is), so bulk deletion of attachments still needs the delete right on `Attachment`; **per row, the host
   check replaces the per-object delete right**. Bulk is therefore stricter than the single tool.
 - **The host's history.** A real removal fires `EVENT_REMOVE_ATTACHMENT_FROM_OBJECT` on the host and writes the "attachment removed" line
-  (`DeletionCascade::AttachmentRemoving()` / `AttachmentRemoved()`), as the console does; a failure to write it is logged and does not
+  (`DeletionCascade::AttachmentRemoving()` / `AttachmentRemoved()`), as the console does. A listener of another extension can **veto** the removal as it can in the form: `EventService::FireEvent()` (iTop 3.2.3-3) rethrows what a listener throws, at once for an `EventException` and after the other listeners for any other, so the event is fired before the delete and a throw refuses it (the single tool answers a refusal, the bulk tool that row's outcome) without repeating the listener's message; the reason is in the instance log. A failure to write the line afterwards is logged and does not
   turn a deletion that happened into a failure.
 
 **Consequences, honestly.** An operator who withholds the delete right on `Attachment` from a profile **no longer prevents** that profile
