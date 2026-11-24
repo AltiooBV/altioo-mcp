@@ -73,7 +73,8 @@ final class ServerVersion
 			if ($sModuleId === '_Root_') {
 				continue;
 			}
-			if (utils::IsNullOrEmptyString($aModuleData['version_db'])) {
+			// iTop 3.3 renamed the installed version's key; 3.2 knows only the old one.
+			if (utils::IsNullOrEmptyString($aModuleData['installed_version'] ?? $aModuleData['version_db'] ?? null)) {
 				continue;
 			}
 			if ($sModuleId === 'itop-hub-connector') { // The presence of the Hub Connector module is a good indication that we are running the Community edition
