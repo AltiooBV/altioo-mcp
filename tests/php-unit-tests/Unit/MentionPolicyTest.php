@@ -153,7 +153,7 @@ class MentionPolicyTest extends TestCase
 
 		$this->assertStringContainsString('data-object-class="Person" data-object-key="12"', $sText);
 		$this->assertStringContainsString('Person, Team objects you can see', $sText);
-		$this->assertStringContainsString('at most 3 distinct objects in one call', $sText);
+		$this->assertStringContainsString('at most 3 distinct objects per call', $sText);
 	}
 
 	/**
@@ -174,7 +174,7 @@ class MentionPolicyTest extends TestCase
 	{
 		foreach ([[0, ['Person']], [5, []]] as [$iMax, $aClasses]) {
 			$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write']), null, null, [], $iMax, $aClasses);
-			$this->assertStringContainsString('@mentions are turned off here', $sText);
+			$this->assertStringContainsString('@mentions are off', $sText);
 			$this->assertStringNotContainsString('data-object-class', $sText);
 		}
 	}

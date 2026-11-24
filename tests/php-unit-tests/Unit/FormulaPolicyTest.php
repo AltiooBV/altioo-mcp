@@ -134,7 +134,7 @@ class FormulaPolicyTest extends TestCase
 	{
 		$sText = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-read']));
 
-		$this->assertStringContainsString('put a single', $sText);
+		$this->assertStringContainsString('put a single quote before any cell', $sText);
 		$this->assertStringContainsString('run it as a formula', $sText);
 	}
 
@@ -144,8 +144,8 @@ class FormulaPolicyTest extends TestCase
 		$sOff = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-write']), null, null, [], null, [], false);
 		$sReader = ServerInstructions::Text(AccessPolicy::FromScopes(['MCP-read']), null, null, [], null, [], true);
 
-		$this->assertStringContainsString('may not start with =, +, -, @', $sOn);
-		$this->assertStringNotContainsString('may not start with', $sOff);
-		$this->assertStringNotContainsString('may not start with', $sReader);
+		$this->assertStringContainsString('starting with =, +, -, @, a tab or a carriage return is refused', $sOn);
+		$this->assertStringNotContainsString('is refused unless it is', $sOff);
+		$this->assertStringNotContainsString('is refused unless it is', $sReader);
 	}
 }

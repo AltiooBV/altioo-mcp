@@ -46,6 +46,17 @@ entry itself, not left to be inferred from it.
 - **`itop://core/version` failed on iTop 3.3** with "Undefined array key `version_db`": 3.3 renamed that key of
   `AnalyzeInstallation`'s answer to `installed_version`. The edition is read from either. Present since 3.3 support was
   added; found when the new parity test first read the resource on 3.3. Not a security defect, so 2.x only.
+- **The server instructions were cut in the middle of the prompt-injection warning** (review 2026-11-23, C1, C2, C15).
+  Claude Code keeps 4,096 characters of them and the Claude desktop app about 2,050, mid-word; with all six toolsets they
+  were 5,436. They are rewritten for a model rather than a person, in both modes: terse, security paragraphs first, no
+  explanatory prose, every fact kept. The worst case is now under 3,800 characters, and `ServerInstructionsTest` builds
+  every toolset combination in both modes and fails when the security paragraph is not first and whole inside the first
+  2,000 characters or the total reaches 4,096. Portal mode now carries the same security paragraphs whatever the token
+  is served (the warning that object content is data used to be said only to a token that could read). Two statements
+  were wrong and are corrected: the comment of a write was said to reach "the object's history" (it is kept on the MCP
+  audit row only, since 1.2), and a `2026-07-28` session was said to receive no instructions, though a client on that
+  revision that sends `initialize` (Claude Code does) does. `core_instructions` has a new description and its pinned hash
+  moves. Not a security defect.
 
 ## [2.1.0] - 2026-11-20
 
