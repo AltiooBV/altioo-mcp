@@ -1,6 +1,6 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
-    "generated": "2026-11-23",
+    "generated": "2026-11-24",
     "sdk": "v0.10.0",
     "surface": {
         "protocolVersion": "2025-06-18",
@@ -828,7 +828,7 @@
                 "uri": "itop://core/current-user",
                 "name": "core_current_user",
                 "title": "Current User",
-                "description": "Read the current user information, and the toolsets and capabilities this session is served.",
+                "description": "Read who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through, and the toolsets and tools this session is served.",
                 "mimeType": "application/json",
                 "annotations": {
                     "audience": [
@@ -842,7 +842,7 @@
                 "uri": "itop://core/instructions",
                 "name": "core_instructions",
                 "title": "Server Instructions",
-                "description": "What this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served - its lists, its objects and its writes - and that every write is rehearsed before it is made. Normally delivered at initialize; this is the copy for a session that never saw one.",
+                "description": "The server instructions, which say what this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served - its lists, its objects and its writes - and that every write is rehearsed before it is made. Normally delivered at initialize; this is the copy for a session that never saw one.",
                 "mimeType": "text/markdown",
                 "annotations": {
                     "audience": [
