@@ -21,7 +21,14 @@ source offer is served, not just documented"), so a client that reads no resourc
   resource has it, and the read grade. It may be served in more places (`core_class_list` is served in portal mode and
   `itop://core/classes` is not), never in fewer. One exception predates this record and holds for every pair: resources are
   not graded, so a token scoped to `MCP-delete` alone is served all of them and none of the read tools
-  (`Snapshots/surface-delete.json`). Whether resources should follow the grade is a separate decision.
+  (`Snapshots/surface-delete.json`). Whether resources should follow the grade is a separate decision;
+- **says what it returns in the same words** as its resource: the tool class holds that sentence as `RETURNS` (and
+  `PORTAL_RETURNS` where portal mode answers differently), and both descriptions are built from it. Sharing the handler
+  keeps the answers the same; it did nothing for the two descriptions, which were written twice and had drifted
+  (`itop://core/classes` said "all available iTop classes" where the tool said, correctly, the ones this user can read).
+  The rest of each text - when to call it, its arguments, its URI - stays its own, since a tool carries advice a
+  resource does not. The sentences were taken from the tool descriptions as they stood, so no tool definition changed;
+  the resource descriptions did.
 
 The rule follows the resource into portal mode and no further. `itop://core/version` is not served in portal mode, so neither
 is `core_version`: portal mode serves what the portal offers ([0006](0006-one-tool-surface-the-portal-is-a-policy.md)), and
@@ -37,5 +44,6 @@ Rejected for now: folding the version into `core_current_user` instead of adding
 option and the tool was preferred; it stays the fallback named above.
 
 Enforced by: `ResourceToolTwinTest` (unit: every registered resource and template is paired in its `TWINS` list with a
-registered tool served wherever it is) and `ResourceToolTwinParityTest` (integration: the version, class-list and
+registered tool served wherever it is, and both descriptions contain the tool's `RETURNS` sentence, in console and in
+portal mode) and `ResourceToolTwinParityTest` (integration: the version, class-list and
 class-schema pairs answer the same; the instructions pair is compared in `CoreInstructionsTest`).

@@ -30,7 +30,22 @@ entry itself, not left to be inferred from it.
   core tools' definitions are unchanged, so no pinned hash moves except that a new one appears.
 - **Every resource has a tool twin, and a test says so** ([ADR 0025](doc/adr/0025-every-resource-has-a-tool-twin.md)).
   `ResourceToolTwinTest` fails when a core resource or template has no tool paired with it, or when the tool is not served
-  wherever the resource is; `ResourceToolTwinParityTest` (integration) compares their answers.
+  wherever the resource is, or when the two descriptions do not say what comes back in the same words;
+  `ResourceToolTwinParityTest` (integration) compares their answers.
+
+### Changed
+
+- **A resource's description now says what it returns in its tool twin's words.** Each core tool that twins a resource
+  holds that sentence (`RETURNS`, and `PORTAL_RETURNS` where portal mode differs) and both descriptions are built from it.
+  The resource descriptions change in `resources/list`; `itop://core/classes` no longer claims "all available iTop classes"
+  where it lists the ones this user can read, and `itop://core/current-user` gains its own portal-mode text. The tool
+  descriptions are unchanged byte for byte.
+
+### Fixed
+
+- **`itop://core/version` failed on iTop 3.3** with "Undefined array key `version_db`": 3.3 renamed that key of
+  `AnalyzeInstallation`'s answer to `installed_version`. The edition is read from either. Present since 3.3 support was
+  added; found when the new parity test first read the resource on 3.3. Not a security defect, so 2.x only.
 
 ## [2.1.0] - 2026-11-20
 
