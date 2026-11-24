@@ -47,6 +47,9 @@ class NoSessionTeardownMiddlewareTest extends TestCase
 		$this->assertSame(405, $oResponse->getStatusCode());
 		$this->assertSame('POST, OPTIONS', $oResponse->getHeaderLine('Allow'));
 		$this->assertFalse($oResponse->hasHeader('X-Reached'), 'the transport was reached and answered it');
+		$this->assertSame('application/json', $oResponse->getHeaderLine('Content-Type'), 'a JSON-RPC error body, as GET and PUT are answered (review 2026-11-23, C11)');
+		$aBody = json_decode((string)$oResponse->getBody(), true);
+		$this->assertSame(-32600, $aBody['error']['code'] ?? null);
 	}
 
 	/** @dataProvider otherMethods */

@@ -1238,7 +1238,7 @@ that header is not affected. If that works, the problem is the header, not the t
 
 Fix it with `CGIPassAuth On`, scoped to this one file — see [Endpoint](#endpoint) for the block.
 
-**2. `403`, with a body that says only "This host is not served by the MCP endpoint".**
+**2. `403`, with a body that says only "This host or origin is not served by the MCP endpoint".**
 
 The refusal is deliberately silent about *which* hostnames are configured; a caller probing for
 them has no business being told. The reason is in `log/error.log`, and it names both the
