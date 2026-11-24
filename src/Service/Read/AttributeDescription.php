@@ -421,6 +421,7 @@ final class AttributeDescription
 				return $sGeneral;
 			}
 
+			/** @psalm-suppress RedundantCondition iTop's attribute classes are not all in the stubs */
 			if (!$oAttDef instanceof AttributeLinkedSetIndirect) {
 				return "Send the complete list, as an array of {$sLinkClass} objects keyed by attribute code; one left out is removed.";
 			}
@@ -475,6 +476,7 @@ final class AttributeDescription
 			];
 		}
 
+		/** @psalm-suppress TypeDoesNotContainType iTop's attribute classes are not all in the stubs */
 		if ($oAttDef instanceof AttributeLinkedSet) {
 			return ['writeHint' => self::linkSetHint($oAttDef)];
 		}
