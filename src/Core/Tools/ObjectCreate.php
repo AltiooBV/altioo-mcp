@@ -307,6 +307,9 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because($sCapRefusal);
 		}
 
+		// A creation has nothing on disk before it: whatever it holds afterwards is what it filled.
+		$aBefore = [];
+
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
 		ChangeTracking::Explain($comment);
@@ -320,7 +323,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'    => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),
@@ -355,7 +358,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'    => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),

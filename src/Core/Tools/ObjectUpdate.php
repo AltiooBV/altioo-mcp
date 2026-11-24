@@ -313,6 +313,9 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because($sCapRefusal);
 		}
 
+		// What is on disk before the write, to say afterwards what the write changed (review 2026-11-23, B4).
+		$aBefore = WriteOutcome::Snapshot($oObject);
+
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
 		ChangeTracking::Explain($comment);
@@ -325,7 +328,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'    => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),

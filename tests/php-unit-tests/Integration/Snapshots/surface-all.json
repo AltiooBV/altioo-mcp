@@ -260,7 +260,7 @@
                         "after": {
                             "type": "object",
                             "additionalProperties": true,
-                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
+                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied and, on a real write, every one it changed or filled - a ref, a state, a date a transition stamped - re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
                         },
                         "changes": {
                             "type": "object",
@@ -1042,7 +1042,7 @@
                         "after": {
                             "type": "object",
                             "additionalProperties": true,
-                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
+                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied and, on a real write, every one it changed or filled - a ref, a state, a date a transition stamped - re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
                         },
                         "changes": {
                             "type": "object",
@@ -1667,7 +1667,7 @@
                         "after": {
                             "type": "object",
                             "additionalProperties": true,
-                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
+                            "description": "The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied and, on a real write, every one it changed or filled - a ref, a state, a date a transition stamped - re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet."
                         },
                         "changes": {
                             "type": "object",
