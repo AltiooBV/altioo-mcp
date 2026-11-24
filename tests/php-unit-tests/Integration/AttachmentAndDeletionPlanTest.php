@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Combodo\iTop\Service\Events\EventService;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
@@ -57,13 +58,20 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 
 	private function loginAs(string $sProfile): void
 	{
+		UserRights::Login($this->userWith($sProfile));
+	}
+
+	/** A user holding one stock profile, made while still the administrator; the login is returned. */
+	private function userWith(string $sProfile): string
+	{
 		$sLogin = 'att-del-'.bin2hex(random_bytes(3));
 		$oProfile = (new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT URP_Profiles WHERE name = :n'), [], ['n' => $sProfile]))->Fetch();
 		if ($oProfile === null) {
 			$this->markTestSkipped("No profile {$sProfile}.");
 		}
 		$this->CreateUser($sLogin, (int)$oProfile->GetKey(), 'Att-Del-'.bin2hex(random_bytes(3)).'-1!', $this->CreatePerson(2, (int)$this->CreateOrganization('AttDel user '.bin2hex(random_bytes(3)))->GetKey())->GetKey());
-		UserRights::Login($sLogin);
+
+		return $sLogin;
 	}
 
 	/**
@@ -192,12 +200,88 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		ObjectBulkDelete::execute('Attachment', [$iFrozen], true);
 	}
 
+	/**
+	 * ADR 0026: whoever may edit the host may remove its attachment, whatever the class right on Attachment says, and
+	 * the right to delete an Attachment does not reach a host the account may not edit. Two stock profiles have one
+	 * without the other (read from iTop 3.2.3-3): `Portal user` edits tickets and cannot delete an Attachment, and
+	 * `Change Approver` can delete an Attachment and cannot edit an Organization.
+	 */
+	public function testTheHostRightReplacesTheDeleteRightOnTheAttachment(): void
+	{
+		$iTicket = $this->aTicket();
+		$iOrg = (int)$this->CreateOrganization('AttRule '.bin2hex(random_bytes(3)))->GetKey();
+		$iEditOnly = $this->attachmentOn('UserRequest', $iTicket, 'edit-only.txt');
+		$iDeleteOnly = $this->attachmentOn('Organization', $iOrg, 'delete-only.txt');
+
+		// May edit tickets, may read attachments, holds no delete right on Attachment.
+		$sEditor = $this->userWith('Portal user');
+		$sApprover = $this->userWith('Change Approver');
+		UserRights::Login($sEditor);
+		$this->assertSame(UR_ALLOWED_YES, UserRights::IsActionAllowed('UserRequest', UR_ACTION_MODIFY), 'the premise: may edit the ticket');
+		$this->assertSame(UR_ALLOWED_NO, UserRights::IsActionAllowed('Attachment', UR_ACTION_DELETE), 'the premise: no delete right on Attachment');
+		$aDone = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iEditOnly, false));
+		$this->assertFalse($aDone['simulated']);
+		$this->assertNull(MetaModel::GetObject('Attachment', $iEditOnly, false), 'the right to edit the host did not remove its attachment');
+
+		// Holds the delete right on Attachment, may only read the host.
+		UserRights::Login($sApprover);
+		$this->assertSame(UR_ALLOWED_YES, UserRights::IsActionAllowed('Attachment', UR_ACTION_DELETE), 'the premise');
+		$this->assertSame(UR_ALLOWED_NO, UserRights::IsActionAllowed('Organization', UR_ACTION_MODIFY), 'the premise');
+		try {
+			ObjectDelete::execute('Attachment', $iDeleteOnly, false);
+			$this->fail('the delete right on Attachment removed a file from an object the account may not edit');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('cannot edit the object this attachment belongs to', $e->getMessage());
+		}
+		$this->assertNotNull(MetaModel::GetObject('Attachment', $iDeleteOnly, false));
+	}
+
+	/**
+	 * In iTop's form the event fired before an attachment goes can be vetoed by a listener, by throwing. A listener of
+	 * another extension keeps that power here, in both tools, and its message is not repeated to the caller.
+	 */
+	public function testAListenerOfAnotherExtensionCanVetoTheRemoval(): void
+	{
+		$iTicket = $this->aTicket();
+		$iSingle = $this->attachmentOn('UserRequest', $iTicket, 'veto-single.txt');
+		$iBulk = $this->attachmentOn('UserRequest', $iTicket, 'veto-bulk.txt');
+		$bVeto = true;
+		$sId = EventService::RegisterListener(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, static function () use (&$bVeto): void {
+			if ($bVeto) {
+				throw new \Exception('veto-secret-text from another extension');
+			}
+		});
+
+		try {
+			try {
+				ObjectDelete::execute('Attachment', $iSingle, false);
+				$this->fail('the single tool deleted past a listener\'s veto');
+			} catch (ToolCallException $e) {
+				$this->assertStringContainsString('an extension refused it', $e->getMessage());
+				$this->assertStringNotContainsString('veto-secret-text', $e->getMessage(), 'the listener\'s words are repeated');
+			}
+			$this->assertNotNull(MetaModel::GetObject('Attachment', $iSingle, false));
+
+			$aReport = json_decode((string)json_encode(ToolOutput::Decode(ObjectBulkDelete::execute('Attachment', [$iBulk], false))), true);
+			$this->assertSame('error', $aReport['objects'][0]['status']);
+			$this->assertStringContainsString('an extension refused it', $aReport['objects'][0]['message']);
+			$this->assertStringNotContainsString('veto-secret-text', (string)json_encode($aReport));
+			$this->assertNotNull(MetaModel::GetObject('Attachment', $iBulk, false));
+
+			// A dry run fires nothing, and shows the deletion as it would be.
+			$this->assertTrue(ToolOutput::Decode(ObjectDelete::execute('Attachment', $iSingle, true))['simulated']);
+		} finally {
+			$bVeto = false;
+			EventService::UnRegisterListener($sId);
+		}
+	}
+
 	/** @return array<string, array{0: string, 1: bool, 2: string}> */
 	public static function hostProvider(): array
 	{
 		return [
 			'a ticket the user may modify'                 => ['a ticket the user may modify', true, ''],
-			'an object the user may read and not modify'   => ['an object the user may read and not modify', false, 'cannot modify the object this attachment belongs to'],
+			'an object the user may read and not modify'   => ['an object the user may read and not modify', false, 'cannot edit the object this attachment belongs to'],
 			'an object the user cannot read'               => ['an object the user cannot read', false, 'was not found'],
 			'a closed ticket'                              => ['a closed ticket', false, 'read-only in its current state'],
 			'no host at all'                               => ['no host at all', false, 'attached to no saved object'],

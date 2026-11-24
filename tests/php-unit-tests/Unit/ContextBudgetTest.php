@@ -64,7 +64,7 @@ class ContextBudgetTest extends TestCase
 		'ObjectBulkUpdate'    => [420, 1500],
 		'ObjectCount'         => [260, 1080],
 		'ObjectCreate'        => [580, 850],
-		'ObjectDelete'        => [520, 1000],
+		'ObjectDelete'        => [690, 1000],
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
 		'ObjectGetDocument'   => [730, 470],
@@ -78,8 +78,8 @@ class ContextBudgetTest extends TestCase
 		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790. */
-	private const TOTAL_DESCRIPTIONS = 14790;
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. */
+	private const TOTAL_DESCRIPTIONS = 14960;
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */

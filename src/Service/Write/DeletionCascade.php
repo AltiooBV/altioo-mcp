@@ -111,12 +111,13 @@ final class DeletionCascade
 	 * @param string       $sWhat  What is being deleted, e.g. "UserRequest::12", named in the refusal.
 	 * @param string|null  $sRootClass The class of the object being deleted, for the one exemption above.
 	 * @param int|null     $iRootId    Its id.
+	 * @param bool         $bHostChecked The delete tool asked, in its own source, what ADR 0026 asks of an attachment's host and it passed. The Attachment itself, the root of the plan, is then not judged under the delete right (that entry only); everything else in the plan is.
 	 *
 	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the cascade reaches something this caller may not touch.
 	 *
 	 * @since 1.0.0
 	 */
-	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat, ?string $sRootClass = null, ?int $iRootId = null): void
+	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat, ?string $sRootClass = null, ?int $iRootId = null, bool $bHostChecked = false): void
 	{
 		// A delete that would reach objects of a class this channel does not serve is not made here, and not
 		// reported with them left out: a plan that shows less than what happens is how a delete goes wrong. It
@@ -136,7 +137,7 @@ final class DeletionCascade
 		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
 			self::JudgeCascadedClass(
 				$sClass,
-				self::ObjectsOf($aEntries, 'to_delete'),
+				self::ObjectsOf(self::WithoutItsRoot($sClass, $aEntries, $sRootClass, $iRootId, $bHostChecked), 'to_delete'),
 				UR_ACTION_DELETE,
 				'deleted',
 				$aRefused,
@@ -247,6 +248,24 @@ final class DeletionCascade
 		return $oSet === null
 			? $iAllowed !== UR_ALLOWED_NO
 			: $iAllowed === UR_ALLOWED_YES;
+	}
+
+	/**
+	 * The entries of one class of the plan's deletions, less the attachment the call deletes when its host passed.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function WithoutItsRoot(string $sClass, array $aEntries, ?string $sRootClass, ?int $iRootId, bool $bHostChecked): array
+	{
+		if (!$bHostChecked || $sRootClass === null || $iRootId === null
+			|| !MetaModel::IsValidClass('Attachment') || !MetaModel::IsParentClass('Attachment', $sRootClass)
+			|| $sClass !== $sRootClass) {
+			return $aEntries;
+		}
+
+		return array_filter($aEntries, static fn (array $aData): bool => ObjectId::Normalise(($aData['to_delete'] ?? null) instanceof DBObject ? $aData['to_delete']->GetKey() : null) !== $iRootId);
 	}
 
 	/**
@@ -384,7 +403,13 @@ final class DeletionCascade
 	 * name is kept for the history line {@see AttachmentRemoved()} writes. Plumbing only: whether the attachment may
 	 * go is decided by the delete tool, in its own source (ADR 0014).
 	 *
+	 * What a listener throws is **not** swallowed: in iTop's form the event is fired before the delete and an
+	 * exception from a listener stops it (EventService::FireEvent() rethrows, at once for an EventException and after
+	 * the other listeners for any other), so another extension's veto holds here too. The caller turns it into a
+	 * refusal that does not repeat the listener's message. Only reading the file's name may fail quietly.
+	 *
 	 * @return string The file's name, '' when it cannot be read.
+	 * @throws Throwable What a listener of EVENT_REMOVE_ATTACHMENT_FROM_OBJECT threw.
 	 * @since 2.2.0
 	 */
 	public static function AttachmentRemoving(DBObject $oHost, DBObject $oAttachment): string
@@ -392,15 +417,15 @@ final class DeletionCascade
 		try {
 			$oBlob = $oAttachment->Get('contents');
 			$sName = $oBlob instanceof \ormDocument ? $oBlob->GetFileName() : '';
-			$aData = ['attachment' => $oAttachment];
-			$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
-
-			return $sName;
 		} catch (Throwable $e) {
-			ErrorReport::Log('Could not tell the host of an attachment that it is being removed: '.$e->getMessage());
-
-			return '';
+			ErrorReport::Log('Could not read the name of an attachment being removed: '.$e->getMessage());
+			$sName = '';
 		}
+
+		$aData = ['attachment' => $oAttachment];
+		$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
+
+		return $sName;
 	}
 
 	/**
