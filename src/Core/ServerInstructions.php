@@ -192,8 +192,8 @@ final class ServerInstructions
 			return '';
 		}
 
-		return "\n".'- A text value starting with =, +, -, @, a tab or a carriage return is refused unless it is'
-			."\n".'a number (a spreadsheet would run it as a formula). +33 1 23 45 67 89 is fine; else reword.';
+		return "\n".'- A text value starting with =, +, -, @, tab or CR is refused unless numeric (a spreadsheet'
+			."\n".'would run it as a formula). +33 1 23 45 67 89 is fine; else reword.';
 	}
 
 	/**
@@ -223,7 +223,7 @@ final class ServerInstructions
 		return "\n".'- @mention in a case log: {"add_item": {"message": "...", "format": "html"}} with'
 			."\n".'<a data-object-class="'.$sClass.'" data-object-key="12">@Name</a> in the message, class before key,'
 			."\n".'key = the object\'s id. Each mention notifies that object. Only '.implode(', ', $aMentionClasses).' objects you can see,'
-			."\n".'at most '.$iMaxMentions.' distinct objects per call; anything else is refused.';
+			."\n".'at most '.$iMaxMentions.' distinct per call; else refused.';
 	}
 
 	/**
@@ -322,6 +322,8 @@ final class ServerInstructions
 
 		$sDates = '- Dates use iTop\'s own format, not RFC 3339';
 		$sDates .= empty($aExamples) ? '.' : ': '.implode(', ', $aExamples).'.';
+		// Only a filter converts, and only a value with an offset (FilterDate); a write or an OQL literal does not.
+		$sDates .= ' In a filter only, RFC 3339 with an offset (Z, +01:00) is converted to the instance\'s time zone.';
 
 		if ($oPolicy->allowsToolset(self::TOOLSET_DATAMODEL)) {
 			$sDates .= ' core_class_schema gives the pattern per attribute.';
@@ -332,8 +334,8 @@ final class ServerInstructions
 			."\n".'logs and link sets are cut unless named.'
 			."\n".'- OQL has no ORDER BY: use order_by and order_direction.'
 			."\n".'- Count, or count per value, with core_object_count; never by paging a search.'
-			."\n".'- Before writing values into CSV or a spreadsheet, put a single quote before any cell'
-			."\n".'starting with =, +, -, @, a tab or a carriage return: a spreadsheet would run it as a formula.'
+			."\n".'- In CSV or a spreadsheet, put a single quote before any cell starting with =, +, -, @, tab'
+			."\n".'or CR: it would run as a formula.'
 			."\n".$sDates;
 	}
 
@@ -427,8 +429,8 @@ trail, the "show obsolete data" preference on the account.
 TEXT;
 
 	private const PREAMBLE = <<<'TEXT'
-This server is an iTop instance: a CMDB and ITSM ticketing system. Classes (UserRequest, Incident,
-Person, Server, ...) are this instance's own datamodel and vary per deployment.
+This server is an iTop instance (CMDB, ITSM). Classes (UserRequest, Incident, Person, Server, ...)
+vary per deployment.
 TEXT;
 
 	private const PORTAL_MODE = <<<'TEXT'

@@ -314,7 +314,7 @@ class ServerInstructionsTest extends TestCase
 	{
 		$sText = ServerInstructions::Text(self::objectReader(), null, null);
 
-		$this->assertStringContainsString('not RFC 3339.', $sText);
+		$this->assertStringContainsString('not RFC 3339. In a filter only', $sText);
 		$this->assertDoesNotMatchRegularExpression('/\d{4}-\d{2}-\d{2}/', $sText);
 	}
 

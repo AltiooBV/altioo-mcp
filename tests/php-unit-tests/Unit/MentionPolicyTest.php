@@ -153,7 +153,7 @@ class MentionPolicyTest extends TestCase
 
 		$this->assertStringContainsString('data-object-class="Person" data-object-key="12"', $sText);
 		$this->assertStringContainsString('Person, Team objects you can see', $sText);
-		$this->assertStringContainsString('at most 3 distinct objects per call', $sText);
+		$this->assertStringContainsString('at most 3 distinct per call', $sText);
 	}
 
 	/**

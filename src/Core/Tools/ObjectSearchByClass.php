@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\FilterDate;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -157,7 +158,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				throw ToolRefusal::Because($sRefusal);
 			}
 			try {
-				$oSearch->AddCondition($sAttCode, $value, '=');
+				$oSearch->AddCondition($sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($class, $sAttCode), $value), '=');
 			} catch (\CoreException) {
 				// iTop's own refusal of a code its search cannot use (an image, say): the caller's
 				// mistake, not the server's, and not one to hand to the opaque failure below.

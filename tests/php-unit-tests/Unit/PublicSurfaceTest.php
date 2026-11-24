@@ -57,6 +57,7 @@ class PublicSurfaceTest extends TestCase
 		'src/Exception/MCPPortalException.php',
 		'src/Helper/ClassRefusal.php',
 		'src/Helper/ErrorReport.php',
+		'src/Helper/FilterDate.php',
 		'src/Helper/JsonPayload.php',
 		'src/Helper/ObjectId.php',
 		'src/Helper/PortalMode.php',

@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
+use Altioo\iTop\Extension\MCP\Helper\FilterDate;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\JsonPayload;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -298,7 +299,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
 				}
 				try {
-					$oSearch->AddCondition((string)$sAttCode, $value, '=');
+					$oSearch->AddCondition((string)$sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), $value), '=');
 				} catch (\CoreException) {
 					// iTop's own refusal of a code its search cannot use (an image, say): the caller's mistake.
 					throw ToolRefusal::Because("Attribute '{$sAttCode}' on class '{$sClass}' cannot be used as a filter.");

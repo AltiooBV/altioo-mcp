@@ -83,7 +83,7 @@ class ContextBudgetTest extends TestCase
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
-	private const INSTRUCTIONS = 3100;
+	private const INSTRUCTIONS = 3200;
 
 	/** @return array<string, string> Short class name => class. */
 	private static function coreTools(): array
