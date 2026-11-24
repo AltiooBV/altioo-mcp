@@ -74,7 +74,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and which attributes each transition needs. '
+		return 'Apply a lifecycle stimulus (state transition) on an iTop object. Call core_class_schema first: it reports the states, the stimuli, and for each state the attributes it makes "mandatory" or "prompted" (a transition into it needs those). '
 			.'The dry run checks the transition against the current state and reports anything mandatory that is missing. '
 			.'Read `overridden` on the answer as carefully as `changes`: a derived attribute is recomputed from the ones it derives from on every write, so supplying it directly changes nothing and is reported there rather than in `changes`.';
 	}

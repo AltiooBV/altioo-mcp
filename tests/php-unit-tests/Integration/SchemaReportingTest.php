@@ -63,4 +63,21 @@ class SchemaReportingTest extends ItopDataTestCaseAlias
 		$this->assertArrayNotHasKey('default', $aFull['title'], 'an empty default is not reported');
 		$this->assertArrayNotHasKey('default', $aFull['org_id'], 'an empty key is not a default');
 	}
+
+	/** C3: the lifecycle block gave stimulus and target state and nothing of what the state asks for. */
+	public function testALifecycleStateSaysWhatEnteringItAsksFor(): void
+	{
+		$aStates = $this->schema('UserRequest', 'lifecycle')['lifecycle']['states'];
+
+		$this->assertContains('solution', $aStates['resolved']['mandatory'] ?? [], 'ev_resolve needs a solution, and the schema must say so before the refusal does');
+		$this->assertContains('team_id', $aStates['assigned']['mandatory'] ?? [], 'ev_assign needs a team');
+		$this->assertContains('agent_id', $aStates['assigned']['mandatory'] ?? []);
+		foreach ($aStates as $sState => $aState) {
+			foreach (['mandatory', 'prompted', 'readOnly'] as $sKey) {
+				if (array_key_exists($sKey, $aState)) {
+					$this->assertNotSame([], $aState[$sKey], "{$sState}.{$sKey} is left out when empty");
+				}
+			}
+		}
+	}
 }
