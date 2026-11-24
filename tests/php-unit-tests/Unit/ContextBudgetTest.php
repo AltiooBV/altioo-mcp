@@ -57,7 +57,7 @@ class ContextBudgetTest extends TestCase
 		'CurrentUser'         => [740, 40],
 		'Instructions'        => [800, 40],
 		'MyActivity'          => [430, 440],
-		'ObjectApplyStimulus' => [520, 1020],
+		'ObjectApplyStimulus' => [520, 1030],
 		'ObjectAttach'        => [400, 1610],
 		'ObjectBulkCreate'    => [420, 920],
 		'ObjectBulkDelete'    => [560, 1240],
@@ -67,7 +67,7 @@ class ContextBudgetTest extends TestCase
 		'ObjectDelete'        => [520, 1000],
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
-		'ObjectGetDocument'   => [680, 470],
+		'ObjectGetDocument'   => [730, 470],
 		'ObjectGetRelated'    => [930, 1390],
 		'ObjectHistory'       => [860, 740],
 		'ObjectSearchByClass' => [240, 3350],
@@ -78,8 +78,8 @@ class ContextBudgetTest extends TestCase
 		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730. */
-	private const TOTAL_DESCRIPTIONS = 14730;
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790. */
+	private const TOTAL_DESCRIPTIONS = 14790;
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
