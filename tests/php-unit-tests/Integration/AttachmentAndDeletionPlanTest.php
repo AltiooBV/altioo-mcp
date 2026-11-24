@@ -55,6 +55,18 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * B11: the change an attach leaves is summarised as the host object attached to.
+	 */
+	public function testTheChangeOfAnAttachNamesTheHostObject(): void
+	{
+		$iTicket = $this->aTicket();
+		$iAttachment = $this->attachTo($iTicket, 'summary.txt');
+		$oOp = (new DBObjectSet(DBObjectSearch::FromOQL_AllData('SELECT CMDBChangeOpAttachmentAdded WHERE attachment_id = :id'), [], ['id' => $iAttachment]))->Fetch();
+
+		$this->assertSame("UserRequest::{$iTicket} attached", \Altioo\iTop\Extension\MCP\Service\Audit\ChangeSummary::OfChange((int)$oOp->Get('change')));
+	}
+
+	/**
 	 * B7: every entry of a plan names its class, and the object itself is not "besides".
 	 */
 	public function testADeletePlanNamesTheClassOfEveryEntryAndLeavesOutTheObjectItself(): void

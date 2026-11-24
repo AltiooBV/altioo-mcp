@@ -115,6 +115,33 @@ class ChangeSummaryTest extends TestCase
 		$this->assertSame('Server::9 deleted', ChangeSummary::Compose($aOperations));
 	}
 
+	/**
+	 * Review of 2026-11-23, B11: an attachment is recorded as an operation on its host object, and it had no word:
+	 * core_my_activity showed written 1 and changed [] for an attach.
+	 */
+	public function testAFileAttachedToAnObjectIsReportedAsThatObjectAttached(): void
+	{
+		$aOperations = [['class' => 'UserRequest', 'key' => 7, 'verb' => ChangeSummary::VERB_ATTACHED]];
+
+		$this->assertSame('UserRequest::7 attached', ChangeSummary::Compose($aOperations));
+		$this->assertSame('UserRequest::7 detached', ChangeSummary::Compose([['class' => 'UserRequest', 'key' => 7, 'verb' => ChangeSummary::VERB_DETACHED]]));
+		$this->assertSame(
+			'UserRequest::7 attached',
+			ChangeSummary::Compose(array_merge(self::update('UserRequest', 7, 'title'), $aOperations)),
+			'a file on an object says more than one of its fields changing'
+		);
+		$this->assertSame(
+			'UserRequest::7 created',
+			ChangeSummary::Compose(array_merge([['class' => 'UserRequest', 'key' => 7, 'verb' => ChangeSummary::VERB_CREATED]], $aOperations)),
+			'an object created in the same change was not merely attached to'
+		);
+		$this->assertSame(
+			[['class' => 'UserRequest', 'id' => 7, 'verb' => 'attached', 'attributes' => []]],
+			\Altioo\iTop\Extension\MCP\Core\Tools\MyActivity::parseChanged('UserRequest::7 attached'),
+			'the activity list reads back the line the audit row holds'
+		);
+	}
+
 	/** Two objects, two lines, in the order the operations happened. */
 	public function testObjectsKeepTheOrderTheyWereTouchedIn(): void
 	{
