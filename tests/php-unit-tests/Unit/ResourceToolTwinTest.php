@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use PHPUnit\Framework\TestCase;
@@ -117,5 +118,48 @@ class ResourceToolTwinTest extends TestCase
 				"{$sTool} is not graded read, so a read-only token is served {$sUri} and not its twin"
 			);
 		}
+	}
+
+	/**
+	 * Both descriptions say what comes back in the same words, taken from the
+	 * tool's RETURNS (PORTAL_RETURNS in portal mode), so rewording one cannot
+	 * leave the other describing a different answer. The rest of each text -
+	 * when to call it, its arguments, its URI - is its own.
+	 */
+	public function testATwinsDescriptionsSayWhatItReturnsInTheSameWords(): void
+	{
+		$aTools = MCPRegistry::GetTools();
+		foreach (self::resources() as $sUri => $oResource) {
+			$oTool = $aTools[self::TWINS[$sUri] ?? ''] ?? null;
+			if ($oTool === null) {
+				continue; // reported by the first two tests
+			}
+			$sTool = self::TWINS[$sUri];
+			$sConst = get_class($oTool).'::RETURNS';
+			$this->assertTrue(defined($sConst), "{$sTool} declares no RETURNS sentence for its descriptions and {$sUri}'s to share");
+			$this->assertTwinDescriptions((string)constant($sConst), $sUri, $oResource, $sTool, $oTool, 'console');
+		}
+
+		PortalMode::Remember('itop-portal');
+		try {
+			foreach (self::resources() as $sUri => $oResource) {
+				$oTool = $aTools[self::TWINS[$sUri] ?? ''] ?? null;
+				if ($oTool === null || !$oResource instanceof PortalAware) {
+					continue; // not served in portal mode, so no portal text to agree on
+				}
+				$sClass = get_class($oTool);
+				$sConst = defined($sClass.'::PORTAL_RETURNS') ? $sClass.'::PORTAL_RETURNS' : $sClass.'::RETURNS';
+				$this->assertTwinDescriptions((string)constant($sConst), $sUri, $oResource, self::TWINS[$sUri], $oTool, 'portal');
+			}
+		} finally {
+			PortalMode::Forget();
+		}
+	}
+
+	private function assertTwinDescriptions(string $sReturns, string $sUri, object $oResource, string $sTool, object $oTool, string $sMode): void
+	{
+		$this->assertNotSame('', $sReturns, "{$sTool}'s sentence is empty, so this would pass on nothing");
+		$this->assertStringContainsString($sReturns, (string)$oTool->getDescription(), "{$sTool}'s {$sMode} description does not say what it returns in the shared words");
+		$this->assertStringContainsString($sReturns, (string)$oResource->getDescription(), "{$sUri}'s {$sMode} description does not say what it returns in {$sTool}'s words");
 	}
 }
