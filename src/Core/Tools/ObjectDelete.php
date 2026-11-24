@@ -65,7 +65,8 @@ class ObjectDelete extends AbstractMCPTool
 	{
 		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
 			.'The dry run reports the deletion plan: what else iTop would delete or update along with this object. '
-			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal names the class in the way when this user may read it, and says only that something unreadable is there when not.';
+			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal names the class in the way when this user may read it, and says only that something unreadable is there when not. '
+			.'An Attachment is the exception to the delete right: whoever may edit the object it belongs to may remove it, unless that object is read-only in its state (a closed ticket).';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -163,7 +164,10 @@ class ObjectDelete extends AbstractMCPTool
 			throw ToolRefusal::Because("Class '{$class}' is abstract, cannot delete.");
 		}
 
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE)) {
+		// An attachment is removed by whoever may edit its host, as the console's edit form lets them (ADR 0026): the
+		// host check below replaces the delete right on the class, here and per object. Any other class is as it was.
+		$bAttachment = MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $class);
+		if (!$bAttachment && !UserRights::IsActionAllowed($class, UR_ACTION_DELETE)) {
 			throw ToolRefusal::Because("Access denied: cannot delete objects of class '{$class}'.");
 		}
 
@@ -197,7 +201,7 @@ class ObjectDelete extends AbstractMCPTool
 			throw ToolRefusal::Because("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the delete with the correct final class."); // hide that the object exists
 		}
 
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
+		if (!$bAttachment && !UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
 			throw ToolRefusal::Because(
 				"Access denied: cannot delete objects of class '{$class}'.".self::retirementHint($oObject, $sFinalClass)
 			);
@@ -212,7 +216,7 @@ class ObjectDelete extends AbstractMCPTool
 		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
 		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
 		$oAttachmentHost = null;
-		if (MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $class)) {
+		if ($bAttachment) {
 			$sHostRefusal = null;
 			$sHostClass = (string)$oObject->Get('item_class');
 			$iHostId = (int)$oObject->Get('item_id');
@@ -228,7 +232,7 @@ class ObjectDelete extends AbstractMCPTool
 					$oAttachmentHost = null;
 					$sHostRefusal = 'The object this attachment belongs to was not found.';
 				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
-					$sHostRefusal = 'Access denied: cannot modify the object this attachment belongs to.';
+					$sHostRefusal = 'Access denied: cannot edit the object this attachment belongs to, so cannot remove its attachments.';
 				} elseif ($oAttachmentHost->IsReadOnly()
 					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
 						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
@@ -261,7 +265,7 @@ class ObjectDelete extends AbstractMCPTool
 		// reach classes this caller was never granted. Refused rather than
 		// filtered, and refused on a dry run as well as on the real call - see
 		// DeletionCascade::CheckDeletionRights().
-		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}", $class, $id);
+		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}", $class, $id, $oAttachmentHost !== null);
 
 		if (!$simulate) {
 			// The operator's cap on committed writes per credential (ADR 0019): asked here, in this

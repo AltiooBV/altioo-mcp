@@ -137,7 +137,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 				continue;
 			}
 
-			$mObject = self::objectFor($class, $iId, UR_ACTION_DELETE, 'delete');
+			// An attachment is judged by its host, per row, instead of by the delete right on the object (ADR 0026); the
+			// bulk right on the class and checkBulkAllowed()'s class-level delete right are asked above, unchanged.
+			$mObject = self::objectFor($class, $iId, self::isAttachment($class) ? UR_ACTION_READ : UR_ACTION_DELETE, 'delete');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
 				continue;
@@ -155,6 +157,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 		return ToolOutput::StructuredWrite(self::report($class, $simulate, $aOutcomes, [
 			'deletionPlan' => DeletionCascade::SerializeDeletionPlan(null),
 		]));
+	}
+
+	private static function isAttachment(string $sClass): bool
+	{
+		return MetaModel::IsValidClass('Attachment') && MetaModel::IsValidClass($sClass) && MetaModel::IsParentClass('Attachment', $sClass);
 	}
 
 	/**
@@ -177,7 +184,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
 		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
 		$oAttachmentHost = null;
-		if (MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $sClass)) {
+		if (self::isAttachment($sClass)) {
 			$sHostRefusal = null;
 			$sHostClass = (string)$oObject->Get('item_class');
 			$iHostId = (int)$oObject->Get('item_id');
@@ -193,7 +200,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 					$oAttachmentHost = null;
 					$sHostRefusal = 'The object this attachment belongs to was not found.';
 				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
-					$sHostRefusal = 'Access denied: cannot modify the object this attachment belongs to.';
+					$sHostRefusal = 'Access denied: cannot edit the object this attachment belongs to, so cannot remove its attachments.';
 				} elseif ($oAttachmentHost->IsReadOnly()
 					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
 						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
@@ -220,7 +227,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// classes the cascade of the next one does not, and a bulk call reports
 		// each object on its own. See DeletionCascade::CheckDeletionRights().
 		try {
-			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}", $sClass, $iId);
+			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}", $sClass, $iId, $oAttachmentHost !== null);
 		} catch (ToolCallException $e) {
 			return self::outcome($iId, $iRow, false, $e->getMessage());
 		}
