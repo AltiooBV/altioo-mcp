@@ -65,7 +65,7 @@ class ObjectDelete extends AbstractMCPTool
 	{
 		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
 			.'The dry run reports the deletion plan: what else iTop would delete or update along with this object. '
-			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal says which class is in the way.';
+			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal names the class in the way when this user may read it, and says only that something unreadable is there when not.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -227,7 +227,7 @@ class ObjectDelete extends AbstractMCPTool
 		// reach classes this caller was never granted. Refused rather than
 		// filtered, and refused on a dry run as well as on the real call - see
 		// DeletionCascade::CheckDeletionRights().
-		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
+		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}", $class, $id);
 
 		if (!$simulate) {
 			// The operator's cap on committed writes per credential (ADR 0019): asked here, in this

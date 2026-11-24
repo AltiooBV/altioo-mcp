@@ -181,7 +181,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// classes the cascade of the next one does not, and a bulk call reports
 		// each object on its own. See DeletionCascade::CheckDeletionRights().
 		try {
-			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
+			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}", $sClass, $iId);
 		} catch (ToolCallException $e) {
 			return self::outcome($iId, $iRow, false, $e->getMessage());
 		}

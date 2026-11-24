@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
+use DBObjectSearch;
 use DBObjectSet;
 use DeletionPlan;
 use MetaModel;
@@ -96,14 +97,25 @@ final class DeletionCascade
 	 * set is passed on the second and third, so an addon that grades rights per
 	 * object gets to answer about these objects rather than about the class.
 	 *
+	 * One exemption, narrow on purpose (review 2026-11-23, B8; decided by Guy Couronne, 2026-11-24): deleting an
+	 * Attachment also deletes the CMDBChangeOp rows that record it ("attachment added"), which iTop declares
+	 * DEL_SILENT because they are its own bookkeeping (it resets their key to the attachment, which is how the plan
+	 * lists them), and no non-administrator may read them. Those rows are not judged when, and only when, the
+	 * object being deleted is an Attachment, the row is a change operation, every key the plan resets on it is a
+	 * DEL_SILENT key to Attachment, and that key holds this very attachment. The console does the
+	 * same: DeleteObjects() asks the delete right on the object clicked and nothing on the cascade. Every other
+	 * row of the plan is judged as before, and the refusal still names a class the user may read.
+	 *
 	 * @param DeletionPlan $oPlan  A plan already computed by CheckToDelete().
 	 * @param string       $sWhat  What is being deleted, e.g. "UserRequest::12", named in the refusal.
+	 * @param string|null  $sRootClass The class of the object being deleted, for the one exemption above.
+	 * @param int|null     $iRootId    Its id.
 	 *
 	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the cascade reaches something this caller may not touch.
 	 *
 	 * @since 1.0.0
 	 */
-	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat): void
+	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat, ?string $sRootClass = null, ?int $iRootId = null): void
 	{
 		// A delete that would reach objects of a class this channel does not serve is not made here, and not
 		// reported with them left out: a plan that shows less than what happens is how a delete goes wrong. It
@@ -134,7 +146,7 @@ final class DeletionCascade
 		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
 			self::JudgeCascadedClass(
 				$sClass,
-				self::ObjectsOf($aEntries, 'to_reset'),
+				self::ObjectsOf(self::WithoutItsOwnBookkeeping($sClass, $aEntries, $sRootClass, $iRootId), 'to_reset'),
 				UR_ACTION_MODIFY,
 				'modified',
 				$aRefused,
@@ -143,7 +155,7 @@ final class DeletionCascade
 		}
 
 		if ($bUnreadable) {
-			$aRefused[] = 'it also reaches related objects this user may not read.';
+			$aRefused[] = 'It also reaches related objects this user may not read.';
 		}
 
 		if (empty($aRefused)) {
@@ -234,6 +246,61 @@ final class DeletionCascade
 		return $oSet === null
 			? $iAllowed !== UR_ALLOWED_NO
 			: $iAllowed === UR_ALLOWED_YES;
+	}
+
+	/**
+	 * The entries of one class of the plan's updates, less the bookkeeping rows of an attachment being deleted.
+	 *
+	 * See {@see CheckDeletionRights()} for what is exempt and why. iTop plans such a row as an update, not a
+	 * deletion (its key to the attachment is nullable): it is reset when the attachment goes. Everything is asked of
+	 * the plan's own entry: the class of the root, the class of the row, every key the plan resets on it, the
+	 * propagation mode the datamodel gives that key, and the attachment the key holds.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function WithoutItsOwnBookkeeping(string $sClass, array $aEntries, ?string $sRootClass, ?int $iRootId): array
+	{
+		if ($sRootClass === null || $iRootId === null
+			|| !MetaModel::IsValidClass('Attachment') || !MetaModel::IsParentClass('Attachment', $sRootClass)
+			|| !MetaModel::IsParentClass('CMDBChangeOp', $sClass)) {
+			return $aEntries;
+		}
+
+		return array_filter($aEntries, static function (array $aData) use ($iRootId): bool {
+			$oRow = $aData['to_reset'] ?? null;
+			$aReset = $aData['attributes'] ?? [];
+			if (!$oRow instanceof DBObject || $aReset === []) {
+				return true;
+			}
+			foreach ($aReset as $sAttCode => $oAttDef) {
+				if (!$oAttDef instanceof \AttributeExternalKey
+					|| !MetaModel::IsParentClass('Attachment', $oAttDef->GetTargetClass())
+					|| $oAttDef->GetDeletionPropagationOption() !== DEL_SILENT
+					|| !self::StoredKeyIs($oRow, (string)$sAttCode, $iRootId)) {
+					return true; // anything else is judged
+				}
+			}
+
+			return false; // this attachment's own record
+		});
+	}
+
+	/**
+	 * Whether the row, as stored, holds this key. The plan's own object is no witness: iTop has reset the key in it
+	 * by the time the plan is read. Asked of the database, with the rights off because the question is only whether
+	 * one known row points at one known object, and the answer is a yes or a no that nothing is read from.
+	 */
+	private static function StoredKeyIs(DBObject $oRow, string $sAttCode, int $iId): bool
+	{
+		try {
+			$oSearch = DBObjectSearch::FromOQL_AllData('SELECT '.get_class($oRow).' WHERE id = :row AND '.$sAttCode.' = :key');
+
+			return (new DBObjectSet($oSearch, [], ['row' => (int)$oRow->GetKey(), 'key' => $iId]))->Count() === 1;
+		} catch (Throwable $e) {
+			return false; // not provable is not exempt
+		}
 	}
 
 	/**
