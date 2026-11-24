@@ -28,6 +28,9 @@ use UserRights;
  */
 final class ClassCatalog
 {
+	/** The gates whose tools refuse an abstract class: they create, change or delete objects of one class. */
+	private const GATES_ON_A_FINAL_CLASS = ['create', 'bulkCreate', 'bulkModify', 'bulkDelete'];
+
 	/**
 	 * Categories declared by the datamodel, e.g. 'bizmodel' or 'searchable'.
 	 *
@@ -248,9 +251,15 @@ final class ClassCatalog
 			return array_values($aClasses);
 		}
 
+		// An abstract class holds no object of its own: its create and bulk rights are the datamodel's grant to
+		// its subclasses, and a create on it is refused. Listed under may="create" it sent a model to
+		// Contact or FunctionalCI (review 2026-11-23, C8). Its rights block is still reported by "*".
+		$bNeedsAnObject = in_array($sRight, self::GATES_ON_A_FINAL_CLASS, true);
+
 		$aAllowed = array_filter(
 			$aClasses,
 			static fn (array $aClass): bool => ($aClass['rights'][$sRight] ?? null) !== 'no'
+				&& !($bNeedsAnObject && ($aClass['isAbstract'] ?? false) === true)
 		);
 
 		return array_values($aAllowed);

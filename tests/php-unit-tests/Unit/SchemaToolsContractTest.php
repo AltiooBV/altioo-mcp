@@ -432,6 +432,26 @@ class SchemaToolsContractTest extends TestCase
 	}
 
 	/**
+	 * An abstract class holds no object, so a gate that creates, or acts on many of one class, does not list it.
+	 *
+	 * may="create" answered with twenty abstract classes (Contact, FunctionalCI, Change...) that a create then
+	 * refused (review 2026-11-23, C8). The rights block is still reported for them when nothing is narrowed on.
+	 */
+	public function testNarrowingByCreateDropsAbstractClasses(): void
+	{
+		$aClasses = [
+			['class' => 'UserRequest', 'isAbstract' => false, 'rights' => ['create' => 'yes', 'bulkCreate' => 'yes', 'bulkModify' => 'yes', 'bulkDelete' => 'yes', 'modify' => 'yes', 'read' => 'yes']],
+			['class' => 'Contact', 'isAbstract' => true, 'rights' => ['create' => 'yes', 'bulkCreate' => 'yes', 'bulkModify' => 'yes', 'bulkDelete' => 'yes', 'modify' => 'yes', 'read' => 'yes']],
+		];
+
+		foreach (['create', 'bulkCreate', 'bulkModify', 'bulkDelete'] as $sGate) {
+			$this->assertSame(['UserRequest'], $this->names(ClassCatalog::FilterByRight($aClasses, $sGate)), $sGate);
+		}
+		$this->assertSame(['UserRequest', 'Contact'], $this->names(ClassCatalog::FilterByRight($aClasses, 'read')), 'a gate that needs no object of its own keeps it');
+		$this->assertSame(['UserRequest', 'Contact'], $this->names(ClassCatalog::FilterByRight($aClasses, GateGrades::RIGHTS_ALL)), '"*" narrows on nothing');
+	}
+
+	/**
 	 * A refusal removes the class; 'depends' does not.
 	 *
 	 * 'depends' is the addon asking for the object before it answers, so the
