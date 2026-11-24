@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
@@ -376,6 +377,53 @@ final class DeletionCascade
 	public static function CascadeOf(string $sClass, int $iId, array $aLedger): ?string
 	{
 		return $aLedger[MetaModel::GetRootClass($sClass).'::'.$iId] ?? null;
+	}
+
+	/**
+	 * The host hears that one of its attachments is going, as the console's edit form makes it hear, and the file's
+	 * name is kept for the history line {@see AttachmentRemoved()} writes. Plumbing only: whether the attachment may
+	 * go is decided by the delete tool, in its own source (ADR 0014).
+	 *
+	 * @return string The file's name, '' when it cannot be read.
+	 * @since 2.2.0
+	 */
+	public static function AttachmentRemoving(DBObject $oHost, DBObject $oAttachment): string
+	{
+		try {
+			$oBlob = $oAttachment->Get('contents');
+			$sName = $oBlob instanceof \ormDocument ? $oBlob->GetFileName() : '';
+			$aData = ['attachment' => $oAttachment];
+			$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
+
+			return $sName;
+		} catch (Throwable $e) {
+			ErrorReport::Log('Could not tell the host of an attachment that it is being removed: '.$e->getMessage());
+
+			return '';
+		}
+	}
+
+	/**
+	 * The "attachment removed" line the console leaves in the host's history (AttachmentPlugIn::UpdateAttachments()
+	 * writes a CMDBChangeOpAttachmentRemoved with the file's name), which deleting the Attachment alone would not.
+	 * A failure to write it is logged and does not turn a deletion that happened into a failure.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function AttachmentRemoved(DBObject $oHost, string $sFilename): void
+	{
+		if (!class_exists('CMDBChangeOpAttachmentRemoved')) {
+			return;
+		}
+		try {
+			$oOp = new \CMDBChangeOpAttachmentRemoved();
+			$oOp->Set('filename', $sFilename);
+			$oOp->Set('objclass', get_class($oHost));
+			$oOp->Set('objkey', $oHost->GetKey());
+			$oOp->DBInsertNoReload();
+		} catch (Throwable $e) {
+			ErrorReport::Log('Could not write the "attachment removed" line of '.get_class($oHost).'::'.$oHost->GetKey().': '.$e->getMessage());
+		}
 	}
 
 	/**

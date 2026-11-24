@@ -206,6 +206,40 @@ class ObjectDelete extends AbstractMCPTool
 			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot delete object.");
 		}
 
+		// An attachment is removed from its host's edit form in the console, so what the console asks of the host is
+		// asked here: the host exists and is readable and served, the account may modify it (this object, not only the
+		// class), and the attachments module does not freeze it for the back office (closed tickets by default). The
+		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
+		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
+		$oAttachmentHost = null;
+		if (MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $class)) {
+			$sHostRefusal = null;
+			$sHostClass = (string)$oObject->Get('item_class');
+			$iHostId = (int)$oObject->Get('item_id');
+			if ($sHostClass === '' || $iHostId < 1) {
+				$sHostRefusal = 'This attachment is attached to no saved object (a draft upload), so it is not deleted here.';
+			} elseif (!MetaModel::IsValidClass($sHostClass) || ExclusionPolicy::ExcludesClass($sHostClass) || !UserRights::IsActionAllowed($sHostClass, UR_ACTION_READ)) {
+				$sHostRefusal = 'The object this attachment belongs to was not found.';
+			} else {
+				$oHostSet = new DBObjectSet(ObjectQuery::ById($sHostClass, $iHostId));
+				$oAttachmentHost = $oHostSet->Count() === 0 ? null : $oHostSet->Fetch();
+				$oHostSet->Rewind();
+				if ($oAttachmentHost === null || ExclusionPolicy::ExcludesClass(get_class($oAttachmentHost))) {
+					$oAttachmentHost = null;
+					$sHostRefusal = 'The object this attachment belongs to was not found.';
+				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
+					$sHostRefusal = 'Access denied: cannot modify the object this attachment belongs to.';
+				} elseif ($oAttachmentHost->IsReadOnly()
+					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
+						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
+					$sHostRefusal = 'The object this attachment belongs to is read-only in its current state, so its attachments cannot be removed.';
+				}
+			}
+			if ($sHostRefusal !== null) {
+				throw ToolRefusal::Because($sHostRefusal);
+			}
+		}
+
 		// Before the plan is computed: an object this account cannot see in its
 		// own searches is one it is probably acting on from a stale id.
 		WritePlan::RefuseHiddenObsolete($oObject, $sFinalClass, $obsolete_ok, 'delete');
@@ -241,9 +275,14 @@ class ObjectDelete extends AbstractMCPTool
 			// pointed at this one, and the reason belongs in their history too.
 			ChangeTracking::Explain($comment);
 
+			// What the console does when an attachment is removed: the host hears of it first and its history gets a line.
+			$sRemovedFile = $oAttachmentHost === null ? '' : DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
 			try {
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);
+				if ($oAttachmentHost !== null) {
+					DeletionCascade::AttachmentRemoved($oAttachmentHost, $sRemovedFile);
+				}
 			} catch (\Throwable $e) {
 				// A throw here does not mean the row is still there. DBDelete()
 				// removes it and then runs what follows - the objects that
