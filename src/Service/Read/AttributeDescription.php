@@ -110,10 +110,43 @@ final class AttributeDescription
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef, $sClass),
-			] + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
+			] + self::defaultValue($oAttDef) + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;
+	}
+
+	/**
+	 * The value a write gives an attribute nobody set, when there is one worth saying.
+	 *
+	 * `required` is the datamodel forbidding null, which is not "you must send it": an attribute with a default
+	 * is filled by the write (a ticket's status, impact and urgency), and a model that sends every `required` one
+	 * sends what iTop would have chosen anyway (review 2026-11-23, C4). Reported only where there is one, so
+	 * an attribute with no `default` and `required: true` is the one a create has to be given.
+	 *
+	 * Nothing is said for an empty default (an empty string, 0 or an empty key), for a default that is not a
+	 * plain value (a link set's), for a secret, or for class names, which may name a class the operator
+	 * excluded (ADR 0012).
+	 *
+	 * @return array<string, scalar>
+	 */
+	private static function defaultValue(AttributeDefinition $oAttDef): array
+	{
+		if (self::listsClassNames($oAttDef)) {
+			return [];
+		}
+
+		try {
+			$mDefault = $oAttDef->GetDefaultValue();
+		} catch (\Throwable $e) {
+			return [];
+		}
+
+		if (!is_scalar($mDefault) || $mDefault === '' || $mDefault === 0 || $mDefault === false || ($oAttDef->IsExternalKey() && (string)$mDefault === '0')) {
+			return [];
+		}
+
+		return ['default' => $mDefault];
 	}
 
 	/**

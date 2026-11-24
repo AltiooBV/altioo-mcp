@@ -68,7 +68,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 
 		return 'Describe '.self::RETURNS.'. '
 			.'Attributes arrive in two blocks: "attributes" can be written - that is what a create or an update needs - and "derived" cannot - computed or structural, including the _friendlyname each external key carries - which on a class with many of them is most of the payload. '
-			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply. '
+			.'"required" is the datamodel forbidding null; on a derived attribute that is a column iTop computes and not a value you supply, and an attribute with a "default" is filled in when you send none. '
 			.'An attribute with "dependsOn" is declared as deriving from those attributes - a ticket\'s priority from its urgency and impact - so a value you set for it may be recomputed and discarded on the write; set what it derives from instead, and the write reports what it kept under "overridden". '
 			.self::RIGHTS.'. '
 			.'"no" is refused outright: do not attempt it. "yes" means the class check passes and the object may still refuse. "depends" is answered per object. '
@@ -126,7 +126,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 				],
 				'required_only' => [
 					'type'        => 'boolean',
-					'description' => 'Keep only the attributes a write must set, and drop the derived ones - nothing can set those. Answers "what is mandatory here" without the rest of the class.',
+					'description' => 'Keep only the attributes a create must be given: required, writable and with no default (an attribute with one carries it under "default"). Answers "what is mandatory here" without the rest of the class.',
 					'default'     => false,
 				],
 			],

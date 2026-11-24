@@ -124,7 +124,8 @@ final class DatamodelReader
 		$aAttributes = AttributeDescription::attributes($sClass);
 
 		if ($bRequiredOnly) {
-			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true);
+			// Required and without a default: the ones a create has to be given. The others are filled in by the write.
+			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true && !array_key_exists('default', $a));
 		}
 
 		if ($sAttributes !== self::ATTRIBUTES_ALL && $sAttributes !== '') {

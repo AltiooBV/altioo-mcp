@@ -47,4 +47,20 @@ class SchemaReportingTest extends ItopDataTestCaseAlias
 			$this->assertSame('no', $aAttribute['modify'], "{$sCode} is read-only and must not be graded as writable");
 		}
 	}
+
+	/** C4: required_only listed seven attributes of a UserRequest, and a create with three passes. */
+	public function testRequiredOnlyKeepsWhatACreateMustBeGiven(): void
+	{
+		$aFull = $this->schema('UserRequest')['attributes'];
+		$aRequired = $this->schema('UserRequest', DatamodelReader::BLOCKS_ALL, DatamodelReader::ATTRIBUTES_ALL, true)['attributes'];
+
+		$this->assertEqualsCanonicalizing(['org_id', 'title', 'description'], array_keys($aRequired));
+		foreach (['status', 'impact', 'urgency', 'priority'] as $sCode) {
+			$this->assertTrue($aFull[$sCode]['required'], "{$sCode} is still required by the datamodel");
+			$this->assertArrayHasKey('default', $aFull[$sCode], "{$sCode} says what it is given when none is sent");
+		}
+		$this->assertSame('new', $aFull['status']['default']);
+		$this->assertArrayNotHasKey('default', $aFull['title'], 'an empty default is not reported');
+		$this->assertArrayNotHasKey('default', $aFull['org_id'], 'an empty key is not a default');
+	}
 }
