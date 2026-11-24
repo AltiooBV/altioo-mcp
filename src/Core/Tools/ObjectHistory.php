@@ -15,7 +15,6 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
-use Altioo\iTop\Extension\MCP\Service\Portal\PortalForms;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
@@ -221,9 +220,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			},
 			// The file name of an attachment added or removed: on the console where the class Attachment is readable, in a
 			// portal where its forms show the attachments of this object.
-			static fn (): bool => PortalMode::Current() === null
-				? ExclusionPolicy::Serves('Attachment') && MetaModel::IsValidClass('Attachment') && UserRights::IsActionAllowed('Attachment', UR_ACTION_READ)
-				: PortalForms::ShowsAttachments($oObject)
+			static fn (): bool => $oAccess->ShowsAttachmentsOf($oObject)
 		);
 
 		// Before and after values and case-log entries are what other people

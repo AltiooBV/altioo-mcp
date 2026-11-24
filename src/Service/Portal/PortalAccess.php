@@ -409,6 +409,13 @@ final class PortalAccess extends ObjectAccess
 			: $oAttDef->GetForJSON($oObject->Get($sCode));
 	}
 
+	/** The portal's forms show them, as for a read of the object. */
+	#[\Override]
+	public function ShowsAttachmentsOf(DBObject $oObject): bool
+	{
+		return PortalForms::ShowsAttachments($oObject);
+	}
+
 	/** When a brick granted to the caller reaches the change log, and a scope covers it. */
 	#[\Override]
 	public function ShowsHistory(): bool

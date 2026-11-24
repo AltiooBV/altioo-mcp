@@ -323,6 +323,19 @@ class ObjectAccess
 	}
 
 	/**
+	 * Whether this caller is shown the attachments of $oObject, which is whether the history of $oObject may name the
+	 * files added to it or removed from it. On the console the class Attachment is the account's to read through
+	 * UserRights (and is not one the operator excluded); in portal mode the portal's forms decide
+	 * (doc/adr/0011-portal-mode-reads-and-adds-attachments.md).
+	 *
+	 * @since 2.2.0
+	 */
+	public function ShowsAttachmentsOf(DBObject $oObject): bool
+	{
+		return \MetaModel::IsValidClass('Attachment') && ExclusionPolicy::Serves('Attachment') && \UserRights::IsActionAllowed('Attachment', UR_ACTION_READ);
+	}
+
+	/**
 	 * The Attachment the mode shows this caller, or null for one it does not -
 	 * unknown, out of reach, or somebody's unsent draft, all alike. Meaningful
 	 * only where {@see AttachmentsAreObjects()} is false.
