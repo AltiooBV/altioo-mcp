@@ -111,6 +111,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 				'id'  => [
 					'type'        => 'integer',
 					'description' => 'The ID of the object to update.',
+					'minimum'     => 1,
 				],
 				'fields' => [
 					'type'                 => JsonPayload::MAP_TYPE,

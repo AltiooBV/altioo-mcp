@@ -113,6 +113,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'id'       => [
 					'type'        => 'integer',
 					'description' => 'ID of the object to transition.',
+					'minimum'     => 1,
 				],
 				'stimulus' => [
 					'type'        => 'string',
