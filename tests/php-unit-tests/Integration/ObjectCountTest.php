@@ -270,8 +270,9 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 
 		// The stock list is of the abstract Ticket, so what it can be counted per is what the list
 		// shows and Ticket has: its caller, its dates, its title. A column of one subclass (status,
-		// priority) is not an attribute of the class the list reads, and is refused as one that is
-		// not there; so is the class itself, which the list does not show.
+		// priority) is not an attribute of the class the list reads, and is refused in words that say
+		// it belongs to a subclass (review 2026-11-23, B3); a column the list does not show is refused
+		// as one that is not there.
 		// An external key the list shows: the id is what the row holds, and the name only where the portal shows it.
 		$aByCaller = $this->runCount(['list' => self::ONGOING, 'group_by' => ['caller_id']]);
 		$this->assertSame($aPortal['contact'], $aByCaller['groups'][0]['value']['caller_id']);
@@ -282,6 +283,10 @@ class ObjectCountTest extends ItopDataTestCaseAlias
 				$this->runCount(['list' => self::ONGOING, 'group_by' => [$sHidden]]);
 				$this->fail("{$sHidden} was counted per value in the portal");
 			} catch (ToolCallException $oException) {
+				if (in_array($sHidden, ['status', 'priority'], true)) {
+					$this->assertStringContainsString("per '{$sHidden}': it is a column of a subclass of Ticket", $oException->getMessage());
+					continue;
+				}
 				$this->assertStringStartsWith("Unknown attribute '{$sHidden}'", $oException->getMessage());
 			}
 		}
