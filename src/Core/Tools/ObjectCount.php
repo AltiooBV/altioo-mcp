@@ -113,7 +113,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: list "closed-tickets-for-portal-user" with group_by ["finalclass"] is closed requests per kind. A column only a subclass of the list\'s class has is refused. Call core_class_list for the lists; core_portal_list rows show their columns.';
+			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: list "ongoing-tickets-for-portal-user" with group_by ["status"] is open requests per status. A column only some kinds of row have (a ticket list\'s status or priority) is counted kind by kind: each group names its class, and the total is of the kinds counted. Call core_class_list for the lists; core_portal_list rows show their columns.';
 		}
 
 		return 'Count the objects of a class that match, and optionally per value of one or two attributes: "open tickets per team" without paging every ticket. Give class and filters, or an OQL query. Only attributes you may read, of simple types, can be grouped by.';
@@ -338,22 +338,36 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		/** @var array<int, string> $aColumns */
 		$aColumns = $aResolved['list']['columns'];
 
+		/** @var array<int, string> $aBelow Columns the list shows that its class has not, and some of its kinds of row have. */
+		$aBelow = [];
 		foreach ($aGroupBy as $sAttCode) {
 			// Only what the list shows: a column the portal hides is a column
 			// a count must not split by, and it is refused as one that is not
 			// there. The attribute rules apply on top.
-			if (in_array($sAttCode, $aColumns, true) && !MetaModel::IsValidAttCode($sClass, $sAttCode)) {
-				// Shown by the list, so no secret: the column is a subclass's, and the list's class cannot be grouped by it.
-				throw ToolRefusal::Because("Cannot count list '".trim($sList)."' per '{$sAttCode}': it is a column of a subclass of {$sClass}, which has no such attribute, so a count cannot group by it yet. Group by a column {$sClass} has.");
+			if (!in_array($sAttCode, $aColumns, true)) {
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on list '".trim($sList)."'.");
 			}
-			if (!in_array($sAttCode, $aColumns, true) || !self::mayGroupBy($sClass, $sAttCode)) {
+			if (!MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+				// Shown by the list, so no secret: a column of a subclass, counted class by class below.
+				$aBelow[] = $sAttCode;
+				continue;
+			}
+			if (!self::mayGroupBy($sClass, $sAttCode)) {
 				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on list '".trim($sList)."'.");
 			}
 		}
 
+		// Decided before the query is looked at, so that a column no kind of row can be counted by is refused
+		// in the same words whether or not the list holds anything for this user.
+		$aKinds = $aBelow === [] ? [] : self::kindsToCount($oPolicy, trim($sList), $sClass, $aGroupBy, $aBelow);
+
 		$oQuery = $aResolved['query'];
 		if ($oQuery === null) {
 			return ToolOutput::Json(self::emptyAnswer($sClass, ['list' => trim($sList)]));
+		}
+
+		if ($aBelow !== []) {
+			return self::answerPerClass($oPolicy, trim($sList), $sClass, $oQuery, $aGroupBy, $aKinds);
 		}
 
 		return self::answer(
@@ -431,27 +445,11 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		$bTruncated = false;
 
 		if ($aGroupBy !== []) {
-			$sAlias = $oSearch->GetClassAlias();
-			$aExpr = [];
-			foreach ($aGroupBy as $i => $sAttCode) {
-				$aExpr['g'.$i] = new FieldExpression($sAttCode, $sAlias);
-			}
-			$sSql = $oSearch->MakeGroupByQuery([], $aExpr, false, [], ['_itop_count_' => false], self::MAX_GROUPS + 1);
-			$oResult = CMDBSource::Query($sSql);
 			$aLabels = [];
-			while ($aRow = $oResult->fetch_assoc()) {
-				if (count($aGroups) === self::MAX_GROUPS) {
-					$bTruncated = true;
-					break;
-				}
-				$aValue = [];
-				$aLabel = [];
-				foreach ($aGroupBy as $i => $sAttCode) {
-					$mValue = $aRow['g'.$i];
-					$aValue[$sAttCode] = self::plain(MetaModel::GetAttributeDef($sClass, $sAttCode), $mValue);
-					$aLabel[$sAttCode] = self::labelOf($sClass, $sAttCode, $mValue, $fLabelOfKey, $aLabels);
-				}
-				$aGroups[] = ['value' => $aValue, 'label' => $aLabel, 'count' => (int)$aRow['_itop_count_']];
+			$aGroups = self::groupsOf($sClass, $oSearch, $aGroupBy, $fLabelOfKey, $aLabels);
+			if (count($aGroups) > self::MAX_GROUPS) {
+				$bTruncated = true;
+				$aGroups = array_slice($aGroups, 0, self::MAX_GROUPS);
 			}
 		}
 
@@ -469,6 +467,153 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 		}
 
 		return ToolOutput::Json($aAnswer);
+	}
+
+	/**
+	 * The groups of one search of one class, largest first, at most one more than an answer carries so
+	 * that the caller can tell there were more.
+	 *
+	 * @param array<int, string>             $aGroupBy
+	 * @param callable(string, int): ?string $fLabelOfKey
+	 * @param array<string, string|null>     $aLabels    Labels of external keys' targets already asked for.
+	 *
+	 * @return array<int, array{value: array<string, mixed>, label: array<string, ?string>, count: int}>
+	 */
+	private static function groupsOf(string $sClass, DBSearch|DBObjectSearch $oSearch, array $aGroupBy, callable $fLabelOfKey, array &$aLabels): array
+	{
+		$sAlias = $oSearch->GetClassAlias();
+		$aExpr = [];
+		foreach ($aGroupBy as $i => $sAttCode) {
+			$aExpr['g'.$i] = new FieldExpression($sAttCode, $sAlias);
+		}
+		$sSql = $oSearch->MakeGroupByQuery([], $aExpr, false, [], ['_itop_count_' => false], self::MAX_GROUPS + 1);
+		$oResult = CMDBSource::Query($sSql);
+		$aGroups = [];
+		while ($aRow = $oResult->fetch_assoc()) {
+			$aValue = [];
+			$aLabel = [];
+			foreach ($aGroupBy as $i => $sAttCode) {
+				$mValue = $aRow['g'.$i];
+				$aValue[$sAttCode] = self::plain(MetaModel::GetAttributeDef($sClass, $sAttCode), $mValue);
+				$aLabel[$sAttCode] = self::labelOf($sClass, $sAttCode, $mValue, $fLabelOfKey, $aLabels);
+			}
+			$aGroups[] = ['value' => $aValue, 'label' => $aLabel, 'count' => (int)$aRow['_itop_count_']];
+		}
+
+		return $aGroups;
+	}
+
+	/**
+	 * The kinds of row (the concrete classes under the list's class) a list is counted by, when it is
+	 * counted per a column that its class has not: those the account is served, may read and the portal's
+	 * scopes can hold, whose attributes are all served and readable.
+	 *
+	 * A kind that fails any of that is left out and nothing says so; the answer's note says only that the
+	 * total is of the kinds counted. A refusal names the columns, which the list shows, and never a class
+	 * that was left out: it is decided from the kinds that pass the checks, by the schema.
+	 *
+	 * @param array<int, string> $aGroupBy All the columns asked for.
+	 * @param array<int, string> $aBelow   Those the list's class has not.
+	 *
+	 * @return array<int, string> Class names, in name order.
+	 *
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
+	 */
+	private static function kindsToCount(PortalPolicy $oPolicy, string $sList, string $sClass, array $aGroupBy, array $aBelow): array
+	{
+		$aServed = [];
+		foreach (MetaModel::EnumChildClasses($sClass, ENUM_CHILD_CLASSES_ALL) as $sKind) {
+			$sKind = (string)$sKind;
+			if (MetaModel::IsAbstract($sKind)
+				|| !ExclusionPolicy::Serves($sKind)
+				|| ChangeLogReservation::IsReserved($sKind)
+				|| UserRights::IsActionAllowed($sKind, UR_ACTION_READ) === UR_ALLOWED_NO
+				|| $oPolicy->ReadSet($sKind) === null) {
+				continue;
+			}
+			$aServed[] = $sKind;
+		}
+		sort($aServed);
+
+		// The kinds that have a column, by the schema: the same for every account.
+		$aHaving = [];
+		foreach ($aBelow as $sAttCode) {
+			$aHaving[$sAttCode] = array_values(array_filter($aServed, static fn (string $sKind): bool => MetaModel::IsValidAttCode($sKind, $sAttCode)));
+			if ($aHaving[$sAttCode] === []) {
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on list '{$sList}'.");
+			}
+		}
+		foreach ($aBelow as $sAttCode) {
+			if ($aHaving[$sAttCode] !== $aHaving[$aBelow[0]]) {
+				throw ToolRefusal::Because("Cannot count list '{$sList}' per ".implode(' and ', array_map(static fn (string $s): string => "'{$s}'", $aBelow)).' together: not every kind of row in it has all of them. Count per one of them.');
+			}
+		}
+
+		// Then what this account may count by, kind by kind.
+		$aKinds = array_values(array_filter($aHaving[$aBelow[0]], static function (string $sKind) use ($aGroupBy): bool {
+			foreach ($aGroupBy as $sAttCode) {
+				if (!self::mayGroupBy($sKind, $sAttCode)) {
+					return false;
+				}
+			}
+
+			return true;
+		}));
+		if ($aKinds === []) {
+			throw ToolRefusal::Because("Unknown attribute '{$aBelow[0]}' on list '{$sList}'.");
+		}
+
+		return $aKinds;
+	}
+
+	/**
+	 * A list counted kind of row by kind of row, for a column that only some kinds have (the `status` of
+	 * a list of tickets).
+	 *
+	 * Each kind is the list's own query, scopes and tab and parent included, narrowed to that class: never
+	 * a wider one. The groups carry their class, because the same code means a different state in a
+	 * different class and is never merged across them. The total is the sum of the kinds counted; the
+	 * list's own count is not given, so that what a left-out kind holds cannot be told from it.
+	 *
+	 * @param array<int, string> $aGroupBy
+	 * @param array<int, string> $aKinds   As {@see kindsToCount()} answers.
+	 *
+	 * @return mixed
+	 */
+	private static function answerPerClass(PortalPolicy $oPolicy, string $sList, string $sClass, DBSearch|DBObjectSearch $oQuery, array $aGroupBy, array $aKinds): mixed
+	{
+		$fLabelOfKey = static fn (string $sTarget, int $iId): ?string => self::portalLabel($oPolicy, $sTarget, $iId);
+		$iTotal = 0;
+		$aGroups = [];
+		$aLabels = [];
+		foreach ($aKinds as $sKind) {
+			$oSearch = $oQuery->DeepClone();
+			$oSearch->ChangeClass($sKind);
+			if (MetaModel::EnumChildClasses($sKind, ENUM_CHILD_CLASSES_EXCLUDETOP) !== []) {
+				// Its own rows, not those of its subclasses, which are counted as their own kind.
+				$oSearch = $oSearch->Intersect(DBObjectSearch::FromOQL("SELECT {$sKind} WHERE finalclass = '{$sKind}'"));
+			}
+			$iTotal += (new DBObjectSet($oSearch))->Count();
+			foreach (self::groupsOf($sKind, $oSearch, $aGroupBy, $fLabelOfKey, $aLabels) as $aGroup) {
+				$aGroups[] = ['class' => $sKind] + $aGroup;
+			}
+		}
+
+		// Largest first across kinds, and the limit is the answer's, not each kind's.
+		usort($aGroups, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
+		$bTruncated = count($aGroups) > self::MAX_GROUPS;
+		$aGroups = array_slice($aGroups, 0, self::MAX_GROUPS);
+
+		return ToolOutput::Json([
+			'list'      => $sList,
+			'class'     => $sClass,
+			'total'     => $iTotal,
+			'groups'    => $aGroups,
+			'truncated' => $bTruncated,
+			'note'      => 'Counted kind of row by kind of row, for a column that only some kinds have: each group says its class, because the same code means a different state in a different class. The total is of the kinds counted and can be less than the list\'s own count. Counted by the database before object-level rights remove rows; it never includes an object outside your organisations.'
+				.($bTruncated ? ' Only the '.self::MAX_GROUPS.' largest groups are listed.' : ''),
+			'untrusted_text' => ['fields' => ['groups[].label'], 'note' => UntrustedMarker::UNTRUSTED_NOTICE],
+		]);
 	}
 
 	/**

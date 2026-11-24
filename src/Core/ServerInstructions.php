@@ -455,7 +455,7 @@ TEXT;
 Reading
 - core_portal_list runs a portal list by id. Lists are already this user's own: pass no contact id or
 filter. tab picks a tab, parent_id the children of a row of the parent list, search finds words in
-what the list shows. core_object_count counts a list per value of a column it shows that its class has (a subclass-only column is refused).
+what the list shows. core_object_count counts a list per value of a column it shows; a column only some kinds of row have (status, priority of tickets) is counted kind by kind, each group naming its class.
 - If the portal offers a list of answers (FAQ, knowledge base), search it before creating a request
 and offer what it holds; create one only if the user still wants it.
 - core_object_get reads one object from a list row: the fields the portal shows, attachments[[documents:
