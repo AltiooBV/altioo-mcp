@@ -337,7 +337,7 @@
                     "properties": {
                         "class": {
                             "type": "string",
-                            "description": "iTop class of the source object (e.g. Server, UserRequest)."
+                            "description": "iTop class of the source object (e.g. Server, ApplicationSolution)."
                         },
                         "id": {
                             "type": "integer",
@@ -346,7 +346,7 @@
                         },
                         "relation": {
                             "type": "string",
-                            "description": "Relation code to follow. A stock iTop declares \"impacts\" and \"depends on\", but a datamodel may declare others and no class takes part in all of them. Call core_class_schema for this class and read its \"relations\" block: the keys are the codes valid here. A code the class does not have is refused with the list of the ones it does, for the direction you asked for."
+                            "description": "Relation code to follow: \"impacts\" on a stock iTop, and whatever the datamodel declares. No class takes part in every code. A code the class does not have in the direction asked is refused with the list of the ones it does."
                         },
                         "direction": {
                             "type": "string",
@@ -376,7 +376,7 @@
                         "relation"
                     ]
                 },
-                "description": "Walk a named relation from one iTop object (impacts, depends on, ...): impact analysis and dependency mapping on CIs. Relations are declared per class and per direction, so read the \"relations\" block of core_class_schema for this class first; a code it does not have is refused with the list of the ones it does. The answer is a graph, not a tree: \"objects\" maps keys like Server::12 to class, id and friendlyname, \"relations\" is a list of {from, to} over those keys, \"summary\" counts per class. The source object is not in it and an object reached twice appears once. \"truncated\" is true when a class was held back for want of bulk read on it, and \"withheld\" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.",
+                "description": "Walk a named relation from one iTop object: impact analysis and dependency mapping on CIs. The stock relation is \"impacts\": direction \"down\" is what the object impacts, \"up\" is what it depends on. A code the class does not have for that direction is refused with the ones it does. core_class_schema lists the codes and the classes each reaches downstream, not the directions. The answer is a graph: \"objects\" maps keys like Server::12 to class, id and friendlyname, \"relations\" is a list of {from, to} over those keys and the source, \"summary\" is a string of counts per class (\"Server=2, ApplicationSolution=1\"). The source is not in objects or summary, and an object reached twice appears once. \"truncated\" is true when a class was held back for want of bulk read on it, and \"withheld\" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.",
                 "annotations": {
                     "title": "Get Related Objects",
                     "readOnlyHint": true,

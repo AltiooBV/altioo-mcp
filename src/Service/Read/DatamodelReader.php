@@ -154,7 +154,8 @@ final class DatamodelReader
 		}
 
 		if (in_array(self::BLOCK_RELATIONS, $aBlocks, true)) {
-			$aPayload['relations'] = self::relations($sClass);
+			// An object whether or not it is empty: an empty PHP array would be sent as [] where every other answer is {} (review 2026-11-23, S6).
+			$aPayload['relations'] = self::relations($sClass) ?: new \stdClass();
 		}
 
 		if (in_array(self::BLOCK_LIFECYCLE, $aBlocks, true)) {

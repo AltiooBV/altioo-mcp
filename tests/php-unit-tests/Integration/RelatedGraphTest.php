@@ -126,6 +126,92 @@ class RelatedGraphTest extends ItopDataTestCaseAlias
 	}
 
 	/**
+	 * Review of 2026-11-23, B6 and T3: an "up" walk answered an empty graph. iTop marks the nodes of a walk "reached"
+	 * only on the way down (ComputeRelatedObjectsUp() marks none), and the tool kept only the nodes marked.
+	 */
+	public function testABusinessProcessDependsOnItsSolutionAndItsServer(): void
+	{
+		[$oProcess, $oSolution, $oServer] = $this->aProcessOnASolutionOnAServer();
+
+		$oResult = $this->call('core_object_get_related', ['class' => 'BusinessProcess', 'id' => (int)$oProcess->GetKey(), 'relation' => 'impacts', 'direction' => 'up']);
+
+		$this->assertFalse($oResult->isError ?? false, json_encode($oResult));
+		$oGraph = json_decode((string)$oResult->content[0]->text);
+		$aKeys = array_keys((array)$oGraph->objects);
+		sort($aKeys);
+		$this->assertSame(['ApplicationSolution::'.$oSolution->GetKey(), 'Server::'.$oServer->GetKey()], $aKeys, 'the walk up came back with something else than what the process depends on');
+		$this->assertNotEmpty($oGraph->relations, 'objects with no edge between them are a list, not a graph');
+	}
+
+	/**
+	 * Review of 2026-11-23, B10 and T3: the answer counted the object the walk started from, though the description
+	 * says it is not in the result.
+	 *
+	 * @dataProvider directionProvider
+	 */
+	public function testTheStartingObjectIsNeitherListedNorCounted(string $sDirection): void
+	{
+		[$oProcess, $oSolution, $oServer] = $this->aProcessOnASolutionOnAServer();
+		$oStart = $sDirection === 'up' ? $oProcess : $oServer;
+
+		$oResult = $this->call('core_object_get_related', ['class' => get_class($oStart), 'id' => (int)$oStart->GetKey(), 'relation' => 'impacts', 'direction' => $sDirection]);
+
+		$this->assertFalse($oResult->isError ?? false, json_encode($oResult));
+		$oGraph = json_decode((string)$oResult->content[0]->text);
+		$this->assertArrayNotHasKey(get_class($oStart).'::'.$oStart->GetKey(), (array)$oGraph->objects);
+		$this->assertStringNotContainsString(get_class($oStart).'=', (string)$oGraph->summary, 'the starting object is counted');
+		$this->assertNotSame('', (string)$oGraph->summary, 'nothing came back, which proves nothing about the start');
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function directionProvider(): array
+	{
+		return ['down' => ['down'], 'up' => ['up']];
+	}
+
+	/**
+	 * Review of 2026-11-23, B6 and ADR 0012: what the operator excluded is not in a walk up either, and neither is
+	 * what is reachable only through it. The walk up from the process reaches the server only through the solution.
+	 */
+	public function testAnExcludedClassIsNotInAWalkUpAndNeitherIsWhatLiesBeyondIt(): void
+	{
+		[$oProcess, $oSolution, $oServer] = $this->aProcessOnASolutionOnAServer();
+		$aArguments = ['class' => 'BusinessProcess', 'id' => (int)$oProcess->GetKey(), 'relation' => 'impacts', 'direction' => 'up'];
+
+		$this->exclude(['ApplicationSolution'], []);
+		try {
+			$oResult = $this->call('core_object_get_related', $aArguments);
+		} finally {
+			$this->exclude([], []);
+		}
+
+		$sText = (string)json_encode($oResult);
+		$this->assertStringNotContainsString('ApplicationSolution', $sText);
+		$this->assertStringNotContainsString('Server::'.$oServer->GetKey(), $sText);
+	}
+
+	/**
+	 * @return array{0: \DBObject, 1: \DBObject, 2: \DBObject} A business process that uses a solution that is hosted on a server.
+	 */
+	private function aProcessOnASolutionOnAServer(): array
+	{
+		foreach (['BusinessProcess', 'ApplicationSolution', 'Server', 'lnkApplicationSolutionToBusinessProcess', 'lnkApplicationSolutionToFunctionalCI'] as $sClass) {
+			if (!MetaModel::IsValidClass($sClass)) {
+				$this->markTestSkipped("Needs {$sClass}.");
+			}
+		}
+
+		$iOrg = (int)$this->CreateOrganization('RelatedGraph '.bin2hex(random_bytes(4)))->GetKey();
+		$oServer = $this->createObject('Server', ['name' => 'RelatedGraph-'.bin2hex(random_bytes(3)), 'org_id' => $iOrg]);
+		$oSolution = $this->createObject('ApplicationSolution', ['name' => 'RelatedGraph-'.bin2hex(random_bytes(3)), 'org_id' => $iOrg]);
+		$oProcess = $this->createObject('BusinessProcess', ['name' => 'RelatedGraph-'.bin2hex(random_bytes(3)), 'org_id' => $iOrg]);
+		$this->createObject('lnkApplicationSolutionToFunctionalCI', ['applicationsolution_id' => $oSolution->GetKey(), 'functionalci_id' => $oServer->GetKey()]);
+		$this->createObject('lnkApplicationSolutionToBusinessProcess', ['applicationsolution_id' => $oSolution->GetKey(), 'businessprocess_id' => $oProcess->GetKey()]);
+
+		return [$oProcess, $oSolution, $oServer];
+	}
+
+	/**
 	 * @param array<int, string>               $aClasses
 	 * @param array<string, array<int, string>> $aAttributes
 	 */

@@ -68,7 +68,7 @@ class ContextBudgetTest extends TestCase
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
 		'ObjectGetDocument'   => [680, 470],
-		'ObjectGetRelated'    => [800, 1390],
+		'ObjectGetRelated'    => [930, 1390],
 		'ObjectHistory'       => [710, 740],
 		'ObjectSearchByClass' => [240, 3350],
 		'ObjectSearchByOQL'   => [220, 2690],
@@ -79,7 +79,7 @@ class ContextBudgetTest extends TestCase
 	];
 
 	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. */
-	private const TOTAL_DESCRIPTIONS = 14290;
+	private const TOTAL_DESCRIPTIONS = 14420;
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
