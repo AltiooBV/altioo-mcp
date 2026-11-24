@@ -9,14 +9,11 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
-use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
-use Altioo\iTop\Extension\MCP\Helper\Settings;
+use Altioo\iTop\Extension\MCP\Core\ServerVersion;
+use Altioo\iTop\Extension\MCP\Core\Tools\Version as VersionTool;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
-use utils;
-use MetaModel;
-use RunTimeEnvironment;
 
 /**
  * @internal
@@ -32,7 +29,7 @@ class Version extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'Read the iTop version information, and the identity, licence and source of the MCP extension serving this session.';
+		return 'Read '.VersionTool::RETURNS.'. The core_version tool returns the same thing for clients that do not read resources.';
 	}
 
 	protected function getResourceNamespace(): string
@@ -60,61 +57,12 @@ class Version extends AbstractMCPResource
 	}
 
 	/**
-	 * The `extension` block is the AGPL 13 source offer.
-	 *
-	 * A client interacting with this instance over a network is interacting
-	 * with a work derived from iTop, and 13 entitles it to the corresponding
-	 * source. This resource is the only place in an MCP session where that
-	 * offer can be made and found: there is no page to put a footer on, and a
-	 * link in a README is not reachable from a client that only ever speaks
-	 * JSON-RPC to one endpoint.
-	 *
-	 * It costs one field on a resource a client reads once, at the start of a
-	 * session, to make the offer answerable rather than theoretical.
+	 * @return string The same payload core_version returns: see
+	 *                {@see \Altioo\iTop\Extension\MCP\Core\ServerVersion}, which
+	 *                also says why its `extension` block is the AGPL 13 source offer.
 	 */
 	public function read(): mixed
 	{
-		return ResourceOutput::Json([
-			'version' => ITOP_CORE_VERSION,
-			'build' => ITOP_REVISION,
-			'buildDate' => ITOP_BUILD_DATE,
-			'edition' => $this->getiTopEdition(),
-			'extension' => [
-				'name' => MCPModule::MODULE_NAME,
-				'version' => MCPModule::VERSION,
-				'license' => MCPModule::LICENSE,
-				'source' => Settings::GetSourceUrl(),
-			],
-		]);
-	}
-
-	protected function getiTopEdition(): string
-	{
-		require_once(APPROOT.'setup/runtimeenv.class.inc.php');
-		$sCurrEnv = utils::GetCurrentEnvironment();
-		$oRuntimeEnv = new RunTimeEnvironment($sCurrEnv);
-		// Where the datamodel was compiled from, e.g. 'datamodels/2.x'; the
-		// setup writes it to the config and iTop reads it back the same way
-		// (see setup/compiler.class.inc.php).
-		$aSearchDirs = array(APPROOT.MetaModel::GetConfig()->Get('source_dir'));
-		$sExtraDir = APPROOT.'data/'.$sCurrEnv.'-modules/';
-		if (file_exists($sExtraDir)) {
-			$aSearchDirs[] = $sExtraDir;
-		}
-		$aAvailableModules = $oRuntimeEnv->AnalyzeInstallation(MetaModel::GetConfig(), $aSearchDirs);
-
-		foreach ($aAvailableModules as $sModuleId => $aModuleData) {
-			if ($sModuleId === '_Root_') {
-				continue;
-			}
-			if (utils::IsNullOrEmptyString($aModuleData['version_db'])) {
-				continue;
-			}
-			if ($sModuleId === 'itop-hub-connector') { // The presence of the Hub Connector module is a good indication that we are running the Community edition
-				return 'community';
-			}
-		}
-
-		return 'professional';
+		return ResourceOutput::Json(ServerVersion::Payload());
 	}
 }

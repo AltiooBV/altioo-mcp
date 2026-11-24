@@ -119,3 +119,6 @@ Settings agent skills read here.
   Also: a pack throws `Api\ToolRefusal::Because()` and `Api\ResourceRefusal::Because()`, never the SDK's exception classes (they are `final`, and the SDK moves
   them); the SDK's 0.9 names are aliases in `sdk-aliases.php` until 3.0, and an SDK release that renames another name a pack can reach adds it there with its
   test ([0024](doc/adr/0024-the-pack-contract-names-this-modules-exceptions.md)).
+  Also: every core resource and resource template has a tool twin over the same handler, served wherever the resource is
+  (same toolset, no extra profile, portal mode only if the resource has it, read grade); a new resource adds its tool and its
+  pair to `ResourceToolTwinTest::TWINS` ([0025](doc/adr/0025-every-resource-has-a-tool-twin.md)).

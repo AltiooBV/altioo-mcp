@@ -494,6 +494,12 @@ the exception rather than the list.
 
 ## 3. Write a resource or a prompt
 
+**Give a resource a tool twin.** Plenty of clients never fetch resources, and fewer still read
+templates, while every client reads `tools/list`. The core does this for every resource it serves
+([ADR 0025](adr/0025-every-resource-has-a-tool-twin.md)): a tool in the same toolset that calls the
+same function as `read()` and returns it with `ToolOutput::Json()`, so the two cannot drift apart.
+A pack is not held to it; its clients are better served by it.
+
 Resources extend `AbstractMCPResource` and expose `read()`; resource templates extend
 `AbstractMCPResourceTemplate` and take the URI variables as arguments; prompts extend
 `AbstractMCPPrompt` and expose `get()`.

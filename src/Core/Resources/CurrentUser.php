@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
+use Altioo\iTop\Extension\MCP\Core\Tools\CurrentUser as CurrentUserTool;
+use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Read\CurrentUserReader;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
@@ -32,7 +34,11 @@ class CurrentUser extends AbstractMCPResource implements PortalAware
 
 	public function getDescription(): ?string
 	{
-		return 'Read the current user information, and the toolsets and capabilities this session is served.';
+		if (PortalMode::Current() !== null) {
+			return 'Read '.CurrentUserTool::PORTAL_RETURNS.', and the toolsets and tools this session is served.';
+		}
+
+		return 'Read '.CurrentUserTool::RETURNS.', and the toolsets and capabilities this session is served.';
 	}
 
 	protected function getResourceNamespace(): string

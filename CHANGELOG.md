@@ -21,6 +21,32 @@ entry itself, not left to be inferred from it.
 
 ## [Unreleased]
 
+### Added
+
+- **`core_version`, the tool twin of `itop://core/version`**: iTop's version, build and edition, and this extension's name,
+  version, licence and source URL, the same payload over the same code (`Core\ServerVersion`). A client that reads no
+  resources was never shown the AGPL §13 source offer that payload carries. In the `server` toolset, read grade, console mode
+  only, as the resource is. One more tool in every console client's `tools/list` (302 bytes of description); the other
+  core tools' definitions are unchanged, so no pinned hash moves except that a new one appears.
+- **Every resource has a tool twin, and a test says so** ([ADR 0025](doc/adr/0025-every-resource-has-a-tool-twin.md)).
+  `ResourceToolTwinTest` fails when a core resource or template has no tool paired with it, or when the tool is not served
+  wherever the resource is, or when the two descriptions do not say what comes back in the same words;
+  `ResourceToolTwinParityTest` (integration) compares their answers.
+
+### Changed
+
+- **A resource's description now says what it returns in its tool twin's words.** Each core tool that twins a resource
+  holds that sentence (`RETURNS`, and `PORTAL_RETURNS` where portal mode differs) and both descriptions are built from it.
+  The resource descriptions change in `resources/list`; `itop://core/classes` no longer claims "all available iTop classes"
+  where it lists the ones this user can read, and `itop://core/current-user` gains its own portal-mode text. The tool
+  descriptions are unchanged byte for byte.
+
+### Fixed
+
+- **`itop://core/version` failed on iTop 3.3** with "Undefined array key `version_db`": 3.3 renamed that key of
+  `AnalyzeInstallation`'s answer to `installed_version`. The edition is read from either. Present since 3.3 support was
+  added; found when the new parity test first read the resource on 3.3. Not a security defect, so 2.x only.
+
 ## [2.1.0] - 2026-11-20
 
 **The fixes of the 2026-11-18 review, the port to `mcp/sdk` 0.10, and a pack contract that no longer names the SDK's exceptions.** Eighteen entries under *Fixed* are marked Security (two of them concern tool packs); none

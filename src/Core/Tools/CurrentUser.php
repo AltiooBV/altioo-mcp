@@ -35,6 +35,14 @@ use Mcp\Schema\ToolAnnotations;
  */
 class CurrentUser extends AbstractMCPTool implements PortalAware
 {
+	/**
+	 * What this returns, in the words its resource twin uses too, so the two
+	 * descriptions cannot say different things about one answer (ADR 0025).
+	 */
+	public const RETURNS = 'who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode';
+
+	/** The same, in portal mode. */
+	public const PORTAL_RETURNS = 'who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through';
 
 	public function getNamespace(): string
 	{
@@ -58,11 +66,11 @@ class CurrentUser extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Report who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode. Read this before answering anything phrased as "me", "my tickets" or "assigned to me", rather than asking the user who they are. The contact id it returns is what ties the caller to objects: pass it as the value of a person or team attribute in core_object_search_by_class, or in a core_object_search_by_oql query. Every other tool here already runs as this user, so this also reports whose rights an "access denied" was about. It also reports the toolsets this session is served: if something you expected is not in your tool list, check that before concluding this server does not have it.';
+		return 'Report '.self::RETURNS.'. Read this before answering anything phrased as "me", "my tickets" or "assigned to me", rather than asking the user who they are. The contact id it returns is what ties the caller to objects: pass it as the value of a person or team attribute in core_object_search_by_class, or in a core_object_search_by_oql query. Every other tool here already runs as this user, so this also reports whose rights an "access denied" was about. It also reports the toolsets this session is served: if something you expected is not in your tool list, check that before concluding this server does not have it.';
 	}
 
 	/** What this tool is to a portal-mode connection, which has no OQL and no console search. */
-	private const PORTAL_DESCRIPTION = 'Report who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through. Read this before answering anything phrased as "me" or "my requests", rather than asking the user who they are, and answer in their language. The portal\'s lists are already this user\'s own: core_portal_list needs no contact id. It also reports the toolsets and the tools this session is served.';
+	private const PORTAL_DESCRIPTION = 'Report '.self::PORTAL_RETURNS.'. Read this before answering anything phrased as "me" or "my requests", rather than asking the user who they are, and answer in their language. The portal\'s lists are already this user\'s own: core_portal_list needs no contact id. It also reports the toolsets and the tools this session is served.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
