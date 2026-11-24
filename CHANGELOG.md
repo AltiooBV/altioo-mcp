@@ -57,6 +57,7 @@ entry itself, not left to be inferred from it.
   audit row only, since 1.2), and a `2026-07-28` session was said to receive no instructions, though a client on that
   revision that sends `initialize` (Claude Code does) does. `core_instructions` has a new description and its pinned hash
   moves. Not a security defect.
+- **`core_object_apply_stimulus` let a transition through while a mandatory external key was empty** (review 2026-11-23, B1). `ev_assign` on a stock `UserRequest` passed with no team and no agent, on the dry run and for real, though the state marks both mandatory and the console form refuses it. The check compared the attribute with `''` softly; an empty external key is `0`, and on PHP 8 `0 != ''` is true, so every empty key counted as filled. It now asks the attribute (`DBObject::HasAValue()`, the question `EditPolicy` already asked), which is also right for link sets, case logs and documents. Present since 1.0.0. Not a security defect: the credential could do the same in the console with a different tool.
 
 ## [2.1.0] - 2026-11-20
 
