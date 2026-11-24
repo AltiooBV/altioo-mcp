@@ -202,7 +202,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		DeletionCascade::NoteCascade($oPlan, $sClass, $iId, $aCascade);
 
 		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
-		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan);
+		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan, $sClass, $iId);
 
 		return $aOutcome;
 	}

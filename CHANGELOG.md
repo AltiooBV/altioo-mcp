@@ -58,6 +58,7 @@ entry itself, not left to be inferred from it.
   revision that sends `initialize` (Claude Code does) does. `core_instructions` has a new description and its pinned hash
   moves. Not a security defect.
 - **`core_object_apply_stimulus` let a transition through while a mandatory external key was empty** (review 2026-11-23, B1). `ev_assign` on a stock `UserRequest` passed with no team and no agent, on the dry run and for real, though the state marks both mandatory and the console form refuses it. The check compared the attribute with `''` softly; an empty external key is `0`, and on PHP 8 `0 != ''` is true, so every empty key counted as filled. It now asks the attribute (`DBObject::HasAValue()`, the question `EditPolicy` already asked), which is also right for link sets, case logs and documents. Present since 1.0.0. Not a security defect: the credential could do the same in the console with a different tool.
+- **A delete dry run did not say which classes it would delete or update** (review 2026-11-23, B7). Every entry of `deletionPlan.deleted` and `deletionPlan.updated` of `core_object_delete` and `core_object_bulk_delete` is now `{class, id}`; it was `{id}`, so a plan of three ids named nothing the user could approve. The object being deleted is no longer listed in its own plan, which the schema describes as what happens "besides deleting the object itself". Keys are added, none renamed. The tool definitions do not change.
 
 ## [2.1.0] - 2026-11-20
 

@@ -267,7 +267,7 @@ class ObjectDelete extends AbstractMCPTool
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
@@ -281,7 +281,7 @@ class ObjectDelete extends AbstractMCPTool
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 			]);
 	}
 

@@ -327,10 +327,18 @@ final class DeletionCascade
 	 * person before they approve it has to be complete, and the only way for it
 	 * to be both complete and safe is for the incomplete case not to exist.
 	 *
+	 * Each entry names its class, since an id alone says nothing: a business process, a solution and a server
+	 * can all be number 1 (review 2026-11-23, B7). The object the call is about is left out when it is passed,
+	 * as the schema's "besides deleting the object itself" says: iTop's plan lists it too.
+	 *
+	 * @param string|null $sClass The class of the object the call deletes, to leave it out of the plan.
+	 * @param int|null    $iId    Its id.
+	 *
 	 * @return array<string, mixed>
 	 * @since 1.0.0
+	 * @since 2.2.0 Entries carry their class; the object itself is left out when named.
 	 */
-	public static function SerializeDeletionPlan(?DeletionPlan $oPlan): array
+	public static function SerializeDeletionPlan(?DeletionPlan $oPlan, ?string $sClass = null, ?int $iId = null): array
 	{
 		if ($oPlan === null) {
 			return ['deleted' => [], 'updated' => []];
@@ -338,16 +346,21 @@ final class DeletionCascade
 
 		$aDeleted = [];
 		$aUpdated = [];
+		$sRoot = $sClass === null ? null : MetaModel::GetRootClass($sClass);
 
-		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
-			foreach (array_keys($aEntries) as $iId) {
-				$aDeleted[] = WriteOutcome::Identity($sClass, $iId);
+		foreach ($oPlan->ListDeletes() as $sReached => $aEntries) {
+			foreach (array_keys($aEntries) as $mReachedId) {
+				// The same object whether named by a subclass or its parent, as NoteCascade() reads it.
+				if ($sRoot !== null && $iId !== null && ObjectId::Normalise($mReachedId) === $iId && MetaModel::GetRootClass((string)$sReached) === $sRoot) {
+					continue;
+				}
+				$aDeleted[] = ['class' => (string)$sReached] + WriteOutcome::Identity((string)$sReached, $mReachedId);
 			}
 		}
 
-		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
-			foreach (array_keys($aEntries) as $iId) {
-				$aUpdated[] = WriteOutcome::Identity($sClass, $iId);
+		foreach ($oPlan->ListUpdates() as $sReached => $aEntries) {
+			foreach (array_keys($aEntries) as $mReachedId) {
+				$aUpdated[] = ['class' => (string)$sReached] + WriteOutcome::Identity((string)$sReached, $mReachedId);
 			}
 		}
 
