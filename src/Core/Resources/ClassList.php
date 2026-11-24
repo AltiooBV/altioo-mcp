@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
+use Altioo\iTop\Extension\MCP\Core\Tools\ClassList as ClassListTool;
 use Altioo\iTop\Extension\MCP\Service\Read\ClassCatalog;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
@@ -29,7 +30,7 @@ class ClassList extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'List all available iTop classes. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_class_list tool for the same list narrowed by category or name.';
+		return 'List '.ClassListTool::RETURNS.'. Use the itop://core/class/{class} resource template to read details about a specific class, or the core_class_list tool for the same list narrowed by category or name.';
 	}
 
 	/** The datamodel itself: what classes exist and what they look like. */

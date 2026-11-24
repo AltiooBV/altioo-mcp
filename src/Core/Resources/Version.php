@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Resources;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResource;
 use Altioo\iTop\Extension\MCP\Api\ResourceOutput;
 use Altioo\iTop\Extension\MCP\Core\ServerVersion;
+use Altioo\iTop\Extension\MCP\Core\Tools\Version as VersionTool;
 use Mcp\Schema\Annotations;
 use Mcp\Schema\Enum\Role;
 
@@ -28,7 +29,7 @@ class Version extends AbstractMCPResource
 
 	public function getDescription(): ?string
 	{
-		return 'Read the iTop version information, and the identity, licence and source of the MCP extension serving this session. The core_version tool returns the same thing for clients that do not read resources.';
+		return 'Read '.VersionTool::RETURNS.'. The core_version tool returns the same thing for clients that do not read resources.';
 	}
 
 	protected function getResourceNamespace(): string

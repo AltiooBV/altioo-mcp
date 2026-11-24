@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Core\ResourceTemplates;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPResourceTemplate;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGetDocument as ObjectGetDocumentTool;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Service\Access\DocumentFetch;
 use Altioo\iTop\Extension\MCP\Service\Read\DocumentAccess;
@@ -43,7 +44,7 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 
 	public function getDescription(): ?string
 	{
-		return 'Read one document held by an iTop object: an attachment, a picture, any blob attribute. '
+		return 'Read '.ObjectGetDocumentTool::RETURNS.'. '
 			.'URI: itop://core/document/{class}/{id}/{att_code}, which core_object_get reports as the "uri" of that attribute. '
 			.'The core_object_get_document tool returns the same thing for clients that do not read resource templates.';
 	}
