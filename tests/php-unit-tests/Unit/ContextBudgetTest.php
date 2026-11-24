@@ -52,8 +52,8 @@ class ContextBudgetTest extends TestCase
 	 * @var array<string, array{0: int, 1: int}>
 	 */
 	private const BUDGET = [
-		'ClassList'           => [600, 1260],
-		'ClassSchema'         => [1860, 900],
+		'ClassList'           => [600, 1310],
+		'ClassSchema'         => [1980, 980],
 		'CurrentUser'         => [740, 40],
 		'Instructions'        => [800, 40],
 		'MyActivity'          => [430, 440],
@@ -78,8 +78,8 @@ class ContextBudgetTest extends TestCase
 		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. */
-	private const TOTAL_DESCRIPTIONS = 14480;
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580. */
+	private const TOTAL_DESCRIPTIONS = 14580;
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
@@ -150,7 +150,7 @@ class ContextBudgetTest extends TestCase
 	/**
 	 * What a portal user is told: the tools portal mode serves, in portal mode,
 	 * where descriptions and schemas differ from the console's. Measured with
-	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950).
+	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950). 2.2.0: the portal count says where a list's columns are, 8975 (budget 8980).
 	 */
 	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
 	{
@@ -172,7 +172,7 @@ class ContextBudgetTest extends TestCase
 			MCPRegistry::Clear();
 		}
 
-		$this->assertLessThanOrEqual(8950, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(8980, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
 		$this->assertLessThanOrEqual(8050, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 

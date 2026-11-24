@@ -195,7 +195,7 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 		// A field iTop requires is excluded: no create could pass, and the setting is said to be why.
 		$sCreateRefusal = ExclusionPolicy::RefusalToCreate($class);

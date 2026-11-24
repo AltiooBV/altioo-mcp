@@ -140,7 +140,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is a real way into the change log and not a formality.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 
 		try {

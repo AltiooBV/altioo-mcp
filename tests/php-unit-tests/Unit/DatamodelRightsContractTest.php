@@ -132,7 +132,7 @@ class DatamodelRightsContractTest extends TestCase
 
 		$this->assertTrue($oSource->HasCall(ChangeLogReservation::class.'::IsReserved', 'narrowedByTheBarrier'),
 			'the block never asks whether the class is the change log, so it reports it as unguarded');
-		$this->assertNotSame([], array_filter($oSource->Constants('narrowedByTheBarrier'), static fn (string $sConstant): bool => str_ends_with($sConstant, '::RESERVED_REFUSAL')),
+		$this->assertTrue($oSource->HasCall(ChangeLogReservation::class.'::Refusal', 'narrowedByTheBarrier'),
 			'a caller is told no without being told which tool serves it instead');
 
 		// The one place reads are narrowed, and deliberately so.

@@ -302,7 +302,7 @@ class ObjectFindByName extends AbstractMCPTool
 			}
 
 			if (ChangeLogReservation::IsReserved($sClass)) {
-				throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+				throw ToolRefusal::Because(ChangeLogReservation::Refusal($sClass));
 			}
 			if (!UserRights::IsActionAllowed($sClass, UR_ACTION_READ)) {
 				throw ToolRefusal::Because(ClassRefusal::Unreadable($sClass)); // exists, but not for this account to read

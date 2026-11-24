@@ -117,7 +117,7 @@ class ObjectSearchByOQL extends AbstractObjectSearch
 		// exactly why this one matters: "SELECT CMDBChangeOpSetAttributeScalar"
 		// is the shortest way round every gate core_object_history applies.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 
 		if (!UserRights::IsActionAllowed($class, UR_ACTION_READ)) {

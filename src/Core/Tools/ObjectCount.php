@@ -113,7 +113,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: "how many open requests per status". Call core_class_list for the lists and their columns.';
+			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: "how many open requests per status". Call core_class_list for the lists; core_portal_list rows show their columns.';
 		}
 
 		return 'Count the objects of a class that match, and optionally per value of one or two attributes: "open tickets per team" without paging every ticket. Give class and filters, or an OQL query. Only attributes you may read, of simple types, can be grouped by.';

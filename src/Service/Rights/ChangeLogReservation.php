@@ -54,6 +54,22 @@ final class ChangeLogReservation
 	public const RESERVED_REFUSAL = 'Class \'%s\' is the change log, which is served by core_object_history only.';
 
 	/**
+	 * The refusal of a class of the change log, naming the way in only when this caller is served it.
+	 *
+	 * What every tool says, so a connection without the history toolset is not sent to a tool it was not given
+	 * (review 2026-11-23, C7). The check that decides the refusal stays in each tool's own source (ADR 0014); this
+	 * words it.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function Refusal(string $sClass): string
+	{
+		return ServedAccess::Serves('core_object_history')
+			? sprintf(self::RESERVED_REFUSAL, $sClass)
+			: sprintf('Class \'%s\' is the change log, which this connection does not serve.', $sClass);
+	}
+
+	/**
 	 * Whether $sClass belongs to the change log rather than to the object
 	 * tools.
 	 *
