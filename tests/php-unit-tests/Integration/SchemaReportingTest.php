@@ -8,10 +8,13 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use MetaModel;
 
@@ -28,6 +31,23 @@ class SchemaReportingTest extends ItopDataTestCaseAlias
 		if (!MetaModel::IsValidClass('UserRequest')) {
 			$this->markTestSkipped('Needs the request management datamodel (UserRequest).');
 		}
+		$this->exclude([]);
+	}
+
+	protected function tearDown(): void
+	{
+		$this->exclude([]);
+		parent::tearDown();
+	}
+
+	/** @param array<int, string> $aClasses */
+	private function exclude(array $aClasses): void
+	{
+		$oConfig = MetaModel::GetConfig();
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_CLASSES, $aClasses);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_ATTRIBUTES, []);
+		$oConfig->SetModuleSetting(MCPModule::MODULE_NAME, ExclusionSettings::SETTING_EXEMPT_PROFILES, []);
+		ExclusionPolicy::Forget();
 	}
 
 	/** @return array<string, mixed> */
@@ -79,5 +99,31 @@ class SchemaReportingTest extends ItopDataTestCaseAlias
 				}
 			}
 		}
+	}
+
+	/** C19: nothing said how to write a link set; [{"functionalci_id": 1}] had to be guessed. */
+	public function testALinkSetSaysHowItIsWritten(): void
+	{
+		if (!MetaModel::IsValidAttCode('UserRequest', 'functionalcis_list')) {
+			$this->markTestSkipped('Needs UserRequest.functionalcis_list.');
+		}
+		$aHint = $this->schema('UserRequest')['attributes']['functionalcis_list'];
+
+		$this->assertStringContainsString('[{"functionalci_id": 1}]', $aHint['writeHint']);
+		$this->assertStringContainsString('lnkFunctionalCIToTicket', $aHint['writeHint']);
+		$this->assertStringContainsString('left out is removed', $aHint['writeHint']);
+	}
+
+	/** C19 and ADR 0012: the hint names no class or attribute the operator excluded. */
+	public function testTheLinkSetHintNamesNothingExcluded(): void
+	{
+		if (!MetaModel::IsValidAttCode('UserRequest', 'functionalcis_list')) {
+			$this->markTestSkipped('Needs UserRequest.functionalcis_list.');
+		}
+		$this->exclude(['FunctionalCI']);
+
+		$sSchema = json_encode($this->schema('UserRequest'));
+
+		$this->assertStringNotContainsStringIgnoringCase('functionalci', $sSchema);
 	}
 }

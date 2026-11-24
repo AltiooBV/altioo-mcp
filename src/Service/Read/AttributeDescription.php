@@ -403,6 +403,42 @@ final class AttributeDescription
 	}
 
 	/**
+	 * How to write a link set, which reads as rows and is written as the complete list of its links (review 2026-11-23, C19).
+	 *
+	 * Each item is an object keyed by the attribute codes of the link class: for an indirect set the key to the remote
+	 * object, which is the one a caller guesses ([{"functionalci_id": 1}] attaches that CI), for a direct one the
+	 * linked class's own attributes. The key back to the host is implied, and what the list leaves out is removed,
+	 * which iTop then checks against this account's rights on the link class. A name the operator excluded
+	 * (ADR 0012) is not written here: the hint then says the same without it.
+	 */
+	private static function linkSetHint(AttributeLinkedSet $oAttDef): string
+	{
+		$sGeneral = 'Send the complete list, as an array of objects keyed by the link class\'s attribute codes; a link left out is removed.';
+
+		try {
+			$sLinkClass = $oAttDef->GetLinkedClass();
+			if (ExclusionPolicy::ExcludesClass($sLinkClass)) {
+				return $sGeneral;
+			}
+
+			if (!$oAttDef instanceof AttributeLinkedSetIndirect) {
+				return "Send the complete list, as an array of {$sLinkClass} objects keyed by attribute code; one left out is removed.";
+			}
+
+			$sRemoteKey = $oAttDef->GetExtKeyToRemote();
+			$oToRemote = MetaModel::GetAttributeDef($sLinkClass, $sRemoteKey);
+			$sRemote = $oToRemote instanceof AttributeExternalKey ? $oToRemote->GetTargetClass() : '';
+			if (ExclusionPolicy::ExcludesAttribute($sLinkClass, $sRemoteKey) || ($sRemote !== '' && ExclusionPolicy::ExcludesClass($sRemote))) {
+				return $sGeneral;
+			}
+
+			return "Send the complete list, as {$sLinkClass} objects keyed by attribute code: [{\"{$sRemoteKey}\": 1}] links {$sRemote} 1. A link left out is removed.";
+		} catch (\Throwable $e) {
+			return $sGeneral;
+		}
+	}
+
+	/**
 	 * How to write an attribute that is not written the way it reads.
 	 *
 	 * Most attributes take back what a read returned. A case log does not: it
@@ -437,6 +473,10 @@ final class AttributeDescription
 			return [
 				'writeHint' => 'Write the new entry, not the whole log: pass its text as a plain string, or as {"add_item": {"message": "..."}}. iTop adds it to the log and keeps the entries already there.',
 			];
+		}
+
+		if ($oAttDef instanceof AttributeLinkedSet) {
+			return ['writeHint' => self::linkSetHint($oAttDef)];
 		}
 
 		// Said here rather than only at write time: modify answers for the
