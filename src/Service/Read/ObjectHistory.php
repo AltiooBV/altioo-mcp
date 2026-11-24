@@ -207,22 +207,28 @@ final class ObjectHistory
 	 *                                      the query, so `total` counts what is returned and no more.
 	 * @param (\Closure(string, int): ?string)|null $fNameOf The name of the object of a class that an id of a changed key points at, or null when the user is not
 	 *                                      shown it: the entries of a key then carry `from_name` and `to_name` beside the ids, as the portal shows a name.
+	 * @param (\Closure(string, int): ?string)|null $fShowsObject The class of the object the user is shown at that class and id, or null when it is not shown. The entry of a link
+	 *                                      set's change names the object linked or unlinked only then, as the class it is, and an attachment's id likewise; without it the entry says
+	 *                                      what happened and not to which object.
+	 * @param (\Closure(): bool)|null $fShowsAttachments Whether the user is shown this object's attachments. The entry of one added or removed carries its file name only then.
 	 *
 	 * @return array<string, mixed>
 	 */
-	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0, ?\Closure $fNameOf = null): array
+	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null): array
 	{
-		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows, $fNameOf);
+		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows, $fNameOf, $fShowsObject, $fShowsAttachments);
 	}
 
 	/**
 	 * @param (\Closure(DBObjectSearch): ?DBSearch)|null $fBound
 	 * @param (\Closure(string): bool)|null        $fShows
 	 * @param (\Closure(string, int): ?string)|null $fNameOf
+	 * @param (\Closure(string, int): ?string)|null $fShowsObject
+	 * @param (\Closure(): bool)|null $fShowsAttachments
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows, ?\Closure $fNameOf = null): array
+	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null): array
 	{
 		$sClass = get_class($oObject);
 		$iKey = (int)$oObject->GetKey();
@@ -283,6 +289,7 @@ final class ObjectHistory
 			$aEntry = self::masked($aEntry, $sClass);
 			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
 			$aEntry = self::withNames($aEntry, $sClass, $fNameOf);
+			$aEntry = self::withDetails($aEntry, $oOp, $fShowsObject, $fShowsAttachments);
 
 			$aEntries[] = $aEntry;
 		}
@@ -462,6 +469,53 @@ final class ObjectHistory
 	}
 
 	/**
+	 * What the change log records beyond old and new value, where a class of operation has it: the object a link set's
+	 * change linked or unlinked, and the file an attachment operation names (review 2026-11-23, C16).
+	 *
+	 * Both go through the same question the object does: the caller says whether it is shown the object (or the attachments
+	 * of this one), and an entry that is not shown it says what happened and not to which. A row of a link set
+	 * says `link: {type, class, id}`, a row of an attachment `attachment: {filename, id}` (the id only while the attachment
+	 * exists: iTop resets it when the file is deleted). Neither is asked of a caller that gave no way to say.
+	 *
+	 * @param array<string, mixed>                    $aEntry
+	 * @param (\Closure(string, int): ?string)|null $fShowsObject
+	 * @param (\Closure(): bool)|null            $fShowsAttachments
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withDetails(array $aEntry, DBObject $oOp, ?\Closure $fShowsObject, ?\Closure $fShowsAttachments): array
+	{
+		$sOpClass = get_class($oOp);
+
+		try {
+			if (is_a($sOpClass, 'CMDBChangeOpSetAttributeLinks', true) && MetaModel::IsValidAttCode($sOpClass, 'item_id')) {
+				// A row that tunes a link's own attributes has no direction: it says the link changed.
+				$aLink = ['type' => MetaModel::IsValidAttCode($sOpClass, 'type') ? (string)$oOp->Get('type') : 'changed'];
+				$sItem = (string)$oOp->Get('item_class');
+				$iItem = (int)$oOp->Get('item_id');
+				$sShown = $fShowsObject !== null && $sItem !== '' && $iItem > 0 ? $fShowsObject($sItem, $iItem) : null;
+				if ($sShown !== null) {
+					$aLink['class'] = $sShown;
+					$aLink['id'] = $iItem;
+				}
+				$aEntry['link'] = $aLink;
+			} elseif ((is_a($sOpClass, 'CMDBChangeOpAttachmentAdded', true) || is_a($sOpClass, 'CMDBChangeOpAttachmentRemoved', true))
+				&& $fShowsAttachments !== null && $fShowsAttachments()) {
+				$aAttachment = ['filename' => (string)self::valueOf($oOp, $sOpClass, 'filename')];
+				$iAttachment = MetaModel::IsValidAttCode($sOpClass, 'attachment_id') ? (int)$oOp->Get('attachment_id') : 0;
+				if ($iAttachment > 0 && $fShowsObject !== null && $fShowsObject('Attachment', $iAttachment) !== null) {
+					$aAttachment['id'] = $iAttachment;
+				}
+				$aEntry['attachment'] = $aAttachment;
+			}
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not read the details of a '.$sOpClass.' row for the history: '.get_class($e));
+		}
+
+		return $aEntry;
+	}
+
+	/**
 	 * One recorded operation, flattened.
 	 *
 	 * The operation is named from its own class in every case, so a row this
@@ -484,9 +538,23 @@ final class ObjectHistory
 			'user_id'   => PortalMode::Current() !== null ? null : $oOp->Get('user_id'),
 			'operation' => $sOpClass,
 			'attribute' => self::valueOf($oOp, $sOpClass, 'attcode'),
-			'from'      => self::valueOf($oOp, $sOpClass, 'oldvalue'),
+			// A text, long text or HTML field records the text it had before and no new value: the previous text is
+			// `from`, and `to` is null because the change log never held it (review 2026-11-23, C16).
+			'from'      => self::valueOf($oOp, $sOpClass, 'oldvalue') ?? self::previousText($oOp, $sOpClass),
 			'to'        => self::valueOf($oOp, $sOpClass, 'newvalue'),
 		];
+	}
+
+	/**
+	 * The text a text, long text or HTML field held before the change. Not a blob's `prevdata`, which is a file.
+	 */
+	private static function previousText(DBObject $oOp, string $sOpClass): ?string
+	{
+		if (!is_a($sOpClass, 'CMDBChangeOpSetAttributeText', true) && !is_a($sOpClass, 'CMDBChangeOpSetAttributeLongText', true)) {
+			return null;
+		}
+
+		return self::valueOf($oOp, $sOpClass, 'prevdata');
 	}
 
 	/**

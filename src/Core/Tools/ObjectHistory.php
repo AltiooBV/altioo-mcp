@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalForms;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory as HistoryReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
@@ -76,7 +77,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
+		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. A text field gives its previous text as \'from\' and no \'to\'; a link set change names the object in "link", an attachment its file and id in "attachment". Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema. */
@@ -202,7 +203,27 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 				ReadSummary::Note(get_class($oTarget), (int)$oTarget->GetKey());
 
 				return (string)$oTarget->GetName();
-			}
+			},
+			// An object a link set's change linked or unlinked, and an attachment's id, are named where this account is
+			// shown the object, the way a read of it would show it (ADR 0012 for the classes the operator excluded, ADR
+			// 0011 for a portal's attachments, which are never read through UserRights).
+			static function (string $sTarget, int $iTarget) use ($oAccess): ?string {
+				if (!ExclusionPolicy::Serves($sTarget)) {
+					return null;
+				}
+				$oShown = $sTarget === 'Attachment' && !$oAccess->AttachmentsAreObjects()
+					? $oAccess->ShownAttachment($iTarget)
+					: $oAccess->Readable($sTarget, $iTarget);
+
+				// The class it is, which the link row does not say (it names the class its key points at, a parent such as
+				// FunctionalCI), and the one the operator's exclusions are asked of.
+				return $oShown !== null && ExclusionPolicy::Serves(get_class($oShown)) ? get_class($oShown) : null;
+			},
+			// The file name of an attachment added or removed: on the console where the class Attachment is readable, in a
+			// portal where its forms show the attachments of this object.
+			static fn (): bool => PortalMode::Current() === null
+				? ExclusionPolicy::Serves('Attachment') && MetaModel::IsValidClass('Attachment') && UserRights::IsActionAllowed('Attachment', UR_ACTION_READ)
+				: PortalForms::ShowsAttachments($oObject)
 		);
 
 		// Before and after values and case-log entries are what other people
