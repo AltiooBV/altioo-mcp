@@ -41,7 +41,13 @@ class ConsoleAttachmentTraceTest extends ItopDataTestCaseAlias
 			$this->markTestSkipped('Needs the attachments module.');
 		}
 
-		$iOrg = (int)$this->CreateOrganization('ConsoleAttach '.bin2hex(random_bytes(4)))->GetKey();
+		// A ticket: attachments are shown on the classes of itop-attachments' allowed_classes, which is Ticket by default
+		// (review 2026-11-23, B9), and core_object_attach now refuses any other.
+		if (!MetaModel::IsValidClass('UserRequest')) {
+			$this->markTestSkipped('Needs the ITIL request management module.');
+		}
+		$iOrgOwner = (int)$this->CreateOrganization('ConsoleAttach '.bin2hex(random_bytes(4)))->GetKey();
+		$iOrg = (int)$this->CreateUserRequest(1, ['org_id' => $iOrgOwner, 'caller_id' => $this->CreatePerson(1, $iOrgOwner)->GetKey()])->GetKey();
 		$sB64 = base64_encode("Console notes.\n");
 
 		$aFired = [];
@@ -49,19 +55,19 @@ class ConsoleAttachmentTraceTest extends ItopDataTestCaseAlias
 			$aFired[] = $oEvent->Get('attachment')->Get('contents')->GetFileName();
 		});
 
-		$aDry = ToolOutput::Decode(ObjectAttach::execute('Organization', $iOrg, 'dry.txt', $sB64, 'text/plain'));
+		$aDry = ToolOutput::Decode(ObjectAttach::execute('UserRequest', $iOrg, 'dry.txt', $sB64, 'text/plain'));
 		$this->assertTrue($aDry['simulated']);
 		$this->assertSame(0, $this->historyRows($iOrg), 'a dry run leaves no history row');
 		$this->assertSame([], $aFired, 'a dry run fires no event');
 
-		$aDone = ToolOutput::Decode(ObjectAttach::execute('Organization', $iOrg, 'console.txt', $sB64, 'text/plain', null, false, 'Because'));
+		$aDone = ToolOutput::Decode(ObjectAttach::execute('UserRequest', $iOrg, 'console.txt', $sB64, 'text/plain', null, false, 'Because'));
 		$this->assertFalse($aDone['simulated']);
 
 		$this->assertSame(1, $this->historyRows($iOrg), 'exactly one history row for the host object, as iTop\'s console leaves');
 		$this->assertSame(['console.txt'], $aFired);
 
 		$oOps = new DBObjectSet(DBObjectSearch::FromOQL_AllData(
-			'SELECT CMDBChangeOpAttachmentAdded WHERE objclass = "Organization" AND objkey = :id'
+			'SELECT CMDBChangeOpAttachmentAdded WHERE objclass = "UserRequest" AND objkey = :id'
 		), [], ['id' => $iOrg]);
 		$oOp = $oOps->Fetch();
 		$this->assertSame('console.txt', $oOp->Get('filename'));
@@ -72,7 +78,7 @@ class ConsoleAttachmentTraceTest extends ItopDataTestCaseAlias
 	private function historyRows(int $iOrg): int
 	{
 		return (new DBObjectSet(DBObjectSearch::FromOQL_AllData(
-			'SELECT CMDBChangeOpAttachmentAdded WHERE objclass = "Organization" AND objkey = :id'
+			'SELECT CMDBChangeOpAttachmentAdded WHERE objclass = "UserRequest" AND objkey = :id'
 		), [], ['id' => $iOrg]))->Count();
 	}
 }

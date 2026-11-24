@@ -401,6 +401,13 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 				.'Call core_class_schema on the class and pass att_code, or install the attachments module.'
 			);
 		}
+		// iTop shows attachments only on the classes the module lists in `allowed_classes` (Ticket by default),
+		// and an Attachment on any other class would sit where no console user can see or remove it (review
+		// 2026-11-23, B9). The portal's own gate asks the same (PortalForms::ShowsAttachments()). Absent before
+		// iTop 3.2.1, where there is nothing to ask.
+		if (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsAttachmentAllowedForObject') && !\AttachmentPlugIn::IsAttachmentAllowedForObject($oTarget)) {
+			throw ToolRefusal::Because("Attachments are not enabled on class '{$sClass}' in this iTop, so a file attached to {$sClass}::{$iId} would not be shown to anyone. Attach it to an object of a class that has attachments (a ticket, by default).");
+		}
 		// The portal inserts the row itself and asks no right on the class,
 		// which the stock profile does not hold (doc/adr/0011): what gates it
 		// is the host object and the form, checked in target().

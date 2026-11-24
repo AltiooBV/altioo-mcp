@@ -71,4 +71,23 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		$aClasses = array_column($aPlan['updated'], 'class');
 		$this->assertContains('CMDBChangeOpAttachmentAdded', $aClasses, 'the bookkeeping row is part of the plan, and shown');
 	}
+
+	/**
+	 * B9: a file attached to a class the module does not serve would be seen by no console user.
+	 */
+	public function testAttachingToAClassOutsideAllowedClassesIsRefused(): void
+	{
+		$this->aTicket();
+		$iOrg = (int)$this->CreateOrganization('AttGate '.bin2hex(random_bytes(4)))->GetKey();
+		if (!method_exists('AttachmentPlugIn', 'IsAttachmentAllowedForObject')) {
+			$this->markTestSkipped('This iTop has no IsAttachmentAllowedForObject() (before 3.2.1).');
+		}
+
+		try {
+			ObjectAttach::execute('Organization', $iOrg, 'x.txt', base64_encode('x'), 'text/plain');
+			$this->fail('a file was accepted for an Organization');
+		} catch (ToolCallException $e) {
+			$this->assertStringContainsString('Attachments are not enabled on class', $e->getMessage());
+		}
+	}
 }
