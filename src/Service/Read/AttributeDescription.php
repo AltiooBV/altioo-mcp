@@ -103,7 +103,9 @@ final class AttributeDescription
 				'pattern'       => AttributeFormat::pattern($oAttDef),
 				'required'      => $oAttDef->IsNullAllowed() === false,
 				'readOnly'      => $oAttDef->IsWritable() === false,
-				'modify'        => GateGrades::grade($iModify),
+				// "no" for an attribute nobody writes: readOnly already says why, and "yes" beside it read as a
+				// contradiction (review 2026-11-23, C9). The grade is the caller's answer for what can be written.
+				'modify'        => $oAttDef->IsWritable() ? GateGrades::grade($iModify) : GateGrades::grade(UR_ALLOWED_NO),
 				'nullable'      => $oAttDef->IsNullAllowed(),
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
