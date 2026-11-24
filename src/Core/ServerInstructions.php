@@ -131,7 +131,8 @@ final class ServerInstructions
 			sprintf(self::PORTAL_MODE, $sPortal),
 			$oPolicy->allowsToolset(self::TOOLSET_DATAMODEL) ? self::PORTAL_OFFERS : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ) ? self::PORTAL_READING : '',
-			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) ? self::PORTAL_HISTORY : '',
+			// Not named where the portal shows no history, which withholds the tool (review 2026-11-23, C6, C7).
+			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) && ServedAccess::Serves('core_object_history') ? self::PORTAL_HISTORY : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) ? self::PORTAL_WRITING.self::advisoryLine($oPolicy, true) : '',
 			self::PORTAL_LIMITS,
 		];
@@ -265,7 +266,7 @@ final class ServerInstructions
 	 */
 	private static function historySection(AccessPolicy $oPolicy): string
 	{
-		if (!$oPolicy->allowsToolset(self::TOOLSET_HISTORY)) {
+		if (!$oPolicy->allowsToolset(self::TOOLSET_HISTORY) || !ServedAccess::Serves('core_object_history')) {
 			return '';
 		}
 

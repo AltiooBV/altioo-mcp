@@ -88,4 +88,16 @@ class ServedToolNamesTest extends TestCase
 		$this->assertStringNotContainsString('for the lists and their columns', $oSource);
 		$this->assertStringContainsString('core_portal_list rows show their columns', $oSource);
 	}
+
+	public function testTheInstructionsNameHistoryOnlyWhenItIsServed(): void
+	{
+		$oPolicy = \Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy::Unrestricted();
+		$fText = static fn (): string => \Altioo\iTop\Extension\MCP\Core\ServerInstructions::Text($oPolicy, 'Y-m-d H:i:s', 'Y-m-d');
+
+		$this->serve(['core_object_get']);
+		$this->assertStringNotContainsString('core_object_history', $fText());
+
+		$this->serve(['core_object_history']);
+		$this->assertStringContainsString('core_object_history', $fText());
+	}
 }
