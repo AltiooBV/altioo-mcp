@@ -84,7 +84,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			title: $this->getTitle() ?? 'Update iTop object',
 			readOnlyHint: false,
 			destructiveHint: false, // modifies, but not “delete/overwrite world”
-			idempotentHint: true,
+			idempotentHint: false, // a case log's add_item adds another entry on every retry (review 2026-11-23, S1)
 			openWorldHint: false, // closed CMDB domain
 		);
 	}
