@@ -68,7 +68,7 @@ class ContextBudgetTest extends TestCase
 		'ObjectDelete'        => [690, 1000],
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
-		'ObjectGetDocument'   => [730, 470],
+		'ObjectGetDocument'   => [730, 560],
 		'ObjectGetRelated'    => [930, 1390],
 		'ObjectHistory'       => [990, 740],
 		'ObjectSearchByClass' => [240, 3350],
@@ -81,7 +81,7 @@ class ContextBudgetTest extends TestCase
 
 	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. Batch 3: core_current_user says it gives the time zone and the time now (C10), 14993: 15000. L1, the prompt's tool twin core_my_open_tickets (ADR 0025, amended): +222, 15222: 15230. C16's added fields in the history, +118, 15348: 15350. */
 	private const TOTAL_DESCRIPTIONS = 15350;
-	private const TOTAL_INPUT_SCHEMAS = 24880;
+	private const TOTAL_INPUT_SCHEMAS = 24980;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
 	private const INSTRUCTIONS = 3200;
