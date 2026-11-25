@@ -340,7 +340,7 @@
                 "uri": "itop://core/current-user",
                 "name": "core_current_user",
                 "title": "Current User",
-                "description": "Read who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode, and the toolsets and capabilities this session is served.",
+                "description": "Read who this session is authenticated as: the contact name and id, the user id, the language, the instance's time zone and the time now, and whether the instance is in archive mode, and the toolsets and capabilities this session is served.",
                 "mimeType": "application/json",
                 "annotations": {
                     "audience": [

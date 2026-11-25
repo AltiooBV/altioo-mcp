@@ -39,10 +39,10 @@ class CurrentUser extends AbstractMCPTool implements PortalAware
 	 * What this returns, in the words its resource twin uses too, so the two
 	 * descriptions cannot say different things about one answer (ADR 0025).
 	 */
-	public const RETURNS = 'who this session is authenticated as: the contact name and id, the user id, the language, and whether the instance is in archive mode';
+	public const RETURNS = 'who this session is authenticated as: the contact name and id, the user id, the language, the instance\'s time zone and the time now, and whether the instance is in archive mode';
 
 	/** The same, in portal mode. */
-	public const PORTAL_RETURNS = 'who this session is authenticated as: the contact name and id, their organisation, the user id, their language, and the portal this connection is served through';
+	public const PORTAL_RETURNS = 'who this session is authenticated as: the contact name and id, their organisation, the user id, their language, the instance\'s time zone and the time now, and the portal this connection is served through';
 
 	public function getNamespace(): string
 	{
