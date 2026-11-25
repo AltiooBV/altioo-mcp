@@ -12,6 +12,8 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use MetaModel;
 use Throwable;
 use utils;
@@ -103,22 +105,29 @@ final class WritePlan
 			return null;
 		}
 
+		// The condition, as OQL, unless it reaches something this caller is not served (doc/adr/0012): then it is left
+		// out whole, and the refusal reads as one for a class that states none.
+		$sCondition = DatamodelReader::ObsolescenceCondition($sClass);
+		$sShown = $sCondition === null ? '' : ' ('.$sCondition.')';
+
 		if ($bBrief) {
 			return sprintf(
-				"This %s counts as obsolete (%s) and your account does not show obsolete objects: pass obsolete_ok=true to %s it anyway.",
+				"This %s counts as obsolete%s and your account does not show obsolete objects: pass obsolete_ok=true to %s it anyway.",
 				$sClass,
-				MetaModel::GetObsolescenceExpression($sClass)->Render(),
+				$sShown,
 				$sVerb
 			);
 		}
 
 		return sprintf(
-			"This %s counts as obsolete (%s) and your account does not show obsolete objects, so it is absent from your own searches. "
+			"This %s counts as obsolete%s and your account does not show obsolete objects, so it is absent from your own searches. "
 			."Refused because acting on it is usually a stale id rather than a decision. "
-			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete - or call core_set_obsolete_data to show them.",
+			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete%s.",
 			$sClass,
-			MetaModel::GetObsolescenceExpression($sClass)->Render(),
-			$sVerb
+			$sShown,
+			$sVerb,
+			// Not named where this caller is not served the tool (review 2026-11-23, C7).
+			ServedAccess::Serves('core_set_obsolete_data') ? ' - or call core_set_obsolete_data to show them' : ''
 		);
 	}
 

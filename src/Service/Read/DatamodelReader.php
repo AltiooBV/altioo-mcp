@@ -277,6 +277,18 @@ final class DatamodelReader
 				return null;
 			}
 
+			// Every attribute the condition reads must be one this caller is served (doc/adr/0012): an excluded attribute, a key
+			// whose target is excluded, an external field through one, a name made of one. Any that is not, or that cannot be
+			// resolved, and the condition is not said - it would name what the rest of the channel does not. An account
+			// holding an exempt profile is not excluded from anything (ADR 0013), so it still reads it.
+			foreach ($aArgs[0]->ListRequiredFields() as $sField) {
+				$sCode = (string)$sField;
+				$sCode = str_contains($sCode, '.') ? substr($sCode, strpos($sCode, '.') + 1) : $sCode;
+				if (!MetaModel::IsValidAttCode($sClass, $sCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sCode)) {
+					return null;
+				}
+			}
+
 			$sRendered = trim((string)$aArgs[0]->Render());
 			if ($sRendered === '') {
 				return null;
