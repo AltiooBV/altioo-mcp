@@ -153,9 +153,68 @@ class ObsolescenceExclusionTest extends ItopDataTestCaseAlias
 		$this->assertSame("(status = 'inactive')", DatamodelReader::ObsolescenceCondition('Organization'));
 	}
 
-	public function testAnUnresolvableConditionIsTreatedAsExcluded(): void
+	/**
+	 * Conditions as iTop parses them, against the function that decides: what it cannot vouch for it does not say.
+	 *
+	 * @return array<string, array{0: string, 1: bool}> The OQL, and whether it is said.
+	 */
+	public static function conditions(): array
 	{
-		// A class that is not one: nothing to resolve, nothing said.
+		return [
+			'a plain comparison'                 => ["status = 'inactive'", true],
+			'a constant interval'                => ["end_date < DATE_SUB(NOW(), INTERVAL 15 MONTH)", true],
+			'a function over served fields'      => ["ISNULL(code) = 0 AND status = 'inactive'", true],
+			'a nested query'                     => ["id IN (SELECT Organization WHERE status = 'inactive')", false],
+			'an interval over a served field'    => ["end_date < DATE_SUB(NOW(), INTERVAL usage_limit MONTH)", true],
+			'an attribute the class lacks'       => ["nosuchattribute = 1", false],
+			'a field of another alias'           => ["o.status = 'inactive'", false],
+			'a parameter'                        => ["status = :state", false],
+		];
+	}
+
+	/** @dataProvider conditions */
+	public function testWhatCannotBeVouchedForIsNotSaid(string $sOql, bool $bSaid): void
+	{
+		// Organization has none of end_date, so the interval cases are read against a class that has it, where they parse.
+		$sClass = str_contains($sOql, 'end_date') ? 'OSLicence' : 'Organization';
+		if (!MetaModel::IsValidClass($sClass)) {
+			$this->markTestSkipped("Needs {$sClass}.");
+		}
+		try {
+			$oExpression = \Expression::FromOQL($sOql);
+		} catch (\Throwable $e) {
+			$this->markTestSkipped('iTop does not parse this form here: '.get_class($e));
+		}
+
+		$sSaid = DatamodelReader::ConditionAsOql($oExpression, $sClass);
+
+		if ($bSaid) {
+			$this->assertNotNull($sSaid, $sOql);
+			\Expression::FromOQL($sSaid);
+			$this->assertStringNotContainsString('`', $sSaid);
+		} else {
+			$this->assertNull($sSaid, $sOql);
+		}
+	}
+
+	/** An excluded attribute inside each form, and the constant interval still said while nothing it reads is excluded. */
+	public function testAnExcludedAttributeInsideAnyFormIsNotSaid(): void
+	{
+		$this->exclude([], ['OSLicence' => ['end_date']], []);
+
+		foreach (["end_date < DATE_SUB(NOW(), INTERVAL 15 MONTH)", "ISNULL(end_date) = 0", "perpetual = 'no' AND end_date < NOW()"] as $sOql) {
+			$this->assertNull(DatamodelReader::ConditionAsOql(\Expression::FromOQL($sOql), 'OSLicence'), $sOql);
+		}
+		// The interval's value is walked too: ListRequiredFields() answers nothing for it.
+		$this->exclude([], ['OSLicence' => ['usage_limit']], []);
+		$this->assertNull(DatamodelReader::ConditionAsOql(\Expression::FromOQL("perpetual = 'no' AND perpetual < DATE_SUB(NOW(), INTERVAL usage_limit MONTH)"), 'OSLicence'), 'an interval over an excluded field');
+		$this->exclude([], ['OSLicence' => ['end_date']], []);
+		$this->assertNotNull(DatamodelReader::ConditionAsOql(\Expression::FromOQL("perpetual = 'no'"), 'OSLicence'), 'the control: what reads nothing excluded is still said');
+		$this->assertNull(DatamodelReader::ObsolescenceCondition('OSLicence'), 'the real condition reads end_date');
+	}
+
+	public function testAClassThatIsNotOneSaysNothing(): void
+	{
 		$this->assertNull(DatamodelReader::ObsolescenceCondition('NoSuchClassAtAll'));
 	}
 }

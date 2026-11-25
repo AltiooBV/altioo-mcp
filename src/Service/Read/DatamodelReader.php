@@ -273,23 +273,40 @@ final class DatamodelReader
 		try {
 			$oExpression = MetaModel::GetObsolescenceExpression($sClass);
 			$aArgs = $oExpression instanceof \FunctionOqlExpression && strtoupper((string)$oExpression->GetVerb()) === 'COALESCE' ? $oExpression->GetArgs() : [];
-			if (!isset($aArgs[0]) || !is_object($aArgs[0])) {
+			if (!isset($aArgs[0]) || !$aArgs[0] instanceof \Expression) {
 				return null;
 			}
 
-			// Every attribute the condition reads must be one this caller is served (doc/adr/0012): an excluded attribute, a key
-			// whose target is excluded, an external field through one, a name made of one. Any that is not, or that cannot be
-			// resolved, and the condition is not said - it would name what the rest of the channel does not. An account
-			// holding an exempt profile is not excluded from anything (ADR 0013), so it still reads it.
-			foreach ($aArgs[0]->ListRequiredFields() as $sField) {
-				$sCode = (string)$sField;
-				$sCode = str_contains($sCode, '.') ? substr($sCode, strpos($sCode, '.') + 1) : $sCode;
-				if (!MetaModel::IsValidAttCode($sClass, $sCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sCode)) {
-					return null;
-				}
+			return self::ConditionAsOql($aArgs[0], $sClass);
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not read the obsolescence condition of '.$sClass.': '.get_class($e));
+		}
+
+		return null;
+	}
+
+	/**
+	 * A condition as OQL, if and only if every attribute it reads is one this caller is served; otherwise null.
+	 *
+	 * The decision behind {@see ObsolescenceCondition()}, apart from the class so that it can be held against conditions of every
+	 * form. It walks the expression by what iTop lets one hold, through the public accessors, and says nothing about a kind it
+	 * does not know: `ListRequiredFields()` was not enough, because a nested query and an interval answer an empty list whatever
+	 * they hold. A nested query is null; an interval's value is walked; a field must be of no other alias than the class itself
+	 * and a valid attribute of it, not excluded (doc/adr/0012: an excluded attribute, a key whose target is excluded, an external
+	 * field through one, a name made of one), and an account holding an exempt profile is excluded from nothing (ADR 0013). A
+	 * parameter, a SQL fragment or any kind not listed here is null.
+	 *
+	 * @internal
+	 * @since 2.2.0
+	 */
+	public static function ConditionAsOql(\Expression $oCondition, string $sClass): ?string
+	{
+		try {
+			if (!self::readsOnlyServed($oCondition, $sClass)) {
+				return null;
 			}
 
-			$sRendered = trim((string)$aArgs[0]->Render());
+			$sRendered = trim((string)$oCondition->Render());
 			if ($sRendered === '') {
 				return null;
 			}
@@ -311,10 +328,70 @@ final class DatamodelReader
 				}
 			}
 		} catch (\Throwable $e) {
-			ErrorReport::Log('Could not read the obsolescence condition of '.$sClass.': '.get_class($e));
+			ErrorReport::Log('Could not render an obsolescence condition of '.$sClass.': '.get_class($e));
 		}
 
 		return null;
+	}
+
+	/**
+	 * Whether everything an expression reads is served, by walking the kinds iTop can put in one.
+	 *
+	 * Psalm runs with no iTop checkout to say what extends what (psalm.xml).
+	 *
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress NoInterfaceProperties
+	 * @psalm-suppress UndefinedMethod
+	 */
+	private static function readsOnlyServed(\Expression $oExpression, string $sClass): bool
+	{
+		// The fields first: FieldExpression is a UnaryExpression, and a parameter is one too.
+		if ($oExpression instanceof \FieldExpression) {
+			// The condition is parsed for the class alone, so a field carries no alias: one that does is another class's.
+			if ((string)$oExpression->GetParent() !== '') {
+				return false;
+			}
+			$sCode = (string)$oExpression->GetName();
+
+			return MetaModel::IsValidAttCode($sClass, $sCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $sCode);
+		}
+		if ($oExpression instanceof \ScalarExpression) { // includes True and False
+			return true;
+		}
+		if ($oExpression instanceof \BinaryExpression) { // includes Match
+			return self::readsOnlyServed($oExpression->GetLeftExpr(), $sClass) && self::readsOnlyServed($oExpression->GetRightExpr(), $sClass);
+		}
+		if ($oExpression instanceof \FunctionExpression) { // includes FunctionOqlExpression
+			return self::allServed($oExpression->GetArgs(), $sClass);
+		}
+		if ($oExpression instanceof \ListExpression || $oExpression instanceof \CharConcatExpression) { // includes CharConcatWS
+			return self::allServed($oExpression->GetItems(), $sClass);
+		}
+		if ($oExpression instanceof \IntervalExpression) {
+			$mValue = $oExpression->GetValue();
+
+			return $mValue instanceof \Expression && self::readsOnlyServed($mValue, $sClass);
+		}
+
+		// A nested query (its own classes and attributes), a parameter, a SQL fragment, a kind a later iTop adds: not said.
+		return false;
+	}
+
+	/**
+	 * @param mixed $aExpressions
+	 */
+	private static function allServed($aExpressions, string $sClass): bool
+	{
+		if (!is_array($aExpressions)) {
+			return false;
+		}
+		foreach ($aExpressions as $oExpression) {
+			if (!$oExpression instanceof \Expression || !self::readsOnlyServed($oExpression, $sClass)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
