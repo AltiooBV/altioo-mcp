@@ -389,11 +389,13 @@ final class ServedElements
 	 */
 	public static function AccessPolicyOfCurrentRequest(): AccessPolicy
 	{
+		// The readers run first, on every request, because they are what log why a malformed setting serves nothing;
+		// InstancePolicy() asks them. Only then is the answer failed closed, and before any token is read.
+		$oConfigured = self::InstancePolicy();
+
 		if (AccessPolicy::SettingsAreMalformed()) {
 			return AccessPolicy::Nothing();
 		}
-
-		$oConfigured = self::InstancePolicy();
 
 		if (!TokenScopes::RequestCarriesAToken()) {
 			// Basic authentication or a reverse proxy: no token, no scopes,
