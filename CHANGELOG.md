@@ -42,6 +42,7 @@ entry itself, not left to be inferred from it.
 
 ### Changed
 
+- **The portal's `core_class_schema` description no longer repeats `core_class_list`'s, and `core_object_get_document` needs only the id in portal mode** (review 2026-11-23, S4). The schema's portal description carried about 1,300 characters of the class list's (how to choose a list, create actions, history), which every portal connection paid for twice; it keeps what is about one class's forms and says where the rest is (the portal's descriptions together are 864 bytes shorter). In portal mode `class` and `att_code` of `core_object_get_document` could only be `Attachment` and `contents`: they are now optional and default to them, only `id` is required, and a call that sends all three works as before. Non-breaking: nothing is removed or renamed, and the console's schema is unchanged. Pinned hashes move for `core_class_schema` and `core_object_get_document` (portal).
 - **A resource's description now says what it returns in its tool twin's words.** Each core tool that twins a resource
   holds that sentence (`RETURNS`, and `PORTAL_RETURNS` where portal mode differs) and both descriptions are built from it.
   The resource descriptions change in `resources/list`; `itop://core/classes` no longer claims "all available iTop classes"

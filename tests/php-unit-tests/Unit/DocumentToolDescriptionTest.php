@@ -56,6 +56,27 @@ class DocumentToolDescriptionTest extends TestCase
 		$this->assertArrayNotHasKey('uri', (new ObjectGetDocument())->getInputSchema()['properties']);
 	}
 
+	/** Review 2026-11-23, S4: in the portal a file can only be an attachment's contents, so the id alone names it. */
+	public function testInThePortalTheIdAloneNamesTheFile(): void
+	{
+		PortalMode::Remember('itop-portal');
+		$aSchema = (new ObjectGetDocument())->getInputSchema();
+
+		$this->assertSame(['id'], $aSchema['required']);
+		$this->assertSame(['Attachment', 7, 'contents'], self::named('', 7, ''));
+		$this->assertSame(['Attachment', 7, 'contents'], self::named('Attachment', 7, 'contents'), 'what a client that sends all three sends still works');
+		$this->assertSame(['Person', 7, 'picture'], self::named('Person', 7, 'picture'), 'a class that is given is the class asked: the portal then refuses it as it always did');
+
+		$this->expectExceptionMessageMatches('/Name the attachment/');
+		self::named('', 0, '');
+	}
+
+	public function testTheConsoleStillRequiresThemToBeNamed(): void
+	{
+		$this->expectExceptionMessageMatches('/Name the document/');
+		self::named('', 7, '');
+	}
+
 	public function testAUriNamesTheSameDocumentAsItsThreeParts(): void
 	{
 		$this->assertSame(['Attachment', 5, 'contents'], self::named('', 0, '', 'itop://core/document/Attachment/5/contents'));

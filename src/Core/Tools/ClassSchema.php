@@ -64,7 +64,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return (ServedAccess::ServesWrites() ? self::PORTAL_HEAD : self::PORTAL_HEAD_READ_ONLY).PortalDescription::Reading();
+			return (ServedAccess::ServesWrites() ? self::PORTAL_HEAD : self::PORTAL_HEAD_READ_ONLY).PortalDescription::SchemaReading();
 		}
 
 		return 'Describe '.self::RETURNS.'. '

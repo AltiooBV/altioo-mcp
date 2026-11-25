@@ -151,7 +151,7 @@ class ContextBudgetTest extends TestCase
 	/**
 	 * What a portal user is told: the tools portal mode serves, in portal mode,
 	 * where descriptions and schemas differ from the console's. Measured with
-	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950). 2.2.0: the portal count says where a list's columns are, 8975 (budget 8980). B3's working example, 9040 (budget 9060). Per-class counts, 9159 (budget 9180). Batch 3: the time zone and the time now in core_current_user, 9202 (budget 9210). The prompt's tool twin, +235, 9437 (budget 9440).
+	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950). 2.2.0: the portal count says where a list's columns are, 8975 (budget 8980). B3's working example, 9040 (budget 9060). Per-class counts, 9159 (budget 9180). Batch 3: the time zone and the time now in core_current_user, 9202 (budget 9210). The prompt's tool twin, +235, 9437 (budget 9440). S4: core_class_schema no longer repeats the class list's description, -864, 8573 (budget 8580); the portal's input schemas 8265 (budget 8270).
 	 */
 	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
 	{
@@ -173,8 +173,8 @@ class ContextBudgetTest extends TestCase
 			MCPRegistry::Clear();
 		}
 
-		$this->assertLessThanOrEqual(9440, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
-		$this->assertLessThanOrEqual(8240, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
+		$this->assertLessThanOrEqual(8580, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(8270, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
 	public function testTheInstructionsDoNotGrowPastTheirBudget(): void

@@ -183,4 +183,23 @@ class NoWriteToolServedTest extends TestCase
 
 		$this->assertSame(1, $iAsked);
 	}
+
+	/** Review 2026-11-23, S4: the schema's portal description does not repeat the class list's. */
+	public function testThePortalSchemaDescriptionDoesNotRepeatTheClassListsAndStaysShorter(): void
+	{
+		PortalMode::Remember('itop-portal');
+
+		foreach ([null, ServedAccess::WRITES_BY_SCOPE] as $sWhy) {
+			$this->withheld($sWhy);
+			$sList = (string)(new ClassList())->getDescription();
+			$sSchema = (string)(new ClassSchema())->getDescription();
+
+			$this->assertLessThan(strlen($sList), strlen($sSchema));
+			foreach (['Choose a list or a create action', 'Everything comes from the portal', 'history says whether the portal shows history', 'create_chosen_by_portal', 'class_chosen_by_portal'] as $sSentence) {
+				$this->assertStringNotContainsString($sSentence, $sSchema, 'the schema repeats the class list: '.$sSentence);
+			}
+			$this->assertStringContainsString('core_class_list', $sSchema, 'it says where the rest is');
+			$this->assertStringContainsString('attachments says whether', $sSchema, 'what is about one class stays');
+		}
+	}
 }

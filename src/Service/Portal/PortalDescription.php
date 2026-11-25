@@ -56,6 +56,25 @@ final class PortalDescription
 	private const READING_HISTORY = 'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. ';
 
 	/**
+	 * What core_class_schema says of one class in portal mode, which is not what core_class_list says of the portal: its
+	 * forms, not the overview's lists, create actions and history. It repeated about 1,300 characters of the overview's
+	 * words, and every client pays for both descriptions on every connection (review 2026-11-23, S4). Writes-aware like
+	 * {@see Reading()}.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function SchemaReading(): string
+	{
+		$bWrites = ServedAccess::ServesWrites();
+
+		return ($bWrites ? 'Each stimulus says the states it applies in (from_states). ' : '')
+			.($bWrites ? 'A field marked read_only is shown but cannot be set; mandatory ones must be. ' : '')
+			.'A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
+			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields'.($bWrites ? ', and what may be done to it now' : '').'. '
+			.'core_class_list says what else the portal offers.';
+	}
+
+	/**
 	 * READING for this caller: the same words, less what a connection with no write tool cannot use (create
 	 * actions, stimuli, what may be done to an object), so a description does not name what is not served
 	 * (review 2026-11-23, C5). READING itself is what a connection served a write tool reads.
