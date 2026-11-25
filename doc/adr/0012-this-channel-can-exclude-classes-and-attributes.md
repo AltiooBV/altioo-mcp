@@ -76,6 +76,7 @@ leaves out. None of these is a bug to be found later; each is a known edge of wh
   inside another attribute's text (a description that pastes a phone number) is not found and not removed.
 - **iTop 3.2's combined long friendly name** is not consulted, because iTop calls a function it does not define; the short
   and the complementary names are.
+- **Whether an object is obsolete** (Amendment 4), which can be the excluded value itself.
 - **The whole instance stops on a bad setting** (see Amendment 2): for everyone, with nothing served.
 
 ## Amendment 2 — a name that goes away stops the endpoint
@@ -124,6 +125,26 @@ tells which rows are the excluded ones.
 - The first sentence of "What points at an excluded thing is excluded too", above, now reads with this: a target that is
   **or holds** an excluded class.
 
+## Amendment 4 — excluding an attribute does not hide whether an object is obsolete
+
+**Decided by Guy Couronne, 2026-11-25 ("A, note the limit")**, after the 2026-11-23 review found that the obsolescence condition
+named the attributes it reads. The condition is no longer stated when it reads an excluded attribute or cannot be checked. What
+follows from the condition stays as it was: `obsolescence_flag` and `obsolescence_date` are served, a filter on the flag is
+accepted, an account that hides obsolete data does not find obsolete objects, and the stale-id guard refuses a write to one.
+
+**That can be the excluded value itself.** The stock conditions are public. `Organization` is obsolete when `status = 'inactive'`
+and `status` has two values, so with `Organization.status` excluded the flag still says which it is; a contract's flag says whether
+its end date is more than fifteen months past. A class whose condition reads another object's flag (`MiddlewareInstance` through
+its `Middleware`) says it of that object, even when that object's class is excluded.
+
+**An operator who must hide such a value excludes the class, not the attribute, and every class whose obsolescence follows from
+it.** Excluding the attribute alone is not enough.
+
+Rejected: hiding `obsolescence_flag` and `obsolescence_date` where the condition reads an excluded attribute. It breaks the fields
+clients read and does not close the gap: switching `core_set_obsolete_data` and comparing two searches tells the same thing. Closing
+it would also mean ignoring that preference for those classes and dropping the stale-id guard, so that a write to an obsolete object
+goes through without a warning.
+
 ## Consequences
 
 An operator who excludes `Person.phone` loses it from every read, filter, sort and write on this channel, including the
@@ -134,7 +155,9 @@ Rejected: a profile-based mechanism (changes the console, which is the point it 
 value as `***` as sensitive attributes are (it confirms the attribute exists and holds something). Rejected: a warning for an
 unknown entry (a security setting that does nothing is worse than one that stops the service).
 
-Amendment 1 (the "Not covered" section) and Amendment 2 are the maintainer's, 2026-11-09; Amendment 3 is the maintainer's, 2026-11-19.
+Amendment 1 (the "Not covered" section) and Amendment 2 are the maintainer's, 2026-11-09; Amendment 3 is the maintainer's, 2026-11-19;
+Amendment 4 is the maintainer's, 2026-11-25.
 
 Enforced by: `ExclusionPolicyTest`, `ExclusionRoutesTest` (every tool × route, hidden equals absent), `ExclusionParentTypedTest` (Amendment 3,
-with `Person` and with `Server`), `ExclusionPortalTest` and the HTTP smoke.
+with `Person` and with `Server`), `ExclusionPortalTest`, `ObsolescenceExclusionTest`
+(the condition of Amendment 4; nothing holds that the flag stays served) and the HTTP smoke.

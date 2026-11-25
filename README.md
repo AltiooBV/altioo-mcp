@@ -1392,6 +1392,9 @@ The exemption is exactly as safe as that account is held. A profile name that do
 - What was written before an exclusion: audit rows (`Class::id` and attribute codes, never values) stay as they are.
 - A class with an excluded subclass cannot appear in an OQL join or sub-query.
 - Free text is one attribute each: a value quoted inside another attribute's text is neither found nor removed.
+- Whether an object is obsolete is still told, and that can be the excluded value itself: with `Organization.status` excluded,
+  `obsolescence_flag` still says whether it is inactive. To hide that, exclude the class, and every class whose obsolescence
+  follows from it, rather than the attribute.
 - A name the datamodel no longer has stops the endpoint for everyone (below).
 
 **Personal data.** iTop objects routinely contain personal data — callers, agents, contact
