@@ -125,6 +125,23 @@ class ObjectDeleteContractTest extends TestCase
 	}
 
 	/**
+	 * The stimulus asks the guard after the portal's own refusals, as core_object_update does: a portal user is not shown
+	 * the obsolescence rule for a change the portal would refuse anyway.
+	 */
+	public function testTheStimulusAsksTheObsoleteGuardAfterThePortalsRefusals(): void
+	{
+		$sSource = (string)file_get_contents((new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class))->getFileName());
+		$iMode = strpos($sSource, '$sModeRefusal !== null');
+		$iGuard = strpos($sSource, 'WritePlan::RefuseHiddenObsolete(');
+		$this->assertNotFalse($iMode);
+		$this->assertNotFalse($iGuard);
+		$this->assertGreaterThan($iMode, $iGuard, 'the obsolete guard runs before the portal refusals');
+
+		$sUpdate = (string)file_get_contents((new \ReflectionClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate::class))->getFileName());
+		$this->assertGreaterThan(strpos($sUpdate, '$sModeRefusal !== null'), strpos($sUpdate, 'WritePlan::RefuseHiddenObsolete('), 'the control: update does the same');
+	}
+
+	/**
 	 * Deleting must be the deliberate second call, never what happens when the
 	 * model omits an argument.
 	 */

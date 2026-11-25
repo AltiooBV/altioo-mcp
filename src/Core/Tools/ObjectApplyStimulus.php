@@ -258,9 +258,6 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		if ($oObject->IsReadOnly()) {
 			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot apply stimulus on object.");
 		}
-		// An object this account cannot see in its own searches is probably being acted on from a stale id, as
-		// core_object_update says (review 2026-11-23, S3).
-		WritePlan::RefuseHiddenObsolete($oObject, get_class($oObject), $obsolete_ok, 'change');
 		$sCurrentState = $oObject->GetState();
 		if ($sCurrentState === '') {
 			throw ToolRefusal::Because("Object {$class}::{$id} is in an invalid state, cannot apply stimulus.");
@@ -274,6 +271,10 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		if ($sModeRefusal !== null) {
 			throw ToolRefusal::Because($sModeRefusal);
 		}
+
+		// An object this account cannot see in its own searches is probably being acted on from a stale id, as
+		// core_object_update says, and after the portal's own refusals, as it does (review 2026-11-23, S3).
+		WritePlan::RefuseHiddenObsolete($oObject, get_class($oObject), $obsolete_ok, 'change');
 
 		// Validate the stimulus is available on this class
 		$aTransitions = MetaModel::EnumTransitions($class, $sCurrentState);
