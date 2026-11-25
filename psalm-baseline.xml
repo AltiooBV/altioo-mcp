@@ -177,7 +177,7 @@
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'       => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WriteOutcome::Map($aOverridden),
@@ -267,7 +267,7 @@
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
@@ -278,7 +278,7 @@
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 			])]]></code>
     </InvalidReturnStatement>
     <InvalidReturnType>
@@ -446,7 +446,7 @@
 				+ [
 					'simulated'  => false,
 					'valid'      => true,
-					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+					'after'        => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'    => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 					'overridden' => WriteOutcome::Map($aOverridden),

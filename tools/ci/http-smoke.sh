@@ -286,6 +286,50 @@ echo "   with a token: HTTP ${DISCOVER_STATUS}, ${DISCOVER_SHAPE}"
 [ "$DISCOVER_STATUS" = "200" ] || fail "server/discover with a token was answered ${DISCOVER_STATUS}, not 200"
 [ "$DISCOVER_SHAPE" = "ok" ] || fail "server/discover did not answer the revisions and capabilities without a tool list: ${DISCOVER_SHAPE}"
 
+# The gates a call meets even with a valid token, and the refusals that are not a tool's (review 2026-11-23, T1:
+# the host, content-type, Origin, URL-token, method and 2026-07-28 header gates were unit-tested and nothing proved
+# them on the wire). The token is the one this script was given in ITOP_TOKEN and is sent only in the header; nothing
+# here reads another credential. The profile gate and the token-login backstop need an account that lacks the MCP
+# profile, or a changed setting, which this fixture does not have: the unit suite holds them.
+echo "4e. the gates a valid token still meets, on the wire"
+gate() { # name, expected HTTP status, then curl arguments; the body is left in $BODY
+  local sName="$1" sExpect="$2" sGot
+  shift 2
+  sGot=$(curl -s -o "$BODY" -w '%{http_code}' "$@")
+  echo "   HTTP ${sGot}   ${sName}"
+  [ "$sGot" = "$sExpect" ] || { echo "--- response ---"; cat "$BODY"; fail "${sName}: answered ${sGot}, expected ${sExpect}"; }
+}
+rpc_code() { php -r '$a = json_decode(file_get_contents($argv[1]), true); echo $a["error"]["code"] ?? "";' "$BODY"; }
+TOOLS_LIST='{"jsonrpc":"2.0","id":7,"method":"tools/list","params":{}}'
+AUTH_H="Authorization: Bearer ${ITOP_TOKEN}"
+JSON_H='Content-Type: application/json'
+ACCEPT_H='Accept: application/json, text/event-stream'
+gate "a Host this instance does not serve" 403 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'Host: evil.example' -d "$TOOLS_LIST"
+gate "a body that is not JSON" 415 -X POST "$ENDPOINT" -H "$AUTH_H" -H 'Content-Type: text/plain' -H "$ACCEPT_H" -d "$TOOLS_LIST"
+gate "a foreign Origin" 403 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'Origin: https://evil.example' -d "$TOOLS_LIST"
+grep -q 'host or origin' "$BODY" || fail "a foreign Origin is said to be a host that is not served (review 2026-11-23, C11)"
+gate "a token given as a URL parameter" 401 -X POST "${ENDPOINT}?auth_token=not-a-real-token" -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
+grep -q 'auth_token request parameter' "$BODY" || fail "a token in the URL is answered 'no credential was sent' and not said to be refused as a URL parameter (review 2026-11-23, C11)"
+gate "a token in the header and another in the URL" 401 -X POST "${ENDPOINT}?auth_token=not-a-real-token" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
+gate "a token nobody issued" 401 -X POST "$ENDPOINT" -H 'Authorization: Bearer abcdef0123456789abcdef0123456789' -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
+gate "GET" 405 -X GET "$ENDPOINT" -H "$AUTH_H"
+gate "PUT" 405 -X PUT "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -d "$TOOLS_LIST"
+META='"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"smoke","version":"0"},"io.modelcontextprotocol/clientCapabilities":{}}'
+gate "2026-07-28 without Mcp-Method" 400 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'MCP-Protocol-Version: 2026-07-28' \
+  -d '{"jsonrpc":"2.0","id":8,"method":"resources/list","params":{'"$META"'}}'
+[ "$(rpc_code)" = "-32020" ] || fail "a 2026-07-28 call without Mcp-Method was not answered -32020"
+gate "2026-07-28 tools/call without Mcp-Name" 400 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' \
+  -d '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"core_current_user","arguments":{},'"$META"'}}'
+[ "$(rpc_code)" = "-32020" ] || fail "a 2026-07-28 tools/call without Mcp-Name was not answered -32020"
+gate "2026-07-28 with Mcp-Name naming another tool" 400 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' -H 'Mcp-Name: core_class_list' \
+  -d '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"core_current_user","arguments":{},'"$META"'}}'
+gate "an unsupported protocol version header" 400 -X POST "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -H 'MCP-Protocol-Version: 1999-01-01' -d "$TOOLS_LIST"
+[ "$(rpc_code)" = "-32022" ] || fail "an unsupported protocol version was not answered -32022"
+grep -q '2026-07-28' "$BODY" || fail "the -32022 refusal does not list 2026-07-28 among the versions it supports (review 2026-11-23, B5)"
+for sRefusalNeedle in "$ITOP_TOKEN"; do
+  grep -qF "$sRefusalNeedle" "$BODY" && fail "a refusal echoed the token"
+done
+
 # A call a tool refuses is answered with isError - HTTP 200 and a JSON-RPC success, as the protocol
 # says - and recorded as an error. A class that does not exist is refused by core_object_get.
 echo "4d. a refusal by a tool is HTTP 200 and an error on the audit row"

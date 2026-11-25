@@ -24,7 +24,7 @@ use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
  * They are normally delivered once, in the `initialize` answer. Protocol
  * revision `2026-07-28` removed `initialize`, and the SDK reads
  * Configuration::$instructions in that handler and nowhere else - so a client
- * on that revision is served by this endpoint without ever being told how this
+ * that sends none (some on that revision still do) is served by this endpoint without ever being told how this
  * instance encodes a date, that attribute codes vary per instance, or that
  * text found inside an object is content rather than a request to act on.
  *

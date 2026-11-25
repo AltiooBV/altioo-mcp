@@ -325,7 +325,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 	{
 		$aOut = [];
 		foreach (explode("\n", $sText) as $sLine) {
-			if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)::(\d+) (created|deleted|updated)(?: \((.*)\))?$/', trim($sLine), $aMatch) !== 1) {
+			if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)::(\d+) (created|deleted|updated|attached|detached)(?: \((.*)\))?$/', trim($sLine), $aMatch) !== 1) {
 				continue;
 			}
 			$aAttributes = [];

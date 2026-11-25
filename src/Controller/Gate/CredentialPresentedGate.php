@@ -60,6 +60,16 @@ final class CredentialPresentedGate implements iGate
 			return true;
 		}
 
+		// A token in the URL is not a credential here, and saying "none was sent" to a caller that did send one
+		// sends it looking for a lost header (review 2026-11-23, C11). The token itself is not echoed.
+		if (MCPHttp::CarriesATokenAsAParameter()) {
+			throw new MCPAuthException(
+				'No credential was sent in a header. A token passed as the auth_token request parameter is not accepted: '
+				.'a URL is written to access logs. Send it in the Authorization header (Bearer) or the Auth-Token header.',
+				MCPResult::UNAUTHORIZED
+			);
+		}
+
 		throw new MCPAuthException(
 			'No credential was sent. The MCP endpoint needs one on every request: a bearer token in the '
 			.'Authorization header, an Auth-Token header, or a login. A browser session does not count.',

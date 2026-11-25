@@ -157,7 +157,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 
 | Tool | Purpose |
 |---|---|
-| `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none, which is every session on protocol revision `2026-07-28` |
+| `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none: a client that sends no `initialize`, which protocol revision `2026-07-28` no longer requires |
 | `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
 | `core_version` | What is running: iTop's version, build and edition, and this extension's name, version, licence and source URL. Console mode only, like the resource |
 | `core_my_activity` | What this account's credentials did through this endpoint, newest first, from the audit trail: when, which tool, dry run or failed, the objects changed or read **that you may still see** and the reason given. **Your own calls only, selected by your account's key**: there is no argument to name anyone else, and no login is ever matched. "Own" means *the account*: people who share one login see each other's calls. Never returns the raw request parameters or what a tool said. `coverage` says what the record cannot show. **Served in portal mode too** ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)), the one thing a portal serves that the portal has no screen for: there an object is named only if the portal shows it, an attribute code only if the portal's view form shows it, and `coverage` says only that some earlier calls may not be listed. Every portal user with MCP access has it after the upgrade that brings it; `mcp_disabled_tools` withdraws it |
@@ -377,16 +377,16 @@ or a pack you install reaches a running session only after it reconnects. A pack
 append a paragraph with `MCPRegistry::AddInstructions()`.
 
 That block travels in the `initialize` answer and nowhere else, which is the SDK's only place
-to put it — so **a client on `2026-07-28` is never sent it**, that revision having no
-`initialize` to answer. It can still fetch it: the same text, rendered for the same caller, is
+to put it — so **a client that sends no `initialize` is never sent it**, and revision `2026-07-28` has
+none to send. A client on it that still sends one (Claude Code does) is handed the block. It can still fetch it: the same text, rendered for the same caller, is
 the `core_instructions` tool and the `itop://core/instructions` resource. The resource is
 annotated `audience: assistant, priority: 1`, the strongest thing the schema lets a resource say
 about itself; the tool exists because a client that never enumerates resources never sees an
 annotation, and every client sees `tools/list`. Both sit where `core_current_user` does, so a
 narrowed session keeps them.
 
-What is not automatic is the reading. A client on an earlier revision is handed the block; one
-on `2026-07-28` has to ask, and whether it asks is the client's business. The first sentence of
+What is not automatic is the reading. A client that sends `initialize` is handed the block; one that does not
+has to ask, and whether it asks is the client's business. The first sentence of
 the tool's description is written to be the thing that makes it ask.
 
 **It is narrowed like the surface it describes.** The guidance is assembled per caller from
@@ -1238,7 +1238,7 @@ that header is not affected. If that works, the problem is the header, not the t
 
 Fix it with `CGIPassAuth On`, scoped to this one file — see [Endpoint](#endpoint) for the block.
 
-**2. `403`, with a body that says only "This host is not served by the MCP endpoint".**
+**2. `403`, with a body that says only "This host or origin is not served by the MCP endpoint".**
 
 The refusal is deliberately silent about *which* hostnames are configured; a caller probing for
 them has no business being told. The reason is in `log/error.log`, and it names both the
@@ -1545,8 +1545,8 @@ Known and deliberate, so that none of them is a discovery made after installing:
 
 - **Streamable HTTP only.** No SSE streaming, no resumability. Each request is authenticated on
   its own and no server-side session is carried between them.
-- **Server instructions are not pushed to a `2026-07-28` client.** That revision dropped
-  `initialize`, the only message the block is carried in. It is fetchable — `core_instructions`,
+- **Server instructions are not pushed to a client that sends no `initialize`.** Revision
+  `2026-07-28` dropped it, and `initialize` is the only message the block is carried in. It is fetchable — `core_instructions`,
   or `itop://core/instructions` at `priority: 1` — but whether a client reads it is the client's
   decision, not this server's.
 - **No OAuth of its own.** By design — terminate it in a proxy in front of iTop, or install the

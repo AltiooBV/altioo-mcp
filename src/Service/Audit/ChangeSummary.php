@@ -80,6 +80,12 @@ class ChangeSummary
 	/** @var string Verb for an object this request modified in place. */
 	public const VERB_UPDATED = 'updated';
 
+	/** @var string Verb for an object a file was attached to (the operation names the host object, not the file). */
+	public const VERB_ATTACHED = 'attached';
+
+	/** @var string Verb for an object a file was detached from. */
+	public const VERB_DETACHED = 'detached';
+
 	/**
 	 * The summary, from operations already reduced to plain values.
 	 *
@@ -130,10 +136,10 @@ class ChangeSummary
 					'verb'       => $sVerb,
 					'attributes' => [],
 				];
-			} elseif ($sVerb !== self::VERB_UPDATED) {
-				// Created and deleted are statements about the object; updated
-				// is a statement about one of its fields. The stronger one is
-				// the one worth keeping.
+			} elseif (self::Strength($sVerb) >= self::Strength($aByObject[$sIdentity]['verb'])) {
+				// Created and deleted are statements about the object; attached
+				// and detached about a file on it; updated about one of its
+				// fields. The stronger one is the one worth keeping.
 				$aByObject[$sIdentity]['verb'] = $sVerb;
 			}
 
@@ -164,6 +170,16 @@ class ChangeSummary
 		}
 
 		return implode("\n", $aLines);
+	}
+
+	/** How much a verb says about the object, so that the strongest one on an object is the one kept. */
+	private static function Strength(string $sVerb): int
+	{
+		return match ($sVerb) {
+			self::VERB_UPDATED => 1,
+			self::VERB_ATTACHED, self::VERB_DETACHED => 2,
+			default => 3,
+		};
 	}
 
 	/**
@@ -263,6 +279,14 @@ class ChangeSummary
 		}
 		if ($oOperation instanceof CMDBChangeOpSetAttribute) {
 			return self::VERB_UPDATED;
+		}
+		// Present only where the attachments module is installed; instanceof asks nothing of an absent class.
+		// Their objclass and objkey name the host object, which is the one the caller can look up (review 2026-11-23, B11).
+		if ($oOperation instanceof \CMDBChangeOpAttachmentAdded) {
+			return self::VERB_ATTACHED;
+		}
+		if ($oOperation instanceof \CMDBChangeOpAttachmentRemoved) {
+			return self::VERB_DETACHED;
 		}
 
 		return null;

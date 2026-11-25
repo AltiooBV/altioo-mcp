@@ -12,11 +12,16 @@ use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
+use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
 use DBObject;
+use DBObjectSet;
+use MetaModel;
+use UserRights;
 use DeletionPlan;
 use Mcp\Server\Exception\ToolCallException;
 use Mcp\Schema\ToolAnnotations;
@@ -132,7 +137,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 				continue;
 			}
 
-			$mObject = self::objectFor($class, $iId, UR_ACTION_DELETE, 'delete');
+			// An attachment is judged by its host, per row, instead of by the delete right on the object (ADR 0026); the
+			// bulk right on the class and checkBulkAllowed()'s class-level delete right are asked above, unchanged.
+			$mObject = self::objectFor($class, $iId, self::isAttachment($class) ? UR_ACTION_READ : UR_ACTION_DELETE, 'delete');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
 				continue;
@@ -152,6 +159,11 @@ class ObjectBulkDelete extends AbstractBulkTool
 		]));
 	}
 
+	private static function isAttachment(string $sClass): bool
+	{
+		return MetaModel::IsValidClass('Attachment') && MetaModel::IsValidClass($sClass) && MetaModel::IsParentClass('Attachment', $sClass);
+	}
+
 	/**
 	 * @param array<string, string> $aCascade Filled with what this deletion takes with it: hierarchy and id => this entry.
 	 *
@@ -164,6 +176,40 @@ class ObjectBulkDelete extends AbstractBulkTool
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass, $iId);
 		if ($sAccessRefusal !== null) {
 			return self::outcome($iId, $iRow, false, $sAccessRefusal);
+		}
+
+		// An attachment is removed from its host's edit form in the console, so what the console asks of the host is
+		// asked here: the host exists and is readable and served, the account may modify it (this object, not only the
+		// class), and the attachments module does not freeze it for the back office (closed tickets by default). The
+		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
+		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
+		$oAttachmentHost = null;
+		if (self::isAttachment($sClass)) {
+			$sHostRefusal = null;
+			$sHostClass = (string)$oObject->Get('item_class');
+			$iHostId = (int)$oObject->Get('item_id');
+			if ($sHostClass === '' || $iHostId < 1) {
+				$sHostRefusal = 'This attachment is attached to no saved object (a draft upload), so it is not deleted here.';
+			} elseif (!MetaModel::IsValidClass($sHostClass) || ExclusionPolicy::ExcludesClass($sHostClass) || !UserRights::IsActionAllowed($sHostClass, UR_ACTION_READ)) {
+				$sHostRefusal = 'The object this attachment belongs to was not found.';
+			} else {
+				$oHostSet = new DBObjectSet(ObjectQuery::ById($sHostClass, $iHostId));
+				$oAttachmentHost = $oHostSet->Count() === 0 ? null : $oHostSet->Fetch();
+				$oHostSet->Rewind();
+				if ($oAttachmentHost === null || ExclusionPolicy::ExcludesClass(get_class($oAttachmentHost))) {
+					$oAttachmentHost = null;
+					$sHostRefusal = 'The object this attachment belongs to was not found.';
+				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
+					$sHostRefusal = 'Access denied: cannot edit the object this attachment belongs to, so cannot remove its attachments.';
+				} elseif ($oAttachmentHost->IsReadOnly()
+					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
+						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
+					$sHostRefusal = 'The object this attachment belongs to is read-only in its current state, so its attachments cannot be removed.';
+				}
+			}
+			if ($sHostRefusal !== null) {
+				return self::outcome($iId, $iRow, false, $sHostRefusal);
+			}
 		}
 
 		// CheckToDelete() returns a boolean and fills the plan by reference;
@@ -181,15 +227,27 @@ class ObjectBulkDelete extends AbstractBulkTool
 		// classes the cascade of the next one does not, and a bulk call reports
 		// each object on its own. See DeletionCascade::CheckDeletionRights().
 		try {
-			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}");
+			DeletionCascade::CheckDeletionRights($oPlan, "{$sClass}::{$iId}", $sClass, $iId, $oAttachmentHost !== null);
 		} catch (ToolCallException $e) {
 			return self::outcome($iId, $iRow, false, $e->getMessage());
 		}
 
 		if (!$bSimulate) {
+			$sRemovedFile = '';
+			if ($oAttachmentHost !== null) {
+				try {
+					$sRemovedFile = DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+				} catch (\Throwable $e) {
+					// Another extension's listener vetoed the removal, as it can in the console's form. Nothing was deleted.
+					return self::outcome($iId, $iRow, false, ErrorReport::OpaqueFailure("The attachment {$sClass}::{$iId} was not removed: an extension refused it", $e));
+				}
+			}
 			try {
 				$oPlan = new DeletionPlan();
 				$oObject->DBDelete($oPlan);
+				if ($oAttachmentHost !== null) {
+					DeletionCascade::AttachmentRemoved($oAttachmentHost, $sRemovedFile);
+				}
 			} catch (\Throwable $e) {
 				// CheckToDelete() above already reported everything the caller
 				// could act on, with the plan's own wording.
@@ -202,7 +260,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		DeletionCascade::NoteCascade($oPlan, $sClass, $iId, $aCascade);
 
 		$aOutcome = self::outcome($iId, $iRow, true, $bSimulate ? 'Would be deleted.' : 'Deleted.');
-		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan);
+		$aOutcome['deletionPlan'] = DeletionCascade::SerializeDeletionPlan($oPlan, $sClass, $iId);
 
 		return $aOutcome;
 	}

@@ -63,7 +63,7 @@ final class HostIsServedGate implements iGate
 		));
 
 		throw new MCPRequestRejectedException(
-			'This host is not served by the MCP endpoint.',
+			'This host or origin is not served by the MCP endpoint.',
 			MCPRequestRejectedException::HTTP_FORBIDDEN
 		);
 

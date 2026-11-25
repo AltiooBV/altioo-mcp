@@ -65,7 +65,8 @@ class ObjectDelete extends AbstractMCPTool
 	{
 		return 'Delete an iTop object by class and ID. Related objects may also be deleted or modified according to iTop\'s cascading deletion rules. '
 			.'The dry run reports the deletion plan: what else iTop would delete or update along with this object. '
-			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal says which class is in the way.';
+			.'The whole cascade is checked against this user\'s rights, not just the object named here, so a deletion can be refused because of what it would reach; the refusal names the class in the way when this user may read it, and says only that something unreadable is there when not. '
+			.'An Attachment is the exception to the delete right: whoever may edit the object it belongs to may remove it, unless that object is read-only in its state (a closed ticket).';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -163,7 +164,10 @@ class ObjectDelete extends AbstractMCPTool
 			throw ToolRefusal::Because("Class '{$class}' is abstract, cannot delete.");
 		}
 
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE)) {
+		// An attachment is removed by whoever may edit its host, as the console's edit form lets them (ADR 0026): the
+		// host check below replaces the delete right on the class, here and per object. Any other class is as it was.
+		$bAttachment = MetaModel::IsValidClass('Attachment') && MetaModel::IsParentClass('Attachment', $class);
+		if (!$bAttachment && !UserRights::IsActionAllowed($class, UR_ACTION_DELETE)) {
 			throw ToolRefusal::Because("Access denied: cannot delete objects of class '{$class}'.");
 		}
 
@@ -197,13 +201,47 @@ class ObjectDelete extends AbstractMCPTool
 			throw ToolRefusal::Because("Object {$class}::{$id} is of class '{$sFinalClass}'. Rerun the delete with the correct final class."); // hide that the object exists
 		}
 
-		if (!UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
+		if (!$bAttachment && !UserRights::IsActionAllowed($class, UR_ACTION_DELETE, $oSet)) {
 			throw ToolRefusal::Because(
 				"Access denied: cannot delete objects of class '{$class}'.".self::retirementHint($oObject, $sFinalClass)
 			);
 		}
 		if ($oObject->IsReadOnly()) {
 			throw ToolRefusal::Because("Object {$class}::{$id} is in read-only mode, cannot delete object.");
+		}
+
+		// An attachment is removed from its host's edit form in the console, so what the console asks of the host is
+		// asked here: the host exists and is readable and served, the account may modify it (this object, not only the
+		// class), and the attachments module does not freeze it for the back office (closed tickets by default). The
+		// cascade check above no longer stops these incidentally for a non-administrator (review 2026-11-23, B8).
+		// An unreadable or excluded host is answered as one that is not there, so it names nothing.
+		$oAttachmentHost = null;
+		if ($bAttachment) {
+			$sHostRefusal = null;
+			$sHostClass = (string)$oObject->Get('item_class');
+			$iHostId = (int)$oObject->Get('item_id');
+			if ($sHostClass === '' || $iHostId < 1) {
+				$sHostRefusal = 'This attachment is attached to no saved object (a draft upload), so it is not deleted here.';
+			} elseif (!MetaModel::IsValidClass($sHostClass) || ExclusionPolicy::ExcludesClass($sHostClass) || !UserRights::IsActionAllowed($sHostClass, UR_ACTION_READ)) {
+				$sHostRefusal = 'The object this attachment belongs to was not found.';
+			} else {
+				$oHostSet = new DBObjectSet(ObjectQuery::ById($sHostClass, $iHostId));
+				$oAttachmentHost = $oHostSet->Count() === 0 ? null : $oHostSet->Fetch();
+				$oHostSet->Rewind();
+				if ($oAttachmentHost === null || ExclusionPolicy::ExcludesClass(get_class($oAttachmentHost))) {
+					$oAttachmentHost = null;
+					$sHostRefusal = 'The object this attachment belongs to was not found.';
+				} elseif (UserRights::IsActionAllowed(get_class($oAttachmentHost), UR_ACTION_MODIFY, $oHostSet) !== UR_ALLOWED_YES) {
+					$sHostRefusal = 'Access denied: cannot edit the object this attachment belongs to, so cannot remove its attachments.';
+				} elseif ($oAttachmentHost->IsReadOnly()
+					|| (class_exists('AttachmentPlugIn') && method_exists('AttachmentPlugIn', 'IsReadonlyState')
+						&& \AttachmentPlugIn::IsReadonlyState($oAttachmentHost, $oAttachmentHost->GetState(), \AttachmentPlugIn::ENUM_GUI_BACKOFFICE))) {
+					$sHostRefusal = 'The object this attachment belongs to is read-only in its current state, so its attachments cannot be removed.';
+				}
+			}
+			if ($sHostRefusal !== null) {
+				throw ToolRefusal::Because($sHostRefusal);
+			}
 		}
 
 		// Before the plan is computed: an object this account cannot see in its
@@ -227,7 +265,7 @@ class ObjectDelete extends AbstractMCPTool
 		// reach classes this caller was never granted. Refused rather than
 		// filtered, and refused on a dry run as well as on the real call - see
 		// DeletionCascade::CheckDeletionRights().
-		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}");
+		DeletionCascade::CheckDeletionRights($oDeletionPlan, "{$class}::{$id}", $class, $id, $oAttachmentHost !== null);
 
 		if (!$simulate) {
 			// The operator's cap on committed writes per credential (ADR 0019): asked here, in this
@@ -241,9 +279,22 @@ class ObjectDelete extends AbstractMCPTool
 			// pointed at this one, and the reason belongs in their history too.
 			ChangeTracking::Explain($comment);
 
+			// What the console does when an attachment is removed: the host hears of it first and its history gets a line.
+			$sRemovedFile = '';
+			if ($oAttachmentHost !== null) {
+				try {
+					$sRemovedFile = DeletionCascade::AttachmentRemoving($oAttachmentHost, $oObject);
+				} catch (\Throwable $e) {
+					// Another extension's listener vetoed the removal, as it can in the console's form. Nothing was deleted.
+					throw ToolRefusal::Because(ErrorReport::OpaqueFailure("The attachment {$class}::{$id} was not removed: an extension refused it", $e));
+				}
+			}
 			try {
 				$oDeletionPlan = new DeletionPlan();
 				$oObject->DBDelete($oDeletionPlan);
+				if ($oAttachmentHost !== null) {
+					DeletionCascade::AttachmentRemoved($oAttachmentHost, $sRemovedFile);
+				}
 			} catch (\Throwable $e) {
 				// A throw here does not mean the row is still there. DBDelete()
 				// removes it and then runs what follows - the objects that
@@ -267,7 +318,7 @@ class ObjectDelete extends AbstractMCPTool
 					+ [
 						'simulated'    => false,
 						'valid'        => true,
-						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+						'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 						'warning'      => ErrorReport::OpaqueFailure(
 							"The {$class}::{$id} was deleted, but the call failed after the deletion",
 							$e
@@ -281,7 +332,7 @@ class ObjectDelete extends AbstractMCPTool
 			+ [
 				'simulated'    => $simulate,
 				'valid'        => true,
-				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan),
+				'deletionPlan' => DeletionCascade::SerializeDeletionPlan($oDeletionPlan, $class, $id),
 			]);
 	}
 

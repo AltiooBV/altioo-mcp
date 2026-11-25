@@ -55,7 +55,7 @@ class ContextBudgetTest extends TestCase
 		'ClassList'           => [600, 1260],
 		'ClassSchema'         => [1860, 900],
 		'CurrentUser'         => [740, 40],
-		'Instructions'        => [780, 40],
+		'Instructions'        => [800, 40],
 		'MyActivity'          => [430, 440],
 		'ObjectApplyStimulus' => [520, 1020],
 		'ObjectAttach'        => [400, 1610],
@@ -64,11 +64,11 @@ class ContextBudgetTest extends TestCase
 		'ObjectBulkUpdate'    => [420, 1500],
 		'ObjectCount'         => [260, 1080],
 		'ObjectCreate'        => [580, 850],
-		'ObjectDelete'        => [430, 1000],
+		'ObjectDelete'        => [690, 1000],
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
 		'ObjectGetDocument'   => [680, 470],
-		'ObjectGetRelated'    => [800, 1390],
+		'ObjectGetRelated'    => [930, 1390],
 		'ObjectHistory'       => [710, 740],
 		'ObjectSearchByClass' => [240, 3350],
 		'ObjectSearchByOQL'   => [220, 2690],
@@ -79,11 +79,11 @@ class ContextBudgetTest extends TestCase
 	];
 
 	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. */
-	private const TOTAL_DESCRIPTIONS = 14270;
+	private const TOTAL_DESCRIPTIONS = 14650;
 	private const TOTAL_INPUT_SCHEMAS = 24840;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
-	private const INSTRUCTIONS = 4500;
+	private const INSTRUCTIONS = 3200;
 
 	/** @return array<string, string> Short class name => class. */
 	private static function coreTools(): array

@@ -79,7 +79,7 @@ class Instructions extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns '.self::RETURNS.'. Sessions on protocol revision 2026-07-28 are given none of this at connection time, because that revision has no initialize to carry it - for them this tool is the only copy. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
+		return 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns '.self::RETURNS.'. A client that sends no initialize is given none of this at connection time (protocol revision 2026-07-28 has none to send, though some clients on it still send one) - for it this tool is the only copy. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
 	}
 
 	/** What this tool is to a portal-mode connection, whose instructions are the portal's. */

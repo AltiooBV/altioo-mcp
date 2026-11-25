@@ -187,7 +187,7 @@ final class WriteOutcome
 		return [
 			'type'                 => 'object',
 			'additionalProperties' => true,
-			'description'          => 'The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied, re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet.',
+			'description'          => 'The object as it stands once the write has been applied, which is not always what was asked for: friendlyname, applied (the attributes you supplied and, on a real write, every one it changed or filled - a ref, a state, a date a transition stamped - re-read, so a value a trigger or an AfterInsert hook changed is the value you see), and obsolescence - flag (null when the class has no such notion), condition (the rule the datamodel evaluates) and hidden_from_searches, true when searches for this account will no longer return this object, though a read by id still will. On a dry run it describes the object in hand, since nothing has run yet.',
 		];
 	}
 
@@ -218,7 +218,7 @@ final class WriteOutcome
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function After(DBObject $oObject, string $sClass, array $aAttCodes, bool $bSimulated): array
+	public static function After(DBObject $oObject, string $sClass, array $aAttCodes, bool $bSimulated, array $aAlsoRead = []): array
 	{
 		$aAfter = [
 			'friendlyname' => null,
@@ -244,6 +244,9 @@ final class WriteOutcome
 
 			// The name of an object is made of its attributes: not served where one of them is excluded (doc/adr/0012).
 			$aAfter['friendlyname'] = ExclusionPolicy::ExcludesAttribute($sClass, 'friendlyname') ? null : $oObject->GetName();
+
+			// What the write changed or filled beyond what was sent, read back with it (review 2026-11-23, B4).
+			$aAttCodes = array_values(array_unique(array_merge($aAttCodes, $aAlsoRead)));
 
 			if ($aAttCodes !== []) {
 				// Through the serializer, so per-attribute read rights, the
@@ -285,6 +288,73 @@ final class WriteOutcome
 	 * @param array<string, mixed> $aMap
 	 * @since 1.0.0
 	 */
+	/**
+	 * What the object holds on disk, attribute by attribute, as plain text, for {@see AlsoRead()} to compare with.
+	 *
+	 * Taken from the original values, which a pending Set() does not touch, and only for attributes whose value is a
+	 * scalar: a link set or a case log is not compared here and is read back only when the caller sent it.
+	 *
+	 * @return array<string, string>
+	 * @since 2.2.0
+	 */
+	public static function Snapshot(DBObject $oObject): array
+	{
+		$aValues = [];
+		$sClass = get_class($oObject);
+		/** @psalm-suppress InvalidCast, MixedAssignment */
+		foreach (array_keys(MetaModel::ListAttributeDefs($sClass)) as $sAttCode) {
+			try {
+				$mValue = $oObject->GetOriginal((string)$sAttCode);
+			} catch (Throwable $e) {
+				continue;
+			}
+			if (is_scalar($mValue) || $mValue === null) {
+				$aValues[(string)$sAttCode] = (string)$mValue;
+			}
+		}
+
+		return $aValues;
+	}
+
+	/**
+	 * The attributes a real write changed or filled, for the caller to read back in `after.applied`.
+	 *
+	 * `changes` is taken before the write and cannot know what the write did itself: a transition moves the state and
+	 * stamps a date, an insert gives a ticket its ref (review 2026-11-23, B4). What differs between the snapshot taken
+	 * before the write and the object as it stands after it, and every attribute `changes` names, is returned, put to the
+	 * caller's own disclosure rule first, so a portal user is told no more than the portal's view form shows; the
+	 * serializer that reads them back then applies the exclusions and the attribute rights of any read.
+	 *
+	 * The check itself stays in the tool, which passes it (doc/adr/0014).
+	 *
+	 * @param array<string, string>                                $aBefore    {@see Snapshot()}, taken before the write; empty for a creation.
+	 * @param array<string, mixed>                                 $aChanges   What the call reported before the write.
+	 * @param callable(array<string, mixed>): array<string, mixed> $fDisclosed The mode's rule, keyed by attribute code.
+	 *
+	 * @return array<int, string>
+	 * @since 2.2.0
+	 */
+	public static function AlsoRead(DBObject $oObject, array $aBefore, array $aChanges, callable $fDisclosed): array
+	{
+		$aCodes = array_keys($aChanges);
+
+		try {
+			$iId = ObjectId::Normalise($oObject->GetKey());
+			$oFresh = $iId === null ? null : MetaModel::GetObject(get_class($oObject), $iId, false);
+			$aAfter = self::Snapshot($oFresh ?? $oObject);
+			foreach ($aAfter as $sAttCode => $sValue) {
+				if (($aBefore[$sAttCode] ?? null) !== $sValue) {
+					$aCodes[] = $sAttCode;
+				}
+			}
+		} catch (Throwable $e) {
+			// What was read back is a courtesy: describing the write must never cost the write that succeeded.
+			ErrorReport::Log('Could not read back what the write changed: '.$e->getMessage());
+		}
+
+		return array_map('strval', array_keys($fDisclosed(array_fill_keys(array_unique($aCodes), true))));
+	}
+
 	public static function Map(array $aMap): \stdClass
 	{
 		return (object) $aMap;

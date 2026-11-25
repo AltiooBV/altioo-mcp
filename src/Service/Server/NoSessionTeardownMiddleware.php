@@ -48,8 +48,13 @@ final class NoSessionTeardownMiddleware implements MiddlewareInterface
 
 		$oResponse = $this->oResponses->createResponse(405)
 			->withHeader('Allow', self::ALLOW)
-			->withHeader('Content-Type', 'text/plain; charset=utf-8');
-		$oResponse->getBody()->write('This endpoint keeps no session, so there is nothing to end. Send POST.');
+			->withHeader('Content-Type', 'application/json');
+		// A JSON-RPC error body, as GET and PUT are answered, and not plain text (review 2026-11-23, C11).
+		$oResponse->getBody()->write((string)json_encode([
+			'jsonrpc' => '2.0',
+			'id'      => null,
+			'error'   => ['code' => -32600, 'message' => 'This endpoint keeps no session, so there is nothing to end. Send POST.'],
+		]));
 
 		return $oResponse;
 	}

@@ -331,10 +331,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		$aMissingBlocked  = [];
 
 		foreach ($aExpectedAttributes as $sAttCode => $iExpectCode) {
-			// Soft comparison on purpose: Get() returns mixed (string, int, ormLinkSet,
-			// AttributeDate...) depending on the attribute, so neither === '' nor
-			// utils::IsNullOrEmptyString() (typed ?string) can stand in here.
-			if (!($iExpectCode & OPT_ATT_MANDATORY) || ($oObject->Get($sAttCode) != '')) {
+			// Asked of the attribute itself, as EditPolicy::isPromptedBy() does. Get()
+			// returns a string, an int, an ormLinkSet, an ormCaseLog... depending on the
+			// attribute, and no one comparison fits them all: an empty external key is 0,
+			// and on PHP 8 `0 != ''` is true, so the soft test this replaces counted every
+			// empty key as filled and let ev_assign through with no team and no agent
+			// (review 2026-11-23, B1). AttributeDefinition::HasAValue() is false for an
+			// empty key, string, link set, case log and document alike.
+			if (!($iExpectCode & OPT_ATT_MANDATORY) || $oObject->HasAValue($sAttCode)) {
 				continue;
 			}
 
@@ -422,6 +426,9 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because($sCapRefusal);
 		}
 
+		// What is on disk before the write, to say afterwards what the write changed (review 2026-11-23, B4).
+		$aBefore = WriteOutcome::Snapshot($oObject);
+
 		// Said before the write, because the change record is built by the
 		// write itself and reads what was last said.
 		ChangeTracking::Explain($comment);
@@ -450,7 +457,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				// what makes the pair readable: state === would_move_to says
 				// the transition happened.
 				'would_move_to' => $sTargetState,
-				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate),
+				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
 					'changes'       => WriteOutcome::Map($aChanges),
 					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WriteOutcome::Map($aOverridden),

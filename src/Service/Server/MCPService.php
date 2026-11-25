@@ -120,6 +120,9 @@ final class MCPService
 			);
 		}
 
+		// Rewrites only the list a -32022 refusal offers, on the way out (review 2026-11-23, B5).
+		$aMiddleware[] = new SupportedVersionsMiddleware($factory);
+
 		// Last: a DELETE has been through the Host and Origin checks, and is told there is no session to end.
 		$aMiddleware[] = new NoSessionTeardownMiddleware($factory);
 

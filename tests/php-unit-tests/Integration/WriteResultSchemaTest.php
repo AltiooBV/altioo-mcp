@@ -119,9 +119,16 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 
 	public function testAttach(): void
 	{
+		if (!MetaModel::IsValidClass('UserRequest')) {
+			$this->markTestSkipped('Needs the ITIL request management module: attachments are shown on tickets only, by default.');
+		}
+
+		$oCaller = $this->CreatePerson(1, $this->iOrg);
+		$oTicket = $this->CreateUserRequest(1, ['org_id' => $this->iOrg, 'caller_id' => $oCaller->GetKey()]);
+
 		$this->assertConforms('core_object_attach', [
-			'class'          => 'Organization',
-			'id'             => $this->iOrg,
+			'class'          => 'UserRequest',
+			'id'             => (int)$oTicket->GetKey(),
 			'filename'       => 'note.txt',
 			'content_base64' => base64_encode('hello'),
 			'simulate'       => true,

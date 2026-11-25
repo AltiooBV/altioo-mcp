@@ -87,6 +87,9 @@ Settings agent skills read here.
   with a different word, and a setting that cannot be honoured stops the endpoint ([0012](doc/adr/0012-this-channel-can-exclude-classes-and-attributes.md)):
   a new tool or surface that returns object data asks `Service\Rights\ExclusionPolicy` (a key or link set typed on a parent of an excluded class is excluded whole, and so is a friendly name made of an excluded part: Amendment 3). The one lift is an account holding an exempt profile,
   never a token scope, a client name or a portal user ([0013](doc/adr/0013-an-exempt-profile-is-served-what-is-excluded.md)).
+  Also: in console mode whoever may edit an attachment's host may remove the attachment, and that host check replaces the delete right on
+  `Attachment` in `core_object_delete` (per row in the bulk tool, whose own bulk right stays); a frozen host, an unreadable one and a draft with no
+  host refuse, and portal mode still never deletes ([0026](doc/adr/0026-whoever-may-edit-the-host-may-remove-its-attachment.md)).
   Also: `core_my_activity` is the one thing portal mode serves that the portal has no screen for — an account's own trail, not
   a precedent; add no other ([0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)).
   Also: portal attachments are read and add only, gated by the host object and the portal's form, never by UserRights on

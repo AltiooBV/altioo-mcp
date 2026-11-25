@@ -8,10 +8,12 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
+use DBObjectSearch;
 use DBObjectSet;
 use DeletionPlan;
 use MetaModel;
@@ -96,14 +98,26 @@ final class DeletionCascade
 	 * set is passed on the second and third, so an addon that grades rights per
 	 * object gets to answer about these objects rather than about the class.
 	 *
+	 * One exemption, narrow on purpose (review 2026-11-23, B8; decided by Guy Couronne, 2026-11-24): deleting an
+	 * Attachment also deletes the CMDBChangeOp rows that record it ("attachment added"), which iTop declares
+	 * DEL_SILENT because they are its own bookkeeping (it resets their key to the attachment, which is how the plan
+	 * lists them), and no non-administrator may read them. Those rows are not judged when, and only when, the
+	 * object being deleted is an Attachment, the row is a change operation, every key the plan resets on it is a
+	 * DEL_SILENT key to Attachment, and that key holds this very attachment. The console does the
+	 * same: DeleteObjects() asks the delete right on the object clicked and nothing on the cascade. Every other
+	 * row of the plan is judged as before, and the refusal still names a class the user may read.
+	 *
 	 * @param DeletionPlan $oPlan  A plan already computed by CheckToDelete().
 	 * @param string       $sWhat  What is being deleted, e.g. "UserRequest::12", named in the refusal.
+	 * @param string|null  $sRootClass The class of the object being deleted, for the one exemption above.
+	 * @param int|null     $iRootId    Its id.
+	 * @param bool         $bHostChecked The delete tool asked, in its own source, what ADR 0026 asks of an attachment's host and it passed. The Attachment itself, the root of the plan, is then not judged under the delete right (that entry only); everything else in the plan is.
 	 *
 	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the cascade reaches something this caller may not touch.
 	 *
 	 * @since 1.0.0
 	 */
-	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat): void
+	public static function CheckDeletionRights(DeletionPlan $oPlan, string $sWhat, ?string $sRootClass = null, ?int $iRootId = null, bool $bHostChecked = false): void
 	{
 		// A delete that would reach objects of a class this channel does not serve is not made here, and not
 		// reported with them left out: a plan that shows less than what happens is how a delete goes wrong. It
@@ -123,7 +137,7 @@ final class DeletionCascade
 		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
 			self::JudgeCascadedClass(
 				$sClass,
-				self::ObjectsOf($aEntries, 'to_delete'),
+				self::ObjectsOf(self::WithoutItsRoot($sClass, $aEntries, $sRootClass, $iRootId, $bHostChecked), 'to_delete'),
 				UR_ACTION_DELETE,
 				'deleted',
 				$aRefused,
@@ -134,7 +148,7 @@ final class DeletionCascade
 		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
 			self::JudgeCascadedClass(
 				$sClass,
-				self::ObjectsOf($aEntries, 'to_reset'),
+				self::ObjectsOf(self::WithoutItsOwnBookkeeping($sClass, $aEntries, $sRootClass, $iRootId), 'to_reset'),
 				UR_ACTION_MODIFY,
 				'modified',
 				$aRefused,
@@ -143,7 +157,7 @@ final class DeletionCascade
 		}
 
 		if ($bUnreadable) {
-			$aRefused[] = 'it also reaches related objects this user may not read.';
+			$aRefused[] = 'It also reaches related objects this user may not read.';
 		}
 
 		if (empty($aRefused)) {
@@ -237,6 +251,79 @@ final class DeletionCascade
 	}
 
 	/**
+	 * The entries of one class of the plan's deletions, less the attachment the call deletes when its host passed.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function WithoutItsRoot(string $sClass, array $aEntries, ?string $sRootClass, ?int $iRootId, bool $bHostChecked): array
+	{
+		if (!$bHostChecked || $sRootClass === null || $iRootId === null
+			|| !MetaModel::IsValidClass('Attachment') || !MetaModel::IsParentClass('Attachment', $sRootClass)
+			|| $sClass !== $sRootClass) {
+			return $aEntries;
+		}
+
+		return array_filter($aEntries, static fn (array $aData): bool => ObjectId::Normalise(($aData['to_delete'] ?? null) instanceof DBObject ? $aData['to_delete']->GetKey() : null) !== $iRootId);
+	}
+
+	/**
+	 * The entries of one class of the plan's updates, less the bookkeeping rows of an attachment being deleted.
+	 *
+	 * See {@see CheckDeletionRights()} for what is exempt and why. iTop plans such a row as an update, not a
+	 * deletion (its key to the attachment is nullable): it is reset when the attachment goes. Everything is asked of
+	 * the plan's own entry: the class of the root, the class of the row, every key the plan resets on it, the
+	 * propagation mode the datamodel gives that key, and the attachment the key holds.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function WithoutItsOwnBookkeeping(string $sClass, array $aEntries, ?string $sRootClass, ?int $iRootId): array
+	{
+		if ($sRootClass === null || $iRootId === null
+			|| !MetaModel::IsValidClass('Attachment') || !MetaModel::IsParentClass('Attachment', $sRootClass)
+			|| !MetaModel::IsParentClass('CMDBChangeOp', $sClass)) {
+			return $aEntries;
+		}
+
+		return array_filter($aEntries, static function (array $aData) use ($iRootId): bool {
+			$oRow = $aData['to_reset'] ?? null;
+			$aReset = $aData['attributes'] ?? [];
+			if (!$oRow instanceof DBObject || $aReset === []) {
+				return true;
+			}
+			foreach ($aReset as $sAttCode => $oAttDef) {
+				if (!$oAttDef instanceof \AttributeExternalKey
+					|| !MetaModel::IsParentClass('Attachment', $oAttDef->GetTargetClass())
+					|| $oAttDef->GetDeletionPropagationOption() !== DEL_SILENT
+					|| !self::StoredKeyIs($oRow, (string)$sAttCode, $iRootId)) {
+					return true; // anything else is judged
+				}
+			}
+
+			return false; // this attachment's own record
+		});
+	}
+
+	/**
+	 * Whether the row, as stored, holds this key. The plan's own object is no witness: iTop has reset the key in it
+	 * by the time the plan is read. Asked of the database, with the rights off because the question is only whether
+	 * one known row points at one known object, and the answer is a yes or a no that nothing is read from.
+	 */
+	private static function StoredKeyIs(DBObject $oRow, string $sAttCode, int $iId): bool
+	{
+		try {
+			$oSearch = DBObjectSearch::FromOQL_AllData('SELECT '.get_class($oRow).' WHERE id = :row AND '.$sAttCode.' = :key');
+
+			return (new DBObjectSet($oSearch, [], ['row' => (int)$oRow->GetKey(), 'key' => $iId]))->Count() === 1;
+		} catch (Throwable $e) {
+			return false; // not provable is not exempt
+		}
+	}
+
+	/**
 	 * The objects behind one class of a plan entry.
 	 *
 	 * @param array<int, array<string, mixed>> $aEntries
@@ -312,6 +399,59 @@ final class DeletionCascade
 	}
 
 	/**
+	 * The host hears that one of its attachments is going, as the console's edit form makes it hear, and the file's
+	 * name is kept for the history line {@see AttachmentRemoved()} writes. Plumbing only: whether the attachment may
+	 * go is decided by the delete tool, in its own source (ADR 0014).
+	 *
+	 * What a listener throws is **not** swallowed: in iTop's form the event is fired before the delete and an
+	 * exception from a listener stops it (EventService::FireEvent() rethrows, at once for an EventException and after
+	 * the other listeners for any other), so another extension's veto holds here too. The caller turns it into a
+	 * refusal that does not repeat the listener's message. Only reading the file's name may fail quietly.
+	 *
+	 * @return string The file's name, '' when it cannot be read.
+	 * @throws Throwable What a listener of EVENT_REMOVE_ATTACHMENT_FROM_OBJECT threw.
+	 * @since 2.2.0
+	 */
+	public static function AttachmentRemoving(DBObject $oHost, DBObject $oAttachment): string
+	{
+		try {
+			$oBlob = $oAttachment->Get('contents');
+			$sName = $oBlob instanceof \ormDocument ? $oBlob->GetFileName() : '';
+		} catch (Throwable $e) {
+			ErrorReport::Log('Could not read the name of an attachment being removed: '.$e->getMessage());
+			$sName = '';
+		}
+
+		$aData = ['attachment' => $oAttachment];
+		$oHost->FireEvent(EVENT_REMOVE_ATTACHMENT_FROM_OBJECT, $aData);
+
+		return $sName;
+	}
+
+	/**
+	 * The "attachment removed" line the console leaves in the host's history (AttachmentPlugIn::UpdateAttachments()
+	 * writes a CMDBChangeOpAttachmentRemoved with the file's name), which deleting the Attachment alone would not.
+	 * A failure to write it is logged and does not turn a deletion that happened into a failure.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function AttachmentRemoved(DBObject $oHost, string $sFilename): void
+	{
+		if (!class_exists('CMDBChangeOpAttachmentRemoved')) {
+			return;
+		}
+		try {
+			$oOp = new \CMDBChangeOpAttachmentRemoved();
+			$oOp->Set('filename', $sFilename);
+			$oOp->Set('objclass', get_class($oHost));
+			$oOp->Set('objkey', $oHost->GetKey());
+			$oOp->DBInsertNoReload();
+		} catch (Throwable $e) {
+			ErrorReport::Log('Could not write the "attachment removed" line of '.get_class($oHost).'::'.$oHost->GetKey().': '.$e->getMessage());
+		}
+	}
+
+	/**
 	 * What a deletion would take with it, as the two lists both delete tools
 	 * report.
 	 *
@@ -327,10 +467,18 @@ final class DeletionCascade
 	 * person before they approve it has to be complete, and the only way for it
 	 * to be both complete and safe is for the incomplete case not to exist.
 	 *
+	 * Each entry names its class, since an id alone says nothing: a business process, a solution and a server
+	 * can all be number 1 (review 2026-11-23, B7). The object the call is about is left out when it is passed,
+	 * as the schema's "besides deleting the object itself" says: iTop's plan lists it too.
+	 *
+	 * @param string|null $sClass The class of the object the call deletes, to leave it out of the plan.
+	 * @param int|null    $iId    Its id.
+	 *
 	 * @return array<string, mixed>
 	 * @since 1.0.0
+	 * @since 2.2.0 Entries carry their class; the object itself is left out when named.
 	 */
-	public static function SerializeDeletionPlan(?DeletionPlan $oPlan): array
+	public static function SerializeDeletionPlan(?DeletionPlan $oPlan, ?string $sClass = null, ?int $iId = null): array
 	{
 		if ($oPlan === null) {
 			return ['deleted' => [], 'updated' => []];
@@ -338,16 +486,21 @@ final class DeletionCascade
 
 		$aDeleted = [];
 		$aUpdated = [];
+		$sRoot = $sClass === null ? null : MetaModel::GetRootClass($sClass);
 
-		foreach ($oPlan->ListDeletes() as $sClass => $aEntries) {
-			foreach (array_keys($aEntries) as $iId) {
-				$aDeleted[] = WriteOutcome::Identity($sClass, $iId);
+		foreach ($oPlan->ListDeletes() as $sReached => $aEntries) {
+			foreach (array_keys($aEntries) as $mReachedId) {
+				// The same object whether named by a subclass or its parent, as NoteCascade() reads it.
+				if ($sRoot !== null && $iId !== null && ObjectId::Normalise($mReachedId) === $iId && MetaModel::GetRootClass((string)$sReached) === $sRoot) {
+					continue;
+				}
+				$aDeleted[] = ['class' => (string)$sReached] + WriteOutcome::Identity((string)$sReached, $mReachedId);
 			}
 		}
 
-		foreach ($oPlan->ListUpdates() as $sClass => $aEntries) {
-			foreach (array_keys($aEntries) as $iId) {
-				$aUpdated[] = WriteOutcome::Identity($sClass, $iId);
+		foreach ($oPlan->ListUpdates() as $sReached => $aEntries) {
+			foreach (array_keys($aEntries) as $mReachedId) {
+				$aUpdated[] = ['class' => (string)$sReached] + WriteOutcome::Identity((string)$sReached, $mReachedId);
 			}
 		}
 

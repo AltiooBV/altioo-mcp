@@ -117,7 +117,7 @@ class RelatedBulkReadContractTest extends TestCase
 	public function testEdgesTouchingAWithheldObjectAreDropped(): void
 	{
 		$this->assertMatchesRegularExpression(
-			'/if\(!isset\(\$aObjects\[\$sFrom\]\)\|\|!isset\(\$aObjects\[\$sTo\]\)\)/',
+			'/if\(\(!isset\(\$aObjects\[\$sFrom\]\)&&\$sFrom!==\$sRoot\)\|\|\(!isset\(\$aObjects\[\$sTo\]\)&&\$sTo!==\$sRoot\)\)/',
 			$this->serializeBody(),
 			'Both ends of a returned edge must still be in the payload.'
 		);

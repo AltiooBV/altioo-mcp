@@ -73,10 +73,10 @@ class ObjectGetRelated extends AbstractMCPTool
 
 	public function getDescription(): ?string
 	{
-		return 'Walk a named relation from one iTop object (impacts, depends on, ...): impact analysis and dependency mapping on CIs. '
-			.'Relations are declared per class and per direction, so read the "relations" block of core_class_schema for this class first; a code it does not have is refused with the list of the ones it does. '
-			.'The answer is a graph, not a tree: "objects" maps keys like Server::12 to class, id and friendlyname, "relations" is a list of {from, to} over those keys, "summary" counts per class. '
-			.'The source object is not in it and an object reached twice appears once. '
+		return 'Walk a named relation from one iTop object: impact analysis and dependency mapping on CIs. The stock relation is "impacts": direction "down" is what the object impacts, "up" is what it depends on. '
+			.'A code the class does not have for that direction is refused with the ones it does. core_class_schema lists the codes and the classes each reaches downstream, not the directions. '
+			.'The answer is a graph: "objects" maps keys like Server::12 to class, id and friendlyname, "relations" is a list of {from, to} over those keys and the source, "summary" is a string of counts per class ("Server=2, ApplicationSolution=1"). '
+			.'The source is not in objects or summary, and an object reached twice appears once. '
 			.'"truncated" is true when a class was held back for want of bulk read on it, and "withheld" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.';
 	}
 
@@ -98,7 +98,7 @@ class ObjectGetRelated extends AbstractMCPTool
 			'properties' => [
 				'class'     => [
 					'type'        => 'string',
-					'description' => 'iTop class of the source object (e.g. Server, UserRequest).',
+					'description' => 'iTop class of the source object (e.g. Server, ApplicationSolution).',
 				],
 				'id'        => [
 					'type'        => 'integer',
@@ -107,7 +107,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				],
 				'relation'  => [
 					'type'        => 'string',
-					'description' => 'Relation code to follow. A stock iTop declares "impacts" and "depends on", but a datamodel may declare others and no class takes part in all of them. Call core_class_schema for this class and read its "relations" block: the keys are the codes valid here. A code the class does not have is refused with the list of the ones it does, for the direction you asked for.',
+					'description' => 'Relation code to follow: "impacts" on a stock iTop, and whatever the datamodel declares. No class takes part in every code. A code the class does not have in the direction asked is refused with the list of the ones it does.',
 				],
 				'direction' => [
 					'type'        => 'string',
@@ -259,7 +259,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				$oGraph = $oSet->GetRelatedObjectsUp($relation, $depth, $redundancy);
 			}
 
-			return ToolOutput::Json(self::serializeGraph($oGraph, $sFinalClass.'::'.$id));
+			return ToolOutput::Json(self::serializeGraph($oGraph, $sFinalClass.'::'.$id, $direction === self::DIRECTION_UP));
 		} catch (ToolCallException $e) {
 			// The withheld-class refusal from serializeGraph is this module's
 			// own answer and keeps its wording.
@@ -274,8 +274,12 @@ class ObjectGetRelated extends AbstractMCPTool
 
 	/**
 	 * @param string $sRoot The object the walk started from, as `Class::id`, by the class it is.
+	 * @param bool   $bUp   Whether the walk went up. iTop marks nodes reached only on the way down
+	 *                      (RelationGraph::ComputeRelatedObjectsUp() marks none, and its own display treats
+	 *                      every node of an up graph as reached), so on the way up what the graph holds is
+	 *                      what the walk reached (review 2026-11-23, B6).
 	 */
-	private static function serializeGraph(\RelationGraph $oGraph, string $sRoot = ''): array
+	private static function serializeGraph(\RelationGraph $oGraph, string $sRoot = '', bool $bUp = false): array
 	{
 		$aObjects   = [];
 		$aRelations = [];
@@ -297,14 +301,19 @@ class ObjectGetRelated extends AbstractMCPTool
 				continue;
 			}
 
-			// Skip source node and unreached nodes
-			if (!$oNode->GetProperty('is_reached', false)) {
+			$sClass = get_class($oObject);
+			$sKey = $sClass.'::'.$oObject->GetKey();
+
+			// The source is not in the answer or in its counts, whichever way the walk went: iTop marks it
+			// reached on the way down, and builds an up walk out of it (review 2026-11-23, B10).
+			if ($sKey === $sRoot) {
 				continue;
 			}
 
-			$sClass = get_class($oObject);
+			if (!$bUp && !$oNode->GetProperty('is_reached', false)) {
+				continue;
+			}
 
-			$sKey = $sClass.'::'.$oObject->GetKey();
 			$aObjects[$sKey] = [
 				'class'        => $sClass,
 				MetaModel::DBGetKey($sClass)           => ObjectId::Normalise($oObject->GetKey()),
@@ -319,7 +328,7 @@ class ObjectGetRelated extends AbstractMCPTool
 		// What the operator excluded is not in the graph, and neither is what is reachable only through it
 		// (doc/adr/0012): a path through an excluded object is a statement about that object.
 		if (ExclusionPolicy::IsActive()) {
-			[$aObjects, $aStats] = self::withoutExcluded($oGraph, $aObjects, $sRoot);
+			[$aObjects, $aStats] = self::withoutExcluded($oGraph, $aObjects, $sRoot, $bUp);
 		}
 
 		$aWithheld = self::classesReadInBulkWithoutTheRight($aStats);
@@ -347,7 +356,7 @@ class ObjectGetRelated extends AbstractMCPTool
 				continue;
 			}
 
-			if (!$oSource->GetProperty('is_reached', false) || !$oSink->GetProperty('is_reached', false)) {
+			if (!$bUp && (!$oSource->GetProperty('is_reached', false) || !$oSink->GetProperty('is_reached', false))) {
 				continue;
 			}
 
@@ -363,7 +372,9 @@ class ObjectGetRelated extends AbstractMCPTool
 
 			// An edge to an object that was withheld would dangle, and a
 			// dangling edge is how a partial graph reads as a complete one.
-			if (!isset($aObjects[$sFrom]) || !isset($aObjects[$sTo])) {
+			// The source is not among the objects and is still named by the edges that leave or reach it:
+			// without them the first level of the graph hangs from nothing. The caller named it.
+			if ((!isset($aObjects[$sFrom]) && $sFrom !== $sRoot) || (!isset($aObjects[$sTo]) && $sTo !== $sRoot)) {
 				continue;
 			}
 
@@ -376,7 +387,8 @@ class ObjectGetRelated extends AbstractMCPTool
 		}
 
 		$aPayload = [
-			'objects'   => $aObjects,
+			// An object whether or not anything was reached: an empty PHP array would be sent as [] (review 2026-11-23, S6).
+			'objects'   => $aObjects === [] ? new \stdClass() : $aObjects,
 			'relations' => $aRelations,
 			'summary'   => implode(', ', $aSummaryParts),
 			// Always present, and false on the ordinary answer. `withheld` says
@@ -411,15 +423,28 @@ class ObjectGetRelated extends AbstractMCPTool
 	 * one, and the per-class counts of those.
 	 *
 	 * The walk starts from the object it was asked about, which is named rather than looked for among the nodes:
-	 * iTop marks every node of a real graph as reached, the starting one included, so no node says "I am the start".
+	 * iTop marks every node of a real graph as reached on the way down, the starting one included, so no node says
+	 * "I am the start". On the way up it marks none, so the start is the only seed (ADR 0012 holds on both ways).
+	 * A redundancy node holds no data and is walked through; an excluded object is not.
 	 *
 	 * @param array<string, array<string, mixed>> $aObjects
 	 * @param string                              $sRoot    The object the walk started from, as `Class::id`.
+	 * @param bool                                $bUp      Whether the walk went up.
 	 *
 	 * @return array{0: array<string, array<string, mixed>>, 1: array<string, int>}
 	 */
-	private static function withoutExcluded(\RelationGraph $oGraph, array $aObjects, string $sRoot = ''): array
+	private static function withoutExcluded(\RelationGraph $oGraph, array $aObjects, string $sRoot = '', bool $bUp = false): array
 	{
+		$fKeyOf = static function ($oNode): ?string {
+			if ($oNode instanceof \RelationObjectNode) {
+				$oObject = $oNode->GetProperty('object');
+
+				return $oObject === null ? null : get_class($oObject).'::'.$oObject->GetKey();
+			}
+
+			return $oNode instanceof \GraphNode ? 'node:'.$oNode->GetId() : null;
+		};
+
 		$aClassOf = [];
 		$aRoots   = [];
 		foreach ($oGraph->_GetNodes() as $oNode) {
@@ -427,27 +452,25 @@ class ObjectGetRelated extends AbstractMCPTool
 				continue;
 			}
 			$oObject = $oNode->GetProperty('object');
-			$sKey = get_class($oObject).'::'.$oObject->GetKey();
+			$sKey = $fKeyOf($oNode);
 			$aClassOf[$sKey] = get_class($oObject);
-			if ($sKey === $sRoot || !$oNode->GetProperty('is_reached', false)) {
+			if ($sKey === $sRoot || (!$bUp && !$oNode->GetProperty('is_reached', false))) {
 				$aRoots[] = $sKey;
 			}
 		}
 
 		$aNeighbours = [];
 		foreach ($oGraph->_GetEdges() as $oEdge) {
-			$oSource = $oEdge->GetSourceNode();
-			$oSink   = $oEdge->GetSinkNode();
-			if (!$oSource instanceof \RelationObjectNode || !$oSink instanceof \RelationObjectNode
-				|| $oSource->GetProperty('object') === null || $oSink->GetProperty('object') === null) {
+			$sFrom = $fKeyOf($oEdge->GetSourceNode());
+			$sTo   = $fKeyOf($oEdge->GetSinkNode());
+			if ($sFrom === null || $sTo === null) {
 				continue;
 			}
-			$sFrom = get_class($oSource->GetProperty('object')).'::'.$oSource->GetProperty('object')->GetKey();
-			$sTo   = get_class($oSink->GetProperty('object')).'::'.$oSink->GetProperty('object')->GetKey();
 			$aNeighbours[$sFrom][] = $sTo;
 			$aNeighbours[$sTo][]   = $sFrom;
 		}
 
+		$aRoots = array_values(array_filter($aRoots, static fn (?string $sKey): bool => $sKey !== null));
 		$aSeen  = array_fill_keys($aRoots, true);
 		$aQueue = $aRoots;
 		while ($aQueue !== []) {
