@@ -47,12 +47,41 @@ class ClassRefusal
 		}
 
 		if (PortalMode::Current() !== null) {
-			return "Unknown class '{$sClass}': the portal does not offer it. core_class_list shows the classes it offers you.";
+			return "Unknown class '{$sClass}': the portal does not offer it.".self::Suggestion($sClass)." core_class_list shows the classes it offers you.";
 		}
 
-		return "Unknown class '{$sClass}': either this datamodel has no such class, or this account may not read it. "
-			."iTop reserves its rights model, its credentials and its automation for administrators, so if you named one "
+		return "Unknown class '{$sClass}': either this datamodel has no such class, or this account may not read it."
+			.self::Suggestion($sClass)
+			." iTop reserves its rights model, its credentials and its automation for administrators, so if you named one "
 			."of those, no profile you can be granted changes this. core_class_list shows the classes you can reach.";
+	}
+
+	/** @var (\Closure(string): string)|null */
+	private static ?\Closure $fSuggest = null;
+
+	/**
+	 * How a refusal says "did you mean", handed over by the server for the request (the names this caller is served are
+	 * not something this layer can ask). Without it a refusal says nothing of the kind, as it never did.
+	 *
+	 * @param \Closure(string): string $fSuggest The sentence to add for a name, or ''.
+	 *
+	 * @internal Request state, set by Service\Server\ServedElements; a pack never calls it.
+	 * @since 2.2.0
+	 */
+	public static function RememberSuggester(\Closure $fSuggest): void
+	{
+		self::$fSuggest = $fSuggest;
+	}
+
+	/** @internal */
+	public static function ForgetSuggester(): void
+	{
+		self::$fSuggest = null;
+	}
+
+	private static function Suggestion(string $sClass): string
+	{
+		return self::$fSuggest === null ? '' : (self::$fSuggest)($sClass);
 	}
 
 	/**

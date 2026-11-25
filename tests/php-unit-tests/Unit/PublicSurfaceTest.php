@@ -76,6 +76,7 @@ class PublicSurfaceTest extends TestCase
 		'src/Service/Read/CurrentUserReader.php',
 		'src/Service/Read/DatamodelReader.php',
 		'src/Service/Read/DocumentAccess.php',
+		'src/Service/Read/NameSuggestion.php',
 		'src/Service/Read/ObjectGrades.php',
 		'src/Service/Read/ObjectHistory.php',
 		'src/Service/Read/ObjectQuery.php',

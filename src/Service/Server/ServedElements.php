@@ -10,11 +10,14 @@ namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
@@ -56,6 +59,38 @@ final class ServedElements
 			static fn (AccessPolicy $oServedPolicy): array => self::servedPromptNames($oServedPolicy),
 			static fn (): ?string => self::writesWithheldBy()
 		);
+		self::rememberSuggestions();
+	}
+
+	/**
+	 * What "did you mean" may name in portal mode: the classes the portal offers and the fields its view form shows. The
+	 * console's served names are asked by Service\Read\NameSuggestion itself. Both are read from what the caller is
+	 * served, never from what exists (review 2026-11-23, C12).
+	 */
+	private static function rememberSuggestions(): void
+	{
+		NameSuggestion::Remember(
+			static function (): array {
+				try {
+					return PortalDescription::OfferedClassNames(PortalPolicy::ForCurrentRequest());
+				} catch (MCPPortalException) {
+					return [];
+				}
+			},
+			static function (string $sClass): array {
+				try {
+					$oPolicy = PortalPolicy::ForCurrentRequest();
+					if (!in_array($sClass, PortalDescription::OfferedClassNames($oPolicy), true)) {
+						return [];
+					}
+
+					return PortalAccess::Shown($sClass, $oPolicy->Fields($sClass, PortalPolicy::MODE_VIEW));
+				} catch (MCPPortalException) {
+					return [];
+				}
+			}
+		);
+		ClassRefusal::RememberSuggester(static fn (string $sClass): string => NameSuggestion::ForClass($sClass));
 	}
 
 	/**

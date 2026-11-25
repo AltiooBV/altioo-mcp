@@ -353,6 +353,12 @@ else
 	must "the user's own request is still readable" "$sOut" ok
 	case "$sOut" in *settable_fields*|*may_attach*|*'"stimuli"'*) fail "core_object_get still lists a write to a read-only credential: ${sOut:0:300}" ;; *) echo "   ok  and core_object_get lists no settable field, no attach and no state change" ;; esac
 
+	# Review 2026-11-23, C12: a name that is not one is refused with the nearest names the portal offers, and no other.
+	sOut=$(mcp_tool core_object_get '{"class":"userrequest","id":'"$iOwn"'}')
+	case "$sOut" in *"Did you mean 'UserRequest'"*) echo "   ok  a class in the wrong case is refused, and 'UserRequest' is suggested" ;; *) fail "the refusal of a class in the wrong case suggests nothing: ${sOut:0:300}" ;; esac
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"',"output_fields":"titel"}')
+	case "$sOut" in refused*"Did you mean 'title'"*) echo "   ok  and an attribute near one the portal's form shows is suggested" ;; *) fail "the refusal of a mistyped field suggests nothing: ${sOut:0:300}" ;; esac
+
 	sPortalToken=$sSavedToken
 	sPortalSession=''
 fi

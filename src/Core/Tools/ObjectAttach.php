@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
@@ -557,7 +558,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	private static function asAttribute(DBObject $oTarget, string $sClass, int $iId, string $sAttCode, ormDocument $oDocument, bool $bSimulate, ?string $sComment, ?string $sMimeTypeNote = null): mixed
 	{
 		if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
-			throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+			throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, $sAttCode));
 		}
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);

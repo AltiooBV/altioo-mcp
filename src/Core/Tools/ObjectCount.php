@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
@@ -296,7 +297,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				// A count under a condition on a value the account may not read is
 				// that value, read: the same gate as a group, minus the type.
 				if (!self::mayRead($sClass, (string)$sAttCode) || !is_scalar($value)) {
-					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, (string)$sAttCode, true));
 				}
 				try {
 					$oSearch->AddCondition((string)$sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), $value), '=');
@@ -309,7 +310,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 
 		foreach ($aGroupBy as $sAttCode) {
 			if (!self::mayGroupBy($sClass, $sAttCode)) {
-				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, $sAttCode, true));
 			}
 		}
 

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -247,13 +248,61 @@ final class DatamodelReader
 
 			return [
 				'obsoletable' => true,
-				'condition'   => MetaModel::GetObsolescenceExpression($sClass)->Render(),
+				'condition'   => self::ObsolescenceCondition($sClass),
 			];
 		} catch (\Throwable $e) {
 			// A class that cannot answer is reported as one that does not have
 			// the notion, which is what the flag will say about its objects too.
 			return ['obsoletable' => false, 'condition' => null];
 		}
+	}
+
+	/**
+	 * The condition that makes an object of the class obsolete, as OQL, or null when it cannot be said as OQL.
+	 *
+	 * iTop keeps it as an OQL expression and wraps it in `COALESCE(<condition>, 0)` to evaluate it, and renders it with
+	 * backticks around every field: that is what a read said, and it looks like the SQL it is not (review 2026-11-23, C12).
+	 * This is the condition itself, unwrapped, with the backticks that quote a field name taken off (never those inside
+	 * a quoted value), and it is given only if iTop parses it back as OQL: otherwise the answer is null, never a string
+	 * that is neither.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ObsolescenceCondition(string $sClass): ?string
+	{
+		try {
+			$oExpression = MetaModel::GetObsolescenceExpression($sClass);
+			$aArgs = $oExpression instanceof \FunctionOqlExpression && strtoupper((string)$oExpression->GetVerb()) === 'COALESCE' ? $oExpression->GetArgs() : [];
+			if (!isset($aArgs[0]) || !is_object($aArgs[0])) {
+				return null;
+			}
+
+			$sRendered = trim((string)$aArgs[0]->Render());
+			if ($sRendered === '') {
+				return null;
+			}
+
+			// Outside the quoted values only: a value may hold a backtick.
+			$aParts = preg_split("/('(?:[^'\\\\]|\\\\.)*')/", $sRendered, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$sRendered];
+			$sPlain = '';
+			foreach ($aParts as $i => $sPart) {
+				$sPlain .= $i % 2 === 1 ? $sPart : str_replace('`', '', $sPart);
+			}
+
+			foreach ([$sPlain, $sRendered] as $sCandidate) {
+				try {
+					\Expression::FromOQL($sCandidate);
+
+					return $sCandidate;
+				} catch (\Throwable $e) {
+					continue;
+				}
+			}
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not read the obsolescence condition of '.$sClass.': '.get_class($e));
+		}
+
+		return null;
 	}
 
 	/**

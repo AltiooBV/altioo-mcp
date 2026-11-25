@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
@@ -274,7 +275,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 
 		foreach (array_keys($aFields) as $sAttCode) {
 			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, (string)$sAttCode)) {
-				$aRefused[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
+				$aRefused[] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, (string)$sAttCode);
 				continue;
 			}
 			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY) === UR_ALLOWED_NO) {

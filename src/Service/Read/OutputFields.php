@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use MetaModel;
@@ -104,11 +105,28 @@ final class OutputFields
 			array_values($aCodes)
 		);
 
+		// The nearest served code to each that looks like one (review 2026-11-23, C12): a sentence for one code, a short
+		// list when there are several.
+		$sMeant = '';
+		if (count($aCodes) === 1) {
+			$sMeant = NameSuggestion::ForAttribute($sClass, (string)reset($aCodes));
+		} else {
+			$aNear = [];
+			foreach (array_values($aCodes) as $sCode) {
+				$aMeant = NameSuggestion::NearAttributes($sClass, (string)$sCode);
+				if ($aMeant !== []) {
+					$aNear[] = "'{$sCode}': ".implode(' or ', array_map(static fn (string $s): string => "'{$s}'", $aMeant));
+				}
+			}
+			$sMeant = $aNear === [] ? '' : ' Did you mean '.implode('; ', $aNear).'?';
+		}
+
 		return sprintf(
-			"Unknown attribute%s %s on class '%s'. Call core_class_schema for the attribute codes of the class.",
+			"Unknown attribute%s %s on class '%s'.%s Call core_class_schema for the attribute codes of the class.",
 			count($aCodes) > 1 ? 's' : '',
 			implode(', ', $aShown),
-			$sClass
+			$sClass,
+			$sMeant
 		);
 	}
 

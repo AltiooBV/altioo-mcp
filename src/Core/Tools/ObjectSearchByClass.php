@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
@@ -146,7 +147,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			if (!MetaModel::IsValidAttCode($class, $sAttCode)
 				|| ExclusionPolicy::ExcludesAttribute($class, (string)$sAttCode)
 				|| ObjectSerializer::IsSensitive(MetaModel::GetAttributeDef($class, (string)$sAttCode), $class)) {
-				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.");
+				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.".NameSuggestion::ForAttribute($class, (string)$sAttCode, true));
 			}
 			// A filter is one value to match. A list is the caller's mistake, answered in the words
 			// core_object_count uses, and not handed to the search to fail as a server-side error (RT-7).

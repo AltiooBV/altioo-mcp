@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -274,7 +275,7 @@ final class WriteOutcome
 			}
 
 			if (MetaModel::IsObsoletable($sClass)) {
-				$aAfter['obsolescence']['condition'] = MetaModel::GetObsolescenceExpression($sClass)->Render();
+				$aAfter['obsolescence']['condition'] = DatamodelReader::ObsolescenceCondition($sClass);
 				$aAfter['obsolescence']['flag'] = (bool)$oObject->Get('obsolescence_flag');
 				$aAfter['obsolescence']['hidden_from_searches'] = $aAfter['obsolescence']['flag'] && !utils::ShowObsoleteData();
 			}
