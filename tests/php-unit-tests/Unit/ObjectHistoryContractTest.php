@@ -301,7 +301,8 @@ class ObjectHistoryContractTest extends TestCase
 		$aToolsets = ['objects', 'documents', 'relations'];
 		$aTools = [];
 		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
-			if (in_array($oTool->getToolset(), $aToolsets, true)) {
+			// A prompt's tool twin takes no class and returns the prompt's words: it cannot be handed the change log.
+			if (in_array($oTool->getToolset(), $aToolsets, true) && !array_key_exists($sName, ResourceToolTwinTest::PROMPT_TWINS)) {
 				$aTools[$sName] = [$sName, get_class($oTool)];
 			}
 		}
