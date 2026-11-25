@@ -100,7 +100,7 @@ class PromptExclusionTest extends ItopDataTestCaseAlias
 	/** ADR 0025, Amendment 1: the tool twin answers what the prompt does, and is offered exactly where the prompt is. */
 	public function testTheToolTwinAnswersThePromptsMessagesAndFollowsItsAvailability(): void
 	{
-		$aTool = json_decode(MyOpenTicketsTool::execute()->text, true, 512, JSON_THROW_ON_ERROR);
+		$aTool = \Altioo\iTop\Extension\MCP\Api\ToolOutput::Decode(MyOpenTicketsTool::execute());
 		$this->assertSame((new MyOpenTickets())->get(), $aTool['messages']);
 		$this->assertTrue((new MyOpenTicketsTool())->isAvailable());
 
@@ -111,6 +111,6 @@ class PromptExclusionTest extends ItopDataTestCaseAlias
 		}
 
 		$this->exclude([], ['Ticket' => ['agent_id']]);
-		$this->assertStringNotContainsString('agent_id', MyOpenTicketsTool::execute()->text, 'the twin names an attribute the operator excluded');
+		$this->assertStringNotContainsString('agent_id', MyOpenTicketsTool::execute()->content[0]->text, 'the twin names an attribute the operator excluded');
 	}
 }

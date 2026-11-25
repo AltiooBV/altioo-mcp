@@ -84,6 +84,32 @@ class CurrentUser extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
+	 * The shape of the answer, as the write tools declare theirs (review 2026-11-23, S2): only what is always there, with its type.
+	 * What a client may rely on and a schema validator checks on every call, so nothing here is guessed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	#[\Override]
+	public function getOutputSchema(): ?array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'access'                       => ['type' => 'object'],
+				'current_contact_friendlyname' => ['type' => ['string', 'null']],
+				'current_contact_id'           => ['type' => 'integer'],
+				'current_organization'         => ['type' => ['object', 'null']],
+				'current_portal'               => ['type' => ['string', 'null']],
+				'current_id'                   => ['type' => ['integer', 'string']],
+				'current_user_language'        => ['type' => 'string'],
+				'timezone'                     => ['type' => 'string'],
+				'now'                          => ['type' => 'string'],
+			],
+			'required'   => ['access', 'current_contact_friendlyname', 'current_contact_id', 'current_organization', 'current_portal', 'current_id', 'current_user_language', 'timezone', 'now'],
+		];
+	}
+
+	/**
 	 * No arguments: the one identity this reports is the one the request
 	 * authenticated as.
 	 *
@@ -102,12 +128,12 @@ class CurrentUser extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
-	 * @return array An array containing the caller's contact friendlyname and id, their user id, their language, and whether archive mode is on
+	 * @return mixed The caller's contact friendlyname and id, their user id, their language, the instance's time zone and the time now, and whether archive mode is on
 	 */
 	public static function execute(): mixed
 	{
 		// The envelope is CurrentUserReader's, so that itop://core/current-user
 		// answers with the same shape for the same data.
-		return ToolOutput::Json(CurrentUserReader::Payload());
+		return ToolOutput::Structured(CurrentUserReader::Payload());
 	}
 }

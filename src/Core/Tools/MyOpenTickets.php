@@ -88,10 +88,35 @@ class MyOpenTickets extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
+	 * The shape of the answer, as the write tools declare theirs (review 2026-11-23, S2): only what is always there, with its type.
+	 * What a client may rely on and a schema validator checks on every call, so nothing here is guessed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	#[\Override]
+	public function getOutputSchema(): ?array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'messages' => [
+					'type'  => 'array',
+					'items' => [
+						'type'       => 'object',
+						'properties' => ['role' => ['type' => 'string'], 'content' => ['type' => 'object', 'properties' => ['type' => ['type' => 'string'], 'text' => ['type' => 'string']], 'required' => ['type', 'text']]],
+						'required'   => ['role', 'content'],
+					],
+				],
+			],
+			'required'   => ['messages'],
+		];
+	}
+
+	/**
 	 * @return mixed The prompt's messages, as prompts/get answers them
 	 */
 	public static function execute(): mixed
 	{
-		return ToolOutput::Json(['messages' => MyOpenTicketsPrompt::Messages()]);
+		return ToolOutput::Structured(['messages' => MyOpenTicketsPrompt::Messages()]);
 	}
 }

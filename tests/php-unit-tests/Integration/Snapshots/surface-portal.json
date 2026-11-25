@@ -66,6 +66,61 @@
                     "destructiveHint": false,
                     "idempotentHint": true,
                     "openWorldHint": false
+                },
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "access": {
+                            "type": "object"
+                        },
+                        "current_contact_friendlyname": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "current_contact_id": {
+                            "type": "integer"
+                        },
+                        "current_organization": {
+                            "type": [
+                                "object",
+                                "null"
+                            ]
+                        },
+                        "current_portal": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "current_id": {
+                            "type": [
+                                "integer",
+                                "string"
+                            ]
+                        },
+                        "current_user_language": {
+                            "type": "string"
+                        },
+                        "timezone": {
+                            "type": "string"
+                        },
+                        "now": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "access",
+                        "current_contact_friendlyname",
+                        "current_contact_id",
+                        "current_organization",
+                        "current_portal",
+                        "current_id",
+                        "current_user_language",
+                        "timezone",
+                        "now"
+                    ]
                 }
             },
             {

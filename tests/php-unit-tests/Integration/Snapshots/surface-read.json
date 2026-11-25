@@ -110,6 +110,61 @@
                     "destructiveHint": false,
                     "idempotentHint": true,
                     "openWorldHint": false
+                },
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "access": {
+                            "type": "object"
+                        },
+                        "current_contact_friendlyname": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "current_contact_id": {
+                            "type": "integer"
+                        },
+                        "current_organization": {
+                            "type": [
+                                "object",
+                                "null"
+                            ]
+                        },
+                        "current_portal": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "current_id": {
+                            "type": [
+                                "integer",
+                                "string"
+                            ]
+                        },
+                        "current_user_language": {
+                            "type": "string"
+                        },
+                        "timezone": {
+                            "type": "string"
+                        },
+                        "now": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "access",
+                        "current_contact_friendlyname",
+                        "current_contact_id",
+                        "current_organization",
+                        "current_portal",
+                        "current_id",
+                        "current_user_language",
+                        "timezone",
+                        "now"
+                    ]
                 }
             },
             {
@@ -178,6 +233,44 @@
                     "destructiveHint": false,
                     "idempotentHint": true,
                     "openWorldHint": false
+                },
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "type",
+                                            "text"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "role",
+                                    "content"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "messages"
+                    ]
                 }
             },
             {
@@ -624,6 +717,60 @@
                     "destructiveHint": false,
                     "idempotentHint": true,
                     "openWorldHint": false
+                },
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "version": {
+                            "type": "string"
+                        },
+                        "build": {
+                            "type": [
+                                "string",
+                                "integer"
+                            ]
+                        },
+                        "buildDate": {
+                            "type": "string"
+                        },
+                        "edition": {
+                            "type": "string",
+                            "enum": [
+                                "community",
+                                "professional"
+                            ]
+                        },
+                        "extension": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "version": {
+                                    "type": "string"
+                                },
+                                "license": {
+                                    "type": "string"
+                                },
+                                "source": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "version",
+                                "license",
+                                "source"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "version",
+                        "build",
+                        "buildDate",
+                        "edition",
+                        "extension"
+                    ]
                 }
             }
         ],

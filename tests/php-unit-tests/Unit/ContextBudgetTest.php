@@ -183,4 +183,27 @@ class ContextBudgetTest extends TestCase
 
 		$this->assertLessThanOrEqual(self::INSTRUCTIONS, $iBytes, 'the instructions are '.$iBytes.' bytes; raise the budget on purpose, or cut it');
 	}
+
+	/**
+	 * The output schemas of the read tools (review 2026-11-23, S2) are in every client's tools/list as the write tools' are, and
+	 * were left out where they cost more than they tell: this is what they add up to, so another one is a decision.
+	 */
+	public function testTheReadToolsOutputSchemasStayWhereTheyWereDecided(): void
+	{
+		$iBytes = 0;
+		$aDeclaring = [];
+		foreach (self::coreTools() as $sName => $sClass) {
+			$oTool = new $sClass();
+			$aHints = $oTool->getAnnotations()?->jsonSerialize() ?? [];
+			if (empty($aHints['readOnlyHint']) || $oTool->getOutputSchema() === null) {
+				continue;
+			}
+			$aDeclaring[] = $sName;
+			$iBytes += strlen((string)json_encode($oTool->getOutputSchema()));
+		}
+		sort($aDeclaring);
+
+		$this->assertSame(['CurrentUser', 'MyOpenTickets', 'Version'], $aDeclaring, 'a read tool declares an output schema, or stops: decide it here and in ReadResultSchemaTest::COVERED');
+		$this->assertLessThanOrEqual(1400, $iBytes, 'the read tools output schemas together grew: '.$iBytes);
+	}
 }
