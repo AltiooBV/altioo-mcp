@@ -306,7 +306,8 @@ final class DatamodelReader
 				return null;
 			}
 
-			$sRendered = trim((string)$oCondition->Render());
+			// RenderExpression(false), not Render(): 3.2 deprecated Render() for it, and 3.3 removed it.
+			$sRendered = trim((string)$oCondition->RenderExpression(false));
 			if ($sRendered === '') {
 				return null;
 			}
