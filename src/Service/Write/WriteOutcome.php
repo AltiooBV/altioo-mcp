@@ -155,6 +155,22 @@ final class WriteOutcome
 	}
 
 	/**
+	 * The same flag, said short, for a tool whose schema is paid for on every connection beside a longer sibling (review
+	 * 2026-11-23, S3): the meaning is core_object_update's.
+	 *
+	 * @return array<string, mixed>
+	 * @since 2.2.0
+	 */
+	public static function ObsoleteOkBriefSchemaProperty(string $sWhatItDoes): array
+	{
+		return [
+			'type'        => 'boolean',
+			'description' => 'Also '.$sWhatItDoes.' obsolete objects your account hides, as core_object_update does; refused by default.',
+			'default'     => false,
+		];
+	}
+
+	/**
 	 * The escape hatch for the guard below, spelled once.
 	 *
 	 * @return array<string, mixed>

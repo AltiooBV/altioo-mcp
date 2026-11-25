@@ -58,11 +58,11 @@ class ContextBudgetTest extends TestCase
 		'Instructions'        => [800, 40],
 		'MyActivity'          => [430, 470],
 		'MyOpenTickets'       => [230, 40],
-		'ObjectApplyStimulus' => [520, 1030],
+		'ObjectApplyStimulus' => [520, 1190],
 		'ObjectAttach'        => [400, 1610],
 		'ObjectBulkCreate'    => [420, 920],
-		'ObjectBulkDelete'    => [560, 1240],
-		'ObjectBulkUpdate'    => [420, 1500],
+		'ObjectBulkDelete'    => [560, 1400],
+		'ObjectBulkUpdate'    => [420, 1670],
 		'ObjectCount'         => [260, 1080],
 		'ObjectCreate'        => [580, 850],
 		'ObjectDelete'        => [690, 1000],
@@ -79,9 +79,9 @@ class ContextBudgetTest extends TestCase
 		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. Batch 3: core_current_user says it gives the time zone and the time now (C10), 14993: 15000. L1, the prompt's tool twin core_my_open_tickets (ADR 0025, amended): +222, 15222: 15230. C16's added fields in the history, +118, 15348: 15350. */
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. Batch 3: core_current_user says it gives the time zone and the time now (C10), 14993: 15000. L1, the prompt's tool twin core_my_open_tickets (ADR 0025, amended): +222, 15222: 15230. C16's added fields in the history, +118, 15348: 15350. Input schemas: the history, the document's uri (C18) and obsolete_ok on the stimulus and the two bulk tools (S3), 24873 -> 25456: 25460. */
 	private const TOTAL_DESCRIPTIONS = 15350;
-	private const TOTAL_INPUT_SCHEMAS = 24980;
+	private const TOTAL_INPUT_SCHEMAS = 25460;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
 	private const INSTRUCTIONS = 3200;
@@ -174,7 +174,7 @@ class ContextBudgetTest extends TestCase
 		}
 
 		$this->assertLessThanOrEqual(9440, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
-		$this->assertLessThanOrEqual(8100, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
+		$this->assertLessThanOrEqual(8240, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
 	public function testTheInstructionsDoNotGrowPastTheirBudget(): void

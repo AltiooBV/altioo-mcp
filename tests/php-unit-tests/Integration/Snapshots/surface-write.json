@@ -216,6 +216,11 @@
                             "type": "string",
                             "description": "Why the transition is being applied, in one short sentence, recorded in the audit trail beside the change. The reason the user gave, or nothing.",
                             "maxLength": 255
+                        },
+                        "obsolete_ok": {
+                            "type": "boolean",
+                            "description": "Also act on obsolete objects your account hides, as core_object_update does; refused by default.",
+                            "default": false
                         }
                     },
                     "required": [
@@ -636,6 +641,11 @@
                             ],
                             "description": "Key/value pairs applied to every listed object. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.",
                             "additionalProperties": true
+                        },
+                        "obsolete_ok": {
+                            "type": "boolean",
+                            "description": "Also modify obsolete objects your account hides, as core_object_update does; refused by default.",
+                            "default": false
                         }
                     },
                     "required": [

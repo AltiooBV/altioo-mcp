@@ -46,6 +46,11 @@
                             "type": "string",
                             "description": "Why these objects are being changed, in one short sentence, recorded in the audit trail beside the change. The reason the user gave, or nothing.",
                             "maxLength": 255
+                        },
+                        "obsolete_ok": {
+                            "type": "boolean",
+                            "description": "Also delete obsolete objects your account hides, as core_object_update does; refused by default.",
+                            "default": false
                         }
                     },
                     "required": [

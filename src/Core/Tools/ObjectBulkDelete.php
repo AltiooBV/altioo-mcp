@@ -18,6 +18,8 @@ use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Write\DryRun;
 use Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade;
+use Altioo\iTop\Extension\MCP\Service\Write\WriteOutcome;
+use Altioo\iTop\Extension\MCP\Service\Write\WritePlan;
 use DBObject;
 use DBObjectSet;
 use MetaModel;
@@ -84,7 +86,9 @@ class ObjectBulkDelete extends AbstractBulkTool
 	{
 		return [
 			'type'       => 'object',
-			'properties' => self::targetSchemaProperties('delete for real'),
+			'properties' => self::targetSchemaProperties('delete for real') + [
+				'obsolete_ok' => WriteOutcome::ObsoleteOkBriefSchemaProperty('delete'),
+			],
 			'required'   => ['class', 'ids'],
 		];
 	}
@@ -94,6 +98,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 	 * @param array<int, mixed> $ids      Ids of the objects to delete
 	 * @param bool              $simulate When true (default), nothing is deleted
 	 * @param string|null       $comment  Why the batch is being deleted, recorded on the audit row
+	 * @param bool              $obsolete_ok Delete obsolete objects even though this account hides them: otherwise their rows fail, as core_object_delete refuses
 	 *
 	 * @return mixed A per-object report, each carrying what its deletion would take with it
 	 *
@@ -104,6 +109,7 @@ class ObjectBulkDelete extends AbstractBulkTool
 		array   $ids,
 		bool    $simulate = true,
 		?string $comment = null,
+		bool    $obsolete_ok = false,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
@@ -142,6 +148,14 @@ class ObjectBulkDelete extends AbstractBulkTool
 			$mObject = self::objectFor($class, $iId, self::isAttachment($class) ? UR_ACTION_READ : UR_ACTION_DELETE, 'delete');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
+				continue;
+			}
+
+			// An object this account cannot see in its own searches is probably being acted on from a stale id, as
+			// core_object_delete says: this row fails, the others go on (review 2026-11-23, S3).
+			$sObsoleteRefusal = WritePlan::HiddenObsoleteRefusal($mObject, $class, $obsolete_ok, 'delete', true);
+			if ($sObsoleteRefusal !== null) {
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $sObsoleteRefusal);
 				continue;
 			}
 

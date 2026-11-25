@@ -88,9 +88,9 @@ class ObjectDeleteContractTest extends TestCase
 	 * configured, so the refusal names obsolete_ok and core_set_obsolete_data
 	 * rather than ending the conversation.
 	 *
-	 * Single-object only. A bulk call is handed its ids explicitly and reports
-	 * per row, so a hidden-obsolete row there belongs in that row's entry
-	 * rather than in a refusal that stops the other ninety-nine.
+	 * A single-object tool refuses the call. A bulk call is handed its ids explicitly and reports
+	 * per row, so a hidden-obsolete row there is that row's entry
+	 * rather than a refusal that stops the other ninety-nine.
 	 */
 	public function testAnObsoleteObjectThisAccountHidesIsRefusedWithAWayOut(): void
 	{
@@ -100,8 +100,8 @@ class ObjectDeleteContractTest extends TestCase
 		$this->assertTrue($oGuard->HasMethod('RefuseHiddenObsolete'));
 		$this->assertTrue($fMentions('obsolete_ok=true'), 'the refusal does not say how to proceed');
 		$this->assertTrue($fMentions('core_set_obsolete_data'), 'the other way out is not named');
-		$this->assertTrue($oGuard->HasCallTo('ShowObsoleteData', 'RefuseHiddenObsolete'), 'the guard fires on accounts that can see them too');
-		$this->assertStringContainsString('return;', $oGuard->Code('RefuseHiddenObsolete'), 'a guard that cannot answer must fail open, not refuse');
+		$this->assertTrue($oGuard->HasCallTo('ShowObsoleteData', 'HiddenObsoleteRefusal'), 'the guard fires on accounts that can see them too');
+		$this->assertStringContainsString('returnnull;', $oGuard->Code('HiddenObsoleteRefusal'), 'a guard that cannot answer must fail open, not refuse');
 
 		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate::class] as $sTool) {
 			$oTool = new $sTool();
@@ -109,13 +109,19 @@ class ObjectDeleteContractTest extends TestCase
 			$this->assertFalse($oTool->getInputSchema()['properties']['obsolete_ok']['default'], "{$sTool} lets it through by default");
 		}
 
-		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate::class] as $sBulk) {
-			$this->assertArrayNotHasKey(
-				'obsolete_ok',
-				(new $sBulk())->getInputSchema()['properties'],
-				"{$sBulk} carries a single-object guard"
-			);
+		// The bulk tools and the stimulus carry it too (review 2026-11-23, S3), with the same default and the same meaning,
+		// and say it per row where a single-object tool refuses the call.
+		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate::class, \Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class] as $sOther) {
+			$aSchema = (new $sOther())->getInputSchema();
+			$this->assertArrayHasKey('obsolete_ok', $aSchema['properties'], "{$sOther} offers no way past the guard");
+			$this->assertFalse($aSchema['properties']['obsolete_ok']['default'], "{$sOther} lets it through by default");
+			$this->assertNotContains('obsolete_ok', $aSchema['required'], "{$sOther} requires the flag");
 		}
+		foreach ([\Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete::class => 'delete', \Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkUpdate::class => 'modify'] as $sBulk => $sVerb) {
+			$this->assertTrue(SourceCalls::OfClass($sBulk)->HasCall(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class.'::HiddenObsoleteRefusal', 'execute'), "{$sBulk} does not ask the guard in its own source (ADR 0014)");
+			$this->assertFalse(SourceCalls::OfClass($sBulk)->HasCall(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class.'::RefuseHiddenObsolete', 'execute'), "{$sBulk} refuses the whole call for one row");
+		}
+		$this->assertTrue(SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class)->HasCall(\Altioo\iTop\Extension\MCP\Service\Write\WritePlan::class.'::RefuseHiddenObsolete', 'execute'));
 	}
 
 	/**
