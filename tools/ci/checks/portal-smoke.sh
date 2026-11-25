@@ -16,7 +16,7 @@
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
 
-IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile iExclPerson iExclTeam sExemptToken sExemptProfile <<<"$PORTAL_SMOKE"
+IFS=: read -r sPortalToken iOwn iOther iOwnFile iForeignFile iDraftFile iChangeFile iExclPerson iExclTeam sExemptToken sExemptProfile sReadToken <<<"$PORTAL_SMOKE"
 sPortalUrl="$ENDPOINT?portal_id=itop-portal"
 sPortalSession=''
 iRpc=10
@@ -317,4 +317,42 @@ else
 	fi
 
 	php "$MODULE_SRC/tools/ci/checks/exclusions.php" "$ITOP_DIR" off >/dev/null || fail "could not clear the exclusions"
+fi
+
+# ---------------------------------------------------------------------------------------------------------------
+# A portal user whose credential is scoped to read (review 2026-11-23, C5): what an OAuth approval that grants no
+# write scope leaves. Nothing that changes an object is served, and the instructions, the class overview and an
+# object's answer say so and stop offering what they cannot do. The writes are not attempted: there is no tool.
+echo "11. portal mode: a read-only credential is told so and offered no write"
+if [ -z "${sReadToken:-}" ]; then
+	echo "   no read-only token on this instance: not exercised"
+else
+	sSavedToken=$sPortalToken
+	sPortalToken=$sReadToken
+	mcp_open "$sPortalUrl" || fail "the read-only portal token was not let in (HTTP $sStatus): ${sBody:0:300}"
+
+	mcp_post "$sPortalUrl" '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}'
+	sTools=$(printf '%s' "$sBody" | php -r '$a = json_decode(stream_get_contents(STDIN), true); echo implode(" ", array_column($a["result"]["tools"] ?? [], "name"));')
+	for sTool in core_object_create core_object_update core_object_apply_stimulus core_object_attach; do
+		case " $sTools " in *" $sTool "*) fail "a read-only credential is advertised $sTool" ;; esac
+	done
+	case " $sTools " in *' core_portal_list '*) echo "   ok  the reads are served and no write tool is" ;; *) fail "the read-only credential lost the reads: $sTools" ;; esac
+
+	sOut=$(mcp_tool core_instructions '{}')
+	case "$sOut" in *'No tool that creates or changes an object'*'scope'*'MCP-write'*) echo "   ok  the instructions say it and name the scope" ;; *) fail "the instructions do not say the scope is why: ${sOut:0:400}" ;; esac
+	case "$sOut" in *settable*|*may_attach*|*core_object_create*|*'create action'*) fail "the instructions still talk of writing: ${sOut:0:600}" ;; *) echo "   ok  and talk of no writing" ;; esac
+
+	sOut=$(mcp_tool core_class_list '{}')
+	printf '%s' "${sOut#ok }" | php -r '$a = json_decode(stream_get_contents(STDIN), true);
+		if (!is_array($a) || ($a["create_actions"] ?? null) !== []) { fwrite(STDERR, "create_actions is not empty\n"); exit(1); }
+		foreach ($a["classes"] ?? [] as $c) { if ($c["edit"] || $c["attach"] || $c["create"] !== [] || $c["stimuli"] !== []) { fwrite(STDERR, $c["class"]." still offers a write\n"); exit(1); } }' \
+		|| fail "core_class_list still offers a write to a read-only credential: ${sOut:0:300}"
+	echo "   ok  core_class_list lists no create action, edit or state change"
+
+	sOut=$(mcp_tool core_object_get '{"class":"UserRequest","id":'"$iOwn"'}')
+	must "the user's own request is still readable" "$sOut" ok
+	case "$sOut" in *settable_fields*|*may_attach*|*'"stimuli"'*) fail "core_object_get still lists a write to a read-only credential: ${sOut:0:300}" ;; *) echo "   ok  and core_object_get lists no settable field, no attach and no state change" ;; esac
+
+	sPortalToken=$sSavedToken
+	sPortalSession=''
 fi
