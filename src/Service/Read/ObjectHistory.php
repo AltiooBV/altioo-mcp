@@ -211,12 +211,15 @@ final class ObjectHistory
 	 *                                      set's change names the object linked or unlinked only then, as the class it is, and an attachment's id likewise; without it the entry says
 	 *                                      what happened and not to which object.
 	 * @param (\Closure(): bool)|null $fShowsAttachments Whether the user is shown this object's attachments. The entry of one added or removed carries its file name only then.
+	 * @param (\Closure(array<int, int>): array<int, array{tool: string, comment: string|null}>)|null $fOwnCalls The MCP calls of this account's own that wrote each of these changes, by change id: the tool, and the reason
+	 *                                      the call gave. An entry carries `tool` and `comment` only where this answers for its change. The caller decides what is "own" and checks it in its own source (ADR 0014); without it
+	 *                                      no entry names a tool or a reason, which are another person's words to anyone but their author.
 	 *
 	 * @return array<string, mixed>
 	 */
-	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null): array
+	public static function Within(DBObject $oObject, \Closure $fBound, \Closure $fShows, string $sAttCode = '', int $iLimit = self::DEFAULT_LIMIT, int $iOffset = 0, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null, ?\Closure $fOwnCalls = null): array
 	{
-		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows, $fNameOf, $fShowsObject, $fShowsAttachments);
+		return self::read($oObject, $sAttCode, $iLimit, $iOffset, $fBound, $fShows, $fNameOf, $fShowsObject, $fShowsAttachments, $fOwnCalls);
 	}
 
 	/**
@@ -225,10 +228,11 @@ final class ObjectHistory
 	 * @param (\Closure(string, int): ?string)|null $fNameOf
 	 * @param (\Closure(string, int): ?string)|null $fShowsObject
 	 * @param (\Closure(): bool)|null $fShowsAttachments
+	 * @param (\Closure(array<int, int>): array<int, array{tool: string, comment: string|null}>)|null $fOwnCalls
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null): array
+	private static function read(DBObject $oObject, string $sAttCode, int $iLimit, int $iOffset, ?\Closure $fBound, ?\Closure $fShows, ?\Closure $fNameOf = null, ?\Closure $fShowsObject = null, ?\Closure $fShowsAttachments = null, ?\Closure $fOwnCalls = null): array
 	{
 		$sClass = get_class($oObject);
 		$iKey = (int)$oObject->GetKey();
@@ -278,6 +282,7 @@ final class ObjectHistory
 		$aEntries = [];
 		$oInstanceSet = null;
 		$aCaseLogs = [];
+		$aOrigins = [];
 		while ($oSet !== null && ($oOp = $oSet->Fetch())) {
 			$aEntry = self::describe($oOp);
 			$sOn = $aEntry['attribute'];
@@ -290,9 +295,11 @@ final class ObjectHistory
 			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
 			$aEntry = self::withNames($aEntry, $sClass, $fNameOf);
 			$aEntry = self::withDetails($aEntry, $oOp, $fShowsObject, $fShowsAttachments);
+			$aEntry = self::withChange($aEntry, $oOp, $aOrigins);
 
 			$aEntries[] = $aEntry;
 		}
+		$aEntries = self::withOwnCalls($aEntries, $fOwnCalls);
 
 		return [
 			'class'     => $sClass,
@@ -304,8 +311,91 @@ final class ObjectHistory
 			// attribute this caller may not read is dropped after counting, the
 			// same way ObjectSerializer drops an unreadable attribute from a read.
 			'total'     => $iTotal,
+			// As the searches say it: a further page exists when the rows this query matched run past this one.
+			'has_more'    => $iOffset + $iLimit < $iTotal,
+			'next_offset' => $iOffset + $iLimit < $iTotal ? $iOffset + $iLimit : null,
 			'entries'   => $aEntries,
 		];
+	}
+
+	/**
+	 * The change this row belongs to and how it was made (review 2026-11-23, C16).
+	 *
+	 * `change_id` is the key of the CMDBChange that groups the rows written together, and `origin` iTop's own word for how
+	 * it was made (interactive, webservice-rest, email-processing, ...), read once per change on the page. Neither is
+	 * said in portal mode, as `user_id` is not: a portal user has no use for either, and a change's key is a counter of
+	 * everything done on the instance. `_change` carries the key to {@see withOwnCalls()}, which removes it.
+	 *
+	 * @param array<string, mixed>   $aEntry
+	 * @param array<int, string|null> $aOrigins Origin by change key, read once per change; by reference.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withChange(array $aEntry, DBObject $oOp, array &$aOrigins): array
+	{
+		$iChange = MetaModel::IsValidAttCode(get_class($oOp), 'change') ? (int)$oOp->Get('change') : 0;
+		$aEntry['_change'] = $iChange;
+		if (PortalMode::Current() !== null) {
+			$aEntry['change_id'] = null;
+			$aEntry['origin'] = null;
+
+			return $aEntry;
+		}
+
+		if ($iChange > 0 && !array_key_exists($iChange, $aOrigins)) {
+			try {
+				$oChange = MetaModel::GetObject('CMDBChange', $iChange, false, true);
+				$sOrigin = $oChange === null ? '' : (string)$oChange->Get('origin');
+				$aOrigins[$iChange] = $sOrigin === '' ? null : $sOrigin;
+			} catch (\Throwable $e) {
+				ErrorReport::Log('Could not read the origin of change '.$iChange.' for the history: '.get_class($e));
+				$aOrigins[$iChange] = null;
+			}
+		}
+		$aEntry['change_id'] = $iChange > 0 ? $iChange : null;
+		$aEntry['origin'] = $aOrigins[$iChange] ?? null;
+
+		return $aEntry;
+	}
+
+	/**
+	 * The tool and the reason of the MCP call that wrote a change, on the entries of changes this account's own calls
+	 * wrote, and on no other (review 2026-11-23, C16).
+	 *
+	 * Both are another person's words to everyone but their author: a tool says what an assistant did in a colleague's name, and
+	 * a reason is free text. So the caller answers, in its own source (ADR 0014), for which changes are this account's own,
+	 * and an entry of any other change carries neither key. The internal `_change` is removed here whatever happens.
+	 *
+	 * @param array<int, array<string, mixed>> $aEntries
+	 * @param (\Closure(array<int, int>): array<int, array{tool: string, comment: string|null}>)|null $fOwnCalls
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function withOwnCalls(array $aEntries, ?\Closure $fOwnCalls): array
+	{
+		$aOwn = [];
+		if ($fOwnCalls !== null && $aEntries !== []) {
+			$aWanted = array_values(array_unique(array_filter(array_column($aEntries, '_change'), static fn ($i): bool => (int)$i > 0)));
+			try {
+				$aOwn = $aWanted === [] ? [] : $fOwnCalls(array_map('intval', $aWanted));
+			} catch (\Throwable $e) {
+				ErrorReport::Log('Could not read the own calls of the changes of a history page: '.get_class($e));
+			}
+		}
+
+		foreach ($aEntries as $i => $aEntry) {
+			$iChange = (int)($aEntry['_change'] ?? 0);
+			unset($aEntries[$i]['_change']);
+			if ($iChange > 0 && isset($aOwn[$iChange])) {
+				$aEntries[$i]['tool'] = $aOwn[$iChange]['tool'];
+				$sComment = (string)($aOwn[$iChange]['comment'] ?? '');
+				if ($sComment !== '') {
+					$aEntries[$i]['comment'] = mb_strlen($sComment) > self::MAX_VALUE_CHARS ? mb_substr($sComment, 0, self::MAX_VALUE_CHARS).'…' : $sComment;
+				}
+			}
+		}
+
+		return array_values($aEntries);
 	}
 
 	/**

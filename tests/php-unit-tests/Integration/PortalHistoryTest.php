@@ -98,4 +98,25 @@ class PortalHistoryTest extends ItopDataTestCaseAlias
 
 		$this->assertNull($aRows[0]['to_name']);
 	}
+
+	/** Review 2026-11-23, C16: a portal user is not given the change's key or its origin, and no tool or reason without a way to say. */
+	public function testAPortalUserIsGivenNeitherTheChangeKeyNorItsOrigin(): void
+	{
+		\Altioo\iTop\Extension\MCP\Helper\PortalMode::Remember('itop-portal');
+		try {
+			$aHistory = $this->history(null);
+		} finally {
+			\Altioo\iTop\Extension\MCP\Helper\PortalMode::Forget();
+		}
+
+		$this->assertNotSame([], $aHistory['entries']);
+		foreach ($aHistory['entries'] as $aEntry) {
+			$this->assertNull($aEntry['change_id']);
+			$this->assertNull($aEntry['origin']);
+			$this->assertArrayNotHasKey('tool', $aEntry);
+			$this->assertArrayNotHasKey('comment', $aEntry);
+			$this->assertArrayNotHasKey('_change', $aEntry);
+		}
+		$this->assertArrayHasKey('has_more', $aHistory);
+	}
 }
