@@ -60,17 +60,21 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return self::PORTAL_DESCRIPTION
+			return (ServedAccess::ServesWrites() ? self::PORTAL_DESCRIPTION : self::PORTAL_DESCRIPTION_READ_ONLY)
 				.(ServedAccess::Serves('core_object_history') ? ' core_object_history gives what changed, where the portal shows history.' : '');
 		}
 
-		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, plus an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class, and the stimuli its current state accepts, which is what core_object_apply_stimulus will take.'
+		return 'Retrieve a single iTop object by its class and ID. Returns all readable attributes, plus an audit block saying when the object was created and when it was last changed, with the user behind each: iTop keeps no such field on the object itself. It also reports what may be done to this object now - the update and delete gates answered for this object rather than for its class'
+			.(ServedAccess::ServesWrites() ? ', and the stimuli its current state accepts, which is what core_object_apply_stimulus will take.' : '.')
 			.(ServedAccess::Serves('core_object_history') ? ' Call core_object_history for the full record of what changed.' : '')
 			.' Files attached to an object are not attributes of it: they are Attachment objects pointing back at it, so core_object_search_by_class on Attachment with item_class and item_id lists them.';
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema yet and no attachment search. */
 	private const PORTAL_DESCRIPTION = 'Read one object this user\'s portal shows them: the fields of its view form for the object as it is now (output_fields narrows them), the attachments listed beside it, and what they may do to it now - its rights, the stimuli its current state accepts (for core_object_apply_stimulus), and the fields its edit form lets them set (settable_fields, for core_object_update). class and id come from a row of core_portal_list; a parent class such as Ticket is fine, and the answer names the class the object is.';
+
+	/** The same, for a connection served no tool that changes an object: no state change, no settable field (review 2026-11-23, C5). */
+	private const PORTAL_DESCRIPTION_READ_ONLY = 'Read one object this user\'s portal shows them: the fields of its view form for the object as it is now (output_fields narrows them) and the attachments listed beside it. class and id come from a row of core_portal_list; a parent class such as Ticket is fine, and the answer names the class the object is.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
@@ -157,6 +161,12 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			$aObject['rights'] = $oAccess->RightsOn($oObject, $oInstanceSet);
 			$aObject['stimuli'] = $oAccess->StimuliOn($oObject, $aObject['rights'], $oInstanceSet);
 			$aObject += $oAccess->Extras($oObject);
+			// A connection with no tool that changes an object is not told how it could (review 2026-11-23, C5):
+			// the state changes, the fields an edit would set and whether a file could be added. The gates in
+			// "rights" stay, being what iTop lets this account do, not what this connection offers.
+			if (!ServedAccess::ServesWrites()) {
+				unset($aObject['stimuli'], $aObject['settable_fields'], $aObject['may_attach']);
+			}
 			return [$sFinalClass, $aObject];
 		});
 

@@ -32,19 +32,27 @@ final class ServedAccess
 
 	private static ?\Closure $fPrompts = null;
 
+	private static ?\Closure $fWritesWithheld = null;
+
+	/** What the server said about writes, asked once per request: false until asked. */
+	private static string|false|null $mWritesWithheld = false;
+
 	/** @var array<int, string>|null The served tools, asked of the server once per request. */
 	private static ?array $aServedTools = null;
 
 	/**
 	 * @param \Closure(): array{toolsets: array<int, string>, tools: array<int, string>, capabilities: array<int, string>, prompts: array<int, string>} $fAccess
 	 * @param \Closure(AccessPolicy): array<int, string>                                                                                       $fPrompts
+	 * @param \Closure(): ?string|null $fWritesWithheld Why no write tool is served (WRITES_* below), null when one is; see WritesWithheldBy().
 	 * @internal Request state, set and cleared by Service\Server\RequestScope; a pack never calls it.
 	 */
-	public static function Remember(\Closure $fAccess, \Closure $fPrompts): void
+	public static function Remember(\Closure $fAccess, \Closure $fPrompts, ?\Closure $fWritesWithheld = null): void
 	{
 		self::$fAccess = $fAccess;
 		self::$fPrompts = $fPrompts;
+		self::$fWritesWithheld = $fWritesWithheld;
 		self::$aServedTools = null;
+		self::$mWritesWithheld = false;
 	}
 
 	/**
@@ -56,7 +64,9 @@ final class ServedAccess
 	{
 		self::$fAccess = null;
 		self::$fPrompts = null;
+		self::$fWritesWithheld = null;
 		self::$aServedTools = null;
+		self::$mWritesWithheld = false;
 	}
 
 	/**
@@ -92,6 +102,51 @@ final class ServedAccess
 		self::$aServedTools ??= self::Current()['tools'];
 
 		return in_array($sTool, self::$aServedTools, true);
+	}
+
+	/** The credential's own scope is what leaves it without a write tool: the instance would serve one. */
+	public const WRITES_BY_SCOPE = 'scope';
+
+	/** The instance's settings (mcp_read_only, mcp_capabilities, mcp_enabled_toolsets) serve no write tool to anyone. */
+	public const WRITES_BY_SETTINGS = 'settings';
+
+	/** No write tool is served and neither of the above says why (a tool turned off, a portal that offers none). */
+	public const WRITES_BY_OTHER = 'other';
+
+	/**
+	 * Why this caller is served no write tool, or null when it is served one.
+	 *
+	 * "A write tool" is one graded write or delete: whatever changes an object. Decided by what the server serves
+	 * (the capabilities it reports), never by what the credential's grade would allow, so a text that withdraws
+	 * its write talk is withdrawn from exactly the connections that cannot write (review 2026-11-23, C5; decided
+	 * 2026-11-24: the reviewer's portal session was read-only because of the OAuth authorization scope). Null
+	 * when no server is asking: nothing remembered, nothing to contradict.
+	 *
+	 * @return string|null One of the WRITES_BY_* constants.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function WritesWithheldBy(): ?string
+	{
+		if (self::$fWritesWithheld === null) {
+			return null;
+		}
+
+		if (self::$mWritesWithheld === false) {
+			self::$mWritesWithheld = (self::$fWritesWithheld)();
+		}
+
+		return self::$mWritesWithheld;
+	}
+
+	/**
+	 * Whether this caller is served any tool that changes an object. True when no server is asking.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ServesWrites(): bool
+	{
+		return self::WritesWithheldBy() === null;
 	}
 
 	/**

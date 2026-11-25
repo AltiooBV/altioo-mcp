@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use MetaModel;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
@@ -42,13 +43,40 @@ use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 final class PortalDescription
 {
 	/** What the class tools say they answer in portal mode: how to read the overview and a class. */
-	public const READING = 'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds; and every portal is configured differently, so read the ids here rather than assuming any. '
+	public const READING = self::READING_HEAD
 		.'Choose a list or a create action by its title and class: those say what it is. A list with a parent is a browse level under that list, narrowed with core_portal_list parent_id; a create action with a from_list starts from a row of that list. '
 		.'A create action with class_chosen_by_portal has no class yet: the portal picks it from the object chosen to start from (in iTop\'s stock portal, a service subcategory). A class the user may create lists such actions in create_chosen_by_portal, and core_object_create runs one. '
 		.'Each stimulus says the states it applies in (from_states). '
-		.'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. '
+		.self::READING_HISTORY
 		.'A field marked read_only is shown but cannot be set; mandatory ones must be. A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
 		.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields, and what may be done to it now.';
+
+	private const READING_HEAD = 'Everything comes from the portal\'s own configuration, so a class missing here is one the portal does not offer this user, whatever the datamodel holds; and every portal is configured differently, so read the ids here rather than assuming any. ';
+
+	private const READING_HISTORY = 'history says whether the portal shows history: when true, core_object_history gives the history of an object it shows you, limited to the fields its view form shows. ';
+
+	/**
+	 * READING for this caller: the same words, less what a connection with no write tool cannot use (create
+	 * actions, stimuli, what may be done to an object), so a description does not name what is not served
+	 * (review 2026-11-23, C5). READING itself is what a connection served a write tool reads.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function Reading(): string
+	{
+		if (ServedAccess::ServesWrites()) {
+			return self::READING;
+		}
+
+		return self::READING_HEAD
+			.'Choose a list by its title and class: those say what it is. A list with a parent is a browse level under that list, narrowed with core_portal_list parent_id. '
+			.self::READING_HISTORY
+			.'A form marked default is the class\'s "details" list, used because the portal declares no form for it. attachments says whether the portal shows an object\'s attachments beside its forms. '
+			.'The fields of an existing object follow its state, so those listed are a new object\'s: core_object_get gives one object\'s fields.';
+	}
+
+	/** Said once in the overview when this connection is served no write tool: what is left out, and that it is not a statement about the user's rights. */
+	private const NO_WRITES_NOTE = 'No tool that creates or changes an object is served on this connection, so create actions and state changes are listed as none and edit and attach as false. That says what this connection can do, not what the portal gives the user.';
 
 	/**
 	 * One class in full, fields included; refused alike whether it is
@@ -99,12 +127,13 @@ final class PortalDescription
 	 */
 	public static function Overview(PortalPolicy $oPolicy): array
 	{
+		$bWrites = ServedAccess::ServesWrites();
 		$aClasses = [];
 		foreach (self::offeredClasses($oPolicy) as $sClass) {
 			$aClasses[] = self::summary($oPolicy, $sClass);
 		}
 
-		return [
+		return ($bWrites ? [] : ['note' => self::NO_WRITES_NOTE]) + [
 			'portal'         => $oPolicy->Portal(),
 			'classes'        => $aClasses,
 			'lists'          => self::readableLists($oPolicy),
@@ -164,6 +193,9 @@ final class PortalDescription
 	 */
 	private static function summary(PortalPolicy $oPolicy, string $sClass): array
 	{
+		// A connection served no write tool is shown neither a way to create, nor to edit, attach or change
+		// state (review 2026-11-23, C5): the keys stay, empty, so nothing that reads them breaks.
+		$bWrites = ServedAccess::ServesWrites();
 		$aCreate = [];
 		$aChosen = [];
 		foreach (self::servedCreateActions($oPolicy) as $aAction) {
@@ -181,7 +213,7 @@ final class PortalDescription
 			$aChosen = [];
 		}
 
-		$aLabels = $oPolicy->Stimuli($sClass);
+		$aLabels = $bWrites ? $oPolicy->Stimuli($sClass) : [];
 		$aFrom = PortalPolicy::StatesOf($sClass, array_keys($aLabels));
 		$aStimuli = [];
 		foreach ($aLabels as $sCode => $sLabel) {
@@ -194,10 +226,10 @@ final class PortalDescription
 			'description' => MetaModel::GetClassDescription($sClass),
 			'reached_by'  => $oPolicy->ReachedBy($sClass),
 			'read'        => true,
-			'edit'        => $oPolicy->WriteSet($sClass) !== null,
+			'edit'        => $bWrites && $oPolicy->WriteSet($sClass) !== null,
 			// Whether a file can be added at all: the class takes attachments and may be edited. A state or an
 			// edit form can still refuse one object; core_object_get says may_attach for that.
-			'attach'      => $oPolicy->WriteSet($sClass) !== null && PortalForms::ShowsAttachments(MetaModel::NewObject($sClass)),
+			'attach'      => $bWrites && $oPolicy->WriteSet($sClass) !== null && PortalForms::ShowsAttachments(MetaModel::NewObject($sClass)),
 			'create'      => $aCreate,
 			'create_chosen_by_portal' => $aChosen,
 			'stimuli'     => $aStimuli,
@@ -278,6 +310,10 @@ final class PortalDescription
 	private static function servedCreateActions(PortalPolicy $oPolicy): array
 	{
 		$aServed = [];
+		if (!ServedAccess::ServesWrites()) {
+			return $aServed;
+		}
+
 		foreach ($oPolicy->CreateActions() as $aAction) {
 			$sClass = $aAction['class'];
 			if ($sClass === null) {
