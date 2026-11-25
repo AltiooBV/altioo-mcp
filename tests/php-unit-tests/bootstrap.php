@@ -94,7 +94,9 @@ require_once __DIR__.'/Support/log_doubles.php';
  */
 if (!class_exists('Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias', false)) {
 	if (class_exists('Combodo\iTop\Test\UnitTest\ItopDataTestCase')) {
-		class_alias('Combodo\iTop\Test\UnitTest\ItopDataTestCase', 'Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias');
+		// iTop's class, less the objects its insert leaks (see the class).
+		require_once __DIR__.'/Support/ReentranceSafeItopDataTestCase.php';
+		class_alias('Altioo\iTop\Extension\MCP\Test\Support\ReentranceSafeItopDataTestCase', 'Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias');
 	} else {
 		class_alias('Altioo\iTop\Extension\MCP\Test\Support\SkippedItopDataTestCase', 'Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias');
 	}
