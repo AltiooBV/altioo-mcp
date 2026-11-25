@@ -124,4 +124,6 @@ Settings agent skills read here.
   test ([0024](doc/adr/0024-the-pack-contract-names-this-modules-exceptions.md)).
   Also: every core resource and resource template has a tool twin over the same handler, served wherever the resource is
   (same toolset, no extra profile, portal mode only if the resource has it, read grade); a new resource adds its tool and its
-  pair to `ResourceToolTwinTest::TWINS` ([0025](doc/adr/0025-every-resource-has-a-tool-twin.md)).
+  pair to `ResourceToolTwinTest::TWINS` ([0025](doc/adr/0025-every-resource-has-a-tool-twin.md)). So does every core
+  prompt, since a prompt is something a person starts and the model cannot: its tool shares the prompt's handler, toolset and
+  `Offered()`, and goes in `PROMPT_TWINS` (0025, Amendment 1).

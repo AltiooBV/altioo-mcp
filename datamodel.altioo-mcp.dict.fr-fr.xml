@@ -136,6 +136,7 @@
         <entry id="MCP:tool:core_instructions:title" _delta="force"><![CDATA[Instructions du serveur]]></entry>
         <entry id="MCP:tool:core_current_user:title" _delta="force"><![CDATA[Utilisateur courant]]></entry>
         <entry id="MCP:tool:core_version:title" _delta="force"><![CDATA[Version d'iTop]]></entry>
+        <entry id="MCP:tool:core_my_open_tickets:title" _delta="force"><![CDATA[Mes tickets ouverts]]></entry>
         <entry id="MCP:tool:core_set_obsolete_data:title" _delta="force"><![CDATA[Afficher ou masquer les données obsolètes]]></entry>
         <entry id="MCP:tool:core_object_apply_stimulus:title" _delta="force"><![CDATA[Appliquer un stimulus]]></entry>
         <entry id="MCP:tool:core_object_attach:title" _delta="force"><![CDATA[Joindre un document]]></entry>

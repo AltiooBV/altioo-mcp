@@ -61,6 +61,15 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 	/** The value of that attribute meaning the ticket is not finished with. */
 	private const STATUS_ONGOING = 'ongoing';
 
+	/**
+	 * What this is a recipe for, in the words its tool twin uses too, so the two descriptions cannot say
+	 * different things about one answer (ADR 0025, amended for prompts).
+	 */
+	public const RETURNS = 'the open tickets assigned to the current user or submitted by them';
+
+	/** The same, in portal mode. */
+	public const PORTAL_RETURNS = 'the current user\'s requests and where each one stands, from their portal';
+
 	/** The two ways a ticket belongs to someone, either of which will do. */
 	private const CONTACT_ATTRIBUTES = ['agent_id', 'caller_id'];
 
@@ -83,10 +92,10 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return 'List the current user\'s requests and where each one stands, from their portal.';
+			return 'List '.self::PORTAL_RETURNS.'.';
 		}
 
-		return 'List the open tickets assigned to the current user or submitted by them.';
+		return 'List '.self::RETURNS.'.';
 	}
 
 	/**
@@ -100,6 +109,17 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 	 * one - it gets picked.
 	 */
 	public function isAvailable(): bool
+	{
+		return self::Offered();
+	}
+
+	/**
+	 * Whether the recipe can be offered to this caller: what the prompt and its tool twin (Tools\MyOpenTickets)
+	 * both ask, so the twin is served exactly where the prompt is (ADR 0025).
+	 *
+	 * @since 2.2.0
+	 */
+	public static function Offered(): bool
 	{
 		if (!class_exists(MetaModel::class)) {
 			// No iTop loaded, so nothing can be verified, so nothing is claimed.
@@ -132,12 +152,25 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 	 */
 	public function get(): array
 	{
+		return self::Messages();
+	}
+
+	/**
+	 * The messages the prompt answers prompts/get with, and the tool twin answers a call with: one handler, so the
+	 * two cannot differ (ADR 0025, amended for prompts).
+	 *
+	 * @return array<int, array<string, mixed>>
+	 *
+	 * @since 2.2.0
+	 */
+	public static function Messages(): array
+	{
 		return [
 			[
 				'role'    => 'user',
 				'content' => [
 					'type' => 'text',
-					'text' => $this->instruction(),
+					'text' => self::instruction(),
 				],
 			],
 		];
@@ -208,7 +241,7 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 		));
 	}
 
-	private function portalInstruction(): string
+	private static function portalInstruction(): string
 	{
 		$aNamed = array_map(static function (array $aList): string {
 			$aTabs = array_column($aList['tabs'], 'id');
@@ -223,10 +256,10 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 			.' If none are found, say so clearly. Respond in the same language as the request titles.';
 	}
 
-	private function instruction(): string
+	private static function instruction(): string
 	{
 		if (PortalMode::Current() !== null) {
-			return $this->portalInstruction();
+			return self::portalInstruction();
 		}
 
 		$aWhose = array_map(

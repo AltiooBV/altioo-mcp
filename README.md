@@ -158,7 +158,8 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | Tool | Purpose |
 |---|---|
 | `core_instructions` | How this instance works — the same block `initialize` carries. Call it first on a session that was given none: a client that sends no `initialize`, which protocol revision `2026-07-28` no longer requires |
-| `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, archive mode — plus the toolsets and capabilities this session is served |
+| `core_current_user` | Who the session is authenticated as: contact name and id, user id, language, the instance's time zone and the time now (`timezone`, `now`), archive mode — plus the toolsets and capabilities this session is served |
+| `core_my_open_tickets` | The prompt of that name, as a tool, for a model that cannot start a prompt: the recipe for listing the current user's open tickets (the call to make, worded for this instance). Runs nothing. Offered where the prompt is |
 | `core_version` | What is running: iTop's version, build and edition, and this extension's name, version, licence and source URL. Console mode only, like the resource |
 | `core_my_activity` | What this account's credentials did through this endpoint, newest first, from the audit trail: when, which tool, dry run or failed, the objects changed or read **that you may still see** and the reason given. **Your own calls only, selected by your account's key**: there is no argument to name anyone else, and no login is ever matched. "Own" means *the account*: people who share one login see each other's calls. Never returns the raw request parameters or what a tool said. `coverage` says what the record cannot show. **Served in portal mode too** ([ADR 0010](doc/adr/0010-portal-mode-serves-the-users-own-activity.md)), the one thing a portal serves that the portal has no screen for: there an object is named only if the portal shows it, an attribute code only if the portal's view form shows it, and `coverage` says only that some earlier calls may not be listed. Every portal user with MCP access has it after the upgrade that brings it; `mcp_disabled_tools` withdraws it |
 | `core_class_list` | List the readable classes, narrowable by `category` (`bizmodel`…), by `filter`, and by `may` — the rights gate the caller must clear, e.g. `may=create`. In portal mode, what the portal offers instead: its classes, lists, create actions and whether it shows history |
@@ -363,7 +364,7 @@ resources are context a user attaches and tools are what the model reaches for m
 
 | Prompt | Purpose |
 |---|---|
-| `core_my_open_tickets` | Summarise the current user's open tickets |
+| `core_my_open_tickets` | Summarise the current user's open tickets. Also a tool of the same name ([ADR 0025](doc/adr/0025-every-resource-has-a-tool-twin.md)) |
 
 **Server instructions.** At `initialize` the server also sends a short block of guidance —
 that attribute codes vary per instance and must be looked up, that OQL has no `ORDER BY`,
@@ -725,7 +726,7 @@ portal is served as customised:
   portal's own form does (it submits a delta); a person or device the portal does not show still cannot be
   linked, and the answer says what became of the rest (`links_kept`).
 - `core_current_user` and `itop://core/current-user`, with the user's organisation and portal;
-  the `core_my_open_tickets` prompt, answered from the portal's ticket lists; and the server
+  the `core_my_open_tickets` prompt and its tool twin, answered from the portal's ticket lists; and the server
   instructions (`core_instructions`, `itop://core/instructions`), rewritten for portal mode.
 - `core_object_history`, the console's own tool, when the portal shows history: a brick granted
   to the user reaches `CMDBChangeOp` and a read scope covers it, and describe says `history:

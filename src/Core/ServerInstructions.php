@@ -230,6 +230,15 @@ final class ServerInstructions
 			return '';
 		}
 
+		// A prompt is something a person starts; one that also has a tool of its name (ADR 0025, amended) can be
+		// had by the model itself.
+		$aTools = array_values(array_filter($aPrompts, static fn (string $sName): bool => isset(MCPRegistry::GetTools()[$sName]) && ServedAccess::Serves($sName)));
+		if ($aTools !== []) {
+			return "Prompts\n"
+				.'- '.implode(', ', $aPrompts).': ready-made recipes, fetched with prompts/get. '.implode(', ', $aTools).' is also a tool'
+				."\n".'of that name: call it for the recipe if your client lists no prompts.';
+		}
+
 		return "Prompts\n"
 			.'- '.implode(', ', $aPrompts).': ready-made recipes, fetched with prompts/get, not called as tools.'
 			."\n".'If your client lists none, give the user the name rather than rebuilding the query by hand.';

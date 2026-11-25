@@ -36,6 +36,7 @@ class CoreExtensions implements iMCPServiceProvider
 		MCPRegistry::RegisterTool(new Tools\CurrentUser());
 		MCPRegistry::RegisterTool(new Tools\Version());
 		MCPRegistry::RegisterTool(new Tools\MyActivity());
+		MCPRegistry::RegisterTool(new Tools\MyOpenTickets());
 		MCPRegistry::RegisterTool(new Tools\SetObsoleteData());
 		MCPRegistry::RegisterTool(new Tools\ClassList());
 		MCPRegistry::RegisterTool(new Tools\ClassSchema());
