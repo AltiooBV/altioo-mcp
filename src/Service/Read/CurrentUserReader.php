@@ -67,6 +67,8 @@ final class CurrentUserReader
 			'current_portal' => PortalMode::Current(),
 			'current_id' => UserRights::GetUserId(),
 			'current_user_language' => UserRights::GetUserLanguage(),
+			// The zone every date here is in, and the time now with its offset (review 2026-11-23, C10).
+			...InstanceTime::Now(),
 			// Not a lock, and not a feature flag. iTop's archive mode is a
 			// property of the session's *view*: DBSearch reads it at
 			// construction and a query made under it returns archived and

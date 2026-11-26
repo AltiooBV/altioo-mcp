@@ -34,6 +34,12 @@ abstract class ReentranceSafeItopDataTestCase extends ItopDataTestCase
 		parent::tearDown();
 		self::DropLeakedReentranceEntries();
 		$this->ForgetCreatedObjects();
+		// iTop's tearDown logs the user off, and iTop asks for this when the user changes. Its cache of preferences
+		// otherwise holds an object whose insert the test's rollback undid; an update of it was silently skipped while
+		// the entry above protected it, and is refused once that entry is gone.
+		if (class_exists('appUserPreferences')) {
+			\appUserPreferences::ResetPreferences();
+		}
 	}
 
 	/**

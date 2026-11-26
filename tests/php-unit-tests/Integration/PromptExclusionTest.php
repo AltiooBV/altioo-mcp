@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
+use Altioo\iTop\Extension\MCP\Core\Tools\MyOpenTickets as MyOpenTicketsTool;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSettings;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
@@ -94,5 +95,22 @@ class PromptExclusionTest extends ItopDataTestCaseAlias
 		$this->assertTrue((new MyOpenTickets())->isAvailable());
 		$this->assertStringNotContainsString('operational_status =', $this->text());
 		$this->assertStringContainsString('has no operational_status attribute', $this->text());
+	}
+
+	/** ADR 0025, Amendment 1: the tool twin answers what the prompt does, and is offered exactly where the prompt is. */
+	public function testTheToolTwinAnswersThePromptsMessagesAndFollowsItsAvailability(): void
+	{
+		$aTool = \Altioo\iTop\Extension\MCP\Api\ToolOutput::Decode(MyOpenTicketsTool::execute());
+		$this->assertSame((new MyOpenTickets())->get(), $aTool['messages']);
+		$this->assertTrue((new MyOpenTicketsTool())->isAvailable());
+
+		foreach ([[['Ticket'], []], [[], ['Ticket' => ['agent_id', 'caller_id']]]] as [$aClasses, $aAttributes]) {
+			$this->exclude($aClasses, $aAttributes);
+			$this->assertFalse((new MyOpenTickets())->isAvailable());
+			$this->assertFalse((new MyOpenTicketsTool())->isAvailable(), 'the twin is served where the prompt is not, and would hand out its recipe');
+		}
+
+		$this->exclude([], ['Ticket' => ['agent_id']]);
+		$this->assertStringNotContainsString('agent_id', MyOpenTicketsTool::execute()->content[0]->text, 'the twin names an attribute the operator excluded');
 	}
 }

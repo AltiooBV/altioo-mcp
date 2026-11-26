@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Mcp\Schema\ToolAnnotations;
@@ -63,7 +64,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return self::PORTAL_DESCRIPTION;
+			return (ServedAccess::ServesWrites() ? self::PORTAL_HEAD : self::PORTAL_HEAD_READ_ONLY).PortalDescription::SchemaReading();
 		}
 
 		return 'Describe '.self::RETURNS.'. '
@@ -76,11 +77,14 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 			.'Attributes carry a JSON Schema "format" and "pattern" where one applies; a date or date-time must match the pattern, since iTop rejects the RFC 3339 form. '
 			.'A lifecycle state lists the attributes it makes "mandatory" or "prompted" (a transition into it needs them) or "readOnly". '
 			.'An external key reports its target class, not its candidate objects: search that class with core_object_search_by_class and pass the id you find. '
-			.'Read this before creating or updating an object of the class, or before applying a stimulus; core_class_list finds the class name.';
+			.(ServedAccess::ServesWrites() ? 'Read this before creating or updating an object of the class, or before applying a stimulus; core_class_list finds the class name.' : 'core_class_list finds the class name.');
 	}
 
 	/** What this tool is to a portal-mode connection: one class as the portal offers it. */
-	private const PORTAL_DESCRIPTION = 'Describe one class as this user\'s portal offers it: whether they may read and change objects of it, how objects of it are created, the fields shown when viewing, editing and creating one, and the stimuli they may apply. Pass a class from core_class_list. '.PortalDescription::READING;
+	private const PORTAL_HEAD = 'Describe one class as this user\'s portal offers it: whether they may read and change objects of it, how objects of it are created, the fields shown when viewing, editing and creating one, and the stimuli they may apply. Pass a class from core_class_list. ';
+
+	/** The same, for a connection served no tool that changes an object (review 2026-11-23, C5). */
+	private const PORTAL_HEAD_READ_ONLY = 'Describe one class as this user\'s portal offers it: the fields shown when viewing one. Pass a class from core_class_list. ';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{

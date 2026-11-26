@@ -39,7 +39,7 @@ class ResourceToolTwinParityTest extends ItopDataTestCaseAlias
 		$sResource = (new VersionResource())->read();
 
 		$this->assertStringContainsString('"extension"', $sResource, 'the version payload carries no source offer, so this would pass on nothing');
-		$this->assertSame($sResource, VersionTool::execute()->text);
+		$this->assertSame($sResource, VersionTool::execute()->content[0]->text);
 	}
 
 	public function testTheClassListToolUnnarrowedAnswersWhatTheResourceDoes(): void

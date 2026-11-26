@@ -93,6 +93,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 					'description'          => 'Key/value pairs applied to every listed object. Keys are attribute codes. Call core_class_schema for the attribute codes of the class, their types and which ones are mandatory.',
 					'additionalProperties' => true,
 				],
+				'obsolete_ok' => WriteOutcome::ObsoleteOkBriefSchemaProperty('modify'),
 			],
 			'required' => ['class', 'ids', 'fields'],
 		];
@@ -104,6 +105,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 	 * @param array<string, mixed> $fields  Attribute values applied to all of them
 	 * @param bool               $simulate When true (default), nothing is written
 	 * @param string|null        $comment  Why the batch is being applied, recorded on the audit row
+	 * @param bool               $obsolete_ok Act on obsolete objects even though this account hides them: otherwise their rows fail, as core_object_update refuses
 	 *
 	 * @return mixed A per-object report
 	 *
@@ -115,6 +117,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 		array   $fields,
 		bool    $simulate = true,
 		?string $comment = null,
+		bool    $obsolete_ok = false,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
@@ -156,6 +159,14 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			$mObject = self::objectFor($class, $iId, UR_ACTION_MODIFY, 'modify');
 			if (!$mObject instanceof DBObject) {
 				$aOutcomes[] = self::outcome($iId, $iRow, false, $mObject);
+				continue;
+			}
+
+			// An object this account cannot see in its own searches is probably being acted on from a stale id, as
+			// core_object_update says: this row fails, the others go on (review 2026-11-23, S3).
+			$sObsoleteRefusal = WritePlan::HiddenObsoleteRefusal($mObject, $class, $obsolete_ok, 'modify', true);
+			if ($sObsoleteRefusal !== null) {
+				$aOutcomes[] = self::outcome($iId, $iRow, false, $sObsoleteRefusal);
 				continue;
 			}
 

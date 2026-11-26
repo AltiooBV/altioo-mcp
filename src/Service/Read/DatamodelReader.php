@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -247,13 +248,151 @@ final class DatamodelReader
 
 			return [
 				'obsoletable' => true,
-				'condition'   => MetaModel::GetObsolescenceExpression($sClass)->Render(),
+				'condition'   => self::ObsolescenceCondition($sClass),
 			];
 		} catch (\Throwable $e) {
 			// A class that cannot answer is reported as one that does not have
 			// the notion, which is what the flag will say about its objects too.
 			return ['obsoletable' => false, 'condition' => null];
 		}
+	}
+
+	/**
+	 * The condition that makes an object of the class obsolete, as OQL, or null when it cannot be said as OQL.
+	 *
+	 * iTop keeps it as an OQL expression and wraps it in `COALESCE(<condition>, 0)` to evaluate it, and renders it with
+	 * backticks around every field: that is what a read said, and it looks like the SQL it is not (review 2026-11-23, C12).
+	 * This is the condition itself, unwrapped, with the backticks that quote a field name taken off (never those inside
+	 * a quoted value), and it is given only if iTop parses it back as OQL: otherwise the answer is null, never a string
+	 * that is neither.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ObsolescenceCondition(string $sClass): ?string
+	{
+		try {
+			$oExpression = MetaModel::GetObsolescenceExpression($sClass);
+			$aArgs = $oExpression instanceof \FunctionOqlExpression && strtoupper((string)$oExpression->GetVerb()) === 'COALESCE' ? $oExpression->GetArgs() : [];
+			if (!isset($aArgs[0]) || !$aArgs[0] instanceof \Expression) {
+				return null;
+			}
+
+			return self::ConditionAsOql($aArgs[0], $sClass);
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not read the obsolescence condition of '.$sClass.': '.get_class($e));
+		}
+
+		return null;
+	}
+
+	/**
+	 * A condition as OQL, if and only if every attribute it reads is one this caller is served; otherwise null.
+	 *
+	 * The decision behind {@see ObsolescenceCondition()}, apart from the class so that it can be held against conditions of every
+	 * form. It walks the expression by what iTop lets one hold, through the public accessors, and says nothing about a kind it
+	 * does not know: `ListRequiredFields()` was not enough, because a nested query and an interval answer an empty list whatever
+	 * they hold. A nested query is null; an interval's value is walked; a field must be of no other alias than the class itself
+	 * and a valid attribute of it, not excluded (doc/adr/0012: an excluded attribute, a key whose target is excluded, an external
+	 * field through one, a name made of one), and an account holding an exempt profile is excluded from nothing (ADR 0013). A
+	 * parameter, a SQL fragment or any kind not listed here is null.
+	 *
+	 * @internal
+	 * @since 2.2.0
+	 */
+	public static function ConditionAsOql(\Expression $oCondition, string $sClass): ?string
+	{
+		try {
+			if (!self::readsOnlyServed($oCondition, $sClass)) {
+				return null;
+			}
+
+			// RenderExpression(false), not Render(): 3.2 deprecated Render() for it, and 3.3 removed it.
+			$sRendered = trim((string)$oCondition->RenderExpression(false));
+			if ($sRendered === '') {
+				return null;
+			}
+
+			// Outside the quoted values only: a value may hold a backtick.
+			$aParts = preg_split("/('(?:[^'\\\\]|\\\\.)*')/", $sRendered, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$sRendered];
+			$sPlain = '';
+			foreach ($aParts as $i => $sPart) {
+				$sPlain .= $i % 2 === 1 ? $sPart : str_replace('`', '', $sPart);
+			}
+
+			foreach ([$sPlain, $sRendered] as $sCandidate) {
+				try {
+					\Expression::FromOQL($sCandidate);
+
+					return $sCandidate;
+				} catch (\Throwable $e) {
+					continue;
+				}
+			}
+		} catch (\Throwable $e) {
+			ErrorReport::Log('Could not render an obsolescence condition of '.$sClass.': '.get_class($e));
+		}
+
+		return null;
+	}
+
+	/**
+	 * Whether everything an expression reads is served, by walking the kinds iTop can put in one.
+	 *
+	 * Psalm runs with no iTop checkout to say what extends what (psalm.xml).
+	 *
+	 * @psalm-suppress TypeDoesNotContainType
+	 * @psalm-suppress NoInterfaceProperties
+	 * @psalm-suppress UndefinedMethod
+	 */
+	private static function readsOnlyServed(\Expression $oExpression, string $sClass): bool
+	{
+		// The fields first: FieldExpression is a UnaryExpression, and a parameter is one too.
+		if ($oExpression instanceof \FieldExpression) {
+			// The condition is parsed for the class alone, so a field carries no alias: one that does is another class's.
+			if ((string)$oExpression->GetParent() !== '') {
+				return false;
+			}
+			$sCode = (string)$oExpression->GetName();
+
+			return MetaModel::IsValidAttCode($sClass, $sCode) && !ExclusionPolicy::ExcludesAttribute($sClass, $sCode);
+		}
+		if ($oExpression instanceof \ScalarExpression) { // includes True and False
+			return true;
+		}
+		if ($oExpression instanceof \BinaryExpression) { // includes Match
+			return self::readsOnlyServed($oExpression->GetLeftExpr(), $sClass) && self::readsOnlyServed($oExpression->GetRightExpr(), $sClass);
+		}
+		if ($oExpression instanceof \FunctionExpression) { // includes FunctionOqlExpression
+			return self::allServed($oExpression->GetArgs(), $sClass);
+		}
+		if ($oExpression instanceof \ListExpression || $oExpression instanceof \CharConcatExpression) { // includes CharConcatWS
+			return self::allServed($oExpression->GetItems(), $sClass);
+		}
+		if ($oExpression instanceof \IntervalExpression) {
+			$mValue = $oExpression->GetValue();
+
+			return $mValue instanceof \Expression && self::readsOnlyServed($mValue, $sClass);
+		}
+
+		// A nested query (its own classes and attributes), a parameter, a SQL fragment, a kind a later iTop adds: not said.
+		return false;
+	}
+
+	/**
+	 * @param mixed $aExpressions
+	 */
+	private static function allServed($aExpressions, string $sClass): bool
+	{
+		if (!is_array($aExpressions)) {
+			return false;
+		}
+		foreach ($aExpressions as $oExpression) {
+			if (!$oExpression instanceof \Expression || !self::readsOnlyServed($oExpression, $sClass)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**

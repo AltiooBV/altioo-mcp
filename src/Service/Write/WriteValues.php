@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Write;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -58,7 +59,7 @@ final class WriteValues
 		foreach ($aFields as $sAttCode => $value) {
 			$sAttCode = (string)$sAttCode;
 			if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
-				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.";
+				$aIssues[$sAttCode] = "Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, $sAttCode);
 				continue;
 			}
 			// Two things, and it is worth being clear which is which.

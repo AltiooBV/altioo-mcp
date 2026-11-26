@@ -54,22 +54,23 @@ class ContextBudgetTest extends TestCase
 	private const BUDGET = [
 		'ClassList'           => [600, 1310],
 		'ClassSchema'         => [1980, 980],
-		'CurrentUser'         => [740, 40],
+		'CurrentUser'         => [780, 40],
 		'Instructions'        => [800, 40],
-		'MyActivity'          => [430, 440],
-		'ObjectApplyStimulus' => [520, 1030],
+		'MyActivity'          => [430, 470],
+		'MyOpenTickets'       => [230, 40],
+		'ObjectApplyStimulus' => [520, 1190],
 		'ObjectAttach'        => [400, 1610],
 		'ObjectBulkCreate'    => [420, 920],
-		'ObjectBulkDelete'    => [560, 1240],
-		'ObjectBulkUpdate'    => [420, 1500],
+		'ObjectBulkDelete'    => [560, 1400],
+		'ObjectBulkUpdate'    => [420, 1670],
 		'ObjectCount'         => [260, 1080],
 		'ObjectCreate'        => [580, 850],
 		'ObjectDelete'        => [690, 1000],
 		'ObjectFindByName'    => [910, 1180],
 		'ObjectGet'           => [730, 740],
-		'ObjectGetDocument'   => [730, 470],
+		'ObjectGetDocument'   => [730, 560],
 		'ObjectGetRelated'    => [930, 1390],
-		'ObjectHistory'       => [860, 740],
+		'ObjectHistory'       => [990, 740],
 		'ObjectSearchByClass' => [240, 3350],
 		'ObjectSearchByOQL'   => [220, 2690],
 		'ObjectUpdate'        => [580, 1230],
@@ -78,9 +79,9 @@ class ContextBudgetTest extends TestCase
 		'Version'             => [320, 40],
 	];
 
-	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. */
-	private const TOTAL_DESCRIPTIONS = 14960;
-	private const TOTAL_INPUT_SCHEMAS = 24840;
+	/** The whole of what the budgets above add up to, with a little room. 2.2.0: core_version, the twin of itop://core/version (ADR 0025), +302 and +36. Batch 2 of the 2026-11-23 review: the class schema says what a lifecycle state requires (C3) and the list says abstract classes are dropped (C8), 14480 -> 14580, and the history says what its entries carry (C16), 14580 -> 14730, and the document tool says it takes no uri (C18), 14730 -> 14790, plus batch 1's delete wording (14480 -> 14650): 14960. Batch 3: core_current_user says it gives the time zone and the time now (C10), 14993: 15000. L1, the prompt's tool twin core_my_open_tickets (ADR 0025, amended): +222, 15222: 15230. C16's added fields in the history, +118, 15348: 15350. Input schemas: the history, the document's uri (C18) and obsolete_ok on the stimulus and the two bulk tools (S3), 24873 -> 25456: 25460. */
+	private const TOTAL_DESCRIPTIONS = 15350;
+	private const TOTAL_INPUT_SCHEMAS = 25460;
 
 	/** The server's instructions for an unrestricted caller, before an instance adds its date formats. */
 	private const INSTRUCTIONS = 3200;
@@ -150,7 +151,7 @@ class ContextBudgetTest extends TestCase
 	/**
 	 * What a portal user is told: the tools portal mode serves, in portal mode,
 	 * where descriptions and schemas differ from the console's. Measured with
-	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950). 2.2.0: the portal count says where a list's columns are, 8975 (budget 8980). B3's working example, 9040 (budget 9060). Per-class counts, 9159 (budget 9180).
+	 * core_my_activity (doc/adr/0010), core_object_get_document and core_object_attach (doc/adr/0011) served there: 8087 -> 8812 bytes of descriptions (budget 8100 -> 8850), 6757 -> 8010 of input schemas (6800 -> 8050). 2.1.0: core_my_activity says what written is, 8812 -> 8910 (budget 8850 -> 8950). 2.2.0: the portal count says where a list's columns are, 8975 (budget 8980). B3's working example, 9040 (budget 9060). Per-class counts, 9159 (budget 9180). Batch 3: the time zone and the time now in core_current_user, 9202 (budget 9210). The prompt's tool twin, +235, 9437 (budget 9440). S4: core_class_schema no longer repeats the class list's description, -864, 8573 (budget 8580); the portal's input schemas 8265 (budget 8270).
 	 */
 	public function testThePortalSurfaceDoesNotGrowPastItsBudget(): void
 	{
@@ -172,8 +173,8 @@ class ContextBudgetTest extends TestCase
 			MCPRegistry::Clear();
 		}
 
-		$this->assertLessThanOrEqual(9180, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
-		$this->assertLessThanOrEqual(8050, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
+		$this->assertLessThanOrEqual(8580, $iDescriptions, 'the portal descriptions together grew: '.$iDescriptions);
+		$this->assertLessThanOrEqual(8270, $iSchemas, 'the portal input schemas together grew: '.$iSchemas);
 	}
 
 	public function testTheInstructionsDoNotGrowPastTheirBudget(): void
@@ -181,5 +182,28 @@ class ContextBudgetTest extends TestCase
 		$iBytes = strlen(ServerInstructions::Text(AccessPolicy::Unrestricted()));
 
 		$this->assertLessThanOrEqual(self::INSTRUCTIONS, $iBytes, 'the instructions are '.$iBytes.' bytes; raise the budget on purpose, or cut it');
+	}
+
+	/**
+	 * The output schemas of the read tools (review 2026-11-23, S2) are in every client's tools/list as the write tools' are, and
+	 * were left out where they cost more than they tell: this is what they add up to, so another one is a decision.
+	 */
+	public function testTheReadToolsOutputSchemasStayWhereTheyWereDecided(): void
+	{
+		$iBytes = 0;
+		$aDeclaring = [];
+		foreach (self::coreTools() as $sName => $sClass) {
+			$oTool = new $sClass();
+			$aHints = $oTool->getAnnotations()?->jsonSerialize() ?? [];
+			if (empty($aHints['readOnlyHint']) || $oTool->getOutputSchema() === null) {
+				continue;
+			}
+			$aDeclaring[] = $sName;
+			$iBytes += strlen((string)json_encode($oTool->getOutputSchema()));
+		}
+		sort($aDeclaring);
+
+		$this->assertSame(['CurrentUser', 'MyOpenTickets', 'Version'], $aDeclaring, 'a read tool declares an output schema, or stops: decide it here and in ReadResultSchemaTest::COVERED');
+		$this->assertLessThanOrEqual(1400, $iBytes, 'the read tools output schemas together grew: '.$iBytes);
 	}
 }

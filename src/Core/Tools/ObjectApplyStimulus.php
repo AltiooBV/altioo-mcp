@@ -126,6 +126,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				],
 				'simulate' => DryRun::SimulateSchemaProperty('apply the stimulus'),
 				'comment'  => ChangeTracking::CommentSchemaProperty('the transition is being applied'),
+				'obsolete_ok' => WriteOutcome::ObsoleteOkBriefSchemaProperty('act on'),
 			],
 			'required' => ['class', 'id', 'stimulus'],
 		];
@@ -157,6 +158,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 	 * @param array $fields Optional attribute values to set before applying the stimulus, e.g. ['agent_id' => 3]
 	 * @param bool $simulate When true (default), the transition is validated but not applied
 	 * @param string|null $comment Why the transition is being applied, recorded on the audit row
+	 * @param bool $obsolete_ok Act on an obsolete object even though this account hides them, as core_object_update
 	 * @return array The state the object is in, or the state it would move to
 	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) if the class is unknown, if access is denied, if the object is not found, if the stimulus is invalid for the current state, or if mandatory attributes are missing.
 	 */
@@ -167,6 +169,7 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		array   $fields = [],
 		bool    $simulate = DryRun::SIMULATE_BY_DEFAULT,
 		?string $comment = null,
+		bool    $obsolete_ok = false,
 	): mixed
 	{
 		// The advisory scope, before anything reads it: a token pinned to dry
@@ -268,6 +271,10 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		if ($sModeRefusal !== null) {
 			throw ToolRefusal::Because($sModeRefusal);
 		}
+
+		// An object this account cannot see in its own searches is probably being acted on from a stale id, as
+		// core_object_update says, and after the portal's own refusals, as it does (review 2026-11-23, S3).
+		WritePlan::RefuseHiddenObsolete($oObject, get_class($oObject), $obsolete_ok, 'change');
 
 		// Validate the stimulus is available on this class
 		$aTransitions = MetaModel::EnumTransitions($class, $sCurrentState);

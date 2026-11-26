@@ -130,15 +130,28 @@ class OutputSchemaContractTest extends TestCase
 	}
 
 	/**
-	 * The reading tools keep to text: see the class docblock for why the same
-	 * choice would be the wrong one there.
+	 * The read tools declared by name, because their whole answer is small and fixed (review 2026-11-23, S2). A declared schema
+	 * obliges structuredContent, which doubles the payload of the largest responses, so every other reading tool keeps to
+	 * text: rows made of the class's own attributes, a history of up to five hundred entries, a count of up to a hundred
+	 * groups, a class schema, a document. These three answer a few hundred bytes to a kilobyte, and each is held to its
+	 * answer on the wire by ReadResultSchemaTest. Adding a tool here is a decision about its largest answer.
 	 */
-	public function testTheReadingToolsDeclareNoOutputSchema(): void
+	private const SMALL_READS_WITH_A_SCHEMA = ['core_current_user', 'core_my_open_tickets', 'core_version'];
+
+	/**
+	 * The reading tools keep to text, but for the few named above: see the class docblock for why the same choice
+	 * would be the wrong one for them.
+	 */
+	public function testTheReadingToolsDeclareNoOutputSchemaButTheSmallOnesNamed(): void
 	{
 		$aWriting = array_column($this->writingTools(), 0);
 
 		foreach (MCPRegistry::GetTools() as $sName => $oTool) {
 			if (in_array($sName, $aWriting, true)) {
+				continue;
+			}
+			if (in_array($sName, self::SMALL_READS_WITH_A_SCHEMA, true)) {
+				$this->assertNotNull($oTool->getOutputSchema(), "{$sName} is named as a small read that declares its shape");
 				continue;
 			}
 

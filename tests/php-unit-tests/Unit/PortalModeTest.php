@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Controller\CallLog;
 use Altioo\iTop\Extension\MCP\Controller\Gate\PortalAdmission;
 use Altioo\iTop\Extension\MCP\Controller\Gate\TokenAudienceGate;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
+use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets as MyOpenTicketsPrompt;
 use Altioo\iTop\Extension\MCP\Core\Resources\CurrentUser as CurrentUserResource;
 use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
@@ -814,13 +815,25 @@ class PortalModeTest extends TestCase
 					|| $oSource->HasCallOn(PortalDescription::class)
 					|| $oSource->HasCall(PortalPolicy::class.'::ForCurrentRequest')
 					|| $oSource->HasCall(PortalList::class.'::Resolve')
-					|| $oSource->HasCall(DocumentFetch::class.'::Fetch');
+					|| $oSource->HasCall(DocumentFetch::class.'::Fetch')
+					// A prompt's tool twin is offered where its prompt is (ADR 0025), which asks the portal itself:
+					// testAPromptTwinIsOfferedWhereItsPromptIsAndThePromptAsksThePortal() holds that half.
+					|| ($oClass->getName() === get_class($oTool) && array_key_exists($sName, ResourceToolTwinTest::PROMPT_TWINS) && $oSource->HasCall(MyOpenTicketsPrompt::class.'::Offered'));
 			}
 			$this->assertTrue($bAsks, "{$sName} is served in portal mode without asking the portal");
 			$iChecked++;
 		}
 
 		$this->assertGreaterThan(5, $iChecked, 'the scan found too few portal-aware object tools to be working');
+	}
+
+	/** The half of the exemption above: the prompt a twin defers to is the one that asks the portal. */
+	public function testAPromptTwinIsOfferedWhereItsPromptIsAndThePromptAsksThePortal(): void
+	{
+		$this->assertTrue(
+			SourceCalls::OfClass(MyOpenTicketsPrompt::class)->HasCall(PortalPolicy::class.'::ForCurrentRequest'),
+			'the prompt core_my_open_tickets is offered in portal mode without asking the portal, and its tool twin defers to it'
+		);
 	}
 
 	/**

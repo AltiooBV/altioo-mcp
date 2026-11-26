@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
@@ -17,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\LinkedRows;
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrantFamilies;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -109,6 +111,8 @@ final class RequestScope
 		TokenScopes::ForgetIdentity();
 		AccessPolicy::Forget();
 		ServedAccess::Forget();
+		NameSuggestion::Forget();
+		ClassRefusal::ForgetSuggester();
 
 		// Portal mode: all of it, so that no half is left to disagree with the other.
 		ObjectAccess::Forget();

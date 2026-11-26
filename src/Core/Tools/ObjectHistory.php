@@ -20,7 +20,9 @@ use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\OutputFields;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Mcp\Schema\ToolAnnotations;
+use CMDBChange;
 use DBObjectSearch;
+use DBObjectSet;
 use DBSearch;
 use MetaModel;
 use UserRights;
@@ -76,7 +78,7 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			return self::PORTAL_DESCRIPTION;
 		}
 
-		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. A text field gives its previous text as \'from\' and no \'to\'; a link set change names the object in "link", an attachment its file and id in "attachment". Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
+		return 'Report what iTop recorded happening to one object: each change with its date, the user who made it, the attribute affected and the values before and after. This is the only place creation and update attribution exists - iTop keeps no "created by" or "last updated" field on an object - so read it to answer when something was opened, who last touched it, or why a value is what it is. Newest first. Narrow to one attribute with att_code, using the codes core_class_schema reports. Case-log entries are included, which the console shows separately rather than in its history panel. A text field gives its previous text as \'from\' and no \'to\'; a link set change names the object in "link", an attachment its file and id in "attachment". An entry has change_id and origin; one made by your own MCP call also has tool and comment. has_more and next_offset page on. Only what iTop tracked is here: an attribute excluded from tracking, and anything written outside iTop, leaves no record.';
 	}
 
 	/** What this tool is to a portal-mode connection, which has no class schema. */
@@ -220,7 +222,27 @@ class ObjectHistory extends AbstractMCPTool implements PortalAware
 			},
 			// The file name of an attachment added or removed: on the console where the class Attachment is readable, in a
 			// portal where its forms show the attachments of this object.
-			static fn (): bool => $oAccess->ShowsAttachmentsOf($oObject)
+			static fn (): bool => $oAccess->ShowsAttachmentsOf($oObject),
+			// The tool and the reason of the MCP calls that wrote these changes, but only where the call is this account's own,
+			// which is decided here and nowhere else (ADR 0014): the audit rows are read past the rights no profile grants on
+			// them, so the filter on the user is the whole of the gate, exactly as core_my_activity applies it. What another
+			// account's assistant did, and why it said it did it, is never answered.
+			static function (array $aChanges): array {
+				$iUser = (int)CMDBChange::GetCurrentUserId();
+				if ($iUser < 1 || $aChanges === []) {
+					return [];
+				}
+
+				$oSearch = DBObjectSearch::FromOQL('SELECT AltiooEventMCPService WHERE user_id = :user AND change_id IN (:changes)');
+				$oSearch->AllowAllData();
+				$oRows = new DBObjectSet($oSearch, [], ['user' => $iUser, 'changes' => $aChanges]);
+				$aOwn = [];
+				while ($oRow = $oRows->Fetch()) {
+					$aOwn[(int)$oRow->Get('change_id')] = ['tool' => (string)$oRow->Get('mcp_name'), 'comment' => (string)$oRow->Get('change_comment')];
+				}
+
+				return $aOwn;
+			}
 		);
 
 		// Before and after values and case-log entries are what other people

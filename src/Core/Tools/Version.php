@@ -75,6 +75,32 @@ class Version extends AbstractMCPTool
 	}
 
 	/**
+	 * The shape of the answer, as the write tools declare theirs (review 2026-11-23, S2): only what is always there, with its type.
+	 * What a client may rely on and a schema validator checks on every call, so nothing here is guessed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	#[\Override]
+	public function getOutputSchema(): ?array
+	{
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'version'   => ['type' => 'string'],
+				'build'     => ['type' => ['string', 'integer']],
+				'buildDate' => ['type' => 'string'],
+				'edition'   => ['type' => 'string', 'enum' => ['community', 'professional']],
+				'extension' => [
+					'type'       => 'object',
+					'properties' => ['name' => ['type' => 'string'], 'version' => ['type' => 'string'], 'license' => ['type' => 'string'], 'source' => ['type' => 'string']],
+					'required'   => ['name', 'version', 'license', 'source'],
+				],
+			],
+			'required'   => ['version', 'build', 'buildDate', 'edition', 'extension'],
+		];
+	}
+
+	/**
 	 * No arguments: there is one instance to report.
 	 *
 	 * 'properties' is left out rather than written as an empty array, for the
@@ -96,6 +122,6 @@ class Version extends AbstractMCPTool
 	{
 		// The payload is ServerVersion's, so that itop://core/version answers
 		// with the same shape for the same data.
-		return ToolOutput::Json(ServerVersion::Payload());
+		return ToolOutput::Structured(ServerVersion::Payload());
 	}
 }

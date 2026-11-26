@@ -115,7 +115,7 @@ class MyActivity extends AbstractMCPTool implements PortalAware
 			'properties' => [
 				'since'  => [
 					'type'        => 'string',
-					'description' => 'Only calls from this date or date-time on, in the instance\'s time zone, e.g. 2026-11-01 or 2026-11-01 09:30:00. Empty for all.',
+					'description' => 'Only calls from this date or date-time on, in the instance\'s time zone (core_current_user names it), e.g. 2026-11-01 or 2026-11-01 09:30:00. Empty for all.',
 					'default'     => '',
 				],
 				'limit'  => [

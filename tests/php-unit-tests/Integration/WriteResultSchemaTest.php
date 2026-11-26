@@ -45,8 +45,8 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 	use CallsToolsOnTheWire;
 
 	/**
-	 * Every registered tool that declares an output schema, by the test that
-	 * calls it. A tool added with a schema and no call here fails
+	 * Every registered tool that writes and declares an output schema, by the test that
+	 * calls it (the read tools': ReadResultSchemaTest::COVERED). A tool added with a schema and no call here fails
 	 * testEveryToolWithAnOutputSchemaIsCalledHere().
 	 */
 	private const COVERED = [
@@ -82,7 +82,7 @@ class WriteResultSchemaTest extends ItopDataTestCaseAlias
 		}
 
 		sort($aDeclaring);
-		$aCovered = self::COVERED;
+		$aCovered = array_merge(self::COVERED, ReadResultSchemaTest::COVERED);
 		sort($aCovered);
 
 		$this->assertSame($aCovered, $aDeclaring, 'a tool declares an output schema no test calls on the wire, or a list here names one that is gone');

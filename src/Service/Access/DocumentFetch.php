@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Access;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
@@ -68,7 +69,7 @@ final class DocumentFetch
 			throw new MCPDocumentException('Invalid ID. Please specify a valid object ID.');
 		}
 		if (!MetaModel::IsValidAttCode($sClass, $sAttCode) || ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)) {
-			throw new MCPDocumentException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.");
+			throw new MCPDocumentException("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, $sAttCode));
 		}
 
 		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);

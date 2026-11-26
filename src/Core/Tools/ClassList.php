@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Core\Tools;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
@@ -59,7 +60,7 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return self::PORTAL_DESCRIPTION;
+			return (ServedAccess::ServesWrites() ? self::PORTAL_HEAD : self::PORTAL_HEAD_READ_ONLY).PortalDescription::Reading();
 		}
 
 		return 'List '.self::RETURNS.'. '
@@ -69,7 +70,10 @@ class ClassList extends AbstractMCPTool implements PortalAware
 	}
 
 	/** What this tool is to a portal-mode connection: the portal's overview. */
-	private const PORTAL_DESCRIPTION = 'Describe what this user\'s iTop portal offers them: the classes they can work with - for each, whether they may read and change objects of it and the stimuli (state changes) they may apply - the portal\'s lists, its create actions, and whether it shows history. Start here. core_class_schema gives one class\'s fields in each form. '.PortalDescription::READING;
+	private const PORTAL_HEAD = 'Describe what this user\'s iTop portal offers them: the classes they can work with - for each, whether they may read and change objects of it and the stimuli (state changes) they may apply - the portal\'s lists, its create actions, and whether it shows history. Start here. core_class_schema gives one class\'s fields in each form. ';
+
+	/** The same, for a connection served no tool that changes an object (review 2026-11-23, C5). */
+	private const PORTAL_HEAD_READ_ONLY = 'Describe what this user\'s iTop portal offers them: the classes they can work with, the portal\'s lists, and whether it shows history. Start here. core_class_schema gives one class\'s fields. ';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{

@@ -10,11 +10,14 @@ namespace Altioo\iTop\Extension\MCP\Service\Server;
 
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Api\MCPRegistry;
+use Altioo\iTop\Extension\MCP\Helper\ClassRefusal;
 use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Exception\MCPPortalException;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
+use Altioo\iTop\Extension\MCP\Service\Portal\PortalDescription;
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
@@ -51,7 +54,87 @@ final class ServedElements
 	 */
 	public static function RememberServed(): void
 	{
-		ServedAccess::Remember(static fn (): array => self::ServedAccess(), static fn (AccessPolicy $oServedPolicy): array => self::servedPromptNames($oServedPolicy));
+		ServedAccess::Remember(
+			static fn (): array => self::ServedAccess(),
+			static fn (AccessPolicy $oServedPolicy): array => self::servedPromptNames($oServedPolicy),
+			static fn (): ?string => self::writesWithheldBy()
+		);
+		self::rememberSuggestions();
+	}
+
+	/**
+	 * What "did you mean" may name in portal mode: the classes the portal offers and the fields its view form shows. The
+	 * console's served names are asked by Service\Read\NameSuggestion itself. Both are read from what the caller is
+	 * served, never from what exists (review 2026-11-23, C12).
+	 */
+	private static function rememberSuggestions(): void
+	{
+		NameSuggestion::Remember(
+			static function (): array {
+				try {
+					return PortalDescription::OfferedClassNames(PortalPolicy::ForCurrentRequest());
+				} catch (MCPPortalException) {
+					return [];
+				}
+			},
+			static function (string $sClass): array {
+				try {
+					$oPolicy = PortalPolicy::ForCurrentRequest();
+					if (!in_array($sClass, PortalDescription::OfferedClassNames($oPolicy), true)) {
+						return [];
+					}
+
+					return PortalAccess::Shown($sClass, $oPolicy->Fields($sClass, PortalPolicy::MODE_VIEW));
+				} catch (MCPPortalException) {
+					return [];
+				}
+			}
+		);
+		ClassRefusal::RememberSuggester(static fn (string $sClass): string => NameSuggestion::ForClass($sClass));
+	}
+
+	/**
+	 * Why this caller is served no tool that changes an object, null when it is served one.
+	 *
+	 * Three answers, from what decides: the instance's own settings leave nobody a write tool (so the scope is
+	 * not why), or they would serve one and this credential's scope narrows it away, or neither and the
+	 * answer says nothing of why (a tool the operator turned off, a portal that offers no write). The scope is
+	 * named only when the settings alone would have served a write: the credential is dropped before the
+	 * instructions are built, so its scopes cannot be read again, and what is left to compare is the instance
+	 * policy against the policy the controller decided.
+	 *
+	 * @since 2.2.0
+	 */
+	private static function writesWithheldBy(): ?string
+	{
+		$aGranted = self::ServedAccess()['capabilities'];
+		if (in_array(AccessPolicy::CAPABILITY_WRITE, $aGranted, true) || in_array(AccessPolicy::CAPABILITY_DELETE, $aGranted, true)) {
+			return null;
+		}
+
+		if (!self::policyMayWrite(self::InstancePolicy())) {
+			return ServedAccess::WRITES_BY_SETTINGS;
+		}
+
+		return self::policyMayWrite(AccessPolicy::Current() ?? self::AccessPolicyOfCurrentRequest())
+			? ServedAccess::WRITES_BY_OTHER
+			: ServedAccess::WRITES_BY_SCOPE;
+	}
+
+	/** Whether a policy grades write or delete and serves a toolset a core write tool is in. */
+	private static function policyMayWrite(AccessPolicy $oPolicy): bool
+	{
+		if (!$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) && !$oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE)) {
+			return false;
+		}
+
+		foreach (['objects', 'documents', 'server'] as $sToolset) {
+			if ($oPolicy->allowsToolset($sToolset)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -306,6 +389,35 @@ final class ServedElements
 	 */
 	public static function AccessPolicyOfCurrentRequest(): AccessPolicy
 	{
+		// The readers run first, on every request, because they are what log why a malformed setting serves nothing;
+		// InstancePolicy() asks them. Only then is the answer failed closed, and before any token is read.
+		$oConfigured = self::InstancePolicy();
+
+		if (AccessPolicy::SettingsAreMalformed()) {
+			return AccessPolicy::Nothing();
+		}
+
+		if (!TokenScopes::RequestCarriesAToken()) {
+			// Basic authentication or a reverse proxy: no token, no scopes,
+			// and nothing to narrow with.
+			return $oConfigured;
+		}
+
+		$aScopes = TokenScopes::OfCurrentRequest();
+		if ($aScopes === null) {
+			return $oConfigured->narrowedBy(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
+		}
+
+		return $oConfigured->narrowedBy(AccessPolicy::FromScopes($aScopes));
+	}
+
+	/**
+	 * What the instance's own settings serve, before any token narrows it.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function InstancePolicy(): AccessPolicy
+	{
 		$oConfigured = AccessPolicy::Of(Settings::GetCapabilities(), Settings::GetEnabledToolsets());
 
 		if (AccessPolicy::SettingsAreMalformed()) {
@@ -322,18 +434,7 @@ final class ServedElements
 			$oConfigured = $oConfigured->narrowedBy(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
 		}
 
-		if (!TokenScopes::RequestCarriesAToken()) {
-			// Basic authentication or a reverse proxy: no token, no scopes,
-			// and nothing to narrow with.
-			return $oConfigured;
-		}
-
-		$aScopes = TokenScopes::OfCurrentRequest();
-		if ($aScopes === null) {
-			return $oConfigured->narrowedBy(AccessPolicy::Of([AccessPolicy::CAPABILITY_READ], []));
-		}
-
-		return $oConfigured->narrowedBy(AccessPolicy::FromScopes($aScopes));
+		return $oConfigured;
 	}
 
 	/**

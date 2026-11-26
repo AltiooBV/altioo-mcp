@@ -12,6 +12,8 @@ use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use MetaModel;
 use Throwable;
 use utils;
@@ -56,26 +58,43 @@ final class WritePlan
 	 * obsolete, or the account hiding them - since a caller that cannot tell
 	 * will try the wrong one.
 	 *
-	 * Single-object tools only. A bulk call is given its ids explicitly and
+	 * A single-object tool refuses the call. A bulk call is given its ids explicitly and
 	 * reports per row, so a hidden-obsolete row there is an entry that says so
-	 * rather than a refusal that stops the other ninety-nine.
+	 * rather than a refusal that stops the other ninety-nine ({@see HiddenObsoleteRefusal()}).
 	 *
 	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When the object is obsolete, hidden from this account, and no hatch was passed.
 	 * @since 1.0.0
 	 */
 	public static function RefuseHiddenObsolete(DBObject $oObject, string $sClass, bool $bObsoleteOk, string $sVerb): void
 	{
+		$sRefusal = self::HiddenObsoleteRefusal($oObject, $sClass, $bObsoleteOk, $sVerb);
+		if ($sRefusal !== null) {
+			throw ToolRefusal::Because($sRefusal);
+		}
+	}
+
+	/**
+	 * The words {@see RefuseHiddenObsolete()} refuses with, or null when the call may go on: for a tool that reports per row
+	 * what a single-object tool refuses (the stimulus and bulk tools' obsolete_ok, review 2026-11-23, S3). It decides nothing
+	 * of its own and is not a right: each tool asks it in its own source, with its own flag, and acts on the answer.
+	 *
+	 * @param bool $bBrief The shorter wording a report repeats on every row.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function HiddenObsoleteRefusal(DBObject $oObject, string $sClass, bool $bObsoleteOk, string $sVerb, bool $bBrief = false): ?string
+	{
 		if ($bObsoleteOk) {
-			return;
+			return null;
 		}
 
 		try {
 			if (!MetaModel::IsObsoletable($sClass) || utils::ShowObsoleteData()) {
-				return;
+				return null;
 			}
 
 			if (!$oObject->Get('obsolescence_flag')) {
-				return;
+				return null;
 			}
 		} catch (Throwable $e) {
 			// A question about the object must not refuse a write it cannot
@@ -83,17 +102,33 @@ final class WritePlan
 			// caller exactly where it was before the guard existed.
 			ErrorReport::Log('Could not check obsolescence before a write on '.$sClass.': '.$e->getMessage());
 
-			return;
+			return null;
 		}
 
-		throw ToolRefusal::Because(sprintf(
-			"This %s counts as obsolete (%s) and your account does not show obsolete objects, so it is absent from your own searches. "
+		// The condition, as OQL, unless it reaches something this caller is not served (doc/adr/0012): then it is left
+		// out whole, and the refusal reads as one for a class that states none.
+		$sCondition = DatamodelReader::ObsolescenceCondition($sClass);
+		$sShown = $sCondition === null ? '' : ' ('.$sCondition.')';
+
+		if ($bBrief) {
+			return sprintf(
+				"This %s counts as obsolete%s and your account does not show obsolete objects: pass obsolete_ok=true to %s it anyway.",
+				$sClass,
+				$sShown,
+				$sVerb
+			);
+		}
+
+		return sprintf(
+			"This %s counts as obsolete%s and your account does not show obsolete objects, so it is absent from your own searches. "
 			."Refused because acting on it is usually a stale id rather than a decision. "
-			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete - or call core_set_obsolete_data to show them.",
+			."Pass obsolete_ok=true to %s it anyway - which is also how you stop it being obsolete%s.",
 			$sClass,
-			MetaModel::GetObsolescenceExpression($sClass)->Render(),
-			$sVerb
-		));
+			$sShown,
+			$sVerb,
+			// Not named where this caller is not served the tool (review 2026-11-23, C7).
+			ServedAccess::Serves('core_set_obsolete_data') ? ' - or call core_set_obsolete_data to show them' : ''
+		);
 	}
 
 	/**

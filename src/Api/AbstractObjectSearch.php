@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Api;
 
+use Altioo\iTop\Extension\MCP\Service\Read\NameSuggestion;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
@@ -248,7 +249,7 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 				&& (!MetaModel::IsValidAttCode($sClass, $sOrderBy)
 					|| ExclusionPolicy::ExcludesAttribute($sClass, $sOrderBy)
 					|| self::isMasked($sClass, $sOrderBy))) {
-				throw ToolRefusal::Because("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.");
+				throw ToolRefusal::Because("Unknown attribute '{$sOrderBy}' on class '{$sClass}', cannot sort on it.".NameSuggestion::ForAttribute($sClass, $sOrderBy, true));
 			}
 			if ($sOrderBy !== self::TIEBREAK_ATTRIBUTE
 				&& UserRights::IsActionAllowedOnAttribute($sClass, $sOrderBy, UR_ACTION_READ) === UR_ALLOWED_NO) {

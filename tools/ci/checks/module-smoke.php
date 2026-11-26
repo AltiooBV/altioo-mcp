@@ -261,6 +261,16 @@ $oPortalToken->Set('scope', 'MCP-write,MCP-delete');
 $oPortalToken->Set('expiration_date', date('Y-m-d H:i:s', strtotime('+30 days')));
 $oPortalToken->DBInsert();
 
+// The same portal user, authorized for reading only: what an OAuth approval that grants no write scope leaves
+// (review 2026-11-23, C5). Its tools/list, instructions and answers must stop talking about writing.
+$oReadToken = MetaModel::NewObject('PersonalToken');
+$oReadToken->Set('user_id', $oPortalUser->GetKey());
+$oReadToken->Set('application', 'ci-portal-readonly');
+$oReadToken->Set('scope', 'MCP-read');
+$oReadToken->Set('expiration_date', date('Y-m-d H:i:s', strtotime('+30 days')));
+$oReadToken->DBInsert();
+$sReadSecret = (string)$oReadToken->GetToken();
+
 $sPortalSecret = $oPortalToken->GetToken();
 if ($sPortalSecret === null || $sPortalSecret === '') {
 	fwrite(STDERR, "the portal token was created but carries no readable secret\n");
@@ -293,4 +303,4 @@ $oExemptToken->DBInsert();
 $sExemptSecret = (string)$oExemptToken->GetToken();
 
 echo 'portal-smoke: '.$sPortalSecret.':'.$aRequests['own'].':'.$aRequests['other']
-	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0).':'.$aExclusion['person'].':'.$aExclusion['team'].':'.$sExemptSecret.':'.$sExemptProfile."\n";
+	.':'.($aFiles['own'] ?? 0).':'.($aFiles['foreign'] ?? 0).':'.($aFiles['draft'] ?? 0).':'.($aFiles['change'] ?? 0).':'.$aExclusion['person'].':'.$aExclusion['team'].':'.$sExemptSecret.':'.$sExemptProfile.':'.$sReadSecret."\n";

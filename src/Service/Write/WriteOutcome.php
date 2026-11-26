@@ -11,6 +11,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\Identifier;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Read\DatamodelReader;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
@@ -155,6 +156,22 @@ final class WriteOutcome
 	}
 
 	/**
+	 * The same flag, said short, for a tool whose schema is paid for on every connection beside a longer sibling (review
+	 * 2026-11-23, S3): the meaning is core_object_update's.
+	 *
+	 * @return array<string, mixed>
+	 * @since 2.2.0
+	 */
+	public static function ObsoleteOkBriefSchemaProperty(string $sWhatItDoes): array
+	{
+		return [
+			'type'        => 'boolean',
+			'description' => 'Also '.$sWhatItDoes.' obsolete objects your account hides, as core_object_update does; refused by default.',
+			'default'     => false,
+		];
+	}
+
+	/**
 	 * The escape hatch for the guard below, spelled once.
 	 *
 	 * @return array<string, mixed>
@@ -258,7 +275,7 @@ final class WriteOutcome
 			}
 
 			if (MetaModel::IsObsoletable($sClass)) {
-				$aAfter['obsolescence']['condition'] = MetaModel::GetObsolescenceExpression($sClass)->Render();
+				$aAfter['obsolescence']['condition'] = DatamodelReader::ObsolescenceCondition($sClass);
 				$aAfter['obsolescence']['flag'] = (bool)$oObject->Get('obsolescence_flag');
 				$aAfter['obsolescence']['hidden_from_searches'] = $aAfter['obsolescence']['flag'] && !utils::ShowObsoleteData();
 			}

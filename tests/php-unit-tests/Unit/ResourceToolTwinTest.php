@@ -47,6 +47,15 @@ class ResourceToolTwinTest extends TestCase
 		'itop://core/document/{class}/{id}/{att_code}' => 'core_object_get_document',
 	];
 
+	/**
+	 * Prompt name => the tool that returns the same thing (ADR 0025, amended for prompts). A prompt is something a person
+	 * starts and the model cannot: a client lists it as a slash command only the user types, so a model that searches its
+	 * tools never finds it (review 2026-11-23, L1).
+	 */
+	public const PROMPT_TWINS = [
+		'core_my_open_tickets' => 'core_my_open_tickets',
+	];
+
 	protected function setUp(): void
 	{
 		parent::setUp();
@@ -161,5 +170,64 @@ class ResourceToolTwinTest extends TestCase
 		$this->assertNotSame('', $sReturns, "{$sTool}'s sentence is empty, so this would pass on nothing");
 		$this->assertStringContainsString($sReturns, (string)$oTool->getDescription(), "{$sTool}'s {$sMode} description does not say what it returns in the shared words");
 		$this->assertStringContainsString($sReturns, (string)$oResource->getDescription(), "{$sUri}'s {$sMode} description does not say what it returns in {$sTool}'s words");
+	}
+
+	public function testEveryPromptHasATwinServedWhereverItIs(): void
+	{
+		$aPrompts = array_keys(MCPRegistry::GetPrompts());
+		$aTwinned = array_keys(self::PROMPT_TWINS);
+		sort($aPrompts);
+		sort($aTwinned);
+		$this->assertSame($aTwinned, $aPrompts, 'a prompt was added without a tool twin, or one was removed: give it a tool over the same handler and add the pair to PROMPT_TWINS (ADR 0025)');
+
+		$aTools = MCPRegistry::GetTools();
+		foreach (MCPRegistry::GetPrompts() as $sName => $oPrompt) {
+			$sTool = self::PROMPT_TWINS[$sName] ?? '';
+			$this->assertArrayHasKey($sTool, $aTools, "{$sName} names {$sTool} as its twin, which is not registered");
+			$oTool = $aTools[$sTool];
+
+			$this->assertSame($oPrompt->getToolset(), $oTool->getToolset(), "{$sTool} is not in the toolset of the prompt {$sName}");
+			$this->assertSame([], array_values(array_diff($oTool->requiredProfiles(), $oPrompt->requiredProfiles())), "{$sTool} requires a profile {$sName} does not");
+			if ($oPrompt instanceof PortalAware) {
+				$this->assertInstanceOf(PortalAware::class, $oTool, "the prompt {$sName} is served in portal mode and {$sTool} is not");
+			} else {
+				$this->assertNotInstanceOf(PortalAware::class, $oTool, "{$sTool} is served in portal mode and the prompt {$sName} is not");
+			}
+
+			$aHints = $oTool->getAnnotations()?->jsonSerialize() ?? [];
+			$this->assertSame(
+				AccessPolicy::CAPABILITY_READ,
+				AccessPolicy::CapabilityOf(
+					array_key_exists('readOnlyHint', $aHints) ? (bool)$aHints['readOnlyHint'] : null,
+					array_key_exists('destructiveHint', $aHints) ? (bool)$aHints['destructiveHint'] : null
+				),
+				"{$sTool} is not graded read"
+			);
+
+			// Same handler: the tool answers with the prompt's messages, and both ask the prompt whether to be offered.
+			$sSource = (string)file_get_contents((new \ReflectionClass($oTool))->getFileName());
+			$this->assertStringContainsString('::Messages()', $sSource, "{$sTool} does not answer with its prompt's messages");
+			$this->assertStringContainsString('::Offered()', $sSource, "{$sTool} is not offered where its prompt is");
+		}
+	}
+
+	public function testAPromptsAndItsTwinsDescriptionsSayWhatItIsForInTheSameWords(): void
+	{
+		$aTools = MCPRegistry::GetTools();
+		foreach (MCPRegistry::GetPrompts() as $sName => $oPrompt) {
+			$oTool = $aTools[self::PROMPT_TWINS[$sName]];
+			$sPrompt = get_class($oPrompt);
+			$this->assertNotSame('', (string)constant($sPrompt.'::RETURNS'));
+			$this->assertStringContainsString((string)constant($sPrompt.'::RETURNS'), (string)$oPrompt->getDescription(), 'console prompt');
+			$this->assertStringContainsString((string)constant($sPrompt.'::RETURNS'), (string)$oTool->getDescription(), 'console tool');
+
+			PortalMode::Remember('itop-portal');
+			try {
+				$this->assertStringContainsString((string)constant($sPrompt.'::PORTAL_RETURNS'), (string)$oPrompt->getDescription(), 'portal prompt');
+				$this->assertStringContainsString((string)constant($sPrompt.'::PORTAL_RETURNS'), (string)$oTool->getDescription(), 'portal tool');
+			} finally {
+				PortalMode::Forget();
+			}
+		}
 	}
 }

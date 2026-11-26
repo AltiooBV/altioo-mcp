@@ -62,6 +62,7 @@ class CoreExtensionsTest extends TestCase
 				'core_current_user',
 				'core_instructions',
 				'core_my_activity',
+				'core_my_open_tickets',
 				'core_object_apply_stimulus',
 				'core_object_attach',
 				'core_object_bulk_create',
@@ -203,6 +204,7 @@ class CoreExtensionsTest extends TestCase
 			'core_object_apply_stimulus'  => AccessPolicy::CAPABILITY_WRITE,
 			'core_object_delete'          => AccessPolicy::CAPABILITY_DELETE,
 			'core_portal_list'            => AccessPolicy::CAPABILITY_READ,
+			'core_my_open_tickets'        => AccessPolicy::CAPABILITY_READ,
 			'core_version'                => AccessPolicy::CAPABILITY_READ,
 		];
 

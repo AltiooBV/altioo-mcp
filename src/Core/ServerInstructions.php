@@ -89,6 +89,7 @@ final class ServerInstructions
 	{
 		$aParts = [
 			self::SECURITY,
+			self::accessSection(false),
 			self::SESSION,
 			self::PREAMBLE,
 			self::datamodelSection($oPolicy),
@@ -127,20 +128,71 @@ final class ServerInstructions
 
 		$aParts = [
 			self::SECURITY,
+			self::accessSection(true),
 			self::SESSION,
 			sprintf(self::PORTAL_MODE, $sPortal),
 			$oPolicy->allowsToolset(self::TOOLSET_DATAMODEL) ? self::PORTAL_OFFERS : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ) ? self::PORTAL_READING : '',
 			// Not named where the portal shows no history, which withholds the tool (review 2026-11-23, C6, C7).
 			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) && ServedAccess::Serves('core_object_history') ? self::PORTAL_HISTORY : '',
-			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) ? self::PORTAL_WRITING.self::advisoryLine($oPolicy, true) : '',
+			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) && ServedAccess::ServesWrites() ? self::PORTAL_WRITING.self::advisoryLine($oPolicy, true) : '',
 			self::PORTAL_LIMITS,
 		];
 		// A sentence that names a tool of another toolset is kept only when that toolset is served:
 		// [[toolset:text]] in the blocks above. Narrowed like the surface it describes (README).
-		$aParts = array_map(static fn (string $sPart): string => self::keepServed($sPart, $oPolicy), $aParts);
+		$aParts = array_map(static fn (string $sPart): string => self::keepWrites(self::keepServed($sPart, $oPolicy)), $aParts);
 
 		return implode("\n\n", array_filter(array_map('trim', $aParts)));
+	}
+
+	/**
+	 * Keeps every `{{w:text}}` when this caller is served a tool that changes an object, and drops it otherwise:
+	 * the portal's create actions, state changes and settable fields are not offered to a connection that cannot
+	 * use them (review 2026-11-23, C5).
+	 */
+	private static function keepWrites(string $sText): string
+	{
+		$bWrites = ServedAccess::ServesWrites();
+
+		return (string)preg_replace_callback(
+			'/\{\{w:(.*?)\}\}/s',
+			static fn (array $aMatch): string => $bWrites ? $aMatch[1] : '',
+			$sText
+		);
+	}
+
+	/**
+	 * What a connection with no write tool is told, in its first lines: that it is so, why, and what would
+	 * change it (review 2026-11-23, C5; decided 2026-11-24, the reviewer's portal session was read-only
+	 * because of the OAuth authorization scope).
+	 *
+	 * Said once here, so that nothing else has to say "you cannot write" and the text that remains does not
+	 * talk about writing. It names the scope only when the instance's own settings would have served a write
+	 * (ServedAccess::WritesWithheldBy()), and it promises no right: a write scope is necessary, never enough,
+	 * and in portal mode what the portal's forms let the user do is the rest.
+	 */
+	private static function accessSection(bool $bPortal): string
+	{
+		$sWhy = ServedAccess::WritesWithheldBy();
+		if ($sWhy === null) {
+			return '';
+		}
+
+		$sLimit = $bPortal ? 'what the portal\'s own forms let them do' : 'what their iTop rights allow';
+
+		return match ($sWhy) {
+			ServedAccess::WRITES_BY_SCOPE => "Access\n"
+				.'- No tool that creates or changes an object is served on this connection. The scope this'
+				."\n".'connection was authorized with (an OAuth approval, or the token) grants no write: that is why.'
+				."\n".'Writing needs a new authorization or token with a write scope (MCP-write), and then only '.$sLimit.'.'
+				."\n".'Tell the user so rather than trying.',
+			ServedAccess::WRITES_BY_SETTINGS => "Access\n"
+				.'- No tool that creates or changes an object is served here: the server\'s settings allow none'
+				."\n".'to anyone. Only an administrator can change that. Tell the user so rather than trying.',
+			default => "Access\n"
+				.'- No tool that creates or changes an object is served on this connection. Tell the user so'
+				."\n".'rather than looking for another way.',
+		};
 	}
 
 	/**
@@ -176,6 +228,15 @@ final class ServerInstructions
 	{
 		if ($aPrompts === []) {
 			return '';
+		}
+
+		// A prompt is something a person starts; one that also has a tool of its name (ADR 0025, amended) can be
+		// had by the model itself.
+		$aTools = array_values(array_filter($aPrompts, static fn (string $sName): bool => isset(MCPRegistry::GetTools()[$sName]) && ServedAccess::Serves($sName)));
+		if ($aTools !== []) {
+			return "Prompts\n"
+				.'- '.implode(', ', $aPrompts).': ready-made recipes, fetched with prompts/get. '.implode(', ', $aTools).' is also a tool'
+				."\n".'of that name: call it for the recipe if your client lists no prompts.';
 		}
 
 		return "Prompts\n"
@@ -399,8 +460,9 @@ final class ServerInstructions
 	/** Whether anything this caller holds can alter an object. */
 	private static function mayChangeSomething(AccessPolicy $oPolicy): bool
 	{
-		return $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE)
-			|| $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE);
+		return ($oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE)
+			|| $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_DELETE))
+			&& ServedAccess::ServesWrites();
 	}
 
 	/**
@@ -444,11 +506,11 @@ TEXT;
 
 	private const PORTAL_OFFERS = <<<'TEXT'
 What the portal offers
-- core_class_list: the classes, lists, create actions and state changes (and the states they apply
-in) this user's portal offers. core_class_schema: one class's fields. Start there. Portals differ:
-pick a list or an action by its title and class, never by an id you expect.
-- A list with a parent is one level under that list; a create action with a from_list starts from
-a row of that list. There is no other navigation.
+- core_class_list: the classes, lists{{w:, create actions and state changes (and the states they apply
+in)}} this user's portal offers. core_class_schema: one class's fields. Start there. Portals differ:
+pick a list{{w: or an action}} by its title and class, never by an id you expect.
+- A list with a parent is one level under that list;{{w: a create action with a from_list starts from
+a row of that list.}} There is no other navigation.
 TEXT;
 
 	private const PORTAL_READING = <<<'TEXT'
@@ -459,8 +521,8 @@ what the list shows. core_object_count counts a list per value of a column it sh
 - If the portal offers a list of answers (FAQ, knowledge base), search it before creating a request
 and offer what it holds; create one only if the user still wants it.
 - core_object_get reads one object from a list row: the fields the portal shows, attachments[[documents:
-(each with an id, read with core_object_get_document)]], may_attach, and what the user may do now
-(settable fields, state changes).
+(each with an id, read with core_object_get_document)]]{{w:, may_attach, and what the user may do now
+(settable fields, state changes)}}.
 TEXT;
 
 	private const PORTAL_HISTORY = <<<'TEXT'

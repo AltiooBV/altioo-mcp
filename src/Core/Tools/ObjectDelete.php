@@ -146,7 +146,7 @@ class ObjectDelete extends AbstractMCPTool
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id);
 		if ($sAccessRefusal !== null) {
