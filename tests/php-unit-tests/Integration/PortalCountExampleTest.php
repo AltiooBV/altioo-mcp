@@ -21,8 +21,9 @@ use UserRights;
 require_once __DIR__.'/../bootstrap.php';
 
 /**
- * Review 2026-11-23, B3 (the wording): the portal's core_object_count offered "open requests per status" as its example, and the
- * stock ticket lists are on Ticket, which has no status. The example it gives now is run here, so it fails when it stops working.
+ * Review 2026-11-23, B3: the portal's core_object_count offered "open requests per status" as its example, and the stock
+ * ticket lists are on Ticket, which has no status; batch 2 reworded it, and the counts per class (PortalCountPerClassTest)
+ * made it true again. The example the description gives is run here, so it fails when it stops working.
  */
 class PortalCountExampleTest extends ItopDataTestCaseAlias
 {
@@ -55,17 +56,16 @@ class PortalCountExampleTest extends ItopDataTestCaseAlias
 		$aCount = ToolOutput::Decode(ObjectCount::execute(group_by: [$aMatch[2]], list: $aMatch[1]));
 
 		$this->assertArrayHasKey('total', $aCount);
-		$this->assertStringNotContainsString('status', $sDescription, 'it names no column the stock lists\' class lacks');
+		$this->assertSame('status', $aMatch[2], 'the example is the one a model most wants: a column the ticket list\'s class has not');
 	}
 
-	public function testAColumnOfASubclassIsRefusedInWordsThatSayWhy(): void
+	public function testAColumnTheListHidesIsRefusedAsOneThatIsNotThere(): void
 	{
 		try {
-			ObjectCount::execute(group_by: ['status'], list: 'closed-tickets-for-portal-user');
-			$this->fail('status is not an attribute of Ticket.');
+			ObjectCount::execute(group_by: ['agent_id'], list: 'closed-tickets-for-portal-user');
+			$this->fail('agent_id is not a column of the list.');
 		} catch (ToolCallException $oException) {
-			$this->assertStringContainsString('a column of a subclass of Ticket', $oException->getMessage());
-			$this->assertStringNotContainsString('Unknown attribute', $oException->getMessage());
+			$this->assertStringStartsWith("Unknown attribute 'agent_id'", $oException->getMessage());
 		}
 	}
 }
