@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use DBObject;
 use MetaModel;
 use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
@@ -68,7 +69,7 @@ abstract class AbstractPortalTool extends AbstractMCPTool implements PortalAware
 	protected static function refuseReserved(string $sClass): void
 	{
 		if (ChangeLogReservation::IsReserved($sClass)) {
-			throw ToolRefusal::Because('This list is the change log: core_object_history gives the history of one object the portal shows you.');
+			throw ToolRefusal::Because('This list is the change log'.(ServedAccess::Serves('core_object_history') ? ': core_object_history gives the history of one object the portal shows you.' : ', which this connection does not serve.'));
 		}
 	}
 

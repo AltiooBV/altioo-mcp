@@ -131,7 +131,8 @@ final class ServerInstructions
 			sprintf(self::PORTAL_MODE, $sPortal),
 			$oPolicy->allowsToolset(self::TOOLSET_DATAMODEL) ? self::PORTAL_OFFERS : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_READ) ? self::PORTAL_READING : '',
-			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) ? self::PORTAL_HISTORY : '',
+			// Not named where the portal shows no history, which withholds the tool (review 2026-11-23, C6, C7).
+			$oPolicy->allowsToolset(self::TOOLSET_HISTORY) && ServedAccess::Serves('core_object_history') ? self::PORTAL_HISTORY : '',
 			$bObjects && $oPolicy->allowsCapability(AccessPolicy::CAPABILITY_WRITE) ? self::PORTAL_WRITING.self::advisoryLine($oPolicy, true) : '',
 			self::PORTAL_LIMITS,
 		];
@@ -265,7 +266,7 @@ final class ServerInstructions
 	 */
 	private static function historySection(AccessPolicy $oPolicy): string
 	{
-		if (!$oPolicy->allowsToolset(self::TOOLSET_HISTORY)) {
+		if (!$oPolicy->allowsToolset(self::TOOLSET_HISTORY) || !ServedAccess::Serves('core_object_history')) {
 			return '';
 		}
 
@@ -454,7 +455,7 @@ TEXT;
 Reading
 - core_portal_list runs a portal list by id. Lists are already this user's own: pass no contact id or
 filter. tab picks a tab, parent_id the children of a row of the parent list, search finds words in
-what the list shows. core_object_count counts a list per value of a column it shows.
+what the list shows. core_object_count counts a list per value of a column it shows that its class has (a subclass-only column is refused).
 - If the portal offers a list of answers (FAQ, knowledge base), search it before creating a request
 and offer what it holds; create one only if the user still wants it.
 - core_object_get reads one object from a list row: the fields the portal shows, attachments[[documents:

@@ -135,7 +135,7 @@ abstract class AbstractBulkTool extends AbstractMCPTool
 		}
 
 		if (ChangeLogReservation::IsReserved($sClass)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($sClass));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($sClass);
 		if ($sAccessRefusal !== null) {

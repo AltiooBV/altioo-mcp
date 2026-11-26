@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Api;
 
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectHistory;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectGrades;
@@ -392,7 +393,8 @@ abstract class AbstractObjectSearch extends AbstractMCPTool
 			'type'        => 'boolean',
 			'description' => 'Report when each object was created and when it was last changed, with the user behind each. '
 				.'iTop keeps no such field on an object, so this is read from the change log - which costs two extra reads per object, '
-				.'and is therefore refused for a page of more than '.ObjectHistory::MAX_AUDIT_PAGE.'. Use core_object_history for the full record of one object.',
+				.'and is therefore refused for a page of more than '.ObjectHistory::MAX_AUDIT_PAGE.'.'
+				.(ServedAccess::Serves('core_object_history') ? ' Use core_object_history for the full record of one object.' : ''),
 			'default'     => false,
 		]];
 	}

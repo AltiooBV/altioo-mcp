@@ -131,7 +131,7 @@ final class ClassRights
 					}
 				}
 
-				return $aRights + ['restricted' => sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass)];
+				return $aRights + ['restricted' => ChangeLogReservation::Refusal($sClass)];
 			}
 
 			$bListed = AccessGrantFamilies::IsOperatorListed($sClass, Settings::GetEscalationClasses());

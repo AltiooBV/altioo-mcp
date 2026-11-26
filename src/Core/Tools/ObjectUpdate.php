@@ -84,7 +84,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			title: $this->getTitle() ?? 'Update iTop object',
 			readOnlyHint: false,
 			destructiveHint: false, // modifies, but not “delete/overwrite world”
-			idempotentHint: true,
+			idempotentHint: false, // a case log's add_item adds another entry on every retry (review 2026-11-23, S1)
 			openWorldHint: false, // closed CMDB domain
 		);
 	}
@@ -111,6 +111,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 				'id'  => [
 					'type'        => 'integer',
 					'description' => 'The ID of the object to update.',
+					'minimum'     => 1,
 				],
 				'fields' => [
 					'type'                 => JsonPayload::MAP_TYPE,
@@ -161,7 +162,7 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		}
 
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 		$sAccessRefusal = AccessGrants::RefusalFor($class, $id, $fields);
 		if ($sAccessRefusal !== null) {

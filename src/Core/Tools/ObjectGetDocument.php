@@ -69,10 +69,10 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		}
 
 		return 'Read '.self::RETURNS.' - and return its content. '
-			.'core_object_get reports each such attribute as filename, mimetype, size and a uri; this is how that uri is read. '
+			.'core_object_get reports each such attribute as filename, mimetype, size and a uri, itop://core/document/{class}/{id}/{att_code}: pass those three here, there is no uri argument. '
 			.'An image comes back as an image; anything else as an embedded file. Ask for one document at a time, and only when its content is the question: '
 			.'a file arrives in full, and a large one fills the context window it arrives in. '
-			.'The files attached to a ticket are not attributes of it: they are Attachment objects pointing back at it, so core_object_search_by_class on Attachment with item_class and item_id lists them, each with the uri that reads it.';
+			.'The files attached to a ticket are not attributes of it: they are Attachment objects pointing back at it, so core_object_search_by_class on Attachment with item_class and item_id lists them, each with its uri.';
 	}
 
 	public function getAnnotations(): ?ToolAnnotations
@@ -140,7 +140,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// CMDBChangeOpSetAttributeBlob stores the previous contents of a blob,
 		// so this is a real way into the change log and not a formality.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ToolRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ToolRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 
 		try {

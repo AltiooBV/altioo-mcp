@@ -113,7 +113,7 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: "how many open requests per status". Call core_class_list for the lists and their columns.';
+			return 'Count the rows of one of the portal\'s lists, and optionally per value of one or two of the columns it shows. A number without paging every row: list "closed-tickets-for-portal-user" with group_by ["finalclass"] is closed requests per kind. A column only a subclass of the list\'s class has is refused. Call core_class_list for the lists; core_portal_list rows show their columns.';
 		}
 
 		return 'Count the objects of a class that match, and optionally per value of one or two attributes: "open tickets per team" without paging every ticket. Give class and filters, or an OQL query. Only attributes you may read, of simple types, can be grouped by.';
@@ -342,6 +342,10 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 			// Only what the list shows: a column the portal hides is a column
 			// a count must not split by, and it is refused as one that is not
 			// there. The attribute rules apply on top.
+			if (in_array($sAttCode, $aColumns, true) && !MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+				// Shown by the list, so no secret: the column is a subclass's, and the list's class cannot be grouped by it.
+				throw ToolRefusal::Because("Cannot count list '".trim($sList)."' per '{$sAttCode}': it is a column of a subclass of {$sClass}, which has no such attribute, so a count cannot group by it yet. Group by a column {$sClass} has.");
+			}
 			if (!in_array($sAttCode, $aColumns, true) || !self::mayGroupBy($sClass, $sAttCode)) {
 				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on list '".trim($sList)."'.");
 			}

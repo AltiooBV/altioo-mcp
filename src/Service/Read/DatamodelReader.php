@@ -124,7 +124,8 @@ final class DatamodelReader
 		$aAttributes = AttributeDescription::attributes($sClass);
 
 		if ($bRequiredOnly) {
-			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true);
+			// Required and without a default: the ones a create has to be given. The others are filled in by the write.
+			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true && !array_key_exists('default', $a));
 		}
 
 		if ($sAttributes !== self::ATTRIBUTES_ALL && $sAttributes !== '') {
@@ -283,6 +284,43 @@ final class DatamodelReader
 	}
 
 	/**
+	 * What a state asks of its attributes, so that a model reads what a transition needs before it is refused.
+	 *
+	 * "mandatory" must hold a value in the state, "prompted" is what the transition into it asks for again
+	 * (must change or must prompt) and "readOnly" cannot be edited while the object is there. A list is left out
+	 * when empty, and an attribute the caller may not read or the operator excluded is not named (doc/adr/0012),
+	 * as everywhere else in the schema (review 2026-11-23, C3).
+	 *
+	 * @param array<string, int> $aFlags The state's attribute list, attribute code => OPT_ATT_* flags.
+	 *
+	 * @return array<string, array<int, string>>
+	 */
+	private static function stateFlags(string $sClass, array $aFlags): array
+	{
+		$aMasks = [
+			'mandatory' => OPT_ATT_MANDATORY,
+			'prompted'  => OPT_ATT_MUSTCHANGE | OPT_ATT_MUSTPROMPT,
+			'readOnly'  => OPT_ATT_READONLY,
+		];
+
+		$aOut = [];
+		foreach ($aFlags as $sAttCode => $iFlags) {
+			if (!MetaModel::IsValidAttCode($sClass, (string)$sAttCode)
+				|| ExclusionPolicy::ExcludesAttribute($sClass, (string)$sAttCode)
+				|| UserRights::IsActionAllowedOnAttribute($sClass, (string)$sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+				continue;
+			}
+			foreach ($aMasks as $sKey => $iMask) {
+				if (((int)$iFlags & $iMask) !== 0) {
+					$aOut[$sKey][] = (string)$sAttCode;
+				}
+			}
+		}
+
+		return $aOut;
+	}
+
+	/**
 	 * @param string $sClass The class for which to retrieve lifecycle details
 	 * @return array An array of lifecycle details
 	 */
@@ -305,7 +343,7 @@ final class DatamodelReader
 			$aStates[$sState] = [
 				'label'       => MetaModel::GetStateLabel($sClass, $sState),
 				'transitions' => $aTransitions,
-			];
+			] + self::stateFlags($sClass, $aStateDef['attribute_list'] ?? []);
 		}
 
 		return [

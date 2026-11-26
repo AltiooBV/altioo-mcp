@@ -32,6 +32,9 @@ final class ServedAccess
 
 	private static ?\Closure $fPrompts = null;
 
+	/** @var array<int, string>|null The served tools, asked of the server once per request. */
+	private static ?array $aServedTools = null;
+
 	/**
 	 * @param \Closure(): array{toolsets: array<int, string>, tools: array<int, string>, capabilities: array<int, string>, prompts: array<int, string>} $fAccess
 	 * @param \Closure(AccessPolicy): array<int, string>                                                                                       $fPrompts
@@ -41,6 +44,7 @@ final class ServedAccess
 	{
 		self::$fAccess = $fAccess;
 		self::$fPrompts = $fPrompts;
+		self::$aServedTools = null;
 	}
 
 	/**
@@ -52,6 +56,7 @@ final class ServedAccess
 	{
 		self::$fAccess = null;
 		self::$fPrompts = null;
+		self::$aServedTools = null;
 	}
 
 	/**
@@ -64,6 +69,29 @@ final class ServedAccess
 		return self::$fAccess === null
 			? ['toolsets' => [], 'tools' => [], 'capabilities' => [], 'prompts' => []]
 			: (self::$fAccess)();
+	}
+
+	/**
+	 * Whether this caller is served a tool, for a description or a refusal that would name it.
+	 *
+	 * A text that sends a model to a tool it was not given sends it nowhere (review 2026-11-23, C7). True when
+	 * no server is asking (nothing remembered: a test, or a call outside a request), where there is nothing to
+	 * contradict, so a text built without a server names the tool as it always did. Asked of the server once
+	 * per request.
+	 *
+	 * @param string $sTool The tool's qualified name, e.g. core_object_history.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function Serves(string $sTool): bool
+	{
+		if (self::$fAccess === null) {
+			return true;
+		}
+
+		self::$aServedTools ??= self::Current()['tools'];
+
+		return in_array($sTool, self::$aServedTools, true);
 	}
 
 	/**

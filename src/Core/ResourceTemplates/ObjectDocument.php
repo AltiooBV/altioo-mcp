@@ -101,7 +101,7 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 		// so this is the same way into the change log core_object_get_document
 		// refuses - and the one that was missed when that refusal went in.
 		if (ChangeLogReservation::IsReserved($class)) {
-			throw ResourceRefusal::Because(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $class));
+			throw ResourceRefusal::Because(ChangeLogReservation::Refusal($class));
 		}
 
 		try {

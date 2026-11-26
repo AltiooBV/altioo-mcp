@@ -66,7 +66,7 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			title: $this->getTitle() ?? 'Update iTop objects in bulk',
 			readOnlyHint: false,
 			destructiveHint: false, // modifies, does not destroy
-			idempotentHint: true, // the same values set twice land the same way
+			idempotentHint: false, // the same scalar values land the same way twice, but a case log's add_item adds another entry on every retry (review 2026-11-23, S1)
 			openWorldHint: false,
 		);
 	}

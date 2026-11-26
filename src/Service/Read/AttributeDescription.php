@@ -103,15 +103,50 @@ final class AttributeDescription
 				'pattern'       => AttributeFormat::pattern($oAttDef),
 				'required'      => $oAttDef->IsNullAllowed() === false,
 				'readOnly'      => $oAttDef->IsWritable() === false,
-				'modify'        => GateGrades::grade($iModify),
+				// "no" for an attribute nobody writes: readOnly already says why, and "yes" beside it read as a
+				// contradiction (review 2026-11-23, C9). The grade is the caller's answer for what can be written.
+				'modify'        => $oAttDef->IsWritable() ? GateGrades::grade($iModify) : GateGrades::grade(UR_ALLOWED_NO),
 				'nullable'      => $oAttDef->IsNullAllowed(),
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef, $sClass),
-			] + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
+			] + self::defaultValue($oAttDef) + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;
+	}
+
+	/**
+	 * The value a write gives an attribute nobody set, when there is one worth saying.
+	 *
+	 * `required` is the datamodel forbidding null, which is not "you must send it": an attribute with a default
+	 * is filled by the write (a ticket's status, impact and urgency), and a model that sends every `required` one
+	 * sends what iTop would have chosen anyway (review 2026-11-23, C4). Reported only where there is one, so
+	 * an attribute with no `default` and `required: true` is the one a create has to be given.
+	 *
+	 * Nothing is said for an empty default (an empty string, 0 or an empty key), for a default that is not a
+	 * plain value (a link set's), for a secret, or for class names, which may name a class the operator
+	 * excluded (ADR 0012).
+	 *
+	 * @return array<string, scalar>
+	 */
+	private static function defaultValue(AttributeDefinition $oAttDef): array
+	{
+		if (self::listsClassNames($oAttDef)) {
+			return [];
+		}
+
+		try {
+			$mDefault = $oAttDef->GetDefaultValue();
+		} catch (\Throwable $e) {
+			return [];
+		}
+
+		if (!is_scalar($mDefault) || $mDefault === '' || $mDefault === 0 || $mDefault === false || ($oAttDef->IsExternalKey() && (string)$mDefault === '0')) {
+			return [];
+		}
+
+		return ['default' => $mDefault];
 	}
 
 	/**
@@ -368,6 +403,43 @@ final class AttributeDescription
 	}
 
 	/**
+	 * How to write a link set, which reads as rows and is written as the complete list of its links (review 2026-11-23, C19).
+	 *
+	 * Each item is an object keyed by the attribute codes of the link class: for an indirect set the key to the remote
+	 * object, which is the one a caller guesses ([{"functionalci_id": 1}] attaches that CI), for a direct one the
+	 * linked class's own attributes. The key back to the host is implied, and what the list leaves out is removed,
+	 * which iTop then checks against this account's rights on the link class. A name the operator excluded
+	 * (ADR 0012) is not written here: the hint then says the same without it.
+	 */
+	private static function linkSetHint(AttributeLinkedSet $oAttDef): string
+	{
+		$sGeneral = 'Send the complete list, as an array of objects keyed by the link class\'s attribute codes; a link left out is removed.';
+
+		try {
+			$sLinkClass = $oAttDef->GetLinkedClass();
+			if (ExclusionPolicy::ExcludesClass($sLinkClass)) {
+				return $sGeneral;
+			}
+
+			/** @psalm-suppress RedundantCondition iTop's attribute classes are not all in the stubs */
+			if (!$oAttDef instanceof AttributeLinkedSetIndirect) {
+				return "Send the complete list, as an array of {$sLinkClass} objects keyed by attribute code; one left out is removed.";
+			}
+
+			$sRemoteKey = $oAttDef->GetExtKeyToRemote();
+			$oToRemote = MetaModel::GetAttributeDef($sLinkClass, $sRemoteKey);
+			$sRemote = $oToRemote instanceof AttributeExternalKey ? $oToRemote->GetTargetClass() : '';
+			if (ExclusionPolicy::ExcludesAttribute($sLinkClass, $sRemoteKey) || ($sRemote !== '' && ExclusionPolicy::ExcludesClass($sRemote))) {
+				return $sGeneral;
+			}
+
+			return "Send the complete list, as {$sLinkClass} objects keyed by attribute code: [{\"{$sRemoteKey}\": 1}] links {$sRemote} 1. A link left out is removed.";
+		} catch (\Throwable $e) {
+			return $sGeneral;
+		}
+	}
+
+	/**
 	 * How to write an attribute that is not written the way it reads.
 	 *
 	 * Most attributes take back what a read returned. A case log does not: it
@@ -402,6 +474,11 @@ final class AttributeDescription
 			return [
 				'writeHint' => 'Write the new entry, not the whole log: pass its text as a plain string, or as {"add_item": {"message": "..."}}. iTop adds it to the log and keeps the entries already there.',
 			];
+		}
+
+		/** @psalm-suppress TypeDoesNotContainType iTop's attribute classes are not all in the stubs */
+		if ($oAttDef instanceof AttributeLinkedSet) {
+			return ['writeHint' => self::linkSetHint($oAttDef)];
 		}
 
 		// Said here rather than only at write time: modify answers for the

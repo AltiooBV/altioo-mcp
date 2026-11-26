@@ -40,6 +40,34 @@ claude mcp add --transport http itop https://<your-itop>/env-production/altioo-m
 
 Check it with `/mcp`, which lists the server and its tools.
 
+**OAuth instead of a token.** With [altioo-oauth-server](../README.md#endpoint) installed, leave the
+`--header` off: `claude mcp add --transport http itop <url>`, then `/mcp` and follow the browser
+login ([Claude Code's MCP page](https://code.claude.com/docs/en/mcp)). A header you configure is used as
+given and OAuth is not tried for that server, so do not set both. There is no token to create.
+
+**A portal-only user** is served portal mode: the same endpoint and tools, limited to what their
+portal shows. The README says who is let in and why ([Portal-only users](../README.md#granting-access));
+if the user is allowed into two portals, give each its own entry with `?portal_id=<portal>` on the URL
+([ADR 0007](adr/0007-the-connection-names-its-portal.md)). Their token needs an expiry within
+`mcp_portal_token_max_days`, which an administrator sets under **User management → Personal tokens**.
+`core_current_user` says which portal a connection is served.
+
+**The server's instructions are cut, by the client, not by this extension.** Claude Code keeps the first
+4,096 characters of a server's instructions and says so in its docs and its log. The Claude desktop app's
+Code tab was seen on 2026-11-23 to keep about 2,050, ending mid-word. Neither figure is a constant: they
+are the clients' and can change with their versions. The extension is written for the smaller one: the
+security paragraph comes first and whole inside the first 2,000 characters, and the whole block stays under
+4,096 for every combination of toolsets in both modes (`ServerInstructionsTest`). A client that cuts earlier
+still loses the tail, so `core_instructions` returns the block in full on request.
+
+**Prompts and resources are the user's, not the model's.** The extension's prompts (for example
+`core_my_open_tickets`) are listed by Claude Code as slash commands, `/mcp__<server>__<prompt>`, where
+`<server>` is the name you gave it (`itop` above). Only the user runs one; a model cannot call a prompt, and
+tool search does not find it. Its resources are attached with an `@` mention, `@<server>:<uri>`, for example
+`@itop:itop://core/instructions`; typing `@` lists what the server offers, and a mention stays plain text
+under `claude -p`. Both are described on [Claude Code's MCP page](https://code.claude.com/docs/en/mcp).
+Every resource also has a tool twin, so a model can do what a mention does.
+
 ## Claude Desktop
 
 `claude_desktop_config.json` — **Settings → Developer → Edit Config**:

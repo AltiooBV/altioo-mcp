@@ -49,7 +49,7 @@ final class DocumentFetch
 		// are every past document on the instance, silos and today's
 		// per-attribute rights notwithstanding.
 		if (ChangeLogReservation::IsReserved($sClass)) {
-			throw new MCPDocumentException(sprintf(ChangeLogReservation::RESERVED_REFUSAL, $sClass));
+			throw new MCPDocumentException(ChangeLogReservation::Refusal($sClass));
 		}
 		try {
 			$oAccess = ObjectAccess::Current();
