@@ -266,9 +266,10 @@ final class DocumentAccess
 	 * The document as the contents of a resource: its text when it is a text file, its bytes in base64 when it is not.
 	 *
 	 * A text file is one whose type is text/*, JSON or XML and whose bytes are text as well: valid UTF-8, with no
-	 * control character but tab, line feed, form feed, carriage return and escape. The type is what was stored with
-	 * the file and so a claim, and bytes that are not text could not be encoded into a JSON answer, or would grow
-	 * six times over doing it: those go as base64, under the same type.
+	 * control character but tab, line feed, form feed and carriage return. The type is what was stored with the file
+	 * and so a claim. Bytes that are no UTF-8 cannot be encoded into a JSON answer; a control byte is written there
+	 * as six, and an escape sequence is an instruction to a terminal that prints it. Those go as base64, under the
+	 * same type. What is left grows three times at most in the answer.
 	 *
 	 * @since 2.2.0
 	 */
@@ -321,7 +322,7 @@ final class DocumentAccess
 	private static function IsText(string $sData): bool
 	{
 		return preg_match('//u', $sData) === 1
-			&& preg_match('/[\x00-\x08\x0B\x0E-\x1A\x1C-\x1F]/', $sData) === 0;
+			&& preg_match('/[\x00-\x08\x0B\x0E-\x1F]/', $sData) === 0;
 	}
 
 	/**
