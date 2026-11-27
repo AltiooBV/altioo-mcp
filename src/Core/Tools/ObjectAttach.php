@@ -33,7 +33,6 @@ use MetaModel;
 use ormDocument;
 use UserRights;
 use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
-use Mcp\Server\Exception\ToolCallException;
 
 /**
  * Put a file on an object: an attachment, or a blob attribute.
@@ -385,27 +384,6 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 	}
 
 	/**
-	 * A validation message with the start of the file taken out of it.
-	 *
-	 * iTop writes a refused value between brackets: `Wrong format [<first bytes>...(316 chars)...]`. Any bracketed
-	 * part holding the beginning of this very file is replaced by a sentence. The rest of the message is kept.
-	 */
-	private static function withoutTheFilesBytes(string $sMessage, ormDocument $oDocument): string
-	{
-		$sData = (string)$oDocument->GetData();
-		$sPrefix = substr($sData, 0, 16);
-		if ($sPrefix === '') {
-			return $sMessage;
-		}
-
-		return (string)preg_replace_callback(
-			'/\[[^\]]*\]/s',
-			static fn (array $aMatch): string => str_contains($aMatch[0], $sPrefix) ? '[the file\'s content is not repeated]' : $aMatch[0],
-			$sMessage
-		);
-	}
-
-	/**
 	 * The console's answer: a row in Attachment pointing at the object.
 	 *
 	 * SetItem() is iTop's own, and does more than fill two columns - it carries
@@ -578,14 +556,7 @@ class ObjectAttach extends AbstractMCPTool implements PortalAware
 
 		$oTarget->Set($sAttCode, $oDocument);
 
-		try {
-			DryRun::Check($oTarget, "{$sClass}::{$iId}");
-		} catch (ToolCallException $e) {
-			// iTop's own message for a file the attribute does not take (an image attribute given text) quotes the
-			// start of the file, binary included. The caller sent it and does not need it back, and a file is
-			// untrusted text that reaches a model through an error (review 2026-11-23, S8).
-			throw ToolRefusal::Because(self::withoutTheFilesBytes($e->getMessage(), $oDocument));
-		}
+		DryRun::Check($oTarget, "{$sClass}::{$iId}");
 
 		if ($bSimulate) {
 			return ToolOutput::StructuredWrite(['class' => $sClass]

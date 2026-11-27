@@ -40,6 +40,8 @@ claude mcp add --transport http itop https://<your-itop>/env-production/altioo-m
 
 Check it with `/mcp`, which lists the server and its tools.
 
+**Changed tool descriptions are not picked up by looking at `/mcp`** (seen on 2026-11-27, after an upgrade of the extension, which sends no change notification). Choose **Reconnect** in the server's `/mcp` menu: [Claude Code's MCP page](https://code.claude.com/docs/en/mcp), read that day, says it discards the cached tool list, so that the list is fetched from the server again (not tried against this extension). If a conversation still shows the old text, start a new session.
+
 **OAuth instead of a token.** With [altioo-oauth-server](../README.md#endpoint) installed, leave the
 `--header` off: `claude mcp add --transport http itop <url>`, then `/mcp` and follow the browser
 login ([Claude Code's MCP page](https://code.claude.com/docs/en/mcp)). A header you configure is used as

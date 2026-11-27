@@ -209,7 +209,8 @@ as what it is — filename, media type, size — and a `uri`:
 
 Reading that URI, as a resource or through `core_object_get_document`, returns the file
 itself: an image as an image, so a model can actually look at the screenshot someone pasted
-into a ticket, anything else as an embedded file. The reason the bytes are not simply in the
+into a ticket, anything else as an embedded file, a text file as its text. (A resource read
+answers the same contents, an image as its bytes.) The reason the bytes are not simply in the
 read is arithmetic — `AttributeBlob`'s JSON form is the whole file base64-encoded, base64
 costs a third again, and `core_object_get` defaults to every attribute, so one call on a
 ticket carrying a 4 MB PDF is a 5.4 MB response, larger than the context window it is being

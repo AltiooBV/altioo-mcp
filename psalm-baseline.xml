@@ -172,16 +172,14 @@
 				'simulated'     => false,
 				'valid'         => true,
 				'state'         => $oObject->GetState(),
-				// The target is reported on a real call too, so the shape does
-				// not depend on simulate. The object is in it by now, which is
-				// what makes the pair readable: state === would_move_to says
-				// the transition happened.
-				'would_move_to' => $sTargetState,
+				// Kept so the shape does not depend on simulate, and null because nothing
+				// "would" move any more: the object is in `state` (review 2026-11-23, retest B4).
+				'would_move_to' => null,
 				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
-					'changes'       => WriteOutcome::Map($aChanges),
-					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'changes'       => WriteOutcome::Map($aChanges),
+				'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WriteOutcome::Map($aOverridden),
-					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]
 			+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)))]]></code>
     </InvalidReturnStatement>

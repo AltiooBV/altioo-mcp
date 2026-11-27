@@ -230,6 +230,23 @@ class ServerInstructionsTest extends TestCase
 		$this->assertStringContainsString('prompts/get', $sText, 'the model is not told how one is fetched');
 	}
 
+	/** Retest of 2026-11-27: a prompt that is also a tool was named twice in its own line. */
+	public function testAPromptThatIsAlsoAToolIsNamedOnce(): void
+	{
+		$sText = ServerInstructions::Text(AccessPolicy::Unrestricted(), null, null, ['core_my_open_tickets']);
+
+		$this->assertSame(1, substr_count($sText, 'core_my_open_tickets'), $sText);
+		$this->assertStringContainsString('core_my_open_tickets (also a tool)', $sText);
+		$this->assertStringContainsString('call the tool where one is marked.', $sText);
+		$this->assertStringNotContainsString('of any other', $sText, 'there is no other');
+
+		$sMixed = ServerInstructions::Text(AccessPolicy::Unrestricted(), null, null, ['core_my_open_tickets', 'acme_report']);
+		$this->assertSame(1, substr_count($sMixed, 'core_my_open_tickets'));
+		$this->assertSame(1, substr_count($sMixed, 'acme_report'));
+		$this->assertStringContainsString('give the user the name of any other', $sMixed);
+		$this->assertStringNotContainsString('acme_report (also a tool)', $sMixed);
+	}
+
 	/** No prompt served, no section: an empty heading advertises nothing. */
 	public function testNoPromptsMeansNoPromptSection(): void
 	{

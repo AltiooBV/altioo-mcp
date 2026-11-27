@@ -12,6 +12,9 @@ use Altioo\iTop\Extension\MCP\Helper\MCPHttp;
 use Altioo\iTop\Extension\MCP\Service\Rights\TokenScopes;
 use Altioo\iTop\Extension\MCP\Test\Support\RequestPipelineSource;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Controller\Gate\TokenNotAParameterGate;
+use Altioo\iTop\Extension\MCP\Exception\MCPAuthException;
+use Altioo\iTop\Extension\MCP\Model\MCPResult;
 use PHPUnit\Framework\TestCase;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -116,6 +119,30 @@ class TokenOutsideTheHeadersTest extends TestCase
 		$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer abc123';
 
 		$this->assertFalse(MCPHttp::CarriesATokenAsAParameter());
+	}
+
+	/**
+	 * Retest of 2026-11-27: the credential check runs first, so whoever reaches this refusal sent a header, and was
+	 * told to send it. It is told to remove the parameter, and neither value is repeated.
+	 */
+	public function testACallerThatAlsoSentAHeaderIsToldToRemoveTheParameter(): void
+	{
+		if (!class_exists('ExecutionKPI', false)) {
+			eval('class ExecutionKPI {}');
+		}
+		$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer header-token-123';
+		$_GET['auth_token'] = $_REQUEST['auth_token'] = 'url-token-456';
+
+		try {
+			(new TokenNotAParameterGate())->Check(new \ExecutionKPI());
+			$this->fail('a token in the URL was let through');
+		} catch (MCPAuthException $e) {
+			$this->assertStringContainsString('Remove the auth_token request parameter', $e->getMessage());
+			$this->assertStringNotContainsString('Send the token', $e->getMessage());
+			$this->assertStringNotContainsString('url-token-456', $e->getMessage());
+			$this->assertStringNotContainsString('header-token-123', $e->getMessage());
+			$this->assertSame(MCPResult::UNAUTHORIZED, $e->getCode());
+		}
 	}
 
 	/**
