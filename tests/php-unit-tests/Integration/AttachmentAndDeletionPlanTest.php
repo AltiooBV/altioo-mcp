@@ -440,9 +440,14 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		$iTicket = $this->aTicket();
 		$iAttachment = $this->attachTo($iTicket, 'plan.txt');
 
+		// A contact on the ticket, so that its deletion takes a row with it.
+		$oLink = MetaModel::NewObject('lnkContactToTicket');
+		$oLink->Set('ticket_id', $iTicket);
+		$oLink->Set('contact_id', (int)MetaModel::GetObject('UserRequest', $iTicket)->Get('caller_id'));
+		$oLink->DBInsert();
 		$aPlan = ToolOutput::Decode(ObjectDelete::execute('UserRequest', $iTicket, true))['deletionPlan'];
 
-		$this->assertNotEmpty(array_merge($aPlan['deleted'], $aPlan['updated']), 'a ticket with an attachment takes something with it');
+		$this->assertNotEmpty(array_merge($aPlan['deleted'], $aPlan['updated']), 'a ticket with a contact takes something with it');
 		foreach (array_merge($aPlan['deleted'], $aPlan['updated']) as $aEntry) {
 			$this->assertArrayHasKey('class', $aEntry, 'an entry with no class: '.json_encode($aEntry));
 			$this->assertFalse($aEntry['class'] === 'UserRequest' && (int)$aEntry['id'] === $iTicket, 'the object being deleted is listed as what happens besides it');
@@ -467,7 +472,8 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		// In bulk before logging in: a Support Agent holds no bulk delete on Attachment.
 		foreach ([true, false] as $bSimulate) {
 			$aBulk = ToolOutput::Decode(ObjectBulkDelete::execute('Attachment', [$iSecond], $bSimulate));
-			$this->assertSame($aNothing, (array)((array)$aBulk['results'][0])['deletionPlan'], 'bulk: '.json_encode($aBulk));
+			$this->assertSame(1, $aBulk['succeeded'], 'bulk: '.json_encode($aBulk));
+			$this->assertSame($aNothing, (array)((array)$aBulk['objects'][0])['deletionPlan'], 'bulk: '.json_encode($aBulk));
 		}
 
 		$this->loginAs('Support Agent');
