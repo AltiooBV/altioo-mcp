@@ -234,9 +234,12 @@ final class ServerInstructions
 		// had by the model itself.
 		$aTools = array_values(array_filter($aPrompts, static fn (string $sName): bool => isset(MCPRegistry::GetTools()[$sName]) && ServedAccess::Serves($sName)));
 		if ($aTools !== []) {
+			// Each name once (review 2026-11-23, retest): the mark says which can be called.
+			$aNamed = array_map(static fn (string $sName): string => in_array($sName, $aTools, true) ? $sName.' (also a tool)' : $sName, $aPrompts);
+
 			return "Prompts\n"
-				.'- '.implode(', ', $aPrompts).': ready-made recipes, fetched with prompts/get. '.implode(', ', $aTools).' is also a tool'
-				."\n".'of that name: call it for the recipe if your client lists no prompts.';
+				.'- '.implode(', ', $aNamed).': ready-made recipes, fetched with prompts/get. If your client lists no'
+				."\n".'prompts, call the tool where one is marked'.(count($aTools) < count($aPrompts) ? ', and give the user the name of any other.' : '.');
 		}
 
 		return "Prompts\n"
@@ -506,11 +509,12 @@ TEXT;
 
 	private const PORTAL_OFFERS = <<<'TEXT'
 What the portal offers
-- core_class_list: the classes, lists{{w:, create actions and state changes (and the states they apply
-in)}} this user's portal offers. core_class_schema: one class's fields. Start there. Portals differ:
-pick a list{{w: or an action}} by its title and class, never by an id you expect.
-- A list with a parent is one level under that list;{{w: a create action with a from_list starts from
-a row of that list.}} There is no other navigation.
+- core_class_list: the classes and lists this user's portal offers{{w:, with its
+create actions and state changes (and the states they apply in)}}. core_class_schema: one class's
+fields. Start there. Portals differ: pick a list{{w: or an action}} by its title and class, never by
+an id you expect.
+- A list with a parent is one level under that list{{w:; a create action with a from_list starts from
+a row of that list}}. There is no other navigation.
 TEXT;
 
 	private const PORTAL_READING = <<<'TEXT'
@@ -518,8 +522,8 @@ Reading
 - core_portal_list runs a portal list by id. Lists are already this user's own: pass no contact id or
 filter. tab picks a tab, parent_id the children of a row of the parent list, search finds words in
 what the list shows. core_object_count counts a list per value of a column it shows; a column only some kinds of row have (status, priority of tickets) is counted kind by kind, each group naming its class.
-- If the portal offers a list of answers (FAQ, knowledge base), search it before creating a request
-and offer what it holds; create one only if the user still wants it.
+- If the portal offers a list of answers (FAQ, knowledge base), search it{{w: before creating a request}}
+and offer what it holds{{w:; create one only if the user still wants it}}.
 - core_object_get reads one object from a list row: the fields the portal shows, attachments[[documents:
 (each with an id, read with core_object_get_document)]]{{w:, may_attach, and what the user may do now
 (settable fields, state changes)}}.
