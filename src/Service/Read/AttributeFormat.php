@@ -95,12 +95,17 @@ final class AttributeFormat
 	 * Dates and date-times only, and read off the attribute rather than
 	 * hardcoded - which follows an iTop upgrade rather than a datamodel: the
 	 * internal format is a literal on the attribute class, not a setting, and
-	 * the configurable one is GetFormat(), the display format, which is not
-	 * what crosses this wire. Unlike `format`, a pattern is asserted by every
+	 * the configurable one is GetFormat(), the display format, which
+	 * StoredValue keeps off this wire (GetForJSON() put it there until 2.2.0). Unlike `format`, a pattern is asserted by every
 	 * validator, so it is the part that actually keeps a date-time honest.
 	 */
 	public static function pattern(AttributeDefinition $oAttDef): ?string
 	{
+		if (StoredValue::IsDateSubItem($oAttDef)) {
+			// A stopwatch's start, stop or deadline, which a read gives as a date-time.
+			return self::PatternFromDateFormat(AttributeDateTime::GetInternalFormat());
+		}
+
 		if (!$oAttDef instanceof AttributeDateTime) {
 			return null;
 		}

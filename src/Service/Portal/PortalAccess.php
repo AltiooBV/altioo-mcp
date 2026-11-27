@@ -12,6 +12,7 @@ use Altioo\iTop\Extension\MCP\Helper\CoreElement;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\StoredValue;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
@@ -385,8 +386,8 @@ final class PortalAccess extends ObjectAccess
 	}
 
 	/**
-	 * One column of a row, in the form AttributeLinkedSet::GetForJSON() gives it, when it is one of
-	 * those that form gives (stored, scalar, not a field of another class) and the user may read it:
+	 * One column of a row, as stored ({@see StoredValue}), when it is one of the columns
+	 * AttributeLinkedSet::GetForJSON() gives (stored, scalar, not a field of another class) and the user may read it:
 	 * not excluded, not refused by the attribute rights, masked when sensitive, and never a blob.
 	 *
 	 * @param array<string, mixed> $aRow
@@ -406,7 +407,7 @@ final class PortalAccess extends ObjectAccess
 
 		$aRow[$sCode] = ObjectSerializer::IsSensitive($oAttDef, $sClass)
 			? ObjectSerializer::MASK
-			: $oAttDef->GetForJSON($oObject->Get($sCode));
+			: StoredValue::Of($oAttDef, $oObject->Get($sCode));
 	}
 
 	/** The portal's forms show them, as for a read of the object. */

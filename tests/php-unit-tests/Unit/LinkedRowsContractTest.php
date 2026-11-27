@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\MCP\Service\Portal\PortalAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Read\LinkedRows;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
+use Altioo\iTop\Extension\MCP\Service\Read\StoredValue;
 use Altioo\iTop\Extension\MCP\Service\Read\ValueCeilings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
@@ -55,7 +56,7 @@ class LinkedRowsContractTest extends TestCase
 		$oValue = SourceCalls::OfClass(ObjectSerializer::class);
 		$this->assertTrue($oValue->HasCall(LinkedRows::class.'::Of', 'Value'), 'ObjectSerializer::Value() no longer asks which rows of a link set are shown');
 		$this->assertTrue(
-			$oValue->CallsInOrder([LinkedRows::class.'::Of', '->GetForJSON'], 'Value'),
+			$oValue->CallsInOrder([LinkedRows::class.'::Of', StoredValue::class.'::OfLinkSet'], 'Value'),
 			'the portal is asked before the datamodel renders the set'
 		);
 		// The rows come from the access, whatever the ceiling: output_fields never decides which rows may be read.
@@ -63,17 +64,22 @@ class LinkedRowsContractTest extends TestCase
 	}
 
 	/**
-	 * AttributeLinkedSet::GetForJSON() renders every row with every scalar attribute. It is called
-	 * where the portal has been asked first and nowhere else: a second path that renders a set is
-	 * a route the portal's rows do not govern. The row builders of PortalAccess call it on one
-	 * attribute of a row, never on a set.
+	 * StoredValue::OfLinkSet() renders every row with every scalar attribute, as
+	 * AttributeLinkedSet::GetForJSON() does. It is called where the portal has been asked first and
+	 * nowhere else: a second path that renders a set is a route the portal's rows do not govern.
+	 * GetForJSON() is called in StoredValue::Of() alone, which converts one value and refuses a set;
+	 * the row builders of PortalAccess reach it on one attribute of a row, never on a set.
 	 */
 	public function testNothingRendersALinkSetButTheSerializer(): void
 	{
 		$aAllowed = [
-			'Service/Read/ObjectSerializer.php' => ['Value'],
-			'Service/Portal/PortalAccess.php'   => ['addColumn'],
+			'->GetForJSON'                          => ['Service/Read/StoredValue.php' => ['Of']],
+			StoredValue::class.'::OfLinkSet'        => ['Service/Read/ObjectSerializer.php' => ['Value']],
 		];
+
+		$sOf = SourceCalls::OfClass(StoredValue::class)->Code('Of');
+		$this->assertStringContainsString('if($oAttDefinstanceofAttributeLinkedSet){thrownew', $sOf, 'StoredValue::Of() renders a link set instead of refusing it');
+		$this->assertLessThan(strpos($sOf, '->GetForJSON'), strpos($sOf, 'instanceofAttributeLinkedSet'), 'a set reaches GetForJSON() before Of() refuses it');
 
 		$sSrc = dirname(__DIR__, 3).'/src';
 		$aFound = [];
@@ -85,17 +91,25 @@ class LinkedRowsContractTest extends TestCase
 			$sRelative = substr($oFile->getPathname(), strlen($sSrc) + 1);
 			$oSource = SourceCalls::OfFile($oFile->getPathname());
 			foreach ($oSource->MethodNames() as $sMethod) {
-				if ($oSource->HasCall('->GetForJSON', $sMethod)) {
-					$aFound[$sRelative][] = $sMethod;
+				foreach (array_keys($aAllowed) as $sCall) {
+					if ($oSource->HasCall($sCall, $sMethod)) {
+						$aFound[$sCall][$sRelative][] = $sMethod;
+					}
 				}
 			}
 		}
 
 		// The directory is walked in whatever order the filesystem returns it, which differs between
 		// machines (it did on GitHub's runners), so both sides are compared sorted.
-		ksort($aAllowed);
-		ksort($aFound);
-		$this->assertSame($aAllowed, $aFound, 'GetForJSON() is called somewhere new: a link set rendered there is not the portal\'s row');
+		foreach ([&$aAllowed, &$aFound] as &$aSide) {
+			ksort($aSide);
+			foreach ($aSide as &$aFiles) {
+				ksort($aFiles);
+			}
+			unset($aFiles);
+		}
+		unset($aSide);
+		$this->assertSame($aAllowed, $aFound, 'a link set is rendered somewhere new: rows rendered there are not the portal\'s rows');
 	}
 
 	public function testThePortalWithNothingToAskServesNoRow(): void

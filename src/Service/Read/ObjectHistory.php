@@ -292,6 +292,7 @@ final class ObjectHistory
 			}
 
 			$aEntry = self::masked($aEntry, $sClass);
+			$aEntry = self::asStored($aEntry, $sClass);
 			$aEntry = self::withCaseLogEntry($aEntry, $oObject, $sClass, $aCaseLogs);
 			$aEntry = self::withNames($aEntry, $sClass, $fNameOf);
 			$aEntry = self::withDetails($aEntry, $oOp, $fShowsObject, $fShowsAttachments);
@@ -482,6 +483,31 @@ final class ObjectHistory
 
 		$aEntry['from'] = $aEntry['from'] === null ? null : ObjectSerializer::MASK;
 		$aEntry['to'] = $aEntry['to'] === null ? null : ObjectSerializer::MASK;
+
+		return $aEntry;
+	}
+
+	/**
+	 * `from` and `to` as a read of the attribute gives them ({@see StoredValue::OfRecorded()}): a stopwatch's deadline
+	 * came out as the Unix timestamp the log holds, while the object read gave a date.
+	 *
+	 * @param array<string, mixed> $aEntry
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function asStored(array $aEntry, string $sClass): array
+	{
+		$sAttCode = (string)($aEntry['attribute'] ?? '');
+		if ($sAttCode === '' || !MetaModel::IsValidAttCode($sClass, $sAttCode)) {
+			return $aEntry;
+		}
+
+		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+		foreach (['from', 'to'] as $sSide) {
+			if ($aEntry[$sSide] !== ObjectSerializer::MASK) {
+				$aEntry[$sSide] = StoredValue::OfRecorded($oAttDef, $aEntry[$sSide]);
+			}
+		}
 
 		return $aEntry;
 	}

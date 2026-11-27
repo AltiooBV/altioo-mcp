@@ -37,7 +37,9 @@ use iAttributeNoGroupBy;
  * to json_encode() yields "{}": the ticket log, the CI list and the attachment
  * all arrive empty, silently, with a 200. AttributeDefinition::GetForJSON() is
  * the conversion iTop wrote for exactly this, and is what
- * ObjectResult::MakeResultValue() calls on the REST side.
+ * ObjectResult::MakeResultValue() calls on the REST side - except for dates
+ * and stopwatch sub-items, which it gives in display form: those are given
+ * as stored ({@see StoredValue}).
  *
  * The second is that a response feeds a context window. Four attribute kinds
  * have no natural size and are handled here rather than left to GetForJSON: a
@@ -325,7 +327,7 @@ final class ObjectSerializer
 			if ($aShown !== null) {
 				[$value, $iTotalLinks] = $aShown;
 			} else {
-				$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
+				$value = StoredValue::OfLinkSet($oAttDef, $oObject->Get($sAttCode));
 			}
 
 			// Before anything else looks at it, and regardless of $bClip:
@@ -333,7 +335,7 @@ final class ObjectSerializer
 			// what may be read at all.
 			$value = self::maskSensitiveLinks($value, $oAttDef);
 		} else {
-			$value = $oAttDef->GetForJSON($oObject->Get($sAttCode));
+			$value = StoredValue::Of($oAttDef, $oObject->Get($sAttCode));
 		}
 
 		if (!$bClip) {
