@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Acme\iTop\Extension\ServiceDesk;
 
 use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
+use Acme\iTop\Extension\ServiceDesk\Tools\PrecannedReplyRender;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
 use Altioo\iTop\Extension\MCP\Api\iMCPServiceProvider;
@@ -36,6 +37,8 @@ class AcmeServiceDeskExtensions implements iMCPServiceProvider
 
 		MCPRegistry::RegisterTool(new TicketAddLogEntry());
 		MCPRegistry::RegisterTool(new TicketSearchMine());
+		// Hidden by its own isAvailable() where Combodo's Predefined response models is not installed.
+		MCPRegistry::RegisterTool(new PrecannedReplyRender());
 		MCPRegistry::RegisterPrompt(new TriageMyQueue());
 
 		// Session-level guidance, paid for by every session whether or not any

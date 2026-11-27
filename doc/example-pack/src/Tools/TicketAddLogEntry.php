@@ -159,10 +159,10 @@ class TicketAddLogEntry extends AbstractMCPTool
 		?string $comment = null,
 	): mixed
 	{
-		// First, before anything reads $simulate. A credential scoped MCP-advisory may only rehearse, and this
-		// call is what makes it so: it answers true for such a credential whatever the caller sent, and a write
-		// tool that never asks commits for it (the server cannot stop a tool that writes on its own). Use its
-		// answer, never the argument, from here on.
+		// First, before anything reads $simulate. A credential scoped MCP-advisory may only rehearse: the server
+		// does not serve it a pack's write tool at all (ADR 0022), and this call answers true for such a credential
+		// whatever the caller sent - the core tools' guarantee, kept here so that the audit row's simulate and
+		// forced_by_credential say what ran. Use its answer, never the argument, from here on.
 		$simulate = DryRun::Simulated($simulate);
 
 		if (trim($message) === '') {

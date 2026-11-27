@@ -18,6 +18,9 @@
 #   tools/ci/local/run.sh unit 8.4              the same, on the ceiling
 #   tools/ci/local/run.sh matrix                itop-matrix.yml, iTop 3.2 on 8.2
 #   tools/ci/local/run.sh matrix 3.2 8.4        the same branch, on the ceiling
+#   tools/ci/local/run.sh pack                  itop-matrix.yml's example-pack job, iTop 3.2
+#                                               on 8.2: the module and doc/example-pack
+#                                               installed together, then called over HTTP
 #   tools/ci/local/run.sh integration           just the integration suite, against
 #                                               the instance matrix already installed
 #   MCP_UPDATE_SNAPSHOTS=1 tools/ci/local/run.sh integration
@@ -205,7 +208,7 @@ need_runner() {
 		chown "$1" /work
 		chown -R "$1" /work/.runner-home
 		find /work -mindepth 1 -maxdepth 1 \( -name "itop-*-$2" -o -name "module-$2" -o -name "unit-$2" \
-			-o -name matrix.sh -o -name unit.sh -o -name integration.sh \) -exec chown -R "$1" {} +
+			-o -name "pack-module-$2" -o -name matrix.sh -o -name unit.sh -o -name integration.sh -o -name pack.sh \) -exec chown -R "$1" {} +
 	' sh "$sUser" "$sPhp"
 }
 
@@ -354,6 +357,82 @@ INNER
 		"$sBranch" "$MODULE_CODE" "$VOLUME"
 }
 
+# itop-matrix.yml's example-pack job: an instance of its own, the pack placed
+# beside the module by install-itop.sh, its integration suite, then
+# pack-smoke.sh. Steps record a verdict and the run carries on, as in matrix.
+cmd_pack() {
+	local sBranch=${1:-3.2} sPhp=${2:-8.2}
+	need_image "$sPhp"; need_db; need_runner "$sPhp"
+
+	say "the example pack on iTop $sBranch, PHP $sPhp"
+	put_script "$sPhp" pack.sh <<'INNER'
+set -uo pipefail
+sDest=$1; sItopDir=$2; sDb=$3; sBranch=$4; sVolume=$5
+export ITOP_DIR="$sItopDir" DB_NAME="$sDb"
+
+aResults=()
+step() {
+	local sName="$1"; shift
+	printf '\n=== %s ===\n' "$sName"
+	if "$@"; then aResults+=("PASS  $sName"); else aResults+=("FAIL  $sName"); fi
+}
+
+rm -rf "$sDest"; mkdir -p "$sDest"
+rsync -a \
+  --exclude=.git/ \
+  --exclude=.claude/worktrees/ \
+  --exclude=vendor/ \
+  --exclude=.phpunit.result.cache \
+  --exclude=.phpunit.cache/ \
+  --exclude=build/ \
+  --exclude=doc/example-pack/composer.lock \
+  /src/ "$sDest/" || exit 1
+cd "$sDest"
+php -v | head -1
+echo "database $sDb, instance $sItopDir"
+
+step "vendor tree that ships" composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+sMatrix=$(php tools/ci/resolve-itop-versions.php --matrix) || exit 1
+read_field() {
+	printf '%s' "$sMatrix" | php -r '
+		$aJson = json_decode(stream_get_contents(STDIN), true);
+		foreach ($aJson["include"] as $aEntry) {
+			if ($aEntry["itop_branch"] === $argv[1]) { echo $aEntry[$argv[2]]; return; }
+		}' "$sBranch" "$1"
+}
+ITOP_ZIP_URL=$(read_field zip_url)
+ITOP_TAG=$(read_field itop_tag)
+export ITOP_ZIP_URL ITOP_TAG
+[ -n "$ITOP_ZIP_URL" ] || { echo "branch $sBranch is not in .github/itop-support.json" >&2; exit 1; }
+echo "release: $ITOP_ZIP_URL"
+
+step "unattended install with the module and the example pack" env PACK_SRC=doc/example-pack tools/ci/install-itop.sh
+
+# A subshell, so the smoke after it still runs from the copy. The harness's
+# vendor/ is installed here, as the workflow step does: module-validation.sh,
+# which installs it in matrix, is not run for the pack.
+pack_integration() (
+	cd "$ITOP_DIR/tests/php-unit-tests" || exit 1
+	composer install --no-interaction --no-progress >/dev/null || exit 1
+	php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --testdox \
+		"$ITOP_DIR/env-production/acme-servicedesk/tests/php-unit-tests/Integration"
+)
+step "the pack's integration suite" pack_integration
+
+step "every element of the pack, over HTTP" tools/ci/pack-smoke.sh
+
+printf '\n%s\n' '=============================================================='
+printf '%s\n' "${aResults[@]}"
+printf '\nthe instance is kept at %s in volume %s\n' "$sItopDir" "$sVolume"
+printf '%s\n' "${aResults[@]}" | grep -q '^FAIL' && exit 1
+exit 0
+INNER
+	run_script "$sPhp" pack.sh \
+		"/work/pack-module-$sPhp" "/work/itop-pack-$sBranch-$sPhp" "itop_pack_${sBranch//./}_${sPhp//./}" \
+		"$sBranch" "$VOLUME"
+}
+
 # The fast loop. No download, no install: the suite against the iTop a previous
 # `matrix` left in the volume.
 cmd_integration() {
@@ -409,6 +488,7 @@ case "${1:-}" in
 	build)       shift; cmd_build "$@" ;;
 	unit)        shift; cmd_unit "$@" ;;
 	matrix)      shift; cmd_matrix "$@" ;;
+	pack)        shift; cmd_pack "$@" ;;
 	integration) shift; cmd_integration "$@" ;;
 	shell)       shift; cmd_shell "$@" ;;
 	down)        shift; cmd_down "$@" ;;

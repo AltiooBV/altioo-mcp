@@ -89,6 +89,7 @@ Cheapest and most decisive gate first, so that a failure costs the minutes it de
 | `versions` | PHP, the GitHub API | which iTop releases are we talking about |
 | `installable` | PHP, the iTop archive — **no database** | would the setup select this extension at all |
 | `install` | + MariaDB | does the setup compile and install it, and does it then work |
+| `example-pack` | + MariaDB | does a tool pack built as `doc/example-pack` says install beside it, and do its tools, prompt and toolset scope work |
 
 `unit` repeats the unit suite that `ci.yml` already runs across the PHP matrix, on one PHP
 version. The duplication is deliberate and should not be tidied away: `ci.yml` is a different
@@ -108,6 +109,20 @@ version has answered.
 
 `install` then does the rest: the real setup, iTop's module validation suite, this module's
 integration suite, the datamodel checks and the HTTP smoke.
+
+`example-pack` installs [`doc/example-pack`](example-pack/README.md) beside the module, on an
+instance of its own, once per branch on the floor of its PHP list. `install-itop.sh` places it as
+its README tells a pack author to (`PACK_SRC=doc/example-pack`: copied under `extensions/`, the
+`.tpl` renamed, `composer package`) and holds it to the same records as the module: selected by
+the dry run, a row in `priv_module_install`, compiled into `env-production`. Then the pack's
+integration suite, and [`pack-smoke.sh`](https://github.com/AltiooBV/altioo-mcp/blob/main/tools/ci/pack-smoke.sh), which calls each
+tool and the prompt over HTTP and logs in with a token scoped `MCP-toolset-acme-servicedesk`. That
+login is what failed when a comment before `<itop_design>` made the setup skip the pack's
+datamodel file, while `ci.yml`'s contract-only `example-pack` job stayed green. A separate
+instance, because the pack adds tools and the module's integration suite compares the tool
+surface with a snapshot of the module alone. **Combodo's `precanned-replies` is not installed
+there**, so `PrecannedReplyRenderTest` skips every case and `acme_precanned_reply_render` is
+checked only for being absent; the job prints a notice saying so.
 
 One thing the dry run makes obvious, and it is the reason the verdict later comes from the
 database: **`--install=0` prints `installed!` at the end, exactly like a real run.** That string
@@ -189,6 +204,7 @@ tools/ci/local/run.sh unit            # ci.yml's unit job, its linter and Psalm,
 tools/ci/local/run.sh unit 8.4        # the same, on the ceiling of the range
 tools/ci/local/run.sh matrix          # itop-matrix.yml, iTop 3.2, on 8.2
 tools/ci/local/run.sh matrix 3.2 8.4  # the same branch, on the ceiling
+tools/ci/local/run.sh pack            # the example-pack job, iTop 3.2, on 8.2
 tools/ci/local/run.sh integration     # the integration suite alone, seconds
 tools/ci/local/run.sh down            # remove the containers, the volume, the network
 ```
