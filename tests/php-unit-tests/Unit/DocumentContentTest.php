@@ -90,7 +90,7 @@ class DocumentContentTest extends TestCase
 			'xml'                    => ['application/xml', '<a/>'],
 			'a json suffix'          => ['application/problem+json', '{}'],
 			'an xml suffix'          => ['application/atom+xml', '<feed/>'],
-			'a terminal colour code' => ['text/plain', "\x1b[31mred\x1b[0m\f\n"],
+			'a form feed'            => ['text/plain', "page one\fpage two\n"],
 		];
 	}
 
@@ -117,6 +117,7 @@ class DocumentContentTest extends TestCase
 			'json by name, control bytes'    => ['application/json', "\x01\x02\x03"],
 			'a zip called xml'               => ['application/xml', "PK\x03\x04\x14\x00"],
 			'readable, of a binary type'     => ['application/pdf', 'only letters'],
+			'terminal escape sequences'      => ['text/plain', "\x1b]0;title\x07\x1b[31mred\x1b[0m\n"],
 		];
 	}
 
@@ -145,12 +146,12 @@ class DocumentContentTest extends TestCase
 		$this->assertSame(DocumentAccess::FALLBACK_MIME_TYPE, self::resourceWire('x', '')[0]['mimeType']);
 	}
 
-	/** A control character is written as up to six in JSON, so only tab, line feed, form feed, return and escape make a text. */
+	/** A control byte is written as up to six in JSON, so only tab, line feed, form feed and return make a text. */
 	public function testTheOtherControlBytesAreNotText(): void
 	{
 		for ($i = 0; $i < 32; $i++) {
 			$bText = isset(self::resourceWire('a'.chr($i), 'text/plain')[0]['text']);
-			$this->assertSame(in_array($i, [9, 10, 12, 13, 27], true), $bText, sprintf('byte 0x%02x', $i));
+			$this->assertSame(in_array($i, [9, 10, 12, 13], true), $bText, sprintf('byte 0x%02x', $i));
 		}
 	}
 }
