@@ -12,7 +12,9 @@ use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use AttributeBlob;
 use DBObject;
+use MetaModel;
 use Throwable;
 use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 
@@ -233,13 +235,48 @@ final class DryRun
 			return;
 		}
 
+		$aIssues = self::withoutQuotedFiles(get_class($oObject), array_map('strval', (array)$aIssues));
+
 		// A validation message names the field it is about, which for an excluded one is a leak: those
 		// are not repeated, and the call says only that it cannot be written as described.
-		$aIssues = ExclusionPolicy::WithoutExcluded(get_class($oObject), array_map('strval', (array)$aIssues));
+		$aIssues = ExclusionPolicy::WithoutExcluded(get_class($oObject), $aIssues);
 
 		throw ToolRefusal::Because(empty($aIssues)
 			? "{$sWhat} cannot be written as described."
 			: "{$sWhat} cannot be written as described: ".implode(' ', $aIssues));
 	}
 
+	/**
+	 * The issues with the file iTop quotes taken out of them (review 2026-11-23, S8).
+	 *
+	 * iTop writes a refused value between brackets, `Wrong format [...]`, and for a document that is the file itself:
+	 * its first bytes, HTML-escaped past a hundred of them, or all of them as they are. They may hold a "]", a newline
+	 * or bytes that are no text, so nothing of them is looked at: an issue about a document attribute ends at the
+	 * opening bracket. The attribute is read from what stands before it, where every translation of iTop's message
+	 * puts the code. The caller sent the file and does not need it back, and a file is untrusted text that would reach a
+	 * model through an error. An issue about any other attribute still quotes the value it was given.
+	 *
+	 * @param array<int|string, string> $aIssues
+	 *
+	 * @return array<int|string, string>
+	 */
+	private static function withoutQuotedFiles(string $sClass, array $aIssues): array
+	{
+		$sOpening = 'Wrong format [';
+		foreach ($aIssues as $iIssue => $sIssue) {
+			$iAt = strpos($sIssue, $sOpening);
+			if ($iAt === false) {
+				continue;
+			}
+			$sBefore = substr($sIssue, 0, $iAt);
+			foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
+				if ($oAttDef instanceof AttributeBlob && str_contains($sBefore, '('.(string)$sAttCode.')')) {
+					$aIssues[$iIssue] = $sBefore.$sOpening.'the file\'s content is not repeated]';
+					break;
+				}
+			}
+		}
+
+		return $aIssues;
+	}
 }

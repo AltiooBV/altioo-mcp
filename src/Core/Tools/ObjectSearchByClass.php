@@ -154,7 +154,8 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			if (is_array($value)) {
 				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
-			$sRefusal = self::refusalForValue($class, $sAttCode, $value);
+			$sRefusal = self::refusalForValue($class, $sAttCode, $value)
+				?? FilterDate::Refusal(MetaModel::GetAttributeDef($class, (string)$sAttCode), (string)$sAttCode, $value);
 			if ($sRefusal !== null) {
 				throw ToolRefusal::Because($sRefusal);
 			}

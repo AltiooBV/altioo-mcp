@@ -10,15 +10,24 @@ namespace Altioo\iTop\Extension\MCP\Helper;
 
 use AttributeDate;
 use AttributeDateTime;
+use AttributeExternalField;
+use AttributeSubItem;
 
 /**
- * A date or date-time given to a filter as RFC 3339, in the time zone the instance stores its dates in.
+ * A date or date-time given to a filter: which forms it may take, and RFC 3339 in the time zone the instance stores
+ * its dates in.
  *
  * iTop stores a date-time as local text with no zone, and a filter compares text. Handed
  * `2026-10-28T10:46:22Z`, the comparison ignored the `Z` and matched a row stored at 10:46:22 local time, one hour
  * out in winter and two in summer on an instance in UTC+1 (review 2026-11-23, B2). So a value with an explicit
  * offset is converted the way core_my_activity's `since` is (strtotime, then date() in the zone iTop set as
- * PHP's default), and anything else is left exactly as it was sent: iTop's own format, and what the ORM refuses.
+ * PHP's default), and iTop's own format is left as it was sent. A date-time with `T` between its two halves and no
+ * offset is the same local time, and is written with the space. Anything else is read by the database its own way,
+ * where it reads it at all: `23/11/2026` matches nothing, which reads as "there is none". So {@see Refusal()} takes
+ * these forms only and says which they are (retest of 2026-11-27).
+ *
+ * A date here is what the filter compares with one: a date or date-time attribute, an external field showing one,
+ * and the started, stopped and deadline dates of a stopwatch.
  *
  * @api
  * @since 2.2.0
@@ -26,27 +35,103 @@ use AttributeDateTime;
 final class FilterDate
 {
 	/** A date-time with a time and an explicit offset: `Z`, `+01:00`, `-0500`. Nothing looser is converted. */
-	private const WITH_OFFSET = '/^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|z|[+-]\d{2}(:?\d{2})?)$/';
+	private const WITH_OFFSET = '/^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(?:Z|z|[+-]\d{2}(?::?\d{2})?)$/';
+
+	/**
+	 * With no offset, in the instance's own time: iTop's two forms, `Y-m-d H:i:s` and `Y-m-d` (the second is also RFC
+	 * 3339's full date), and the first with a capital `T` for the space. Seconds are not optional here.
+	 */
+	private const LOCAL = '/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?$/';
 
 	/**
 	 * @param mixed $value The filter value as sent.
 	 *
 	 * @return mixed The value to filter on.
-	 *
-	 * @psalm-suppress TypeDoesNotContainType iTop's attribute classes are not known to the analysis as related; AttributeDate extends AttributeDateTime.
 	 */
 	public static function ForFilter(object $oAttDef, mixed $value): mixed
 	{
-		if (!is_string($value) || !is_a($oAttDef, AttributeDateTime::class) || preg_match(self::WITH_OFFSET, trim($value)) !== 1) {
+		$sKind = self::kindOf($oAttDef);
+		if (!is_string($value) || $sKind === null) {
 			return $value;
 		}
 
-		$iTime = strtotime(trim($value));
+		$sValue = trim($value);
+		if (preg_match(self::LOCAL, $sValue) === 1) {
+			// Written as iTop stores it, so that it does not rest on how a database reads a `T`.
+			return str_replace('T', ' ', $sValue);
+		}
+		if (preg_match(self::WITH_OFFSET, $sValue) !== 1) {
+			return $value;
+		}
+
+		$iTime = strtotime($sValue);
 		if ($iTime === false) {
 			return $value;
 		}
 
-		// AttributeDate extends AttributeDateTime: a date column holds the day, in the instance's zone.
-		return date(is_a($oAttDef, AttributeDate::class) ? 'Y-m-d' : 'Y-m-d H:i:s', $iTime);
+		// A date column holds the day, in the instance's zone.
+		return date($sKind === 'date' ? 'Y-m-d' : 'Y-m-d H:i:s', $iTime);
+	}
+
+	/**
+	 * Why a filter cannot be given this value, or null when it can: a date attribute compared with something that is
+	 * no date in a form it takes. The value is not quoted back.
+	 *
+	 * An empty value and null are left to the search, as they were.
+	 *
+	 * @param mixed $value The filter value as sent.
+	 */
+	public static function Refusal(object $oAttDef, string $sAttCode, mixed $value): ?string
+	{
+		if ($value === null || $value === '' || self::kindOf($oAttDef) === null || self::isDate($value)) {
+			return null;
+		}
+
+		return "The filter on '{$sAttCode}' takes a date: YYYY-MM-DD HH:MM:SS, YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD, in the "
+			."instance's own time, or RFC 3339 with an offset (2026-01-31T09:30:00+01:00), which is converted to it.";
+	}
+
+	/** Whether the value is a day that exists, at a time that exists, in one of the forms taken. */
+	private static function isDate(mixed $value): bool
+	{
+		if (!is_string($value)) {
+			return false;
+		}
+		$sValue = trim($value);
+		if (preg_match(self::LOCAL, $sValue, $aPart) !== 1) {
+			// An offset out of range is no instant either.
+			if (preg_match(self::WITH_OFFSET, $sValue, $aPart) !== 1 || strtotime($sValue) === false) {
+				return false;
+			}
+		}
+
+		// The groups that did not match are absent, or empty before a later one: both count as zero.
+		return checkdate((int)$aPart[2], (int)$aPart[3], (int)$aPart[1])
+			&& (int)($aPart[4] ?? 0) < 24
+			&& (int)($aPart[5] ?? 0) < 60
+			&& (int)($aPart[6] ?? 0) <= 60;
+	}
+
+	/**
+	 * 'date', 'datetime', or null when the filter on this attribute compares something else.
+	 *
+	 * @psalm-suppress TypeDoesNotContainType, MixedAssignment, MixedMethodCall, MixedArgument iTop's attribute classes are not known to the analysis as related; AttributeDate extends AttributeDateTime.
+	 */
+	private static function kindOf(object $oAttDef): ?string
+	{
+		if (is_a($oAttDef, AttributeExternalField::class)) {
+			$oAttDef = $oAttDef->GetFinalAttDef();
+		}
+		if (is_a($oAttDef, AttributeDateTime::class)) {
+			// AttributeDate extends AttributeDateTime.
+			return is_a($oAttDef, AttributeDate::class) ? 'date' : 'datetime';
+		}
+		if (is_a($oAttDef, AttributeSubItem::class)) {
+			$oWatch = $oAttDef->GetTargetAttDef();
+
+			return $oWatch->GetSubItemSearchType($oAttDef->Get('item_code')) === $oWatch::SEARCH_WIDGET_TYPE_DATE_TIME ? 'datetime' : null;
+		}
+
+		return null;
 	}
 }

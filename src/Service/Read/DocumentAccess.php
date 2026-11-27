@@ -13,7 +13,9 @@ use Altioo\iTop\Extension\MCP\Exception\MCPDocumentException;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Mcp\Schema\Content\BlobResourceContents;
+use Mcp\Schema\Content\EmbeddedResource;
 use Mcp\Schema\Content\ImageContent;
+use Mcp\Schema\Content\TextResourceContents;
 use MetaModel;
 use ormDocument;
 
@@ -71,6 +73,9 @@ final class DocumentAccess
 
 	/** What a file whose type could not be established is stored as. */
 	public const FALLBACK_MIME_TYPE = 'application/octet-stream';
+
+	/** The types outside text/ whose bytes are characters a reader can read: with them, anything ending +json or +xml. */
+	private const TEXT_APPLICATION_TYPES = ['application/json', 'application/xml'];
 
 	/** What libmagic answers for text it has no signature for. */
 	private const PLAIN_TEXT_MIME_TYPE = 'text/plain';
@@ -235,17 +240,60 @@ final class DocumentAccess
 	}
 
 	/**
-	 * The document as MCP content: an image a model can look at, or a blob.
+	 * The document as an item of a tool's answer: an image a model can look at, or the file embedded in the answer.
 	 *
-	 * The distinction is not cosmetic. ImageContent is what a client renders and
-	 * what a vision model reads, so the screenshot pasted into a ticket - by
-	 * some distance the attachment most worth reading - becomes something the
-	 * assistant can actually answer questions about. Anything else is carried as
-	 * an embedded resource: still the whole file, still exact, simply not
-	 * something the model is being invited to interpret as a picture.
+	 * The distinction is not cosmetic. ImageContent is what a client renders and what a vision model reads, so the
+	 * screenshot pasted into a ticket - by some distance the attachment most worth reading - becomes something the
+	 * assistant can actually answer questions about. Anything else is the contents of
+	 * {@see ResourceContentsFor()} inside an EmbeddedResource, which is the shape a tool result item takes:
+	 * resource contents on their own are valid in a resources/read answer only, and returned by a tool they are
+	 * serialized as a text block of JSON (review 2026-11-23, retest L5).
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ToolContentFor(ormDocument $oDocument, string $sUri): ImageContent|EmbeddedResource
+	{
+		$sMimeType = (string)$oDocument->GetMimeType();
+
+		if (str_starts_with($sMimeType, self::IMAGE_PREFIX)) {
+			return new ImageContent(base64_encode((string)$oDocument->GetData()), $sMimeType);
+		}
+
+		return new EmbeddedResource(self::ResourceContentsFor($oDocument, $sUri));
+	}
+
+	/**
+	 * The document as the contents of a resource: its text when it is a text file, its bytes in base64 when it is not.
+	 *
+	 * A text file is one whose type is text/*, JSON or XML and whose bytes are text as well: valid UTF-8, with no
+	 * control character but tab, line feed, form feed and carriage return. The type is what was stored with the file
+	 * and so a claim. Bytes that are no UTF-8 cannot be encoded into a JSON answer; a control byte is written there
+	 * as six, and an escape sequence is an instruction to a terminal that prints it. Those go as base64, under the
+	 * same type. What is left grows three times at most in the answer.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ResourceContentsFor(ormDocument $oDocument, string $sUri): TextResourceContents|BlobResourceContents
+	{
+		$sMimeType = (string)$oDocument->GetMimeType();
+		if ($sMimeType === '') {
+			$sMimeType = self::FALLBACK_MIME_TYPE;
+		}
+		$sData = (string)$oDocument->GetData();
+
+		if (self::IsTextType($sMimeType) && self::IsText($sData)) {
+			return new TextResourceContents($sUri, $sMimeType, $sData);
+		}
+
+		return new BlobResourceContents($sUri, $sMimeType, base64_encode($sData));
+	}
+
+	/**
+	 * An image as image content, anything else as blob contents whatever it holds.
 	 *
 	 * @return ImageContent|BlobResourceContents
 	 * @since 1.0.0
+	 * @deprecated 2.2.0 Neither answer is valid everywhere: use {@see ToolContentFor()} in a tool and {@see ResourceContentsFor()} in a resource.
 	 */
 	public static function ContentFor(ormDocument $oDocument, string $sUri)
 	{
@@ -256,7 +304,25 @@ final class DocumentAccess
 			return new ImageContent($sBase64, $sMimeType);
 		}
 
-		return new BlobResourceContents($sUri, $sMimeType === '' ? 'application/octet-stream' : $sMimeType, $sBase64);
+		return new BlobResourceContents($sUri, $sMimeType === '' ? self::FALLBACK_MIME_TYPE : $sMimeType, $sBase64);
+	}
+
+	/** Whether the stored type says the file is characters, its parameters left aside. */
+	private static function IsTextType(string $sMimeType): bool
+	{
+		$sType = strtolower(trim(explode(';', $sMimeType, 2)[0]));
+
+		return str_starts_with($sType, 'text/')
+			|| in_array($sType, self::TEXT_APPLICATION_TYPES, true)
+			|| str_ends_with($sType, '+json')
+			|| str_ends_with($sType, '+xml');
+	}
+
+	/** Whether the bytes are: valid UTF-8 and no control character a text file has no use for. */
+	private static function IsText(string $sData): bool
+	{
+		return preg_match('//u', $sData) === 1
+			&& preg_match('/[\x00-\x08\x0B\x0E-\x1F]/', $sData) === 0;
 	}
 
 	/**

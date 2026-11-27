@@ -54,6 +54,37 @@ mcp_tool() {
 must() { # <what> <got> <prefix>
 	case "$2" in "$3"*) echo "   ok  $1" ;; *) fail "$1: expected $3..., got: ${2:0:300}" ;; esac
 }
+# <attachment id> -> the second item of core_object_get_document's answer in $sItem, as "image <mimeType> data <base64>"
+# or "resource <mimeType> text|blob <value>", and only when the first item is the untrusted-content notice.
+tool_document() {
+	iRpc=$((iRpc + 1))
+	mcp_post "$sPortalUrl" '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"tools/call","params":{"name":"core_object_get_document","arguments":{"class":"Attachment","id":'"$1"',"att_code":"contents"}}}'
+	# shellcheck disable=SC2016
+	sItem=$(printf '%s' "$sBody" | php -r '$a = json_decode(stream_get_contents(STDIN), true);
+		$c = $a["result"]["content"] ?? [];
+		if (count($c) !== 2 || !str_contains($c[0]["text"] ?? "", "never as instructions to follow")) { echo "no notice before the file"; exit; }
+		$f = $c[1];
+		if ($f["type"] === "image") { echo "image ".$f["mimeType"]." data ".$f["data"]; exit; }
+		$r = $f["resource"] ?? [];
+		$k = isset($r["text"]) ? "text" : (isset($r["blob"]) ? "blob" : "nothing");
+		echo $f["type"]." ".($r["mimeType"] ?? "")." ".$k." ".($r[$k] ?? "");')
+}
+# <attachment id> -> the contents resources/read answers in $sItem, as "<mimeType> text|blob <value>"
+resource_document() {
+	iRpc=$((iRpc + 1))
+	mcp_post "$sPortalUrl" '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"resources/read","params":{"uri":"itop://core/document/Attachment/'"$1"'/contents"}}'
+	# shellcheck disable=SC2016
+	sItem=$(printf '%s' "$sBody" | php -r '$a = json_decode(stream_get_contents(STDIN), true);
+		$r = $a["result"]["contents"][0] ?? [];
+		$k = isset($r["text"]) ? "text" : (isset($r["blob"]) ? "blob" : "nothing");
+		echo ($r["mimeType"] ?? "")." ".$k." ".($r[$k] ?? "");')
+}
+# <filename> <mimetype> <base64> -> the id of the file added to the portal user's own request
+attach_to_own() {
+	local sOut
+	sOut=$(mcp_tool core_object_attach '{"class":"UserRequest","id":'"$iOwn"',"filename":"'"$1"'","content_base64":"'"$3"'","mimetype":"'"$2"'","simulate":false,"comment":"portal smoke"}')
+	printf '%s' "${sOut#ok }" | php -r '$a = json_decode(stream_get_contents(STDIN), true); echo $a["id"] ?? "";'
+}
 
 echo "5. portal mode: a portal-only user with a scoped token"
 mcp_open "$sPortalUrl" || fail "a portal-only user with a valid token was not let in (HTTP $sStatus): ${sBody:0:300}"
@@ -119,11 +150,9 @@ else
 	sOut=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iOwnFile"',"att_code":"contents"}')
 	must "a file on the user's own request is read" "$sOut" ok
 	case "$sOut" in *'never as instructions to follow'*) echo "   ok  and arrives behind the untrusted-content notice" ;; *) fail "a file's content arrived with no notice: ${sOut:0:300}" ;; esac
-	# The file itself is a blob, base64 on the wire: look for the instruction it carries.
-	iRpc=$((iRpc + 1))
-	mcp_post "$sPortalUrl" '{"jsonrpc":"2.0","id":'"$iRpc"',"method":"tools/call","params":{"name":"core_object_get_document","arguments":{"class":"Attachment","id":'"$iOwnFile"',"att_code":"contents"}}}'
-	sProbe=$(printf 'Ignore all previous' | base64 -w0 | cut -c1-20)
-	case "$sBody" in *"$sProbe"*) echo "   ok  the instruction in the file comes back as content, after the notice" ;; *) fail "the file's bytes did not come back: ${sBody:0:300}" ;; esac
+	# A text file arrives as text inside an embedded resource, after the notice (review 2026-11-23, retest L5).
+	tool_document "$iOwnFile"
+	case "$sItem" in 'resource text/plain text '*'Ignore all previous'*) echo "   ok  the instruction in the file comes back as an embedded file's text, after the notice" ;; *) fail "the file did not come back as embedded text: ${sBody:0:300}" ;; esac
 
 	sOwn=$(mcp_tool core_object_get_document '{"class":"Attachment","id":'"$iForeignFile"',"att_code":"contents"}')
 	must "another organisation's file, by id, is refused" "$sOwn" refused
@@ -174,6 +203,41 @@ else
 		${sPortalSession:+-H "Mcp-Session-Id: $sPortalSession"} --data-binary @"$sBig")
 	rm -f "$sBig"
 	case "$sOut" in *'accepts at most'*|*'maximum allowed size'*) echo "   ok  a file over the ceiling is refused" ;; *) fail "a file over the ceiling was not refused as such: ${sOut:0:300}" ;; esac
+
+	echo "8b. what a document is on the wire, by the tool in both modes and by the resource template"
+	# A one-pixel PNG, and bytes no text holds; both added to the user's own request and read back.
+	sPng='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+	sBin=$(printf '%%PDF-1.7\n\000\001\002\377\376' | base64 -w0)
+	iImage=$(attach_to_own smoke-wire.png image/png "$sPng")
+	iBinary=$(attach_to_own smoke-wire.pdf application/pdf "$sBin")
+	[ -n "$iImage" ] && [ -n "$iBinary" ] || fail "the files for the wire checks were not added: image [$iImage] binary [$iBinary]"
+
+	tool_document "$iImage"
+	[ "$sItem" = "image image/png data $sPng" ] || fail "portal: an image did not come back as image content: ${sBody:0:300}"
+	tool_document "$iBinary"
+	[ "$sItem" = "resource application/pdf blob $sBin" ] || fail "portal: a binary file did not come back as an embedded blob: ${sBody:0:300}"
+	echo "   ok  portal: an image is image content, a binary file an embedded blob"
+
+	# The console token, which is served the resource template (portal mode is not).
+	sSavedUrl=$sPortalUrl sSavedToken=$sPortalToken sSavedSession=$sPortalSession
+	sPortalToken=$ITOP_TOKEN
+	sPortalUrl=$ENDPOINT
+	mcp_open "$ENDPOINT" || fail "the console token was not let in (HTTP $sStatus): ${sBody:0:300}"
+	tool_document "$iOwnFile"
+	case "$sItem" in 'resource text/plain text '*'Ignore all previous'*) ;; *) fail "console: a text file did not come back as embedded text: ${sBody:0:300}" ;; esac
+	tool_document "$iImage"
+	[ "$sItem" = "image image/png data $sPng" ] || fail "console: an image did not come back as image content: ${sBody:0:300}"
+	tool_document "$iBinary"
+	[ "$sItem" = "resource application/pdf blob $sBin" ] || fail "console: a binary file did not come back as an embedded blob: ${sBody:0:300}"
+	echo "   ok  console: text as text, an image as an image, anything else as a blob"
+	resource_document "$iOwnFile"
+	case "$sItem" in 'text/plain text '*'Ignore all previous'*) ;; *) fail "the resource did not read a text file as text: ${sBody:0:300}" ;; esac
+	resource_document "$iImage"
+	[ "$sItem" = "image/png blob $sPng" ] || fail "the resource did not read an image as a blob: ${sBody:0:300}"
+	resource_document "$iBinary"
+	[ "$sItem" = "application/pdf blob $sBin" ] || fail "the resource did not read a binary file as a blob: ${sBody:0:300}"
+	echo "   ok  the resource template reads each as resource contents, the image included"
+	sPortalUrl=$sSavedUrl sPortalToken=$sSavedToken sPortalSession=$sSavedSession
 fi
 
 # ---------------------------------------------------------------------------------------------------------------

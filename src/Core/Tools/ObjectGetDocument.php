@@ -207,7 +207,7 @@ class ObjectGetDocument extends AbstractMCPTool implements PortalAware
 		// bytes carry no field to mark.
 		return [
 			new TextContent(UntrustedMarker::UNTRUSTED_DOCUMENT_NOTICE),
-			DocumentAccess::ContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
+			DocumentAccess::ToolContentFor($oDocument, DocumentAccess::Uri($class, $id, $att_code)),
 		];
 	}
 }

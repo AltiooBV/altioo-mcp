@@ -311,6 +311,8 @@ grep -q 'host or origin' "$BODY" || fail "a foreign Origin is said to be a host 
 gate "a token given as a URL parameter" 401 -X POST "${ENDPOINT}?auth_token=not-a-real-token" -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
 grep -q 'auth_token request parameter' "$BODY" || fail "a token in the URL is answered 'no credential was sent' and not said to be refused as a URL parameter (review 2026-11-23, C11)"
 gate "a token in the header and another in the URL" 401 -X POST "${ENDPOINT}?auth_token=not-a-real-token" -H "$AUTH_H" -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
+grep -q 'Remove the auth_token request parameter' "$BODY" || fail "a token in the URL beside a header is not told to remove the parameter (review 2026-11-23, retest)"
+grep -q 'Send the token in the Authorization header' "$BODY" && fail "a caller that sent the header is told to send it"
 gate "a token nobody issued" 401 -X POST "$ENDPOINT" -H 'Authorization: Bearer abcdef0123456789abcdef0123456789' -H "$JSON_H" -H "$ACCEPT_H" -d "$TOOLS_LIST"
 gate "GET" 405 -X GET "$ENDPOINT" -H "$AUTH_H"
 gate "PUT" 405 -X PUT "$ENDPOINT" -H "$AUTH_H" -H "$JSON_H" -d "$TOOLS_LIST"

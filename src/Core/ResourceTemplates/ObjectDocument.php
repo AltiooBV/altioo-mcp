@@ -23,9 +23,9 @@ use Altioo\iTop\Extension\MCP\Api\ResourceRefusal;
  *
  * The natural home for bytes in MCP: resources are the half of the protocol
  * meant for content a client fetches deliberately, one URI at a time, and
- * BlobResourceContents is the shape the protocol already has for them - so a
- * client that knows how to save an attachment saves this one without being
- * told anything new.
+ * resource contents - text or blob - are the shape the protocol already has for
+ * them - so a client that knows how to save an attachment saves this one
+ * without being told anything new.
  *
  * Served as core_object_get_document too, for the same reason the class schema
  * is served twice: plenty of clients never fetch resources, and support for
@@ -88,7 +88,7 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 	 * @param string $id       The {id} variable - a string, because a URI carries no types
 	 * @param string $att_code The {att_code} variable, e.g. 'contents'
 	 *
-	 * @return mixed The document, as image content or as a blob
+	 * @return mixed The document as resource contents: its text for a text file, base64 for anything else, an image included
 	 *
 	 * @throws \Mcp\Server\Exception\ResourceReadException (see ResourceRefusal) When the object, the attribute or the document cannot be read.
 	 */
@@ -110,6 +110,7 @@ class ObjectDocument extends AbstractMCPResourceTemplate
 			throw ResourceRefusal::Because($e->getMessage());
 		}
 
-		return DocumentAccess::ContentFor($oDocument, $uri);
+		// Resource contents, never the image content a tool answers: a resources/read answer takes no other shape.
+		return DocumentAccess::ResourceContentsFor($oDocument, $uri);
 	}
 }

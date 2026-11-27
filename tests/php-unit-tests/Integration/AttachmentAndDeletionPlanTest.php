@@ -11,7 +11,9 @@ namespace Altioo\iTop\Extension\MCP\Test\Integration;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectAttach;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectBulkDelete;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectDelete;
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectUpdate;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
 use Combodo\iTop\Service\Events\EventService;
 use DBObjectSearch;
@@ -370,20 +372,63 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 	}
 
 	/**
-	 * S8: iTop's refusal of a file an image attribute does not take quotes the start of the file; the answer does not.
+	 * Files an image attribute does not take, as iTop quotes them: whole when short, cut and HTML-escaped past a hundred
+	 * bytes. Random bytes, because the first fix compared the start of the file with the quotation and a retest got
+	 * binary back (review 2026-11-23, S8).
+	 *
+	 * @return array<string, array{0: string}>
 	 */
-	public function testARefusedFilesBytesAreNotEchoed(): void
+	public static function refusedFiles(): array
+	{
+		return [
+			'text'                          => ['SECRET-BYTES '.str_repeat('A', 300)."\x00\x01"],
+			'short text'                    => ['SECRET-BYTES'],
+			'random, long'                  => ["\x01\x02".random_bytes(400)],
+			'random, short'                 => ["\x01\x02".random_bytes(40)],
+			'random with closing brackets'  => ["\x01]\x02]] ] ".random_bytes(20).'] SECRET-BYTES ]'.random_bytes(200)],
+			'brackets and a second opening' => ["\x01] Wrong format [ SECRET-BYTES ] (picture) <b>&\n".random_bytes(150)],
+			'escaped by iTop'               => ["\x01<<<>>>&&&\"\"''".str_repeat('<', 200).random_bytes(20)],
+		];
+	}
+
+	/** @dataProvider refusedFiles */
+	public function testARefusedFilesBytesAreNotEchoed(string $sData): void
+	{
+		$iOrg = (int)$this->CreateOrganization('AttPic '.bin2hex(random_bytes(4)))->GetKey();
+		$iPerson = (int)$this->CreatePerson(1, $iOrg)->GetKey();
+		$aValue = ['data' => base64_encode($sData), 'mimetype' => 'application/octet-stream', 'filename' => 'x.bin', 'downloads_count' => 0];
+
+		$aRoutes = [
+			'attach' => static fn () => ObjectAttach::execute('Person', $iPerson, 'x.bin', base64_encode($sData), null, 'picture'),
+			'update' => static fn () => ObjectUpdate::execute('Person', $iPerson, ['picture' => $aValue]),
+			'create' => static fn () => ObjectCreate::execute('Person', ['org_id' => $iOrg, 'name' => 'Pic', 'first_name' => 'P', 'picture' => $aValue]),
+		];
+		foreach ($aRoutes as $sRoute => $fCall) {
+			try {
+				$fCall();
+				$this->fail("{$sRoute}: a file that is no picture was accepted as one");
+			} catch (ToolCallException $e) {
+				$sMessage = $e->getMessage();
+				$this->assertStringContainsString('(picture)', $sMessage, "{$sRoute}: the attribute is still named");
+				// Nothing follows the replacement, so nothing of the file does, whatever it holds.
+				$this->assertStringEndsWith("Wrong format [the file's content is not repeated]", $sMessage, $sRoute);
+				$this->assertStringNotContainsString('SECRET-BYTES', $sMessage, $sRoute);
+				$this->assertSame(1, preg_match('//u', $sMessage), "{$sRoute}: the answer holds bytes that are no text");
+			}
+		}
+	}
+
+	/** The value of an ordinary attribute is still quoted back: only a file's is not. */
+	public function testARefusedValueThatIsNoFileIsStillQuoted(): void
 	{
 		$iOrg = (int)$this->CreateOrganization('AttPic '.bin2hex(random_bytes(4)))->GetKey();
 		$iPerson = (int)$this->CreatePerson(1, $iOrg)->GetKey();
 
 		try {
-			ObjectAttach::execute('Person', $iPerson, 'x.txt', base64_encode('SECRET-BYTES '.str_repeat('A', 300)."\x00\x01"), 'text/plain', 'picture');
-			$this->fail('a text file was accepted as a picture');
+			ObjectUpdate::execute('Person', $iPerson, ['email' => 'not an address']);
+			$this->fail('a text with spaces was accepted as an email address');
 		} catch (ToolCallException $e) {
-			$this->assertStringContainsString('Wrong format', $e->getMessage(), 'the reason is still given');
-			$this->assertStringNotContainsString('SECRET-BYTES', $e->getMessage());
-			$this->assertStringNotContainsString("\x00", $e->getMessage());
+			$this->assertStringContainsString('Wrong format [not an address]', $e->getMessage());
 		}
 	}
 
@@ -395,14 +440,65 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		$iTicket = $this->aTicket();
 		$iAttachment = $this->attachTo($iTicket, 'plan.txt');
 
-		$aPlan = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iAttachment, true))['deletionPlan'];
+		// A contact on the ticket, so that its deletion takes a row with it.
+		$oLink = MetaModel::NewObject('lnkContactToTicket');
+		$oLink->Set('ticket_id', $iTicket);
+		$oLink->Set('contact_id', (int)MetaModel::GetObject('UserRequest', $iTicket)->Get('caller_id'));
+		$oLink->DBInsert();
+		$aPlan = ToolOutput::Decode(ObjectDelete::execute('UserRequest', $iTicket, true))['deletionPlan'];
 
+		$this->assertNotEmpty(array_merge($aPlan['deleted'], $aPlan['updated']), 'a ticket with a contact takes something with it');
 		foreach (array_merge($aPlan['deleted'], $aPlan['updated']) as $aEntry) {
 			$this->assertArrayHasKey('class', $aEntry, 'an entry with no class: '.json_encode($aEntry));
-			$this->assertFalse($aEntry['class'] === 'Attachment' && (int)$aEntry['id'] === $iAttachment, 'the object being deleted is listed as what happens besides it');
+			$this->assertFalse($aEntry['class'] === 'UserRequest' && (int)$aEntry['id'] === $iTicket, 'the object being deleted is listed as what happens besides it');
 		}
-		$aClasses = array_column($aPlan['updated'], 'class');
-		$this->assertContains('CMDBChangeOpAttachmentAdded', $aClasses, 'the bookkeeping row is part of the plan, and shown');
+		$aPlan = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iAttachment, true))['deletionPlan'];
+		$this->assertSame(['deleted' => [], 'updated' => []], $aPlan, 'removing an attachment takes nothing else a person decides about');
+	}
+
+	/**
+	 * Retest of 2026-11-27: the plan of an attachment removal listed `updated: CMDBChangeOpAttachmentAdded <id>`,
+	 * iTop's own history row. Not in the plan of a dry run, nor of the real removal, singly or in bulk, for a
+	 * non-administrator who removes it by the right to edit its host (ADR 0026).
+	 */
+	public function testAnAttachmentRemovalPlanListsNoRowOfTheChangeLog(): void
+	{
+		$iTicket = $this->aTicket();
+		$iFirst = $this->attachTo($iTicket, 'first.txt');
+		$iSecond = $this->attachTo($iTicket, 'second.txt');
+		$oRow = $this->bookkeepingOf($iFirst);
+		$aNothing = ['deleted' => [], 'updated' => []];
+
+		// In bulk before logging in: a Support Agent holds no bulk delete on Attachment.
+		foreach ([true, false] as $bSimulate) {
+			$aBulk = ToolOutput::Decode(ObjectBulkDelete::execute('Attachment', [$iSecond], $bSimulate));
+			$this->assertSame(1, $aBulk['succeeded'], 'bulk: '.json_encode($aBulk));
+			$this->assertSame($aNothing, (array)((array)$aBulk['objects'][0])['deletionPlan'], 'bulk: '.json_encode($aBulk));
+		}
+
+		$this->loginAs('Support Agent');
+		foreach ([true, false] as $bSimulate) {
+			$aDone = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iFirst, $bSimulate));
+			$this->assertSame($aNothing, (array)$aDone['deletionPlan'], $bSimulate ? 'dry run' : 'the real removal');
+		}
+
+		$this->assertNull(MetaModel::GetObject('Attachment', $iFirst, false, true), 'the file was not removed');
+		$this->assertNull(MetaModel::GetObject('Attachment', $iSecond, false, true), 'the file was not removed in bulk');
+		$this->assertNotNull(MetaModel::GetObject('CMDBChangeOpAttachmentAdded', $oRow->GetKey(), false, true), 'the history row is still there');
+	}
+
+	/** Only the change log looking after itself is left out: a row of it that were deleted is listed. */
+	public function testARowOfTheChangeLogThatWouldBeDeletedIsStillListed(): void
+	{
+		$iTicket = $this->aTicket();
+		$oRow = $this->bookkeepingOf($this->attachTo($iTicket, 'kept.txt'));
+		$oSilent = new \DeletionPlan();
+		$oSilent->AddToUpdate($oRow, MetaModel::GetAttributeDef('CMDBChangeOpAttachmentAdded', 'attachment_id'));
+		$oDeleted = new \DeletionPlan();
+		$oDeleted->AddToDelete($oRow, DEL_SILENT);
+
+		$this->assertSame([], \Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade::SerializeDeletionPlan($oSilent)['updated']);
+		$this->assertCount(1, \Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade::SerializeDeletionPlan($oDeleted)['deleted']);
 	}
 
 	/**
