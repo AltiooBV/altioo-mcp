@@ -170,12 +170,18 @@ class StoredValueTest extends ItopDataTestCaseAlias
 
 	private function stopWatch(): AttributeStopWatch
 	{
+		// The first one is not it: `cumulatedpending` exposes no item at all.
 		foreach (MetaModel::ListAttributeDefs('UserRequest') as $oAttDef) {
-			if ($oAttDef instanceof AttributeStopWatch) {
-				return $oAttDef;
+			if (!$oAttDef instanceof AttributeStopWatch) {
+				continue;
+			}
+			foreach ($oAttDef->ListSubItems() as $oItemDef) {
+				if (str_ends_with((string)$oItemDef->Get('item_code'), '_deadline')) {
+					return $oAttDef;
+				}
 			}
 		}
-		$this->markTestSkipped('UserRequest has no stopwatch in this datamodel.');
+		$this->markTestSkipped('UserRequest has no stopwatch with a deadline item in this datamodel.');
 	}
 
 	private function dateAttribute(): AttributeDate
