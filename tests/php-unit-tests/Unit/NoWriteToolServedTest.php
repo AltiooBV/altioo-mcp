@@ -28,7 +28,7 @@ require_once __DIR__.'/../bootstrap.php';
 class NoWriteToolServedTest extends TestCase
 {
 	/** What a write-only vocabulary looks like in the text of a connection that cannot write. */
-	private const WRITE_TALK = ['core_object_create', 'core_object_update', 'core_object_apply_stimulus', 'core_object_attach', 'settable_fields', 'may_attach', 'create action'];
+	private const WRITE_TALK = ['core_object_create', 'core_object_update', 'core_object_apply_stimulus', 'core_object_attach', 'settable_fields', 'may_attach', 'create action', 'creating a request', 'create one'];
 
 	protected function tearDown(): void
 	{
@@ -102,6 +102,24 @@ class NoWriteToolServedTest extends TestCase
 		// What it can do is still said.
 		$this->assertStringContainsString('core_portal_list', $sText);
 		$this->assertStringContainsString('core_object_get', $sText);
+	}
+
+	/** Retest of 2026-11-27: what is left once the write clauses are dropped still reads as sentences. */
+	public function testWhatIsLeftReadsAsSentences(): void
+	{
+		$this->withheld(ServedAccess::WRITES_BY_SCOPE);
+		$sText = (string)preg_replace('/\s+/', ' ', ServerInstructions::PortalText('itop-portal'));
+
+		$this->assertStringContainsString('the classes and lists this user\'s portal offers. core_class_schema', $sText);
+		$this->assertStringContainsString('A list with a parent is one level under that list. There is no other navigation.', $sText);
+		$this->assertStringContainsString('(FAQ, knowledge base), search it and offer what it holds.', $sText);
+
+		$this->withheld(null);
+		$sText = (string)preg_replace('/\s+/', ' ', ServerInstructions::PortalText('itop-portal'));
+
+		$this->assertStringContainsString('the classes and lists this user\'s portal offers, with its create actions and state changes (and the states they apply in).', $sText);
+		$this->assertStringContainsString('one level under that list; a create action with a from_list starts from a row of that list. There is no other navigation.', $sText);
+		$this->assertStringContainsString('search it before creating a request and offer what it holds; create one only if the user still wants it.', $sText);
 	}
 
 	public function testTheControlIsUnchangedWhenAWriteToolIsServed(): void
