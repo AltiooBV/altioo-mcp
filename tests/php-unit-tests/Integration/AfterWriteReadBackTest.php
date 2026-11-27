@@ -65,6 +65,30 @@ class AfterWriteReadBackTest extends ItopDataTestCaseAlias
 		$this->assertSame($aReal['state'], $aReal['after']['applied']['status'] ?? null, 'the state the transition moved to is not read back');
 	}
 
+	/** Retest of 2026-11-27: the dry run listed {approver_id, status}, the real run only {approver_id}, and still said would_move_to. */
+	public function testARealTransitionListsTheStateAmongItsChangesAsTheDryRunDoes(): void
+	{
+		$iOrg = $this->org();
+		$iId = (int)$this->CreateUserRequest(1, ['org_id' => $iOrg, 'caller_id' => $this->CreatePerson(1, $iOrg)->GetKey()])->GetKey();
+		if (!isset(MetaModel::EnumTransitions('UserRequest', 'new')['ev_timeout'])) {
+			$this->markTestSkipped('Needs a transition from new that asks for nothing.');
+		}
+		$aFields = ['title' => 'Moved with a field'];
+
+		$aDry = self::plain(ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $iId, 'ev_timeout', $aFields, true)));
+		$aReal = self::plain(ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $iId, 'ev_timeout', $aFields, false)));
+
+		$this->assertSame($aDry['would_move_to'], $aReal['state'], 'the object is where the dry run said');
+		$this->assertSame($aReal['state'], $aReal['changes']['status'] ?? null, 'the state is not among the real run\'s changes');
+		$this->assertSame($aDry['changes']['status'], $aReal['changes']['status']);
+		$this->assertSame(array_keys($aDry['changes']), array_keys($aReal['changes']), 'the dry run and the real one name different changes');
+		$this->assertContains('status', $aReal['defaulted'], 'a change the caller did not send');
+
+		$this->assertArrayHasKey('would_move_to', $aReal, 'the key stays: one shape for both calls');
+		$this->assertNull($aReal['would_move_to'], 'nothing would move any more');
+		$this->assertNotNull($aDry['would_move_to']);
+	}
+
 	/** @return array<string, mixed> The answer with `{}` as an array, so that it can be indexed. */
 	private static function plain(mixed $aAnswer): array
 	{

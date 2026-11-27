@@ -299,6 +299,10 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				if (!self::mayRead($sClass, (string)$sAttCode) || !is_scalar($value)) {
 					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, (string)$sAttCode, true));
 				}
+				$sRefusal = FilterDate::Refusal(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), (string)$sAttCode, $value);
+				if ($sRefusal !== null) {
+					throw ToolRefusal::Because($sRefusal);
+				}
 				try {
 					$oSearch->AddCondition((string)$sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), $value), '=');
 				} catch (\CoreException) {

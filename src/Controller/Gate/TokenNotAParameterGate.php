@@ -40,9 +40,12 @@ final class TokenNotAParameterGate implements iGate
 
 		ErrorReport::Log('Refused an MCP request carrying auth_token as a request parameter. The endpoint reads a token from the Authorization or Auth-Token header only.');
 
+		// CredentialPresentedGate ran first, so a request that gets here brought a credential in its headers (or the
+		// web server named the user): what it has to do is drop the parameter, not send what it already sent
+		// (review 2026-11-23, retest). Neither value is echoed.
 		throw new MCPAuthException(
-			'Send the token in the Authorization header (Bearer) or the Auth-Token header. '
-			.'A token passed as the auth_token request parameter is refused: a URL is written to access logs.',
+			'Remove the auth_token request parameter from the URL and send the request again with the credential in its headers alone. '
+			.'A request carrying that parameter is refused even then: a URL is written to access logs.',
 			MCPResult::UNAUTHORIZED
 		);
 
