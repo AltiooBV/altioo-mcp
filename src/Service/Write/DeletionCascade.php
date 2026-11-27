@@ -488,7 +488,7 @@ final class DeletionCascade
 	 *
 	 * @return array<string, mixed>
 	 * @since 1.0.0
-	 * @since 2.2.0 Entries carry their class; the object itself is left out when named.
+	 * @since 2.2.0 Entries carry their class; the object itself is left out when named, and so are the change log's silent updates.
 	 */
 	public static function SerializeDeletionPlan(?DeletionPlan $oPlan, ?string $sClass = null, ?int $iId = null): array
 	{
