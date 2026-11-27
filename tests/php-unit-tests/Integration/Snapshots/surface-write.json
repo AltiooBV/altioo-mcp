@@ -1149,7 +1149,7 @@
                         },
                         "relation": {
                             "type": "string",
-                            "description": "Relation code to follow: \"impacts\" on a stock iTop, and whatever the datamodel declares. No class takes part in every code. A code the class does not have in the direction asked is refused with the list of the ones it does."
+                            "description": "Relation code to follow, one core_class_schema lists for this class: whatever the datamodel declares. A code the class does not have in the direction asked is refused with the list of the ones it does."
                         },
                         "direction": {
                             "type": "string",
@@ -1179,7 +1179,7 @@
                         "relation"
                     ]
                 },
-                "description": "Walk a named relation from one iTop object: impact analysis and dependency mapping on CIs. The stock relation is \"impacts\": direction \"down\" is what the object impacts, \"up\" is what it depends on. A code the class does not have for that direction is refused with the ones it does. core_class_schema lists the codes and the classes each reaches downstream, not the directions. The answer is a graph: \"objects\" maps keys like Server::12 to class, id and friendlyname, \"relations\" is a list of {from, to} over those keys and the source, \"summary\" is a string of counts per class (\"Server=2, ApplicationSolution=1\"). The source is not in objects or summary, and an object reached twice appears once. \"truncated\" is true when a class was held back for want of bulk read on it, and \"withheld\" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.",
+                "description": "Walk a relation from one iTop object, e.g. impact analysis on CIs. The codes depend on the datamodel: core_class_schema lists the class's codes, their directions (\"down\", \"up\") and what each means; others are refused with the valid ones. The answer is a graph: \"objects\" maps keys like Server::12 to class, id and friendlyname, \"relations\" is a list of {from, to} over those keys and the source, \"summary\" counts per class (\"Server=2\"). Each hop is one level of depth. The source is not in objects or summary, an object reached twice appears once, and an edge back to the source is a loop. \"truncated\" is true when a class was held back for want of bulk read on it, and \"withheld\" then names it: what came back is what you may see, not what exists. Do not report an impact analysis as complete while truncated is true.",
                 "annotations": {
                     "title": "Get Related Objects",
                     "readOnlyHint": true,

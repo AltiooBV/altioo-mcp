@@ -396,30 +396,51 @@ final class DatamodelReader
 	}
 
 	/**
+	 * Every relation code a walk from this class accepts, in each direction it accepts it, with what the datamodel's
+	 * dictionary says it means.
+	 *
+	 * The codes are whatever this instance's datamodel declares (a module such as itop-flow-map adds one, a custom
+	 * datamodel others), so the meaning comes from the dictionary and not from a list here. A direction is listed when
+	 * core_object_get_related accepts it: some query for it, and not only queries that lead to an excluded class
+	 * (doc/adr/0012). A label or description the dictionary does not have is null, not its raw key.
+	 *
 	 * @param string $sClass The class for which to retrieve relation details
-	 * @return array An array of relation details
+	 *
+	 * @return array<string, array<string, mixed>> Relation code => description, and per direction ("down", "up") its label, description and neighbours.
 	 */
 	private static function relations(string $sClass): array
 	{
 		$aRelations = [];
 
-		// EnumRelationsEx() takes the class and exists on iTop 3.2 and 3.3; EnumRelations() went with 3.3. It
-		// names the relations that have a query for this class in either direction, and the answer here is the
-		// downstream ones, as it always was: a relation with only an upstream query lists nothing, and is left out.
+		// EnumRelationsEx() takes the class and exists on iTop 3.2 and 3.3; EnumRelations() went with 3.3.
 		/** @var array<string, mixed> $aOfClass Relation code => the directions it has a query for. */
 		$aOfClass = MetaModel::EnumRelationsEx($sClass);
 		foreach (array_keys($aOfClass) as $sRelation) {
-			$aRelated = [];
-			// The queries that lead to an excluded class are not listed (doc/adr/0012); their names are no class names.
-			foreach (array_keys(ExclusionSearches::RelationQueries($sClass, $sRelation)) as $sNeighbour) {
-				$aRelated[] = $sNeighbour;
+			$sRelation = (string)$sRelation;
+			$aRelation = [];
+			foreach (['down' => true, 'up' => false] as $sWay => $bDown) {
+				// The neighbours are iTop's names for the queries, not classes; one leading to an excluded class is not named.
+				$aNeighbours = array_map('strval', array_keys(ExclusionSearches::RelationQueries($sClass, $sRelation, $bDown)));
+				if ($aNeighbours !== []) {
+					$aRelation[$sWay] = [
+						'label'       => self::relationText(MetaModel::GetRelationLabel($sRelation, $bDown)),
+						'description' => self::relationText(MetaModel::GetRelationDescription($sRelation, $bDown)),
+						'neighbours'  => $aNeighbours,
+					];
+				}
 			}
-			if (!empty($aRelated)) {
-				$aRelations[$sRelation] = $aRelated;
+			if ($aRelation !== []) {
+				$aRelations[$sRelation] = ['description' => self::relationText(\Dict::S("Relation:{$sRelation}/Description"))] + $aRelation;
 			}
 		}
 
 		return $aRelations;
+	}
+
+	/** Dict::S() answers a key it does not have with the key itself, which names nothing for a reader. */
+	private static function relationText(string $sText): ?string
+	{
+		return ($sText === '' || str_starts_with($sText, 'Relation:')) ? null : $sText;
 	}
 
 	/**
