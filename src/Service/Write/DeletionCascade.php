@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\ObjectId;
+use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 
 use DBObject;
@@ -459,13 +460,24 @@ final class DeletionCascade
 	 * rights rule applied to one copy of this and not the other is the bug a
 	 * per-tool copy invites.
 	 *
-	 * Nothing here filters. It does not have to: by the time a plan is
-	 * serialised, CheckDeletionRights() has refused every plan holding an
-	 * object this caller may not read, so the class and id of everything left
-	 * are things they could have looked up themselves. That is the other half
-	 * of why the check is a refusal rather than a mask - a plan shown to a
-	 * person before they approve it has to be complete, and the only way for it
-	 * to be both complete and safe is for the incomplete case not to exist.
+	 * No right is applied here by filtering. It does not have to be: by the time
+	 * a plan is serialised, CheckDeletionRights() has refused every plan holding
+	 * an object this caller may not read and was not exempt, so the class and id
+	 * of everything left are things they could have looked up themselves. That is
+	 * the other half of why the check is a refusal rather than a mask - a plan
+	 * shown to a person before they approve it has to be complete, and the only
+	 * way for it to be both complete and safe is for the incomplete case not to
+	 * exist.
+	 *
+	 * One thing is left out of it: the change log's own rows that iTop resets
+	 * without a word, such as the "attachment added" line of an attachment being
+	 * removed (review 2026-11-23, retest). They are history kept about the
+	 * object, not something that happens to the user's data, they are served by no
+	 * read tool, and a person approving the plan cannot act on their ids. Only an
+	 * update is left out, and only when every key iTop resets on the row is one it
+	 * declares silent; a change-log row that were deleted would be listed.
+	 * CheckDeletionRights() has judged the whole plan before this, so leaving a
+	 * row out here allows nothing.
 	 *
 	 * Each entry names its class, since an id alone says nothing: a business process, a solution and a server
 	 * can all be number 1 (review 2026-11-23, B7). The object the call is about is left out when it is passed,
@@ -499,11 +511,36 @@ final class DeletionCascade
 		}
 
 		foreach ($oPlan->ListUpdates() as $sReached => $aEntries) {
-			foreach (array_keys($aEntries) as $mReachedId) {
+			foreach ($aEntries as $mReachedId => $aData) {
+				if (self::IsSilentHistory((string)$sReached, (array)$aData)) {
+					continue;
+				}
 				$aUpdated[] = ['class' => (string)$sReached] + WriteOutcome::Identity((string)$sReached, $mReachedId);
 			}
 		}
 
 		return ['deleted' => $aDeleted, 'updated' => $aUpdated];
+	}
+
+	/**
+	 * Whether an update of the plan is the change log looking after itself: a row of it, on which every key reset is
+	 * one the datamodel declares silent. Asked of the plan's own entry, so a dry run and the real deletion, whose
+	 * rows are reset by the time it is read, answer alike.
+	 *
+	 * @param array<string, mixed> $aData
+	 */
+	private static function IsSilentHistory(string $sClass, array $aData): bool
+	{
+		$aReset = $aData['attributes'] ?? [];
+		if (!ChangeLogReservation::IsReserved($sClass) || !is_array($aReset) || $aReset === []) {
+			return false;
+		}
+		foreach ($aReset as $oAttDef) {
+			if (!$oAttDef instanceof \AttributeExternalKey || $oAttDef->GetDeletionPropagationOption() !== DEL_SILENT) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }
