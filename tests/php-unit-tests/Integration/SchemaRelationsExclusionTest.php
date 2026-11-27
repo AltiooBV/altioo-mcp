@@ -55,24 +55,36 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		ExclusionPolicy::Forget();
 	}
 
-	/** @return array<string, array<int, string>> */
+	/** @return array<string, array<string, mixed>> */
 	private function relationsOfServer(): array
 	{
 		return ToolOutput::Decode(ClassSchema::execute('Server', 'relations'))['relations'];
 	}
 
+	/**
+	 * The neighbours a relation lists in one direction.
+	 *
+	 * @param array<string, array<string, mixed>> $aRelations
+	 *
+	 * @return array<int, string>
+	 */
+	private static function neighbours(array $aRelations, string $sRelation, string $sWay = 'down'): array
+	{
+		return $aRelations[$sRelation][$sWay]['neighbours'] ?? [];
+	}
+
 	public function testAClassReachedThroughARelationIsNotListedAsReached(): void
 	{
 		$aBefore = $this->relationsOfServer();
-		$this->assertContains('Server_hypervisor', $aBefore['impacts'] ?? [], 'the control: a Server reaches a Hypervisor');
+		$this->assertContains('Server_hypervisor', self::neighbours($aBefore, 'impacts'), 'the control: a Server reaches a Hypervisor');
 
 		$this->exclude(['Hypervisor']);
 		$aAfter = $this->relationsOfServer();
 
-		$this->assertNotContains('Server_hypervisor', $aAfter['impacts'] ?? [], 'a relation that leads to an excluded class is listed');
+		$this->assertNotContains('Server_hypervisor', self::neighbours($aAfter, 'impacts'), 'a relation that leads to an excluded class is listed');
 		$this->assertStringNotContainsStringIgnoringCase('hypervisor', json_encode($aAfter), 'the excluded class is named by a relation');
 		// What is not about the excluded class is untouched.
-		$this->assertContains('FunctionalCI_contact', $aAfter['impacts'] ?? [], 'a relation to another class was dropped');
+		$this->assertContains('FunctionalCI_contact', self::neighbours($aAfter, 'impacts'), 'a relation to another class was dropped');
 	}
 
 	/** An excluded class takes its subclasses with it: excluding the parent drops the query that selects a child. */
@@ -81,12 +93,12 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		if (!MetaModel::IsValidClass('VirtualHost') || !MetaModel::IsParentClass('VirtualHost', 'Hypervisor')) {
 			$this->markTestSkipped('Needs Hypervisor below VirtualHost.');
 		}
-		$this->assertContains('Server_hypervisor', $this->relationsOfServer()['impacts'] ?? [], 'the control');
+		$this->assertContains('Server_hypervisor', self::neighbours($this->relationsOfServer(), 'impacts'), 'the control');
 
 		// The query selects a Hypervisor, which is a VirtualHost; a Server is not one, so the schema of Server is still served.
 		$this->exclude(['VirtualHost']);
 
-		$this->assertNotContains('Server_hypervisor', $this->relationsOfServer()['impacts'] ?? []);
+		$this->assertNotContains('Server_hypervisor', self::neighbours($this->relationsOfServer(), 'impacts'));
 	}
 
 	/**
@@ -145,7 +157,7 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		);
 	}
 
-	/** The walk validates the relation it is asked for against what the class has: no relation exists only to reach an excluded class. */
+	/** The walk validates the relation it is asked for against what the class has, in each direction: no relation exists only to reach an excluded class. */
 	public function testTheRelationsAWalkMayUseAreTheSameOnes(): void
 	{
 		$this->exclude(['Hypervisor']);
@@ -157,8 +169,12 @@ class SchemaRelationsExclusionTest extends ItopDataTestCaseAlias
 		if ($sTarget === '0') {
 			$this->markTestSkipped('Needs a Server.');
 		}
-		foreach ($aRelations as $sRelation) {
-			$this->assertNotNull(ObjectGetRelated::execute('Server', (int)$sTarget, $sRelation, 'down', 1));
+		foreach ($this->relationsOfServer() as $sRelation => $aRelation) {
+			foreach (['down', 'up'] as $sWay) {
+				if (isset($aRelation[$sWay])) {
+					$this->assertNotNull(ObjectGetRelated::execute('Server', (int)$sTarget, (string)$sRelation, $sWay, 1));
+				}
+			}
 		}
 	}
 }
