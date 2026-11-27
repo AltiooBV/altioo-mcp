@@ -290,8 +290,10 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 		$this->assertSame('closed', $aDry['would_move_to']);
 		$this->assertSame('resolved', MetaModel::GetObject('UserRequest', $this->iResolved)->Get('status'), 'a dry run moved it');
 
-		ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields, false));
+		$aDone = ToolOutput::Decode(ObjectApplyStimulus::execute('UserRequest', $this->iResolved, 'ev_close', $aFields, false));
 		$this->assertSame('closed', MetaModel::GetObject('UserRequest', $this->iResolved, true, true)->Get('status'));
+		$this->assertSame('closed', ((array)$aDone['changes'])['status'] ?? null, 'the real run lists the state as the dry run does');
+		$this->assertNull($aDone['would_move_to']);
 	}
 
 	/**
