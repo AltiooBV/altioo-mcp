@@ -18,6 +18,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
+use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessGrants;
 use Altioo\iTop\Extension\MCP\Service\Rights\WriteCap;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
@@ -91,8 +92,8 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'description' => 'The state the object is in now: the one it reached on a real call, the one it is still in on a dry run.',
 			],
 			'would_move_to' => [
-				'type'        => 'string',
-				'description' => 'The state this transition targets. On a dry run it is where the object would go; on a real call the object is already there, so it equals state. Compare the two to see whether the call moved anything.',
+				'type'        => ['string', 'null'],
+				'description' => 'On a dry run, the state the object would move to; null on a real call, where state is where it is.',
 			],
 			'after'         => WriteOutcome::AfterSchemaProperty(),
 			'changes'       => WriteOutcome::ChangesSchemaProperty('The attributes the transition set, including the ones the lifecycle filled in by itself.'),
@@ -400,11 +401,10 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 		// will happen" saw an empty list.
 		//
 		// Added from the lifecycle rather than from the object, since the
-		// object has not been touched. On the real call it is already there,
-		// put in by ApplyStimulus(), and writing it again would be reporting
-		// the same fact twice.
+		// object has not been touched. The real call adds the state it reached,
+		// below: `changes` was taken before the write, so it did not hold it.
+		$sStateAttCode = MetaModel::GetStateAttributeCode($class);
 		if ($simulate) {
-			$sStateAttCode = MetaModel::GetStateAttributeCode($class);
 			if ($sStateAttCode !== '' && $sTargetState !== '' && !array_key_exists($sStateAttCode, $aChanges)) {
 				$aChanges[$sStateAttCode] = $sTargetState;
 			}
@@ -453,6 +453,13 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because("Failed to apply stimulus '{$stimulus}' on {$class}::{$id}.");
 		}
 
+		// The state the object reached, which the dry run lists as the state it would reach (review 2026-11-23,
+		// retest B4): a transition always changes it, and the write left it out of what was pending. A value
+		// masked for this account stays masked.
+		if ($sStateAttCode !== '' && ($aChanges[$sStateAttCode] ?? null) !== ObjectSerializer::MASK) {
+			$aChanges[$sStateAttCode] = $oObject->GetState();
+		}
+
 		return ToolOutput::StructuredWrite(['class' => $class]
 			+ WriteOutcome::Identity($class, $id)
 			+ [
@@ -460,16 +467,14 @@ class ObjectApplyStimulus extends AbstractMCPTool implements PortalAware
 				'simulated'     => false,
 				'valid'         => true,
 				'state'         => $oObject->GetState(),
-				// The target is reported on a real call too, so the shape does
-				// not depend on simulate. The object is in it by now, which is
-				// what makes the pair readable: state === would_move_to says
-				// the transition happened.
-				'would_move_to' => $sTargetState,
+				// Kept so the shape does not depend on simulate, and null because nothing
+				// "would" move any more: the object is in `state` (review 2026-11-23, retest B4).
+				'would_move_to' => null,
 				'after'         => WriteOutcome::After($oObject, $class, array_keys($aValidatedValues), $simulate, WriteOutcome::AlsoRead($oObject, $aBefore, $aChanges, fn (array $aShown): array => self::portalRefusal(static fn () => $oAccess->Disclosed($oObject, $aShown, array_keys($aValidatedValues))))),
-					'changes'       => WriteOutcome::Map($aChanges),
-					'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
+				'changes'       => WriteOutcome::Map($aChanges),
+				'untrusted_text' => WriteOutcome::Untrusted($class, $aChanges)['untrusted_text'],
 				'overridden'    => WriteOutcome::Map($aOverridden),
-					'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
+				'defaulted'     => WriteOutcome::Defaulted($aChanges, array_keys($aValidatedValues)),
 			]
 			+ WriteOutcome::LinksKept($class, array_keys($aValidatedValues)));
 	}
