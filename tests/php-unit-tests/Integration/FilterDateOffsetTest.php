@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Helper\FilterDate;
 use Altioo\iTop\Extension\MCP\Test\Support\ItopDataTestCaseAlias;
+use Mcp\Server\Exception\ToolCallException;
 use MetaModel;
 
 // iTop's own runner bootstraps with unittestautoload.php, which cannot
@@ -60,6 +61,91 @@ class FilterDateOffsetTest extends ItopDataTestCaseAlias
 		}
 		$this->assertSame(7, FilterDate::ForFilter($oAtt, 7));
 		$this->assertSame('2026-10-28T10:46:22Z', FilterDate::ForFilter(MetaModel::GetAttributeDef('UserRequest', 'title'), '2026-10-28T10:46:22Z'), 'only a date attribute converts');
+	}
+
+	/**
+	 * Retest of 2026-11-27: `23/11/2026 19:27:50` was compared as text and found nothing, which reads as "there is none".
+	 *
+	 * @return array<string, array{0: mixed}>
+	 */
+	public static function notADate(): array
+	{
+		return [
+			'day first'                 => ['23/11/2026 19:27:50'],
+			'day first, no time'        => ['23/11/2026'],
+			'dotted'                    => ['23.11.2026'],
+			'RFC 3339 with no offset'   => ['2026-11-23T19:27:50'],
+			'no seconds, no offset'     => ['2026-11-23 19:27'],
+			'a month that is none'      => ['2026-13-01'],
+			'a day that is none'        => ['2026-02-30 10:00:00'],
+			'a day that is none, in UTC' => ['2026-02-30T10:00:00Z'],
+			'an hour that is none'      => ['2026-11-23 25:00:00'],
+			'an offset that is none'    => ['2026-11-23T19:27:50+99:99'],
+			'trailing text'             => ['2026-11-23T19:27:50Zjunk'],
+			'a word'                    => ['yesterday'],
+			'a number'                  => [20261123],
+			'blank'                     => ['   '],
+		];
+	}
+
+	/** @dataProvider notADate */
+	public function testAFilterOnADateRefusesAnyOtherFormWithoutQuotingIt(mixed $value): void
+	{
+		$sRefusal = FilterDate::Refusal(MetaModel::GetAttributeDef('UserRequest', 'start_date'), 'start_date', $value);
+
+		$this->assertNotNull($sRefusal);
+		$this->assertStringContainsString('YYYY-MM-DD HH:MM:SS or YYYY-MM-DD', $sRefusal);
+		$this->assertStringContainsString('RFC 3339 with an offset', $sRefusal);
+		if (trim((string)$value) !== '') {
+			$this->assertStringNotContainsString((string)$value, $sRefusal, 'the value is quoted back');
+		}
+		foreach ([ObjectSearchByClass::class, ObjectCount::class] as $sTool) {
+			try {
+				$sTool::execute('UserRequest', ['start_date' => $value]);
+				$this->fail("{$sTool} searched for it and answered");
+			} catch (ToolCallException $e) {
+				$this->assertSame($sRefusal, $e->getMessage(), $sTool);
+			}
+		}
+	}
+
+	public function testTheFormsTakenAreNotRefused(): void
+	{
+		$oAtt = MetaModel::GetAttributeDef('UserRequest', 'start_date');
+		foreach (['2026-11-23 19:27:50', '2026-11-23', ' 2026-11-23 ', '2026-11-23T19:27:50Z', '2026-11-23t19:27:50.250+01:00', '2026-11-23 19:27:50 -0500', '2026-11-23T19:27+01', '', null] as $value) {
+			$this->assertNull(FilterDate::Refusal($oAtt, 'start_date', $value), var_export($value, true));
+		}
+		$this->assertNull(FilterDate::Refusal(MetaModel::GetAttributeDef('UserRequest', 'title'), 'title', '23/11/2026'), 'only a date is held to a date');
+		$this->assertSame('2026-11-23', FilterDate::ForFilter($oAtt, ' 2026-11-23 '));
+	}
+
+	/** A stopwatch's dates and a date shown through an external key are compared as dates too. */
+	public function testAStopwatchDateAndAnExternalDateAreHeldToTheSameForms(): void
+	{
+		$aFound = [];
+		foreach (MetaModel::GetClasses() as $sClass) {
+			foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
+				if (!isset($aFound['stopwatch']) && $oAttDef instanceof \AttributeSubItem && $oAttDef->Get('item_code') === 'started') {
+					$aFound['stopwatch'] = $oAttDef;
+				}
+				if (!isset($aFound['external']) && $oAttDef instanceof \AttributeExternalField && $oAttDef->GetFinalAttDef() instanceof \AttributeDateTime) {
+					$aFound['external'] = $oAttDef;
+				}
+			}
+		}
+		if ($aFound === []) {
+			$this->markTestSkipped('This datamodel has neither a stopwatch date nor an external date.');
+		}
+		foreach ($aFound as $sKind => $oAttDef) {
+			$this->assertNotNull(FilterDate::Refusal($oAttDef, 'x', '23/11/2026'), $sKind);
+			$this->assertNull(FilterDate::Refusal($oAttDef, 'x', '2026-11-23'), $sKind);
+		}
+		// What a stopwatch counts is no date, and is left alone.
+		foreach (MetaModel::ListAttributeDefs('UserRequest') as $oAttDef) {
+			if ($oAttDef instanceof \AttributeSubItem && $oAttDef->Get('item_code') === 'timespent') {
+				$this->assertNull(FilterDate::Refusal($oAttDef, 'x', '120'));
+			}
+		}
 	}
 
 	public function testASearchAndACountByAnInstantFindTheRowStoredAtThatInstant(): void
