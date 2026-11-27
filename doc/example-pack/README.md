@@ -149,6 +149,11 @@ php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php \
   ../../env-production/acme-servicedesk/tests/php-unit-tests/Integration
 ```
 
+In this repository, CI installs the pack beside the base on each supported iTop branch and calls
+every element over HTTP, toolset scope included (`itop-matrix.yml`, job `example-pack`;
+`tools/ci/local/run.sh pack` locally). Combodo's module is not installed there, so the predefined
+reply test skips in CI. See [ci-itop-matrix.md](../ci-itop-matrix.md).
+
 `ElementContract` runs the same checks the registry runs at boot, and returns
 them instead of throwing, so the pack's whole contract suite is one assertion per
 element. It pulls in no dev dependency of the base extension — that is why it

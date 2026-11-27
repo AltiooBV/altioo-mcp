@@ -48,8 +48,16 @@
 # module in extensions/, write the response file, and check afterwards that the
 # module is actually installed.
 #
+# Set PACK_SRC to a tool pack's directory (doc/example-pack) to install it beside
+# the module, the way its README tells a pack author to: copied under
+# extensions/, its module.*.php.tpl renamed, `composer package` run in it. The
+# same checks then hold for the pack as for the module - selected by the dry
+# run, a row in priv_module_install, compiled into env-production - because a
+# pack the setup skipped is as silent as a module it skipped.
+#
 # Usage: ITOP_ZIP_URL=... tools/ci/install-itop.sh
 #        ITOP_ZIP_URL=... DRY_RUN_ONLY=1 tools/ci/install-itop.sh
+#        ITOP_ZIP_URL=... PACK_SRC=doc/example-pack tools/ci/install-itop.sh
 #
 # @copyright   Copyright (C) 2026 Altioo
 # @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -80,6 +88,17 @@ export DB_HOST DB_PORT DB_NAME DB_USER DB_PWD
 # to be present and syntactically sane, because the response file is the same
 # one a real install uses - which is the point of running the same script.
 DRY_RUN_ONLY="${DRY_RUN_ONLY:-}"
+
+# The pack's module code is its file name, as the setup reads it: a pack ships
+# no extension.xml, and the module file is a .tpl until it is placed.
+PACK_SRC="${PACK_SRC:-}"
+PACK_CODE=
+if [ -n "$PACK_SRC" ]; then
+  PACK_SRC=$(cd "$PACK_SRC" && pwd)
+  PACK_TPL=$(find "$PACK_SRC" -maxdepth 1 -name 'module.*.php.tpl' | head -1)
+  [ -n "$PACK_TPL" ] || { echo "::error::$PACK_SRC has no module.*.php.tpl"; exit 1; }
+  PACK_CODE=$(basename "$PACK_TPL" .php.tpl); PACK_CODE=${PACK_CODE#module.}
+fi
 
 ITOP_URL="${ITOP_URL:-http://127.0.0.1:8080/}"
 ITOP_ADMIN_USER="${ITOP_ADMIN_USER:-admin}"
@@ -136,6 +155,24 @@ rsync -a --delete \
 test -f "$ITOP_DIR/extensions/$MODULE_CODE/vendor/autoload.php" \
   || { echo "vendor/ is missing - run composer install --no-dev first"; exit 1; }
 echo "::endgroup::"
+
+if [ -n "$PACK_CODE" ]; then
+  echo "::group::Placing the pack $PACK_CODE, as its README says"
+  # vendor/ and composer.lock left behind: a checkout has neither, and the dump
+  # an installed pack needs is the one `composer package` makes below.
+  PACK_DEST="$ITOP_DIR/extensions/$PACK_CODE"
+  mkdir -p "$PACK_DEST"
+  rsync -a --delete --exclude='vendor/' --exclude='composer.lock' "$PACK_SRC/" "$PACK_DEST/"
+  mv "$PACK_DEST/module.$PACK_CODE.php.tpl" "$PACK_DEST/module.$PACK_CODE.php"
+  (cd "$PACK_DEST" && composer package --no-interaction --no-progress)
+  # The two things the README's composer.json comments are about: a classmap
+  # iTop's discovery can read, and no second copy of the SDK.
+  grep -q "'/src/" "$PACK_DEST/vendor/composer/autoload_classmap.php" \
+    || { echo "::error::the pack's classmap is empty - iTop would discover none of its elements"; exit 1; }
+  [ ! -d "$PACK_DEST/vendor/mcp" ] \
+    || { echo "::error::the pack vendors its own mcp/sdk - composer package must leave it out"; exit 1; }
+  echo "::endgroup::"
+fi
 
 echo "::group::Unattended install"
 # No <selected_extensions>, which means the default choices from
@@ -217,20 +254,22 @@ php "$ITOP_DIR/setup/unattended-install/unattended-install.php" \
 # whole rather than the single line after the heading, and split on both commas
 # and newlines. The field is then matched whole: a substring test would be
 # satisfied by any module whose name merely starts the same way.
-if ! awk '/^(Computed modules to install|Modules to install)/{f=1} f{print} f&&/^[[:space:]]*$/{f=0}' \
-       "$ITOP_DIR/ci-dryrun.log" \
-     | tr ',' '\n' | tr -d '[:blank:]' | grep -qx "$MODULE_CODE"; then
-  echo "::error::$MODULE_CODE would not be installed - the setup discovered it and did not select it"
-  # The reason, in the setup's own words. It logs a warning naming the modules
-  # that made the extension unselectable and then carries on as if nothing had
-  # happened.
-  grep -iE "extension|$MODULE_CODE" "$ITOP_DIR/ci-dryrun.log" | tail -20
-  exit 1
-fi
+for CODE in "$MODULE_CODE" $PACK_CODE; do
+  if ! awk '/^(Computed modules to install|Modules to install)/{f=1} f{print} f&&/^[[:space:]]*$/{f=0}' \
+         "$ITOP_DIR/ci-dryrun.log" \
+       | tr ',' '\n' | tr -d '[:blank:]' | grep -qx "$CODE"; then
+    echo "::error::$CODE would not be installed - the setup discovered it and did not select it"
+    # The reason, in the setup's own words. It logs a warning naming the modules
+    # that made the extension unselectable and then carries on as if nothing had
+    # happened.
+    grep -iE "extension|$CODE" "$ITOP_DIR/ci-dryrun.log" | tail -20
+    exit 1
+  fi
+done
 
 if [ -n "$DRY_RUN_ONLY" ]; then
   echo "::endgroup::"
-  echo "$MODULE_CODE $MODULE_VERSION would be installed on this iTop"
+  echo "$MODULE_CODE $MODULE_VERSION${PACK_CODE:+ and $PACK_CODE} would be installed on this iTop"
   exit 0
 fi
 
@@ -310,5 +349,17 @@ EXTENSION_SOURCE=$(itop_sql "SELECT source FROM \`${DB_PREFIX}priv_extension_ins
 # 3. And the code is where iTop loads it from at runtime.
 [ -d "$ITOP_DIR/env-production/$MODULE_CODE" ] \
   || fail "env-production/$MODULE_CODE does not exist - the module was recorded as installed but not compiled"
+
+# 4. The pack, by the same two records: iTop's row, and the compiled copy.
+if [ -n "$PACK_CODE" ]; then
+  PACK_VERSION=$(itop_sql "SELECT version FROM \`${DB_PREFIX}priv_module_install\`
+	WHERE name = '$PACK_CODE' AND installed IS NOT NULL ORDER BY installed DESC LIMIT 1") \
+	|| fail "could not read ${DB_PREFIX}priv_module_install"
+  [ -n "$PACK_VERSION" ] \
+    || fail "$PACK_CODE has no row in ${DB_PREFIX}priv_module_install - the setup completed without installing the pack"
+  [ -d "$ITOP_DIR/env-production/$PACK_CODE" ] \
+    || fail "env-production/$PACK_CODE does not exist - the pack was recorded as installed but not compiled"
+  echo "$PACK_CODE $PACK_VERSION installed beside it"
+fi
 
 echo "$MODULE_CODE $INSTALLED_VERSION installed at $ITOP_DIR"

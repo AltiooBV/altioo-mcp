@@ -78,6 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
+      pack_matrix: ${{ steps.resolve.outputs.pack_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -94,7 +95,19 @@ jobs:
         run: |
           set -euo pipefail
           php tools/ci/resolve-itop-versions.php | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "matrix=$(php tools/ci/resolve-itop-versions.php --matrix)" >> "$GITHUB_OUTPUT"
+          matrix=$(php tools/ci/resolve-itop-versions.php --matrix)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          # The example pack's job: each branch once, on the floor of its PHP
+          # list. What it checks is the pack contract against an iTop, which the
+          # install job's PHP ceiling already answers for the base.
+          # shellcheck disable=SC2016
+          echo "pack_matrix=$(printf '%s' "$matrix" | php -r '
+            $a = json_decode(stream_get_contents(STDIN), true); $aFloor = [];
+            foreach ($a["include"] as $e) {
+              $b = $e["itop_branch"];
+              if (!isset($aFloor[$b]) || version_compare($e["php"], $aFloor[$b]["php"], "<")) { $aFloor[$b] = $e; }
+            }
+            echo json_encode(["include" => array_values($aFloor)]);')" >> "$GITHUB_OUTPUT"
 
   # The first gate that touches an iTop, and still no database, no schema,
   # nothing to tear down. It downloads the release, puts the module in
@@ -264,6 +277,106 @@ jobs:
             ${{ runner.temp }}/itop/ci-dryrun.log
             ${{ runner.temp }}/itop/ci-install.log
             ${{ runner.temp }}/itop/ci-httpd.log
+            ${{ runner.temp }}/itop/log/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The example pack, installed beside the module and called over HTTP. ci.yml's
+  # example-pack job runs the pack's contract suite, which needs no iTop - and so
+  # cannot see the setup skipping the pack's datamodel file, which it did: a
+  # comment before <itop_design> left the pack's toolset scope undeclared, a
+  # token asking for it was refused at login, and the contract suite stayed
+  # green. pack-smoke.sh logs in with that scope.
+  #
+  # Its own instance rather than the install job's: the pack adds tools, and the
+  # module's integration suite compares the tool surface with a committed
+  # snapshot of the module alone. Each supported branch once, on the floor of its
+  # PHP list (the versions job says which).
+  example-pack:
+    name: Example pack on iTop ${{ matrix.itop_release }} (PHP ${{ matrix.php }})
+    needs: [versions, installable]
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ !matrix.stable }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.versions.outputs.pack_matrix) }}
+
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: itop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Where the iTop under test is unpacked
+        run: echo "ITOP_DIR=$RUNNER_TEMP/itop" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - name: Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+
+      - name: Build the vendor tree that ships
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      # The pack is placed the way its README says - copied under extensions/,
+      # module file renamed, `composer package` - and the setup's own records
+      # are asked whether it was installed, as for the module.
+      - name: Unattended install with the module and the example pack
+        env:
+          ITOP_ZIP_URL: ${{ matrix.zip_url }}
+          ITOP_TAG: ${{ matrix.itop_tag }}
+          PACK_SRC: doc/example-pack
+        run: tools/ci/install-itop.sh
+
+      # Combodo's precanned-replies is not installed here, so
+      # PrecannedReplyRenderTest skips every case: a green step that ran none of
+      # them. Said in the run, rather than left to read as coverage. The
+      # harness's own vendor/ is installed here: in the install job,
+      # module-validation.sh does it, and this job does not run that.
+      - name: The pack's integration suite, against this iTop
+        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          php vendor/bin/phpunit \
+            --no-configuration \
+            --bootstrap unittestautoload.php \
+            --testdox \
+            "${ITOP_DIR}/env-production/acme-servicedesk/tests/php-unit-tests/Integration" | tee "$RUNNER_TEMP/pack-integration.log"
+          if grep -q 'Skipped:' "$RUNNER_TEMP/pack-integration.log"; then
+            echo "::notice::PrecannedReplyRenderTest skipped: Combodo's precanned-replies is not installed on this instance, so the pack's integration suite ran no case here"
+          fi
+
+      - name: Every element of the pack, over HTTP
+        run: tools/ci/pack-smoke.sh
+
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: example-pack-${{ matrix.itop_release }}-php${{ matrix.php }}-logs
+          path: |
+            ${{ runner.temp }}/itop/ci-dryrun.log
+            ${{ runner.temp }}/itop/ci-install.log
+            ${{ runner.temp }}/itop/ci-pack-httpd.log
             ${{ runner.temp }}/itop/log/
           retention-days: 7
           if-no-files-found: warn
