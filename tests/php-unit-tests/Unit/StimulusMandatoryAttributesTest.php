@@ -46,25 +46,26 @@ class StimulusMandatoryAttributesTest extends TestCase
 	 * whose whole purpose is to move a state: a user shown "here is what will
 	 * happen" saw an empty list.
 	 *
-	 * Taken from the lifecycle, since the object is untouched, and only on the
-	 * simulated path - the real call has it already, put there by
-	 * ApplyStimulus(), and writing it twice would be reporting the same fact
-	 * twice.
+	 * Taken from the lifecycle on the simulated path, since the object is
+	 * untouched, and from the object on the real one: `changes` is read before
+	 * the write, so the state ApplyStimulus() set was not in it, and a real run
+	 * listed fewer changes than its own dry run (retest of 2026-11-27, B4).
 	 */
-	public function testTheDryRunReportsTheStateItWouldMoveTo(): void
+	public function testBothRunsReportTheStateAmongTheChanges(): void
 	{
 		$sBody = SourceCalls::OfClass(\Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus::class)->Code();
 
-		$this->assertMatchesRegularExpression(
-			'/if\(\$simulate\)\{\$sStateAttCode=MetaModel::GetStateAttributeCode/',
+		$this->assertStringContainsString(
+			'if($simulate){if($sStateAttCode!==\'\'&&$sTargetState!==\'\'&&!array_key_exists($sStateAttCode,$aChanges)){$aChanges[$sStateAttCode]=$sTargetState;}',
 			$sBody,
-			'the state move is added on the real path too, or not at all'
+			'the dry run no longer says where the transition would go'
 		);
 		$this->assertStringContainsString(
-			'!array_key_exists($sStateAttCode,$aChanges)',
+			'$aChanges[$sStateAttCode]=$oObject->GetState();',
 			$sBody,
-			'a transition that already reported the state would report it twice'
+			'the real run no longer lists the state it reached'
 		);
+		$this->assertStringContainsString("'would_move_to'=>null", $sBody, 'a real run says where the object would move to');
 	}
 
 	/**
