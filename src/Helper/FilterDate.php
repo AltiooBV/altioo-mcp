@@ -21,8 +21,9 @@ use AttributeSubItem;
  * `2026-10-28T10:46:22Z`, the comparison ignored the `Z` and matched a row stored at 10:46:22 local time, one hour
  * out in winter and two in summer on an instance in UTC+1 (review 2026-11-23, B2). So a value with an explicit
  * offset is converted the way core_my_activity's `since` is (strtotime, then date() in the zone iTop set as
- * PHP's default), and iTop's own format is left as it was sent. Anything else would be compared as text and match
- * nothing, which reads as "there is none", so {@see Refusal()} says which forms there are (retest of 2026-11-27).
+ * PHP's default), and iTop's own format is left as it was sent. Anything else is read by the database its own way,
+ * where it reads it at all: `23/11/2026` matches nothing, which reads as "there is none". So {@see Refusal()} takes
+ * those two forms only and says which they are (retest of 2026-11-27).
  *
  * A date here is what the filter compares with one: a date or date-time attribute, an external field showing one,
  * and the started, stopped and deadline dates of a stopwatch.
