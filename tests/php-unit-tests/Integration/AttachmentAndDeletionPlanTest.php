@@ -440,14 +440,59 @@ class AttachmentAndDeletionPlanTest extends ItopDataTestCaseAlias
 		$iTicket = $this->aTicket();
 		$iAttachment = $this->attachTo($iTicket, 'plan.txt');
 
-		$aPlan = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iAttachment, true))['deletionPlan'];
+		$aPlan = ToolOutput::Decode(ObjectDelete::execute('UserRequest', $iTicket, true))['deletionPlan'];
 
+		$this->assertNotEmpty(array_merge($aPlan['deleted'], $aPlan['updated']), 'a ticket with an attachment takes something with it');
 		foreach (array_merge($aPlan['deleted'], $aPlan['updated']) as $aEntry) {
 			$this->assertArrayHasKey('class', $aEntry, 'an entry with no class: '.json_encode($aEntry));
-			$this->assertFalse($aEntry['class'] === 'Attachment' && (int)$aEntry['id'] === $iAttachment, 'the object being deleted is listed as what happens besides it');
+			$this->assertFalse($aEntry['class'] === 'UserRequest' && (int)$aEntry['id'] === $iTicket, 'the object being deleted is listed as what happens besides it');
 		}
-		$aClasses = array_column($aPlan['updated'], 'class');
-		$this->assertContains('CMDBChangeOpAttachmentAdded', $aClasses, 'the bookkeeping row is part of the plan, and shown');
+		$aPlan = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iAttachment, true))['deletionPlan'];
+		$this->assertSame(['deleted' => [], 'updated' => []], $aPlan, 'removing an attachment takes nothing else a person decides about');
+	}
+
+	/**
+	 * Retest of 2026-11-27: the plan of an attachment removal listed `updated: CMDBChangeOpAttachmentAdded <id>`,
+	 * iTop's own history row. Not in the plan of a dry run, nor of the real removal, singly or in bulk, for a
+	 * non-administrator who removes it by the right to edit its host (ADR 0026).
+	 */
+	public function testAnAttachmentRemovalPlanListsNoRowOfTheChangeLog(): void
+	{
+		$iTicket = $this->aTicket();
+		$iFirst = $this->attachTo($iTicket, 'first.txt');
+		$iSecond = $this->attachTo($iTicket, 'second.txt');
+		$oRow = $this->bookkeepingOf($iFirst);
+		$aNothing = ['deleted' => [], 'updated' => []];
+
+		// In bulk before logging in: a Support Agent holds no bulk delete on Attachment.
+		foreach ([true, false] as $bSimulate) {
+			$aBulk = ToolOutput::Decode(ObjectBulkDelete::execute('Attachment', [$iSecond], $bSimulate));
+			$this->assertSame($aNothing, (array)((array)$aBulk['results'][0])['deletionPlan'], 'bulk: '.json_encode($aBulk));
+		}
+
+		$this->loginAs('Support Agent');
+		foreach ([true, false] as $bSimulate) {
+			$aDone = ToolOutput::Decode(ObjectDelete::execute('Attachment', $iFirst, $bSimulate));
+			$this->assertSame($aNothing, (array)$aDone['deletionPlan'], $bSimulate ? 'dry run' : 'the real removal');
+		}
+
+		$this->assertNull(MetaModel::GetObject('Attachment', $iFirst, false, true), 'the file was not removed');
+		$this->assertNull(MetaModel::GetObject('Attachment', $iSecond, false, true), 'the file was not removed in bulk');
+		$this->assertNotNull(MetaModel::GetObject('CMDBChangeOpAttachmentAdded', $oRow->GetKey(), false, true), 'the history row is still there');
+	}
+
+	/** Only the change log looking after itself is left out: a row of it that were deleted is listed. */
+	public function testARowOfTheChangeLogThatWouldBeDeletedIsStillListed(): void
+	{
+		$iTicket = $this->aTicket();
+		$oRow = $this->bookkeepingOf($this->attachTo($iTicket, 'kept.txt'));
+		$oSilent = new \DeletionPlan();
+		$oSilent->AddToUpdate($oRow, MetaModel::GetAttributeDef('CMDBChangeOpAttachmentAdded', 'attachment_id'));
+		$oDeleted = new \DeletionPlan();
+		$oDeleted->AddToDelete($oRow, DEL_SILENT);
+
+		$this->assertSame([], \Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade::SerializeDeletionPlan($oSilent)['updated']);
+		$this->assertCount(1, \Altioo\iTop\Extension\MCP\Service\Write\DeletionCascade::SerializeDeletionPlan($oDeleted)['deleted']);
 	}
 
 	/**
