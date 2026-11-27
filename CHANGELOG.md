@@ -40,6 +40,7 @@ entry itself, not left to be inferred from it.
   `ResourceToolTwinTest` fails when a core resource or template has no tool paired with it, or when the tool is not served
   wherever the resource is, or when the two descriptions do not say what comes back in the same words;
   `ResourceToolTwinParityTest` (integration) compares their answers.
+- **The example pack fills in a reply of Combodo's *Predefined response models*** (`acme_precanned_reply_render`, read grade, console only, absent where the extension's `PrecannedReply` is not installed or the operator excluded it). It applies the extension's own `FilterApplicableReplies()` and its `targets` setting, fills in `$this->…$`, `$current_user->…$` and `$current_contact->…$`, and writes nothing: the agent posts the body with `core_object_update` ([ADR 0006](doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md)). It does not call `MetaModel::ApplyParams()`, which follows any path a reply names and asks neither the operator's exclusions nor an attribute right (with `Person.phone` excluded it pastes the caller's phone number): each step of each placeholder is asked what `core_object_get` asks, and one that fails is left as written, as iTop leaves a placeholder that names nothing. Its integration test, run in iTop's harness against Combodo's `precanned-replies` 1.4.1, holds it to an excluded attribute. Nothing in the base module changes.
 
 ### Changed
 

@@ -1,6 +1,6 @@
 # Example tool pack — `acme-servicedesk`
 
-A complete, minimal iTop extension that adds two tools and a prompt to the MCP
+A complete, minimal iTop extension that adds three tools and a prompt to the MCP
 endpoint provided by `altioo-mcp`. It is here to be copied, not installed.
 
 Everything in the base extension's [Extending](../extending.md) guide is applied here once,
@@ -17,8 +17,10 @@ in the order you would meet it.
 | `src/AcmeServiceDeskExtensions.php` | The provider: the version guard, the registrations, the server instructions |
 | `src/Tools/TicketAddLogEntry.php` | A write tool written as a core one is: annotations, `DryRun::Simulated()` first (the advisory scope is enforced there and nowhere else), per-object `UserRights`, `WriteValues::Validated()` (the operator's exclusions, the attribute right, the lifecycle locks, mentions, formulas), `WriteCap::RefusalFor()`, `ChangeTracking::Explain()`, `StructuredWrite()` |
 | `src/Tools/TicketSearchMine.php` | A read tool extending `AbstractObjectSearch`, so paging comes for free, asking `ExclusionPolicy::Serves()` and `ExclusionSearches::Narrowed()` as `doc/extending.md` requires, and the one element that implements `PortalAware`: see below |
+| `src/Tools/PrecannedReplyRender.php` | A read tool for another vendor's extension: fills in a reply of Combodo's *Predefined response models* for one ticket, and asks every step of every placeholder path what a direct read is asked. Absent where that extension is not installed. See below |
 | `src/Prompts/TriageMyQueue.php` | A prompt, and `isAvailable()` keeping it off instances where it would fail |
 | `tests/php-unit-tests/Unit/ContractTest.php` | The whole contract suite, needing neither iTop nor a database |
+| `tests/php-unit-tests/Integration/PrecannedReplyRenderTest.php` | The predefined reply tool against an excluded attribute, inside iTop (see [Testing it](#testing-it)); skipped where Combodo's module is not installed |
 | `phpunit.xml.dist` | PHPUnit 9, matching what iTop pins. Points the suite at `tests/php-unit-tests/`, which is where iTop's own Extensions testsuite looks |
 | `tests/php-unit-tests/bootstrap.php` | The test bootstrap `phpunit.xml.dist` names — the autoloader, without iTop |
 
@@ -79,6 +81,32 @@ first. Installing it and deleting `vendor/mcp` before packaging does **not** wor
 fatals on a missing include. Pin the same constraint the base vendors,
 `MCPModule::SDK_CONSTRAINT`.
 
+## Filling in a predefined reply
+
+Combodo's *Predefined response models* extension (module `precanned-replies`, class `PrecannedReply`) keeps reply
+models whose `body` holds placeholders such as `$this->caller_id->first_name$`. The core tools can already find a
+reply (`core_object_search_by_oql`), read it (`core_object_get`) and post text to a case log (`core_object_update`).
+`acme_precanned_reply_render` does the three things they do not, and nothing else:
+
+- it fills in the placeholders against the ticket, `$current_user->…$` and `$current_contact->…$` included;
+- it offers a reply only if the extension's own `PrecannedReply::FilterApplicableReplies()` leaves it for that
+  ticket, and only for the case logs the extension's `targets` setting names for the ticket's class;
+- it **writes nothing**. The agent posts the body with `core_object_update`, under every check a core write makes
+  ([ADR 0006](../adr/0006-one-tool-surface-the-portal-is-a-policy.md)).
+
+**It does not call `MetaModel::ApplyParams()`**, which is what the extension's console button does. A placeholder is
+a read, through as many external keys as the reply's author wrote, and `ApplyParams()` asks neither the operator's
+exclusions nor an attribute right: with `Person.phone` excluded, it still pastes the caller's phone number. The tool
+resolves each placeholder itself and asks each step what `core_object_get` would ask
+([ADR 0012](../adr/0012-this-channel-can-exclude-classes-and-attributes.md),
+[0014](../adr/0014-a-tool-keeps-its-security-checks-in-its-own-source.md),
+[0023](../adr/0023-a-query-may-not-join-a-class-the-account-may-not-read.md)). A path that fails is left as written,
+exactly as iTop leaves a placeholder that names an attribute which does not exist, so an excluded attribute and a
+missing one read alike. The answer lists them under `unresolved_placeholders`, so an agent does not post one.
+
+It is not `PortalAware`: the extension is a console feature. Two things it does not do: the attachments of a reply
+(the extension sends them only by email, through `email-reply`), and the extension's attribute-level search dialog.
+
 ## Serving it in portal mode
 
 Portal mode serves a pack's element only when two things hold
@@ -109,6 +137,16 @@ Portal mode serves a pack's element only when two things hold
 composer install   # the dev dump: phpunit, and mcp/sdk to compile against
 composer test
 composer package   # back to the production dump before any setup run
+```
+
+`composer test` is the contract suite, which runs anywhere. The integration test needs an instance with the pack
+installed, iTop's own test harness (`tests/php-unit-tests`, in iTop's source tree and not in its packaged releases),
+and Combodo's `precanned-replies` for it not to skip. It is run as iTop runs an extension's tests:
+
+```bash
+cd /path/to/itop/tests/php-unit-tests
+php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php \
+  ../../env-production/acme-servicedesk/tests/php-unit-tests/Integration
 ```
 
 `ElementContract` runs the same checks the registry runs at boot, and returns

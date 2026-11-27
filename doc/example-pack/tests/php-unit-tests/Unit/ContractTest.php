@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Acme\iTop\Extension\ServiceDesk\Test\Unit;
 
 use Acme\iTop\Extension\ServiceDesk\Prompts\TriageMyQueue;
+use Acme\iTop\Extension\ServiceDesk\Tools\PrecannedReplyRender;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketAddLogEntry;
 use Acme\iTop\Extension\ServiceDesk\Tools\TicketSearchMine;
 use Altioo\iTop\Extension\MCP\Api\Testing\ElementContract;
@@ -58,14 +59,16 @@ class ContractTest extends TestCase
 	 * ElementContract::Violations() also checks its source asks
 	 * ObjectAccess::Current() (hence the first test above passing for it).
 	 * Declaring it is not enough for portal mode to serve it: the operator
-	 * lists it in mcp_portal_extensions. The write tool and the prompt stay
-	 * console-only, which is what leaving the interface off means.
+	 * lists it in mcp_portal_extensions. The write tool, the predefined reply tool
+	 * and the prompt stay console-only, which is what leaving the interface off means.
 	 */
 	public function testOnlyTheSearchDeclaresPortalAwareness(): void
 	{
 		$this->assertInstanceOf(PortalAware::class, new TicketSearchMine());
 		$this->assertNotInstanceOf(PortalAware::class, new TicketAddLogEntry());
 		$this->assertNotInstanceOf(PortalAware::class, new TriageMyQueue());
+		// Combodo's Predefined response models is a console feature: the portal has no screen for it.
+		$this->assertNotInstanceOf(PortalAware::class, new PrecannedReplyRender());
 		$this->assertSame([], ElementContract::Violations(new TicketSearchMine()));
 	}
 
@@ -82,6 +85,7 @@ class ContractTest extends TestCase
 		return [
 			'ticket_add_log_entry' => [new TicketAddLogEntry()],
 			'ticket_search_mine'   => [new TicketSearchMine()],
+			'precanned_reply_render' => [new PrecannedReplyRender()],
 			'triage_my_queue'      => [new TriageMyQueue()],
 		];
 	}

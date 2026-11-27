@@ -68,6 +68,7 @@
         -->
         <entry id="MCP:tool:acme_ticket_add_log_entry:title"><![CDATA[Add a Log Entry to a Ticket]]></entry>
         <entry id="MCP:tool:acme_ticket_search_mine:title"><![CDATA[Search My Tickets]]></entry>
+        <entry id="MCP:tool:acme_precanned_reply_render:title"><![CDATA[Fill In a Predefined Reply]]></entry>
         <entry id="MCP:prompt:acme_triage_my_queue:title"><![CDATA[Triage My Queue]]></entry>
       </entries>
     </dictionary>
@@ -79,6 +80,7 @@
         <entry id="Class:UserToken/Attribute:scope/Value:MCP-toolset-acme-servicedesk+"><![CDATA[Restreindre ce jeton aux outils du centre de services Acme]]></entry>
         <entry id="MCP:tool:acme_ticket_add_log_entry:title"><![CDATA[Ajouter une entrée au journal d'un ticket]]></entry>
         <entry id="MCP:tool:acme_ticket_search_mine:title"><![CDATA[Rechercher mes tickets]]></entry>
+        <entry id="MCP:tool:acme_precanned_reply_render:title"><![CDATA[Remplir un modèle de réponse]]></entry>
         <entry id="MCP:prompt:acme_triage_my_queue:title"><![CDATA[Trier ma file]]></entry>
       </entries>
     </dictionary>

@@ -15,7 +15,7 @@ An extension adds its own tools, resources, resource templates and prompts by im
 **service provider** and registering objects into the registry. It never has to touch this
 module's code.
 
-> **A working pack ships in this archive: [`doc/example-pack/`](example-pack/).** Two tools,
+> **A working pack ships in this archive: [`doc/example-pack/`](example-pack/).** Three tools,
 > a prompt, the module declaration, the composer settings, the datamodel delta and a contract
 > test — everything below, applied once, in a directory you can copy into `extensions/`. If you
 > are starting a pack, start by copying that and renaming `acme`.
