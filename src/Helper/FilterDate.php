@@ -82,7 +82,7 @@ final class FilterDate
 		}
 
 		return "The filter on '{$sAttCode}' takes a date: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD, as iTop writes them, "
-			."or RFC 3339 with an offset (2026-11-23T19:27:50+01:00), which is converted to the instance's time zone.";
+			."or RFC 3339 with an offset (2026-01-31T09:30:00+01:00), which is converted to the instance's time zone.";
 	}
 
 	/** Whether the value is a day that exists, at a time that exists, in one of the forms taken. */
