@@ -77,4 +77,34 @@ class ExamplePackContractTest extends TestCase
 			'the class is asked about before the query is built'
 		);
 	}
+
+	/**
+	 * iTop takes the first node of a datamodel file as the delta root (ModelFactory::LoadModule(),
+	 * `$oDocument->childNodes->item(0)`), so a comment above `<itop_design>` is loaded instead of it and the file is
+	 * skipped without a word. The example pack's file had one: its toolset scope was never declared on an instance, a
+	 * token carrying it was refused at login ("Scope not authorized"), and its titles were never translated.
+	 *
+	 * @dataProvider datamodelFileProvider
+	 */
+	public function testADatamodelFileStartsWithItsRootElement(string $sFile): void
+	{
+		$oDocument = new \DOMDocument();
+		$this->assertTrue($oDocument->load($sFile), "{$sFile} is not well-formed XML");
+		$oFirst = $oDocument->childNodes->item(0);
+		$this->assertInstanceOf(\DOMElement::class, $oFirst, "{$sFile}: something comes before <itop_design>, so iTop skips the whole file; move it inside the root element");
+		$this->assertSame('itop_design', $oFirst->nodeName);
+	}
+
+	/** @return array<string, array{0: string}> */
+	public static function datamodelFileProvider(): array
+	{
+		$sRoot = dirname(__DIR__, 3);
+		$aFiles = array_merge(glob($sRoot.'/datamodel*.xml') ?: [], glob($sRoot.'/doc/example-pack/datamodel*.xml') ?: []);
+		$aCases = [];
+		foreach ($aFiles as $sFile) {
+			$aCases[substr($sFile, strlen($sRoot) + 1)] = [$sFile];
+		}
+
+		return $aCases;
+	}
 }

@@ -1,28 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  The half of a toolset that lives outside PHP.
-
-  Declaring getToolset() = 'acme-servicedesk' on the tools is what lets an
-  operator write mcp_enabled_toolsets => array('acme-servicedesk') in
-  config-itop.php. It does NOT, on its own, give anyone an
-  MCP-toolset-acme-servicedesk token scope:
-
-    - a scope is a value of the 'scope' enum on PersonalToken and UserToken, so
-      one that is not declared there cannot be picked when a token is created;
-    - and TokenScopes::DeclaredContextTags() pushes exactly the declared values
-      as context tags before login, which is how iTop honours a scope at all -
-      an undeclared scope is a token that cannot log in rather than a token
-      with a narrower reach.
-
-  So a pack that wants its toolset to be grantable per credential ships this
-  file. The base extension reads the enumeration rather than a list of its own,
-  which is precisely so that it does not need to know your name.
-
-  Both classes, because either kind of token can carry it, and _delta="define"
-  on the value with _delta="if_exists" on the class and field so that this
-  applies to whatever authent-token already declared.
--->
 <itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0">
+  <!--
+    The half of a toolset that lives outside PHP.
+
+    Declaring getToolset() = 'acme-servicedesk' on the tools is what lets an
+    operator write mcp_enabled_toolsets => array('acme-servicedesk') in
+    config-itop.php. It does NOT, on its own, give anyone an
+    MCP-toolset-acme-servicedesk token scope:
+
+      - a scope is a value of the 'scope' enum on PersonalToken and UserToken, so
+        one that is not declared there cannot be picked when a token is created;
+      - and TokenScopes::DeclaredContextTags() pushes exactly the declared values
+        as context tags before login, which is how iTop honours a scope at all -
+        an undeclared scope is a token that cannot log in rather than a token
+        with a narrower reach.
+
+    It sits inside <itop_design> and not above it: iTop takes the first node of
+    the file as the delta, so a comment above the root is loaded instead of it
+    and the whole file is skipped without a word (doc/itop-extension-guide.md,
+    section 2.4).
+
+    So a pack that wants its toolset to be grantable per credential ships this
+    file. The base extension reads the enumeration rather than a list of its own,
+    which is precisely so that it does not need to know your name.
+
+    Both classes, because either kind of token can carry it, and _delta="define"
+    on the value with _delta="if_exists" on the class and field so that this
+    applies to whatever authent-token already declared.
+  -->
   <classes>
     <class id="PersonalToken" _delta="if_exists">
       <fields>
