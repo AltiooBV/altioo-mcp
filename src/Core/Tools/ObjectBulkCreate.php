@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
@@ -233,6 +234,19 @@ class ObjectBulkCreate extends AbstractBulkTool
 				$oObject->Set($sAttCode, $value);
 			}
 
+			// What the form makes mandatory and the row did not give: the only value allowed is filled in, and
+			// what has more than one is asked for below, as core_object_create does.
+			$oAccess = ObjectAccess::Current();
+			$aMandatory = $oAccess->MandatoryOn($oObject);
+			// Never over a field the row sent: one sent empty is refused, not replaced.
+			$aFilled = EditPolicy::FillOnlyValues($oObject, array_values(array_diff($aMandatory, array_keys($aValues))), $oAccess);
+			if ($aFilled !== []) {
+				$sFilledRefusal = AccessGrants::RefusalFor($sClass, null, $aFields + array_combine($aFilled, array_map(static fn (string $s) => $oObject->Get($s), $aFilled)));
+				if ($sFilledRefusal !== null) {
+					throw ToolRefusal::Because($sFilledRefusal);
+				}
+			}
+
 			// Once everything is Set(), because a datamodel filter reads the
 			// object and this row may have moved what it reads. See EditPolicy.
 			$aBadKeys = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValues));
@@ -250,6 +264,10 @@ class ObjectBulkCreate extends AbstractBulkTool
 			// row is inserted, and so the whole reason a dry run here is worth
 			// running.
 			DryRun::Check($oObject, "Row {$iRow}");
+			$sMissing = EditPolicy::RefusalForMissingMandatory($oObject, $aMandatory);
+			if ($sMissing !== null) {
+				throw ToolRefusal::Because($sMissing);
+			}
 
 			$aOverridden = WritePlan::Overridden($oObject, $sClass, $aRequested);
 			WritePlan::CheckRequested($oObject, $aRequested, $aOverridden, "Row {$iRow}");
