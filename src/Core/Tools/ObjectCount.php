@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Audit\ReadSummary;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalAware;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectQuery;
 use Altioo\iTop\Extension\MCP\Service\Read\UntrustedMarker;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
@@ -299,12 +300,14 @@ class ObjectCount extends AbstractObjectSearch implements PortalAware
 				if (!self::mayRead($sClass, (string)$sAttCode) || !is_scalar($value)) {
 					throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$sClass}'.".NameSuggestion::ForAttribute($sClass, (string)$sAttCode, true));
 				}
-				$sRefusal = FilterDate::Refusal(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), (string)$sAttCode, $value);
+				$oAttDef = MetaModel::GetAttributeDef($sClass, (string)$sAttCode);
+				$sRefusal = AttributeDescription::FilterRefusal($oAttDef, (string)$sAttCode, $value)
+					?? FilterDate::Refusal($oAttDef, (string)$sAttCode, $value);
 				if ($sRefusal !== null) {
 					throw ToolRefusal::Because($sRefusal);
 				}
 				try {
-					$oSearch->AddCondition((string)$sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($sClass, (string)$sAttCode), $value), '=');
+					$oSearch->AddCondition((string)$sAttCode, FilterDate::ForFilter($oAttDef, AttributeDescription::ForFilter($oAttDef, $value)), '=');
 				} catch (\CoreException) {
 					// iTop's own refusal of a code its search cannot use (an image, say): the caller's mistake.
 					throw ToolRefusal::Because("Attribute '{$sAttCode}' on class '{$sClass}' cannot be used as a filter.");
