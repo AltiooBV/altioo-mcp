@@ -166,7 +166,7 @@ tools ("open an incident", "add a work note", "find the caller") are deliberatel
 | `core_class_schema` | Describe one class: attributes, relations, lifecycle, and what the caller may do with it. In portal mode, one class as the portal offers it: its forms' fields, stimuli and create actions |
 | `core_object_find_by_name` | Find objects by free text across every searchable class the caller may read, as the console's global search does |
 | `core_object_search_by_oql` | Search objects with an OQL query (every class it joins or sub-queries must be one the account may read); `audit` adds creation and last-change attribution, `actions` adds the per-object write gates and available stimuli; either for a page of 25 or fewer |
-| `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above |
+| `core_object_search_by_class` | Search objects of a class by attribute criteria; `audit` as above. A filter on an attribute with a list of values takes a code or its label, here and in `core_object_count`, and anything else is refused |
 | `core_object_count` | How many objects match, and optionally how many per value of one or two attributes ("open tickets per team" without paging every ticket): `class` and `filters`, or `oql`, and `group_by`, at most 100 groups, each with the value and, for an enum or an external key whose target the caller may read, its label. Only simple attributes the caller may read can be grouped by or filtered on, and any refusal reads as an attribute or class that does not exist. The count is the database's, taken before object-level rights remove rows, so it can exceed what the caller could list; the answer says so. In portal mode it counts one of the portal's lists (`list`, `tab`, `parent_id`), per column the list shows that its class has |
 | `core_object_get` | Retrieve a single object by class and ID, with its creation and last-change attribution, the write gates answered for *that object*, and the stimuli its current state accepts. Served in portal mode too, under the portal's limits: the view form's fields, its attachments, the rows of its link sets that the portal shows, and no attribution |
 | `core_object_get_related` | Walk a named relation (impacts, depends on…) for impact analysis |
@@ -694,7 +694,8 @@ portal is served as customised:
   portal's own search on the columns shown. The client never sends a query.
 - `core_object_get`, the console's own read, reads one object by the scopes, as the portal's
   object page does: the fields of its view form for the object as it is, its attachments (each
-  with the `uri` that reads it, and `may_attach`), and what the user may do to it now — its rights narrowed to the portal's (no delete), the stimuli
+  with the `uri` that reads it, and `may_attach`), and what the user may do to it now — its rights narrowed to the portal's (no delete, and every one `no` on a connection
+  served no tool that changes an object), the stimuli
   the portal offers, and the fields its edit form leaves settable. The creation and last-change
   attribution is left out: it reads the change log, which `core_object_history` serves where the
   portal shows history. **A link set is served as the portal draws it**, wherever it is reported (a read, a
