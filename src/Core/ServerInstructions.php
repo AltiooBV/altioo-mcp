@@ -429,7 +429,7 @@ final class ServerInstructions
 			.'- Every writing tool is a dry run by default: simulate=true checks the call and reports what'
 			."\n".'would change. Show that to the user, then call again with simulate=false to commit.'
 			."\n".'- comment: the user\'s reason in one short sentence; leave it out rather than restate the'
-			."\n".'call. It is kept on the MCP audit record, not in the object\'s history.'
+			."\n".'call. It is kept on the MCP audit record, not in iTop\'s own history.'
 			.self::formulaBullet($bRefusesFormulas)
 			.self::mentionBullet($iMaxMentions, $aMentionClasses)
 			.self::advisoryLine($oPolicy, false);
