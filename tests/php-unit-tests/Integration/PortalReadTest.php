@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
 use Altioo\iTop\Extension\MCP\Service\Server\RequestScope;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Server\ServedElements;
 use Altioo\iTop\Extension\MCP\Core\CoreExtensions;
 use Altioo\iTop\Extension\MCP\Core\Prompts\MyOpenTickets;
@@ -173,6 +174,32 @@ class PortalReadTest extends ItopDataTestCaseAlias
 		$this->assertIsArray($aResult['object']['attachments']);
 		$this->assertArrayNotHasKey('audit', $aResult['object'], 'the attribution reads the change log, which this portal does not show');
 		$this->assertSame('no', $aResult['object']['rights']['delete'], 'the portal deletes nothing');
+	}
+
+	/**
+	 * Retest of 2026-11-28: a read-only connection was told `rights.modify: "yes"` beside a class list saying it could edit
+	 * none, and the open-tickets recipe asked what could be done with a request.
+	 */
+	public function testAConnectionWithNoWriteToolIsToldItMayModifyNothing(): void
+	{
+		$sCan = 'what I can do with it now';
+		$this->assertStringContainsString($sCan, MyOpenTickets::Messages()[0]['content']['text'], 'the control');
+
+		ServedAccess::Remember(
+			static fn (): array => ['toolsets' => [], 'tools' => [], 'capabilities' => [], 'prompts' => []],
+			static fn (): array => [],
+			static fn (): ?string => ServedAccess::WRITES_BY_SCOPE
+		);
+		try {
+			$aObject = ToolOutput::Decode(ObjectGet::execute('UserRequest', $this->iOwn))['object'];
+			$this->assertSame(['no'], array_values(array_unique(array_values($aObject['rights']))), json_encode($aObject['rights']));
+			$this->assertArrayNotHasKey('stimuli', $aObject);
+			$sRecipe = MyOpenTickets::Messages()[0]['content']['text'];
+			$this->assertStringNotContainsString($sCan, $sRecipe);
+			$this->assertStringContainsString('latest log entries.', $sRecipe);
+		} finally {
+			ServedAccess::Forget();
+		}
 	}
 
 	/** Through a parent class, as a row of a Ticket list names it. */
