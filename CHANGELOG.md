@@ -66,6 +66,19 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **A create ignored what the first state makes mandatory, and an update could empty it** (retest of 2026-11-28, B13;
+  [ADR 0004](doc/adr/0004-writes-follow-the-console-form.md), Amendment 1). A dry run of a `UserRequest` without a
+  caller answered `valid: true`. `core_object_create` and `core_object_bulk_create` now refuse, dry run and real, while
+  an attribute the initial state flags mandatory holds nothing, naming it; where it allows a single value, that value is
+  filled in and listed in `defaulted`, as the console's form preselects it. `core_object_update` and
+  `core_object_bulk_update` refuse to empty an attribute the current state makes mandatory; one already empty is not
+  asked for. In portal mode the attributes are those the portal's form lets the user set and makes mandatory, which in
+  the stock portal includes a request's service and subcategory where the create action does not preset them.
+  `core_class_schema` marks them `mandatoryOnCreate` and `required_only` lists them. A class whose initial state makes
+  an excluded attribute mandatory can no longer be created through this channel. **A create or an update that passed
+  before can now be refused**; REST `core/create` is unchanged. For a tool pack: `ObjectAccess::MandatoryOn()`,
+  `EditPolicy::FillOnlyValues()`, `RefusalForMissingMandatory()`, `MandatoryHeld()` and `RefusalForEmptied()` are new,
+  and `EditPolicy::RefusalFor()` no longer calls a mandatory attribute read-only on a new object.
 - **A filter value an attribute cannot hold was answered with a count** (review 2026-11-23, retest of 2026-11-28, B12).
   `sla_tto_passed: "yes"` counted the requests that had **not** breached, because the database reads `'yes'` in that
   column as 0, and `core_object_count` answered `status: "nonsense"` with 0, which reads as "there is none".
