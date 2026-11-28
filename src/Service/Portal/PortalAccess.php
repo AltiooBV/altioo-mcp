@@ -804,6 +804,29 @@ final class PortalAccess extends ObjectAccess
 	}
 
 	/**
+	 * The fields the portal's create or edit form lets the user set and makes mandatory, by its own flags or by the
+	 * datamodel's for the state. A field the form hides or shows read-only is not one: the user could not fill it,
+	 * and no refusal names it (doc/adr/0004, Amendment 1).
+	 */
+	#[\Override]
+	public function MandatoryOn(DBObject $oObject, ?array $aAmong = null): array
+	{
+		$sClass = get_class($oObject);
+		$aFlags = $this->oPolicy->Fields($sClass, $oObject->IsNew() ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject);
+		$aSettable = self::Settable($sClass, $aFlags);
+		$aAsked = $aAmong === null ? $aSettable : array_values(array_intersect($aSettable, $aAmong));
+		$aOfState = parent::MandatoryOn($oObject, $aAsked);
+		$sStateAttCode = MetaModel::HasLifecycle($sClass) ? (string)MetaModel::GetStateAttributeCode($sClass) : '';
+
+		return array_values(array_filter(
+			$aAsked,
+			static fn (string $sAttCode): bool => in_array($sAttCode, $aOfState, true)
+				|| (($aFlags[$sAttCode] & OPT_ATT_MANDATORY) !== 0 && $sAttCode !== $sStateAttCode
+					&& MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable())
+		));
+	}
+
+	/**
 	 * A field the portal's edit form does not leave settable - or, for a
 	 * transition, one its transition form does not leave editable either. Named,
 	 * each with why, before any value is converted: a field the form hides or
