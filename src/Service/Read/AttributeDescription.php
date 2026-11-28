@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Helper\InitialState;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\GateGrades;
@@ -113,7 +114,8 @@ final class AttributeDescription
 				'isExternalKey' => $oAttDef->IsExternalKey(),
 				'isScalar'      => $oAttDef->IsScalar(),
 				'isSensible'    => ObjectSerializer::IsSensitive($oAttDef, $sClass),
-			] + self::defaultValue($oAttDef) + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
+			] + (InitialState::MakesMandatory($sClass, (string)$sAttCode) ? ['mandatoryOnCreate' => true] : [])
+				+ self::defaultValue($oAttDef) + self::allowedValues($oAttDef, $sClass) + self::dependsOn($oAttDef, $sClass) + self::writeHint($oAttDef);
 		}
 
 		return $aAttributes;

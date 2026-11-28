@@ -133,8 +133,10 @@ final class DatamodelReader
 		$aWanted = self::requestedAttributes($sClass, $sAttributes, $aAttributes);
 
 		if ($bRequiredOnly) {
-			// Required and without a default: the ones a create has to be given. The others are filled in by the write.
-			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true && !array_key_exists('default', $a));
+			// Required, or mandatory in the first state, and without a default: the ones a create has to be given. The
+			// others are filled in by the write, which also fills a mandatory one that allows a single value.
+			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => ($a['required'] === true || ($a['mandatoryOnCreate'] ?? false) === true)
+				&& !array_key_exists('default', $a));
 		}
 
 		if ($aWanted !== null) {
