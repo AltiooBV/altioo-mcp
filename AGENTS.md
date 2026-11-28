@@ -81,6 +81,9 @@ Settings agent skills read here.
   your change before writing it, and do not reverse one without a new record superseding it.
   The one most easily undone: a capability is one tool in both modes, so add no `core_portal_*`
   copy of a console tool — `core_portal_list` is the only portal-only one ([0006](doc/adr/0006-one-tool-surface-the-portal-is-a-policy.md)).
+  Also: a create gives every attribute its form makes mandatory (a single allowed value is filled in and listed in `defaulted`), and an
+  update does not empty one; each writing tool asks `ObjectAccess::MandatoryOn()` and `EditPolicy` in its own source, and no refusal
+  names an excluded or portal-hidden attribute ([0004](doc/adr/0004-writes-follow-the-console-form.md), Amendment 1).
   Also: write nothing but iTop's own line into `CMDBChange.userinfo` — no `(MCP: …)` suffix, or the
   anonymizer misses the entry ([0009](doc/adr/0009-the-change-line-is-the-users-plain-name.md)).
   Also: classes and attributes an operator excludes are **absent** on every route, in both modes, for every grade, never refused
