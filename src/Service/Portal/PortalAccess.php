@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Read\StoredValue;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
@@ -458,15 +459,20 @@ final class PortalAccess extends ObjectAccess
 
 	/**
 	 * The console's gates, narrowed: a change only where the portal's write
-	 * scope holds the object, and no delete or bulk change, which the portal
-	 * offers nowhere.
+	 * scope holds the object and this connection is served a tool that changes
+	 * one, and no delete or bulk change, which the portal offers nowhere.
+	 *
+	 * A read-only connection was told it could modify the object, beside a class
+	 * list saying it could edit none (retest of 2026-11-28). Nothing reads these
+	 * gates to allow a write: they are what an answer says.
 	 */
 	#[\Override]
 	public function RightsOn(DBObject $oObject, ?DBObjectSet &$oInstanceSet): array
 	{
 		$aRights = parent::RightsOn($oObject, $oInstanceSet);
+		$bWrites = ServedAccess::ServesWrites();
 		foreach (array_keys($aRights) as $sGate) {
-			if ($sGate !== 'modify' || $this->oPolicy->Writable(get_class($oObject), (int)$oObject->GetKey()) === null) {
+			if (!$bWrites || $sGate !== 'modify' || $this->oPolicy->Writable(get_class($oObject), (int)$oObject->GetKey()) === null) {
 				$aRights[$sGate] = 'no';
 			}
 		}
