@@ -163,7 +163,7 @@ class ObjectGet extends AbstractMCPTool implements PortalAware
 			$aObject += $oAccess->Extras($oObject);
 			// A connection with no tool that changes an object is not told how it could (review 2026-11-23, C5):
 			// the state changes, the fields an edit would set and whether a file could be added. The gates in
-			// "rights" stay, being what iTop lets this account do, not what this connection offers.
+			// "rights" stay, every one "no" there (PortalAccess::RightsOn()).
 			if (!ServedAccess::ServesWrites()) {
 				unset($aObject['stimuli'], $aObject['settable_fields'], $aObject['may_attach']);
 			}

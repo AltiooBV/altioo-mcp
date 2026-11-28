@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\Resources\Instructions as InstructionsResource;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
+use Altioo\iTop\Extension\MCP\Core\Tools\Instructions as InstructionsTool;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassSchema;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectGet;
@@ -160,6 +162,25 @@ class NoWriteToolServedTest extends TestCase
 			foreach (['core_object_create', 'core_object_update', 'core_object_apply_stimulus', 'settable_fields', 'create action', 'stimul', 'edit'] as $sWord) {
 				$this->assertStringNotContainsString($sWord, (string)$sText, 'description '.$i.' names '.$sWord);
 			}
+		}
+	}
+
+	/** Retest of 2026-11-28: core_instructions' portal description spoke of "its writes" to a connection with none. */
+	public function testThePortalInstructionsToolAndResourceSpeakOfNoWriteWhenNoneIsServed(): void
+	{
+		PortalMode::Remember('itop-portal');
+
+		$this->withheld(null);
+		foreach ([new InstructionsTool(), new InstructionsResource()] as $oElement) {
+			$this->assertStringContainsString('its writes', (string)$oElement->getDescription());
+		}
+
+		$this->withheld(ServedAccess::WRITES_BY_SCOPE);
+		foreach ([new InstructionsTool(), new InstructionsResource()] as $oElement) {
+			$sText = (string)$oElement->getDescription();
+			$this->assertStringNotContainsString('write', $sText);
+			$this->assertStringNotContainsString('rehearsed', $sText);
+			$this->assertStringContainsString(InstructionsTool::PORTAL_RETURNS_READ_ONLY, $sText);
 		}
 	}
 

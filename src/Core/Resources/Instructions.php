@@ -53,7 +53,7 @@ class Instructions extends AbstractMCPResource implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return 'The server instructions, which say '.InstructionsTool::PORTAL_RETURNS.'. Normally delivered at initialize; this is the copy for a session that never saw one.';
+			return 'The server instructions, which say '.InstructionsTool::PortalReturns().'. Normally delivered at initialize; this is the copy for a session that never saw one.';
 		}
 
 		return 'The server instructions, which say '.InstructionsTool::RETURNS.'. Normally delivered at initialize; this is the copy for a session that never saw one.';
