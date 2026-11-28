@@ -154,13 +154,16 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			if (is_array($value)) {
 				throw ToolRefusal::Because("Unknown attribute '{$sAttCode}' on class '{$class}'.");
 			}
-			$sRefusal = self::refusalForValue($class, $sAttCode, $value)
-				?? FilterDate::Refusal(MetaModel::GetAttributeDef($class, (string)$sAttCode), (string)$sAttCode, $value);
+			// A value the attribute cannot hold would answer total: 0, or whatever the database reads it as, and
+			// either is passed on to a user as fact.
+			$oAttDef = MetaModel::GetAttributeDef($class, (string)$sAttCode);
+			$sRefusal = AttributeDescription::FilterRefusal($oAttDef, (string)$sAttCode, $value)
+				?? FilterDate::Refusal($oAttDef, (string)$sAttCode, $value);
 			if ($sRefusal !== null) {
 				throw ToolRefusal::Because($sRefusal);
 			}
 			try {
-				$oSearch->AddCondition($sAttCode, FilterDate::ForFilter(MetaModel::GetAttributeDef($class, $sAttCode), $value), '=');
+				$oSearch->AddCondition($sAttCode, FilterDate::ForFilter($oAttDef, AttributeDescription::ForFilter($oAttDef, $value)), '=');
 			} catch (\CoreException) {
 				// iTop's own refusal of a code its search cannot use (an image, say): the caller's
 				// mistake, not the server's, and not one to hand to the opaque failure below.
@@ -178,7 +181,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $class,
-				'filters' => $filters,
+				'filters' => (object)$filters,
 				'total'   => 0,
 				'limit'   => $limit,
 				'offset'  => $offset,
@@ -192,7 +195,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $class,
-					'filters' => $filters,
+					'filters' => (object)$filters,
 					'total'   => 0,
 					'limit'   => $limit,
 					'offset'  => $offset,
@@ -204,7 +207,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $sSetClass,
-					'filters' => $filters,
+					'filters' => (object)$filters,
 					'total'   => 0,
 					'limit'   => $limit,
 					'offset'  => $offset,
@@ -234,7 +237,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			return ToolOutput::Json(UntrustedMarker::MarkRows([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
-				'filters' => $filters,
+				'filters' => (object)$filters,
 				'total'   => $iTotal,
 				'limit'   => $limit,
 				'offset'  => $offset,
@@ -253,61 +256,5 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			// keeps its message. Anything else came out of the query layer.
 			throw ToolRefusal::Because(ErrorReport::OpaqueFailure('Failed to execute the search', $e));
 		}
-	}
-
-	/**
-	 * Why a filter value cannot match anything, when that is knowable.
-	 *
-	 * An unknown attribute code has always been refused by name. An unknown
-	 * *value* for a known code was not: the condition was added, the query ran,
-	 * and the answer came back total: 0 - which reads as "no ticket is in that
-	 * state" and is passed on to a user as fact. Typing "bogus_status" and
-	 * typing the code of a state nobody is in produced the same answer, and
-	 * only one of them is an answer.
-	 *
-	 * Refused rather than warned about, because it is the same mistake as the
-	 * unknown attribute one line above and deserves the same treatment: a
-	 * refusal naming what is valid costs one round trip, a wrong empty result
-	 * costs the conclusion drawn from it.
-	 *
-	 * Only where the datamodel declares a bounded enumeration. An external key
-	 * is skipped deliberately - GetAllowedValues() on one runs a query over the
-	 * whole target table, which is the cost core_class_schema already refuses
-	 * to pay - and so is anything longer than that schema reports, on the same
-	 * reasoning. A value the ORM will reject for its own reasons (a malformed
-	 * date, say) still reaches the ORM, which says so better than this could.
-	 *
-	 * @param mixed $value As the caller sent it.
-	 */
-	private static function refusalForValue(string $sClass, string $sAttCode, mixed $value): ?string
-	{
-		if (!is_scalar($value)) {
-			// A list or a map is an IN or a sub-query as far as the ORM is
-			// concerned; not this method's question.
-			return null;
-		}
-
-		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
-		if ($oAttDef->IsExternalKey()) {
-			return null;
-		}
-
-		// An excluded class is not a value of a class-valued attribute: 'Person' is refused as 'Zzz' is, and not listed.
-		$aValues = AttributeDescription::ServedValues($oAttDef);
-		if (!is_array($aValues) || $aValues === [] || count($aValues) > AttributeDescription::MAX_ALLOWED_VALUES) {
-			return null;
-		}
-
-		if (array_key_exists((string)$value, $aValues)) {
-			return null;
-		}
-
-		return sprintf(
-			"Invalid value '%s' for attribute '%s' on class '%s'. Allowed: %s.",
-			(string)$value,
-			$sAttCode,
-			$sClass,
-			implode(', ', array_map('strval', array_keys($aValues)))
-		);
 	}
 }

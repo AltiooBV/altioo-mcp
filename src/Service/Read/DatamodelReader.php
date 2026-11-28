@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Read;
 
+use Altioo\iTop\Extension\MCP\Api\ToolRefusal;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Service\Rights\ClassRights;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
@@ -116,22 +117,30 @@ final class DatamodelReader
 	 * Readability is the caller's to check - see {@see IsReadable()} - because
 	 * only the caller knows which exception its surface has to raise.
 	 *
+	 * A map with nothing in it is an empty object in the answer, never [] (review 2026-11-23, S6).
+	 *
 	 * @return array<string, mixed>
+	 *
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal) When $sAttributes names a code that is not an
+	 *         attribute this caller is served: an answer without it read as "the class has nothing to say of it".
 	 * @since 1.0.0
 	 */
 	public static function Describe(string $sClass, string $sInclude = self::BLOCKS_ALL, string $sAttributes = self::ATTRIBUTES_ALL, bool $bRequiredOnly = false): array
 	{
 		$aBlocks = self::requestedBlocks($sInclude);
 		$aAttributes = AttributeDescription::attributes($sClass);
+		// Asked of everything served, before required_only narrows it: a code it leaves out is not an unknown one.
+		$aWanted = self::requestedAttributes($sClass, $sAttributes, $aAttributes);
 
 		if ($bRequiredOnly) {
-			// Required and without a default: the ones a create has to be given. The others are filled in by the write.
-			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => $a['required'] === true && !array_key_exists('default', $a));
+			// Required, or mandatory in the first state, and without a default: the ones a create has to be given. The
+			// others are filled in by the write, which also fills a mandatory one that allows a single value.
+			$aAttributes = array_filter($aAttributes, static fn (array $a): bool => ($a['required'] === true || ($a['mandatoryOnCreate'] ?? false) === true)
+				&& !array_key_exists('default', $a));
 		}
 
-		if ($sAttributes !== self::ATTRIBUTES_ALL && $sAttributes !== '') {
-			$aWanted = array_flip(array_map('trim', explode(',', $sAttributes)));
-			$aAttributes = array_intersect_key($aAttributes, $aWanted);
+		if ($aWanted !== null) {
+			$aAttributes = array_intersect_key($aAttributes, array_flip($aWanted));
 		}
 
 		$aPayload = self::Summarize($sClass) + ['obsolescence' => self::obsolescence($sClass)];
@@ -156,8 +165,7 @@ final class DatamodelReader
 		}
 
 		if (in_array(self::BLOCK_RELATIONS, $aBlocks, true)) {
-			// An object whether or not it is empty: an empty PHP array would be sent as [] where every other answer is {} (review 2026-11-23, S6).
-			$aPayload['relations'] = self::relations($sClass) ?: new \stdClass();
+			$aPayload['relations'] = self::relations($sClass);
 		}
 
 		if (in_array(self::BLOCK_LIFECYCLE, $aBlocks, true)) {
@@ -178,6 +186,13 @@ final class DatamodelReader
 			$aPayload['untrusted_text'] = ['fields' => $aNames, 'note' => UntrustedMarker::UNTRUSTED_NOTICE];
 		}
 
+		// Maps, all of them: an empty PHP array would be sent as [] where every other answer is an object.
+		foreach ([self::BLOCK_ATTRIBUTES, self::BLOCK_DERIVED, self::BLOCK_RELATIONS, self::BLOCK_LIFECYCLE] as $sBlock) {
+			if (isset($aPayload[$sBlock])) {
+				$aPayload[$sBlock] = self::map($aPayload[$sBlock]);
+			}
+		}
+
 		// What was asked for, echoed, so that a narrowed answer is never read
 		// as the whole class: "no relations" and "you did not ask for
 		// relations" are different claims, and an absent block cannot tell
@@ -189,6 +204,47 @@ final class DatamodelReader
 		];
 
 		return $aPayload;
+	}
+
+	/**
+	 * A map as the answer sends it: itself, or an empty object where it holds nothing.
+	 *
+	 * @param array<array-key, mixed> $aMap
+	 *
+	 * @return array<array-key, mixed>|\stdClass
+	 */
+	private static function map(array $aMap): array|\stdClass
+	{
+		return $aMap === [] ? new \stdClass() : $aMap;
+	}
+
+	/**
+	 * The attribute codes a caller narrowed to, or null for all of them.
+	 *
+	 * An unknown code is refused in the words output_fields refuses one with, unlike an unknown block name: the
+	 * codes are the datamodel's, and one misspelt answered an empty block. An excluded or unreadable attribute is not
+	 * among the served ones, so it is refused as a code the class does not have (doc/adr/0012). The id and the class
+	 * are no attributes and are passed over.
+	 *
+	 * @param array<string, mixed> $aServed Attribute code => its description, as the caller is served them.
+	 *
+	 * @return array<int, string>|null
+	 *
+	 * @throws \Mcp\Server\Exception\ToolCallException (see ToolRefusal)
+	 */
+	private static function requestedAttributes(string $sClass, string $sAttributes, array $aServed): ?array
+	{
+		$aAsked = array_values(array_diff(array_map('trim', explode(',', $sAttributes)), ['', 'id', 'class']));
+		if (trim($sAttributes) === '' || in_array(self::ATTRIBUTES_ALL, $aAsked, true)) {
+			return null;
+		}
+
+		$aUnknown = array_values(array_filter($aAsked, static fn (string $sCode): bool => !array_key_exists($sCode, $aServed)));
+		if ($aUnknown !== []) {
+			throw ToolRefusal::Because(OutputFields::UnknownAttributes($aUnknown, $sClass));
+		}
+
+		return $aAsked;
 	}
 
 	/**
@@ -502,7 +558,8 @@ final class DatamodelReader
 			}
 			$aStates[$sState] = [
 				'label'       => MetaModel::GetStateLabel($sClass, $sState),
-				'transitions' => $aTransitions,
+				// A closed state has none, and says so with an empty object.
+				'transitions' => self::map($aTransitions),
 			] + self::stateFlags($sClass, $aStateDef['attribute_list'] ?? []);
 		}
 

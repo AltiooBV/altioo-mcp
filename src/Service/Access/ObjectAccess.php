@@ -304,6 +304,41 @@ class ObjectAccess
 		return ExclusionPolicy::ExcludesClass($sClass);
 	}
 
+	/**
+	 * The attributes the form of a write makes mandatory on the object as it stands: those of the lifecycle's first
+	 * state for a new object, of its state otherwise (doc/adr/0004, Amendment 1). The state itself, what is not
+	 * writable, what the form hides, what a data source owns and what the operator excluded (doc/adr/0012) are not
+	 * among them, so no refusal made from this list names them.
+	 *
+	 * @param array<int, string>|null $aAmong Only these, or every attribute of the class for null.
+	 *
+	 * @return array<int, string>
+	 *
+	 * @since 2.2.0
+	 */
+	public function MandatoryOn(DBObject $oObject, ?array $aAmong = null): array
+	{
+		$sClass = get_class($oObject);
+		$sStateAttCode = MetaModel::HasLifecycle($sClass) ? (string)MetaModel::GetStateAttributeCode($sClass) : '';
+		$aMandatory = [];
+		/** @var array<int, int|string> $aCodes */
+		$aCodes = $aAmong ?? array_keys(MetaModel::ListAttributeDefs($sClass));
+		foreach ($aCodes as $mCode) {
+			$sAttCode = (string)$mCode;
+			if ($sAttCode === $sStateAttCode || !MetaModel::IsValidAttCode($sClass, $sAttCode)
+				|| ExclusionPolicy::ExcludesAttribute($sClass, $sAttCode)
+				|| !MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable()) {
+				continue;
+			}
+			$iFlags = (int)($oObject->IsNew() ? $oObject->GetInitialStateAttributeFlags($sAttCode) : $oObject->GetAttributeFlags($sAttCode));
+			if (($iFlags & OPT_ATT_MANDATORY) !== 0 && ($iFlags & (OPT_ATT_HIDDEN | OPT_ATT_SLAVE)) === 0) {
+				$aMandatory[] = $sAttCode;
+			}
+		}
+
+		return $aMandatory;
+	}
+
 	/** Why this mode refuses a change to the object UserRights allows, or null. */
 	public function RefusalToChange(DBObject $oObject): ?string
 	{

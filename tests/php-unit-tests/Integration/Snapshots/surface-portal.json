@@ -1,6 +1,6 @@
 {
     "_about": "What a client is served, compared by tests/php-unit-tests/Integration/ToolSurfaceSnapshotTest.php. Regenerate, read the diff, commit: see CONTRIBUTING.md.",
-    "generated": "2026-11-27",
+    "generated": "2026-11-28",
     "sdk": "v0.10.0",
     "surface": {
         "protocolVersion": "2025-06-18",
@@ -297,7 +297,7 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call."
+                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, a value the class computed, or the only value a mandatory attribute allowed on a create. Empty when every change came from your own call."
                         }
                     },
                     "required": [
@@ -577,7 +577,7 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call."
+                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, a value the class computed, or the only value a mandatory attribute allowed on a create. Empty when every change came from your own call."
                         }
                     },
                     "required": [
@@ -767,7 +767,7 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call."
+                            "description": "Attribute codes in `changes` that you did not supply: a default the datamodel applied, a value the class computed, or the only value a mandatory attribute allowed on a create. Empty when every change came from your own call."
                         }
                     },
                     "required": [

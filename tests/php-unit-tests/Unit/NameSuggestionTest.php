@@ -31,6 +31,21 @@ class NameSuggestionTest extends TestCase
 		$this->assertSame(['status'], NameSuggestion::Closest('state', ['status', 'priority', 'agent_id', 'title']));
 	}
 
+	/** Retest of 2026-11-28: `tto_deadline` is eleven letters from `tto_escalation_deadline`, and is what was meant. */
+	public function testANameThatHoldsEveryWordInOrderIsNear(): void
+	{
+		$aCodes = ['tto_escalation_deadline', 'ttr_escalation_deadline', 'tto', 'sla_tto_passed', 'deadline_of_tto'];
+
+		$this->assertSame(['tto_escalation_deadline'], NameSuggestion::Closest('tto_deadline', $aCodes));
+		$this->assertSame([], NameSuggestion::Closest('deadline', ['tto_escalation_deadline']), 'one word is not enough to guess from');
+		$this->assertSame([], NameSuggestion::Closest('deadline_tto', ['tto_escalation_deadline']), 'the words are in their order');
+		$this->assertSame(
+			['org_nam', 'org_short_legal_name'],
+			NameSuggestion::Closest('org_name', ['org_short_legal_name', 'org_nam']),
+			'a name near by distance comes first'
+		);
+	}
+
 	public function testNothingIsNearAWordThatIsNoName(): void
 	{
 		$this->assertSame([], NameSuggestion::Closest('ticketing_system', self::CLASSES));

@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Unit;
 
+use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCount;
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Api\AbstractObjectSearch;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByClass;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectSearchByOQL;
@@ -70,25 +72,32 @@ class SearchPagingContractTest extends TestCase
 	 * for a known code was not, so filters {"status": "bogus_status"} came back
 	 * total: 0 - indistinguishable from a state nobody is in, and read by an
 	 * agent as "no ticket is in that state". That is a wrong answer rather than
-	 * a missing one, which is the only kind worth a refusal.
+	 * a missing one, which is the only kind worth a refusal. The search checked
+	 * codes and the count did not, so the two answered the same filter apart
+	 * (retest of 2026-11-28, B12).
 	 *
 	 * Read off the source, because the check needs a datamodel to run: what is
-	 * asserted here is that the call exists on the filter loop, that it names
-	 * the valid codes, and that it skips the two cases where asking would cost
-	 * more than it is worth.
+	 * asserted here is that every tool with filters asks it, and turns a label
+	 * into its code before the search sees it. What it answers is
+	 * AttributeFilterValueTest's, and the integration suite's.
+	 *
+	 * @dataProvider filterToolProvider
 	 */
-	public function testAnInvalidFilterValueIsRefusedWithTheValidOnes(): void
+	public function testAFilterValueIsCheckedAndMappedOnEveryToolThatFilters(string $sTool): void
 	{
-		$oSource = SourceCalls::OfClass(ObjectSearchByClass::class);
+		$oSource = SourceCalls::OfClass($sTool);
 
-		$this->assertTrue($oSource->HasCallTo('refusalForValue'), 'the filter loop never checks the value');
-		$this->assertStringContainsString('array_keys($aValues)', $oSource->Code(), 'the refusal does not name the valid codes');
-		$this->assertTrue($oSource->HasCallTo('IsExternalKey'), 'an external key would enumerate its whole target table');
-		$this->assertNotSame(
-			[],
-			array_filter($oSource->Constants(), static fn (string $sConstant): bool => str_ends_with($sConstant, 'MAX_ALLOWED_VALUES')),
-			'an unbounded enumeration is not one a refusal can list'
-		);
+		$this->assertTrue($oSource->HasCall(AttributeDescription::class.'::FilterRefusal'), 'the filter loop never checks the value');
+		$this->assertTrue($oSource->HasCall(AttributeDescription::class.'::ForFilter'), 'a label reaches the database as it was sent');
+	}
+
+	/** @return array<string, array{0: class-string}> */
+	public static function filterToolProvider(): array
+	{
+		return [
+			'search' => [ObjectSearchByClass::class],
+			'count'  => [ObjectCount::class],
+		];
 	}
 
 	/**

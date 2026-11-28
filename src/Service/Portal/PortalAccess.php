@@ -13,6 +13,7 @@ use Altioo\iTop\Extension\MCP\Helper\ObjectId;
 use Altioo\iTop\Extension\MCP\Helper\Settings;
 use Altioo\iTop\Extension\MCP\Service\Read\ObjectSerializer;
 use Altioo\iTop\Extension\MCP\Service\Read\StoredValue;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Service\Rights\ChangeLogReservation;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
@@ -458,15 +459,20 @@ final class PortalAccess extends ObjectAccess
 
 	/**
 	 * The console's gates, narrowed: a change only where the portal's write
-	 * scope holds the object, and no delete or bulk change, which the portal
-	 * offers nowhere.
+	 * scope holds the object and this connection is served a tool that changes
+	 * one, and no delete or bulk change, which the portal offers nowhere.
+	 *
+	 * A read-only connection was told it could modify the object, beside a class
+	 * list saying it could edit none (retest of 2026-11-28). Nothing reads these
+	 * gates to allow a write: they are what an answer says.
 	 */
 	#[\Override]
 	public function RightsOn(DBObject $oObject, ?DBObjectSet &$oInstanceSet): array
 	{
 		$aRights = parent::RightsOn($oObject, $oInstanceSet);
+		$bWrites = ServedAccess::ServesWrites();
 		foreach (array_keys($aRights) as $sGate) {
-			if ($sGate !== 'modify' || $this->oPolicy->Writable(get_class($oObject), (int)$oObject->GetKey()) === null) {
+			if (!$bWrites || $sGate !== 'modify' || $this->oPolicy->Writable(get_class($oObject), (int)$oObject->GetKey()) === null) {
 				$aRights[$sGate] = 'no';
 			}
 		}
@@ -795,6 +801,29 @@ final class PortalAccess extends ObjectAccess
 		return (\Altioo\iTop\Extension\MCP\Helper\ClassRefusal::LooksLikeClassName($sStimulus) ? "The portal does not offer '{$sStimulus}'" : 'The portal does not offer that stimulus')
 			." on {$sClass} {$oObject->GetKey()} in state '{$sState}'. "
 			.($aOffered === [] ? 'It offers none in this state.' : 'It offers: '.implode(', ', array_keys($aOffered)).'.');
+	}
+
+	/**
+	 * The fields the portal's create or edit form lets the user set and makes mandatory, by its own flags or by the
+	 * datamodel's for the state. A field the form hides or shows read-only is not one: the user could not fill it,
+	 * and no refusal names it (doc/adr/0004, Amendment 1).
+	 */
+	#[\Override]
+	public function MandatoryOn(DBObject $oObject, ?array $aAmong = null): array
+	{
+		$sClass = get_class($oObject);
+		$aFlags = $this->oPolicy->Fields($sClass, $oObject->IsNew() ? PortalPolicy::MODE_CREATE : PortalPolicy::MODE_EDIT, $oObject);
+		$aSettable = self::Settable($sClass, $aFlags);
+		$aAsked = $aAmong === null ? $aSettable : array_values(array_intersect($aSettable, $aAmong));
+		$aOfState = parent::MandatoryOn($oObject, $aAsked);
+		$sStateAttCode = MetaModel::HasLifecycle($sClass) ? (string)MetaModel::GetStateAttributeCode($sClass) : '';
+
+		return array_values(array_filter(
+			$aAsked,
+			static fn (string $sAttCode): bool => in_array($sAttCode, $aOfState, true)
+				|| (($aFlags[$sAttCode] & OPT_ATT_MANDATORY) !== 0 && $sAttCode !== $sStateAttCode
+					&& MetaModel::GetAttributeDef($sClass, $sAttCode)->IsWritable())
+		));
 	}
 
 	/**

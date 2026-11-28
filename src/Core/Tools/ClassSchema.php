@@ -131,7 +131,7 @@ class ClassSchema extends AbstractMCPTool implements PortalAware
 				],
 				'required_only' => [
 					'type'        => 'boolean',
-					'description' => 'Keep only the attributes a create must be given - required, writable and with no default (one that has a default carries it under "default") - and drop the derived ones. Answers "what is mandatory here" without the rest of the class.',
+					'description' => 'Keep only the attributes a create must be given - required or mandatory in the first state, writable, with no default (else listed under "default") - and drop the derived ones. Answers "what is mandatory here" without the rest of the class.',
 					'default'     => false,
 				],
 			],

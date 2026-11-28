@@ -232,10 +232,8 @@ class ExclusionParentTypedTest extends ItopDataTestCaseAlias
 		foreach ($aRoutes as $sRoute => $fRoute) {
 			$this->assertAbsentLikeAnUnknownName($fRoute, 'contacts_list', $sRoute);
 		}
-		// A schema asked for one attribute answers an unknown one with nothing; the set answers so too, naming nothing.
-		$this->assertAbsentLikeAnUnknownName(fn (string $a) => ClassSchema::execute('UserRequest', 'attributes', $a), 'contacts_list', 'schema', false);
-		$aAsked = ToolOutput::Decode(ClassSchema::execute('UserRequest', 'attributes', 'contacts_list'));
-		$this->assertSame([], (array)($aAsked['attributes'] ?? []), 'the schema describes the excluded set');
+		// A schema asked for one attribute refuses an unknown one; the set is refused in the same words.
+		$this->assertAbsentLikeAnUnknownName(fn (string $a) => ClassSchema::execute('UserRequest', 'attributes', $a), 'contacts_list', 'schema');
 
 		// An existing person and an id nobody has are answered alike, which is the point of the dry run above.
 		$sExisting = $this->outcome(fn () => ObjectUpdate::execute('UserRequest', $this->iTicket, ['contacts_list' => [['contact_id' => $this->iPerson]]]), ['contacts_list']);

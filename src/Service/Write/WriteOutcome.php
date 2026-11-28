@@ -438,7 +438,7 @@ final class WriteOutcome
 		return [
 			'type'        => 'array',
 			'items'       => ['type' => 'string'],
-			'description' => 'Attribute codes in `changes` that you did not supply: a default the datamodel applied, or a value the class computed. Empty when every change came from your own call.',
+			'description' => 'Attribute codes in `changes` that you did not supply: a default the datamodel applied, a value the class computed, or the only value a mandatory attribute allowed on a create. Empty when every change came from your own call.',
 		];
 	}
 

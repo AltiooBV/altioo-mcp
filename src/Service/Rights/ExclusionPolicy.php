@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Rights;
 
 use Altioo\iTop\Extension\MCP\Api\MCPModule;
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
+use Altioo\iTop\Extension\MCP\Helper\InitialState;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 
 use AttributeExternalField;
@@ -158,8 +159,10 @@ final class ExclusionPolicy
 
 	/**
 	 * Why creating a class is not possible through this channel: a field iTop
-	 * requires is excluded, so no create could ever pass. Said without naming
-	 * the field, and null when nothing stands in the way.
+	 * requires is excluded, or one the lifecycle's first state makes mandatory
+	 * (doc/adr/0004, Amendment 1), so no create could ever pass. Said without
+	 * naming the field, and null when nothing stands in the way. Decided by the
+	 * datamodel and the setting alone, never by what an object holds.
 	 */
 	public static function RefusalToCreate(string $sClass): ?string
 	{
@@ -169,8 +172,11 @@ final class ExclusionPolicy
 
 		try {
 			foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef) {
-				if ($oAttDef->IsWritable() && $oAttDef->IsNullAllowed() === false
-					&& in_array($oAttDef->GetDefaultValue(), ['', 0, '0', null], true) && self::ExcludesAttribute($sClass, (string)$sAttCode)) {
+				if ($oAttDef->IsWritable()
+					&& ($oAttDef->IsNullAllowed() === false || InitialState::MakesMandatory($sClass, (string)$sAttCode))
+					// A link set's default is an empty set, which is no value either.
+					&& ($oAttDef->IsLinkSet() || in_array($oAttDef->GetDefaultValue(), ['', 0, '0', null], true))
+					&& self::ExcludesAttribute($sClass, (string)$sAttCode)) {
 					return sprintf(
 						"Creating %s is not possible through this channel: a field iTop requires is excluded by '%s'. Create it in the iTop console.",
 						$sClass,

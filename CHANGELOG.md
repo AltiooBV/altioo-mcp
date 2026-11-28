@@ -66,6 +66,45 @@ entry itself, not left to be inferred from it.
 
 ### Fixed
 
+- **A create ignored what the first state makes mandatory, and an update could empty it** (retest of 2026-11-28, B13;
+  [ADR 0004](doc/adr/0004-writes-follow-the-console-form.md), Amendment 1). A dry run of a `UserRequest` without a
+  caller answered `valid: true`. `core_object_create` and `core_object_bulk_create` now refuse, dry run and real, while
+  an attribute the initial state flags mandatory holds nothing, naming it; where it allows a single value, that value is
+  filled in and listed in `defaulted`, as the console's form preselects it. `core_object_update` and
+  `core_object_bulk_update` refuse to empty an attribute the current state makes mandatory; one already empty is not
+  asked for. In portal mode the attributes are those the portal's form lets the user set and makes mandatory, which in
+  the stock portal includes a request's service and subcategory where the create action does not preset them.
+  `core_class_schema` marks them `mandatoryOnCreate` and `required_only` lists them. A class whose initial state makes
+  an excluded attribute mandatory can no longer be created through this channel. **A create or an update that passed
+  before can now be refused**; REST `core/create` is unchanged. For a tool pack: `ObjectAccess::MandatoryOn()`,
+  `EditPolicy::FillOnlyValues()`, `RefusalForMissingMandatory()`, `MandatoryHeld()` and `RefusalForEmptied()` are new,
+  and `EditPolicy::RefusalFor()` no longer calls a mandatory attribute read-only on a new object.
+- **A filter value an attribute cannot hold was answered with a count** (review 2026-11-23, retest of 2026-11-28, B12).
+  `sla_tto_passed: "yes"` counted the requests that had **not** breached, because the database reads `'yes'` in that
+  column as 0, and `core_object_count` answered `status: "nonsense"` with 0, which reads as "there is none".
+  `core_object_search_by_class` and `core_object_count` now hold a filter on an attribute with a list of values (an
+  enumeration, a yes/no flag, a stopwatch's `passed` and `triggered`, a class name, or such a value shown through an
+  external key) to a code, or to the label iTop gives one in the account's language, which is turned into its code.
+  Codes and labels are matched without their case, and `true` or `false` stand for 1 or 0 on a yes/no flag. Anything
+  else is refused, naming what the attribute takes and never quoting the value sent; an excluded class is neither named
+  nor matched. A portal list whose tabs are the values of an attribute holds `tab` to the same list. **An empty string
+  on such an attribute is now refused by the count too**, as the search already refused it, and the search's refusal of
+  an unknown value has new words. OQL is unchanged: it compares what is written. For a tool pack:
+  `AttributeDescription::FilterRefusal()` and `ForFilter()` are new.
+- **Some empty maps were still sent as `[]`** (review 2026-11-23, S6, the rest): `filters` in the answer of a search
+  with none, `attributes`, `derived` and `lifecycle` in `core_class_schema` when there is nothing in them, and the
+  `transitions` of a closed state. Each is `{}`. For a tool pack: `DatamodelReader::Describe()` gives an empty one as
+  an empty object.
+- **`core_class_schema` answered an unknown attribute code with nothing** (retest of 2026-11-28). A code in
+  `attributes` that is not an attribute this account is served is now refused, in the words of `output_fields`, with a
+  "did you mean". The suggestion, here and on every other route, also reaches a name that holds all the words of what
+  was sent, in their order: `tto_deadline` suggests `tto_escalation_deadline`.
+- **A read-only portal connection was still told it could write** (review 2026-11-23, retest of 2026-11-28). On a
+  connection served no tool that changes an object, `core_object_get` answers every gate of `rights` as `"no"` in portal
+  mode, where `rights.modify` said `"yes"` beside a class list saying `edit: false`; the portal description of
+  `core_instructions` and of its resource no longer speaks of writes; and the open-tickets recipe no longer asks what
+  can be done with a request. Console mode is unchanged. The server instructions say a write's comment is kept "not in
+  iTop's own history", where `core_object_history` does show it on your own calls (C15).
 - **A read gave dates in the display format and a stopwatch's items as labels, and OQL written from them matched the wrong objects** (live check of 2026-11-25, iTop 3.2.3, PHP 8.3). Values were converted with iTop's `GetForJSON()`, which is the value as a form shows it: a date or date-time followed the display format an operator configures (`date_and_time_format`), so with `d/m/Y` `start_date` read `25/11/2026 12:54`, which the schema's pattern contradicts and a write refuses; a stopwatch's deadline, start and stop read the same way, `sla_tto_passed` read `"yes"` (`"oui"` for a French user) and an overrun `"27"`. `sla_tto_passed = 'yes'` in OQL, the filter a model writes from that value, **matched every ticket that had not breached** and none that had, because the column holds 0 and 1. And `core_object_history` gave the same deadline as a Unix timestamp. Values are now given as iTop stores them, which is what OQL compares and a write accepts (new `Service\Read\StoredValue`, `@internal`): dates and date-times in the internal format on every instance, a stopwatch's dates the same way, `passed` and `triggered` as `0` or `1`, `overrun` and `timespent` as integers, on objects, on the rows of a link set (console and portal) and in the history's `from` and `to`. `core_class_schema` gives a stopwatch's dates the date-time pattern. **A behaviour change for a client that parsed the old values**: on an instance with the default display format only the stopwatch items change. Every other kind of attribute is converted as before. Rendering a link set moved from iTop's `GetForJSON()` to `StoredValue::OfLinkSet()`, still called only by `ObjectSerializer::Value()` after the portal is asked, which `LinkedRowsContractTest` now pins. Present since 1.0.0. Not a security defect, so 2.x only.
 - **A file that is not an image came back from `core_object_get_document` as a block of JSON text** (review 2026-11-23, retest L5). The tool returned resource contents as a content item, which they are not, so the server encoded them into a text block (`{"blob": "<base64>", …}`). It now answers an **embedded resource**, after the same untrusted-content notice: a text file (`text/*`, JSON or XML, in valid UTF-8 with no control byte but tab and the line and page breaks) with its `text`, any other file with its `blob`; an image is still an image. **The resource template `itop://core/document/{class}/{id}/{att_code}` changes with it**: a text file is read as `text` rather than `blob`, and an image, which it could not answer at all (the read failed with "unhandled type"), is now a `blob`. The size ceiling and every check are as they were. For a tool pack: `DocumentAccess::ToolContentFor()` and `ResourceContentsFor()` are new, and `ContentFor()` is deprecated, unchanged.
 - **A real `core_object_apply_stimulus` left the state out of `changes` and still said where the object "would" go** (review 2026-11-23, retest B4). The dry run listed the state it would move to among `changes`; the real run listed only the fields sent. It now lists the state it reached, so both name the same changes (and `defaulted` names the state, as the dry run's does). `would_move_to` is **`null` on a real call** (its type is now `string` or `null`); `state` is where the object is. A client that compared the two on a real call reads `state` alone. What a transition's own actions fill, a date for instance, is still in `after.applied`.

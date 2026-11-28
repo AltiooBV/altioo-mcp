@@ -250,6 +250,19 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because("Failed to create due to setting fields : ".implode(', ', $aIssues));
 		}
 
+		// What the form makes mandatory and nobody gave: the only value allowed is filled in, as the console's
+		// form does, and what has more than one is asked for below, once iTop has computed its own.
+		$aMandatory = self::portalRefusal(static fn () => $oAccess->MandatoryOn($oObject));
+		// Never over a field the caller sent: one sent empty is refused, not replaced.
+		$aFilled = self::portalRefusal(static fn () => EditPolicy::FillOnlyValues($oObject, array_values(array_diff($aMandatory, array_keys($aValidatedValues))), $oAccess));
+		if ($aFilled !== []) {
+			// Asked of the filled values too: whose access a row is can be one of them.
+			$sAccessRefusal = AccessGrants::RefusalFor($class, null, $fields + array_combine($aFilled, array_map(static fn (string $s) => $oObject->Get($s), $aFilled)));
+			if ($sAccessRefusal !== null) {
+				throw ToolRefusal::Because($sAccessRefusal);
+			}
+		}
+
 		// Once everything is Set(), because a datamodel filter reads the
 		// object and this call may have moved what it reads. See EditPolicy.
 		$aIssues = EditPolicy::RefusalsForExternalKeys($oObject, array_keys($aValidatedValues))
@@ -267,6 +280,12 @@ class ObjectCreate extends AbstractMCPTool implements PortalAware
 		// the class and on every extension hooked into it. Without it the
 		// first thing that fails is DBInsert(), from inside the ORM.
 		DryRun::Check($oObject, "A {$class}");
+
+		// iTop's check does not ask what the lifecycle's first state makes mandatory; the form does.
+		$sMissing = EditPolicy::RefusalForMissingMandatory($oObject, $aMandatory);
+		if ($sMissing !== null) {
+			throw ToolRefusal::Because($sMissing);
+		}
 
 		// What the check threw away. On a creation every attribute is in
 		// `changes`, so an overridden one is reported there too - with the

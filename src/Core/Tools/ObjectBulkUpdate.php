@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Api\AbstractBulkTool;
 use Altioo\iTop\Extension\MCP\Api\ChangeTracking;
 use Altioo\iTop\Extension\MCP\Api\ToolOutput;
@@ -189,6 +190,9 @@ class ObjectBulkUpdate extends AbstractBulkTool
 			}
 
 			try {
+				// Before anything is Set(): what the form makes mandatory among the fields sent, and holds a value now.
+				$aHeld = EditPolicy::MandatoryHeld($mObject, ObjectAccess::Current()->MandatoryOn($mObject, array_keys($aValues)));
+
 				foreach ($aValues as $sAttCode => $value) {
 					$mObject->Set($sAttCode, $value);
 				}
@@ -213,6 +217,10 @@ class ObjectBulkUpdate extends AbstractBulkTool
 				// attributes - and without this the answer arrives as an
 				// exception from the ORM half way through the batch.
 				DryRun::Check($mObject, "{$class}::{$iId}");
+				$sEmptied = EditPolicy::RefusalForEmptied($mObject, $aHeld);
+				if ($sEmptied !== null) {
+					throw ToolRefusal::Because($sEmptied);
+				}
 
 				$aOverridden = WritePlan::Overridden($mObject, $class, $aRequested);
 				WritePlan::CheckRequested($mObject, $aRequested, $aOverridden, "{$class}::{$iId}");

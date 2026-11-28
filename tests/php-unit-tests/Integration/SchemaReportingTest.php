@@ -68,13 +68,18 @@ class SchemaReportingTest extends ItopDataTestCaseAlias
 		}
 	}
 
-	/** C4: required_only listed seven attributes of a UserRequest, and a create with three passes. */
+	/**
+	 * C4: required_only listed seven attributes of a UserRequest, and a create passes with few. Those are the ones the
+	 * datamodel requires and, since the retest of 2026-11-28 (B13), the caller its first state makes mandatory.
+	 */
 	public function testRequiredOnlyKeepsWhatACreateMustBeGiven(): void
 	{
 		$aFull = $this->schema('UserRequest')['attributes'];
 		$aRequired = $this->schema('UserRequest', DatamodelReader::BLOCKS_ALL, DatamodelReader::ATTRIBUTES_ALL, true)['attributes'];
 
-		$this->assertEqualsCanonicalizing(['org_id', 'title', 'description'], array_keys($aRequired));
+		$this->assertEqualsCanonicalizing(['org_id', 'caller_id', 'title', 'description'], array_keys($aRequired));
+		$this->assertFalse($aRequired['caller_id']['required'], 'the column may be null: the state asks for it');
+		$this->assertTrue($aRequired['caller_id']['mandatoryOnCreate']);
 		foreach (['status', 'impact', 'urgency', 'priority'] as $sCode) {
 			$this->assertTrue($aFull[$sCode]['required'], "{$sCode} is still required by the datamodel");
 			$this->assertArrayHasKey('default', $aFull[$sCode], "{$sCode} says what it is given when none is sent");

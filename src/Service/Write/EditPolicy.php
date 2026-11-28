@@ -10,6 +10,7 @@ namespace Altioo\iTop\Extension\MCP\Service\Write;
 
 use Altioo\iTop\Extension\MCP\Helper\ErrorReport;
 use Altioo\iTop\Extension\MCP\Helper\PortalMode;
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use AttributeCaseLog;
 use AttributeExternalKey;
 use AttributeLinkedSet;
@@ -31,6 +32,11 @@ use UserRights;
  * locks, zero an SLA timer, rewrite a case log or delete a link set's
  * children. The console's forms never offer any of that, and this endpoint is
  * driven by a model with less supervision than a console user has.
+ *
+ * A form also makes fields mandatory, which neither the ORM nor DoCheckToWrite() asks (Amendment 1 of the same
+ * record): a create gives them a value, filled in where only one is allowed ({@see self::FillOnlyValues()},
+ * {@see self::RefusalForMissingMandatory()}), and an update does not empty one ({@see self::MandatoryHeld()},
+ * {@see self::RefusalForEmptied()}).
  *
  * Three questions, asked at the three points where each can be answered:
  *
@@ -229,6 +235,157 @@ final class EditPolicy
 		return $aRefusals;
 	}
 
+	/**
+	 * Gives each of $aMandatory that holds nothing the only value it allows, where it allows exactly one, as the
+	 * console's creation form does. Only what this account may write and read, and only a value this mode lets it
+	 * reach. Asked again after each value, since one narrows another (a service by its organisation).
+	 *
+	 * @param array<int, string> $aMandatory As {@see ObjectAccess::MandatoryOn()} answers.
+	 *
+	 * @return array<int, string> The attributes filled.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function FillOnlyValues(DBObject $oObject, array $aMandatory, ObjectAccess $oAccess): array
+	{
+		$sClass = get_class($oObject);
+		$aFilled = [];
+		do {
+			$bMore = false;
+			foreach ($aMandatory as $sAttCode) {
+				if (in_array($sAttCode, $aFilled, true) || $oObject->HasAValue($sAttCode)
+					|| UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY) === UR_ALLOWED_NO
+					|| UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+					continue;
+				}
+				try {
+					$mValue = self::onlyAllowedValue($oObject, $sAttCode);
+					if ($mValue === null) {
+						continue;
+					}
+					$mBefore = $oObject->Get($sAttCode);
+					$oObject->Set($sAttCode, $mValue);
+					if ($oAccess->RefusalsForReach($oObject, [$sAttCode]) !== []) {
+						$oObject->Set($sAttCode, $mBefore);
+						continue;
+					}
+				} catch (Throwable $e) {
+					// A list that cannot be worked out is not a list of one: the attribute stays the caller's to give.
+					ErrorReport::Log('Could not fill the only value of '.$sClass.'.'.$sAttCode.': '.get_class($e));
+					continue;
+				}
+				$aFilled[] = $sAttCode;
+				$bMore = true;
+			}
+		} while ($bMore);
+
+		return $aFilled;
+	}
+
+	/**
+	 * Why a new object may not be written: attributes its form makes mandatory that still hold nothing, once every
+	 * value is Set() and iTop has computed its own. One the account may not read is not named.
+	 *
+	 * @param array<int, string> $aMandatory As {@see ObjectAccess::MandatoryOn()} answers.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function RefusalForMissingMandatory(DBObject $oObject, array $aMandatory): ?string
+	{
+		$sClass = get_class($oObject);
+		$aToSend = [];
+		$aBlocked = [];
+		$bUnnamed = false;
+		foreach ($aMandatory as $sAttCode) {
+			if ($oObject->HasAValue($sAttCode)) {
+				continue;
+			}
+			if (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_READ) === UR_ALLOWED_NO) {
+				$bUnnamed = true;
+			} elseif (UserRights::IsActionAllowedOnAttribute($sClass, $sAttCode, UR_ACTION_MODIFY) === UR_ALLOWED_NO) {
+				$aBlocked[] = $sAttCode;
+			} else {
+				$aToSend[] = $sAttCode;
+			}
+		}
+		if ($aToSend === [] && $aBlocked === [] && !$bUnnamed) {
+			return null;
+		}
+
+		$sRefusal = "This {$sClass} cannot be created as described.";
+		if ($aBlocked !== []) {
+			$sRefusal .= ' This account may not write '.implode(', ', $aBlocked).', mandatory on a new one, so no value you send can complete it.';
+		}
+		if ($aToSend !== []) {
+			$sRefusal .= ' Mandatory on a new one and holding no value: '.implode(', ', $aToSend).'. Send '
+				.(count($aToSend) === 1 ? 'it' : 'them').' in the fields; core_class_schema says what a create needs.';
+		}
+
+		return $sRefusal;
+	}
+
+	/**
+	 * Among $aMandatory, those that hold a value now: the ones an update must leave with one. Asked before Set().
+	 *
+	 * An attribute already empty is not one of them. The console's form would ask for it on any edit; here an old
+	 * object stays editable.
+	 *
+	 * @param array<int, string> $aMandatory As {@see ObjectAccess::MandatoryOn()} answers.
+	 *
+	 * @return array<int, string>
+	 *
+	 * @since 2.2.0
+	 */
+	public static function MandatoryHeld(DBObject $oObject, array $aMandatory): array
+	{
+		return array_values(array_filter($aMandatory, static fn (string $sAttCode): bool => $oObject->HasAValue($sAttCode)));
+	}
+
+	/**
+	 * Why an update may not be written: it empties attributes {@see MandatoryHeld()} listed before it.
+	 *
+	 * @param array<int, string> $aHeld
+	 *
+	 * @since 2.2.0
+	 */
+	public static function RefusalForEmptied(DBObject $oObject, array $aHeld): ?string
+	{
+		$aEmptied = array_values(array_filter($aHeld, static fn (string $sAttCode): bool => !$oObject->HasAValue($sAttCode)));
+		if ($aEmptied === []) {
+			return null;
+		}
+
+		$sClass = get_class($oObject);
+		$sState = MetaModel::HasLifecycle($sClass) ? " in state '".(string)$oObject->Get(MetaModel::GetStateAttributeCode($sClass))."'" : '';
+		$bOne = count($aEmptied) === 1;
+
+		return implode(', ', $aEmptied).($bOne ? ' is' : ' are')." mandatory on this {$sClass}{$sState}, so "
+			.($bOne ? 'it' : 'they').' cannot be emptied: send another value, or leave '.($bOne ? 'it' : 'them').' out.';
+	}
+
+	/** The one value the attribute allows on the object as it stands, or null when there is none, more than one, or no list. */
+	private static function onlyAllowedValue(DBObject $oObject, string $sAttCode): mixed
+	{
+		$sClass = get_class($oObject);
+		$oAttDef = MetaModel::GetAttributeDef($sClass, $sAttCode);
+		$aArgs = ['this' => $oObject];
+		if ($oAttDef instanceof AttributeExternalKey) {
+			$oSet = MetaModel::GetAllowedValuesAsObjectSet($sClass, $sAttCode, $aArgs);
+			if ($oSet->CountWithLimit(2) != 1) {
+				return null;
+			}
+			$oOnly = $oSet->Fetch();
+
+			return $oOnly instanceof DBObject ? $oOnly->GetKey() : null;
+		}
+		if (!$oAttDef->IsScalar()) {
+			return null;
+		}
+		$aValues = MetaModel::GetAllowedValues_att($sClass, $sAttCode, $aArgs);
+
+		return is_array($aValues) && count($aValues) === 1 ? array_key_first($aValues) : null;
+	}
+
 	private static function stateRefusal(DBObject $oObject, string $sAttCode): string
 	{
 		$sClass = get_class($oObject);
@@ -248,7 +405,9 @@ final class EditPolicy
 		$sState = $bLifecycle ? (string) $oObject->Get(MetaModel::GetStateAttributeCode($sClass)) : '';
 
 		if ($oObject->IsNew()) {
-			if (($oObject->GetInitialStateAttributeFlags($sAttCode) & self::NOT_EDITABLE) === 0) {
+			$iFlags = (int)$oObject->GetInitialStateAttributeFlags($sAttCode);
+			// As on the console, a mandatory field is not read-only on a create: it could never be given otherwise.
+			if (($iFlags & self::NOT_EDITABLE) === 0 || (($iFlags & OPT_ATT_MANDATORY) !== 0 && ($iFlags & OPT_ATT_HIDDEN) === 0)) {
 				return null;
 			}
 

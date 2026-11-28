@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Test\Integration;
 
+use Altioo\iTop\Extension\MCP\Service\Access\ObjectAccess;
 use Altioo\iTop\Extension\MCP\Core\Tools\ClassList;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectApplyStimulus;
 use Altioo\iTop\Extension\MCP\Core\Tools\ObjectCreate;
@@ -322,6 +323,31 @@ class PortalWriteTest extends ItopDataTestCaseAlias
 			static fn (array $aRow): int => (int)$aRow['id'],
 			ToolOutput::Decode(PortalList::execute('ongoing-tickets-for-portal-user'))['objects']
 		), 'the new request is in the user\'s list');
+	}
+
+	/**
+	 * doc/adr/0004, Amendment 1: what a portal write is asked to give is what the portal's form lets the user set. A field
+	 * the form hides or shows read-only is never asked for, so no refusal names it, though the datamodel makes it
+	 * mandatory in the state.
+	 */
+	public function testWhatThePortalAsksForIsWhatItsFormLetsTheUserSet(): void
+	{
+		$oAccess = ObjectAccess::Current();
+		$oNew = $oAccess->Prepared($this->subcategoryAction(), $this->iSubcategory);
+		$this->assertInstanceOf(\DBObject::class, $oNew);
+		$this->assertContains('caller_id', (new ObjectAccess())->MandatoryOn($oNew), 'the control: the first state makes the caller mandatory');
+		// Emptied, so that nothing but the form keeps them out of the answer.
+		$oNew->Set('caller_id', 0);
+		$oNew->Set('org_id', 0);
+
+		$aAsked = $oAccess->MandatoryOn($oNew);
+
+		// The stock portal's form makes the service mandatory, which the datamodel does not.
+		$this->assertContains('service_id', $aAsked, json_encode($aAsked));
+		$this->assertNotContains('service_id', (new ObjectAccess())->MandatoryOn($oNew));
+		$this->assertNotContains('caller_id', $aAsked);
+		$this->assertNotContains('org_id', $aAsked);
+		$this->assertSame([], $oAccess->MandatoryOn($oNew, ['caller_id', 'org_id']));
 	}
 
 	/** The rules set the caller; the form does not offer it. */
