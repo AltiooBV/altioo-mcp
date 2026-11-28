@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Service\Portal;
 
+use Altioo\iTop\Extension\MCP\Service\Read\AttributeDescription;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionSearches;
 use DBObject;
 use DBObjectSet;
@@ -101,8 +102,14 @@ final class PortalRows
 
 		$sAttCode = $aList['tabs_by'];
 		if (is_string($sAttCode) && $sAttCode !== '' && MetaModel::IsValidAttCode($oQuery->GetClass(), $sAttCode)) {
+			// A value the attribute cannot hold is no tab of it, and would list nothing (retest of 2026-11-28, B12).
+			$oAttDef = MetaModel::GetAttributeDef($oQuery->GetClass(), $sAttCode);
+			$sRefusal = AttributeDescription::FilterRefusal($oAttDef, $sAttCode, $sTab);
+			if ($sRefusal !== null) {
+				throw ToolRefusal::Because('This list has no such tab. '.$sRefusal);
+			}
 			// A value, bound as one: AddCondition() never parses it as OQL.
-			$oQuery->AddCondition($sAttCode, $sTab, '=');
+			$oQuery->AddCondition($sAttCode, AttributeDescription::ForFilter($oAttDef, $sTab), '=');
 
 			return $oQuery;
 		}
