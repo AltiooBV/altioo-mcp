@@ -181,7 +181,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			return ToolOutput::Json([
 				'requested_class'  => $class,
 				'class' => $class,
-				'filters' => $filters,
+				'filters' => (object)$filters,
 				'total'   => 0,
 				'limit'   => $limit,
 				'offset'  => $offset,
@@ -195,7 +195,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $class,
-					'filters' => $filters,
+					'filters' => (object)$filters,
 					'total'   => 0,
 					'limit'   => $limit,
 					'offset'  => $offset,
@@ -207,7 +207,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 				return ToolOutput::Json([
 					'requested_class'  => $class,
 					'class' => $sSetClass,
-					'filters' => $filters,
+					'filters' => (object)$filters,
 					'total'   => 0,
 					'limit'   => $limit,
 					'offset'  => $offset,
@@ -237,7 +237,7 @@ class ObjectSearchByClass extends AbstractObjectSearch
 			return ToolOutput::Json(UntrustedMarker::MarkRows([
 				'requested_class'  => $class,
 				'class' => $sSetClass,
-				'filters' => $filters,
+				'filters' => (object)$filters,
 				'total'   => $iTotal,
 				'limit'   => $limit,
 				'offset'  => $offset,
