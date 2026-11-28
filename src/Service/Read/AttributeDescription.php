@@ -18,12 +18,14 @@ use AttributeDate;
 use AttributeDateTime;
 use AttributeClass;
 use AttributeDefinition;
+use AttributeExternalField;
 use AttributeExternalKey;
 use AttributeFinalClass;
 use AttributeLinkedSet;
 use AttributeLinkedSetIndirect;
 use MetaModel;
 use UserRights;
+use ValueSetObjects;
 
 /**
  * The attributes of a class, described for a caller that has to read or write them.
@@ -32,7 +34,8 @@ use UserRights;
  * accepts, what it depends on, what the caller is told about writing it, and
  * what the caller's rights on it are - the `attributes` block of
  * {@see DatamodelReader::Describe()} - plus the hint a refused value is answered
- * with ({@see self::ValueHint()}). Attributes the exclusions of ADR 0012 name are
+ * with ({@see self::ValueHint()}) and what a filter on a list of values may be
+ * given ({@see self::FilterRefusal()}). Attributes the exclusions of ADR 0012 name are
  * absent, and a secret is described without its value.
  *
  * @api
@@ -357,6 +360,140 @@ final class AttributeDescription
 			$sFormat,
 			$sCorrected
 		);
+	}
+
+	/**
+	 * The value to filter on, for an attribute that holds one of a list of values: an enumeration, a yes/no flag, a
+	 * stopwatch's `passed` and `triggered`, a class name, and an external field showing one of these.
+	 *
+	 * @param mixed $value The filter value as sent.
+	 *
+	 * @return mixed The code a label or a code in another case stands for, and otherwise the value as sent.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function ForFilter(AttributeDefinition $oAttDef, mixed $value): mixed
+	{
+		$aValues = self::filterList($oAttDef);
+
+		return $aValues === null ? $value : (self::MatchingValue($aValues, $value) ?? $value);
+	}
+
+	/**
+	 * Why a filter cannot be given this value, or null when it can: the attribute holds one of a list of values, and
+	 * this is none of them by code or label. The value is not quoted back.
+	 *
+	 * The database compares what it is handed, its own way. A column holding 0 and 1 reads `'yes'` as 0, so
+	 * `sla_tto_passed: "yes"` counted the requests that had **not** breached, and `status: "nonsense"` counted none,
+	 * which reads as "there is none" (retest of 2026-11-28, B12).
+	 *
+	 * The list is the one this endpoint serves ({@see self::ServedValues()}): a class the operator excluded
+	 * (doc/adr/0012) is neither named in a refusal nor found by its label, and answers as a word the datamodel has not.
+	 * Whether the attribute may be filtered on at all is the tool's question, asked first. An external key, a link set
+	 * and a list made of objects are not held to a list: their values are objects. Null is left to the search, as it
+	 * was.
+	 *
+	 * @param mixed $value The filter value as sent.
+	 *
+	 * @since 2.2.0
+	 */
+	public static function FilterRefusal(AttributeDefinition $oAttDef, string $sAttCode, mixed $value): ?string
+	{
+		$aValues = self::filterList($oAttDef);
+		if ($aValues === null || $value === null || self::MatchingValue($aValues, $value) !== null) {
+			return null;
+		}
+
+		return "The filter on '{$sAttCode}' takes one of its values, by code or label".self::NamingValues($aValues);
+	}
+
+	/**
+	 * The value to filter on when $value names one of $aValues, or null when it names none, or more than one. Pure.
+	 *
+	 * A code as it is stands for itself. Otherwise codes and labels are compared without their case, and the answer is
+	 * the one code that matches: a word that stands for two values is neither. A JSON true or false is 1 or 0 where the
+	 * list is a yes/no one.
+	 *
+	 * @param array<array-key, mixed> $aValues Code => label.
+	 * @param mixed                   $value   As the caller sent it.
+	 *
+	 * @internal Public for the tests.
+	 */
+	public static function MatchingValue(array $aValues, mixed $value): mixed
+	{
+		if (is_bool($value)) {
+			return array_keys($aValues) === [0, 1] ? (int)$value : null;
+		}
+		if (!is_int($value) && !is_float($value) && !is_string($value)) {
+			return null;
+		}
+		if (array_key_exists((string)$value, $aValues)) {
+			return $value;
+		}
+
+		$sNeedle = mb_strtolower(trim((string)$value));
+		if ($sNeedle === '') {
+			return null;
+		}
+		$aFound = [];
+		foreach ($aValues as $mCode => $mLabel) {
+			if (mb_strtolower((string)$mCode) === $sNeedle || (is_string($mLabel) && mb_strtolower(trim($mLabel)) === $sNeedle)) {
+				$aFound[] = $mCode;
+			}
+		}
+
+		return count($aFound) === 1 ? $aFound[0] : null;
+	}
+
+	/**
+	 * The end of a refusal: ": new (New), closed." - each code, with its label where that is another word - or, past
+	 * {@see self::MAX_ALLOWED_VALUES}, where to read them. Pure.
+	 *
+	 * @param array<array-key, mixed> $aValues Code => label.
+	 *
+	 * @internal Public for the tests.
+	 */
+	public static function NamingValues(array $aValues): string
+	{
+		if (count($aValues) > self::MAX_ALLOWED_VALUES) {
+			return '. There are '.count($aValues).' of them; core_class_schema lists the first '.self::MAX_ALLOWED_VALUES.'.';
+		}
+
+		$aNamed = [];
+		foreach ($aValues as $mCode => $mLabel) {
+			$sCode = (string)$mCode;
+			$aNamed[] = !is_string($mLabel) || $mLabel === '' || mb_strtolower($mLabel) === mb_strtolower($sCode) ? $sCode : "{$sCode} ({$mLabel})";
+		}
+
+		return ': '.implode(', ', $aNamed).'.';
+	}
+
+	/**
+	 * The values a filter on this attribute may be given, or null when it is not one that holds one of a list.
+	 *
+	 * An external field is asked as the attribute it shows, which is where iTop declares the list. A field excluded with
+	 * what it shows never gets here.
+	 *
+	 * @return array<array-key, mixed>|null Code => label.
+	 *
+	 * @psalm-suppress TypeDoesNotContainType, MixedAssignment, MixedMethodCall, RedundantCondition iTop's attribute classes are not known to the analysis as related.
+	 */
+	private static function filterList(AttributeDefinition $oAttDef): ?array
+	{
+		try {
+			if ($oAttDef instanceof AttributeExternalField) {
+				$oAttDef = $oAttDef->GetFinalAttDef();
+			}
+			if ($oAttDef->IsExternalKey() || $oAttDef instanceof AttributeLinkedSet || $oAttDef->GetValuesDef() instanceof ValueSetObjects) {
+				return null;
+			}
+			$aValues = self::ServedValues($oAttDef);
+		} catch (\Throwable $e) {
+			// A list that needs an object to be worked out (the states of a class named by another attribute) is none.
+			return null;
+		}
+
+		return $aValues === null || $aValues === [] ? null : $aValues;
 	}
 
 	/**
