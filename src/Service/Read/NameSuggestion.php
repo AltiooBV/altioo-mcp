@@ -174,7 +174,9 @@ final class NameSuggestion
 	 * there is. Pure.
 	 *
 	 * "Near" is a Levenshtein distance, case ignored, of at most a third of the name's length and at least two: `state` is
-	 * near `status`, `Incdent` is near `Incident`, and `ticket` is near nothing.
+	 * near `status`, `Incdent` is near `Incident`, and `ticket` is near nothing. A name of several words is also near one
+	 * that holds all of them in their order, after those near by distance: `tto_deadline` is near
+	 * `tto_escalation_deadline` (retest of 2026-11-28).
 	 *
 	 * @param array<int, string> $aNames
 	 *
@@ -188,6 +190,7 @@ final class NameSuggestion
 
 		$sLower = strtolower($sName);
 		$iThreshold = max(2, (int)ceil(strlen($sName) / 3));
+		$aWords = array_values(array_filter(explode('_', $sLower), static fn (string $s): bool => $s !== ''));
 		$aScored = [];
 		foreach ($aNames as $sCandidate) {
 			if (!is_string($sCandidate) || $sCandidate === $sName || strlen($sCandidate) > self::MAX_LENGTH) {
@@ -196,11 +199,40 @@ final class NameSuggestion
 			$iDistance = levenshtein($sLower, strtolower($sCandidate));
 			if ($iDistance <= $iThreshold) {
 				$aScored[$sCandidate] = $iDistance;
+				continue;
+			}
+			$iMore = self::wordsAdded($aWords, strtolower($sCandidate));
+			if ($iMore !== null) {
+				// Behind every name near by distance, and the one adding fewest words first.
+				$aScored[$sCandidate] = $iThreshold + $iMore;
 			}
 		}
 		uksort($aScored, static fn (string $a, string $b): int => [$aScored[$a], $a] <=> [$aScored[$b], $b]);
 
 		return array_slice(array_keys($aScored), 0, $iMax);
+	}
+
+	/**
+	 * How many words $sCandidate adds to the two or more words of a name it holds all of, in order, or null when it
+	 * does not hold them. Pure.
+	 *
+	 * @param array<int, string> $aWords
+	 */
+	private static function wordsAdded(array $aWords, string $sCandidate): ?int
+	{
+		if (count($aWords) < 2) {
+			return null;
+		}
+
+		$aOf = array_values(array_filter(explode('_', $sCandidate), static fn (string $s): bool => $s !== ''));
+		$iNext = 0;
+		foreach ($aOf as $sWord) {
+			if ($iNext < count($aWords) && $sWord === $aWords[$iNext]) {
+				$iNext++;
+			}
+		}
+
+		return $iNext === count($aWords) ? max(1, count($aOf) - count($aWords)) : null;
 	}
 
 	/**
