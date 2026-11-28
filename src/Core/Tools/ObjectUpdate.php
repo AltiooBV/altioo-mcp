@@ -246,6 +246,9 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 			throw ToolRefusal::Because("Failed to update due to fields : ".implode(', ', $aIssues));
 		}
 
+		// Before anything is Set(): what the form makes mandatory among the fields sent, and holds a value now.
+		$aHeld = self::portalRefusal(static fn () => EditPolicy::MandatoryHeld($oObject, $oAccess->MandatoryOn($oObject, array_keys($aValidatedValues))));
+
 		// Most validations passed, apply the changes
 		foreach ($aValidatedValues as $sAttCode => $realValue) {
 			try {
@@ -275,6 +278,12 @@ class ObjectUpdate extends AbstractMCPTool implements PortalAware
 		// iTop's own pre-write check, run before anything is written rather
 		// than discovered by DBUpdate() throwing from inside the ORM.
 		DryRun::Check($oObject, "{$class}::{$id}");
+
+		// iTop's check lets a field its state makes mandatory be emptied; the form does not.
+		$sEmptied = EditPolicy::RefusalForEmptied($oObject, $aHeld);
+		if ($sEmptied !== null) {
+			throw ToolRefusal::Because($sEmptied);
+		}
 
 		// What the check threw away, and - for those attributes only - whether
 		// what the caller sent was even a legal value. DoCheckToWrite() never
