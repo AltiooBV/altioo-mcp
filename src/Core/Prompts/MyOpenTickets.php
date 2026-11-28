@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\MCP\Helper\PortalMode;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalBricks;
 use Altioo\iTop\Extension\MCP\Service\Portal\PortalPolicy;
 use Altioo\iTop\Extension\MCP\Service\Rights\ExclusionPolicy;
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use MetaModel;
 use UserRights;
 
@@ -251,7 +252,9 @@ class MyOpenTickets extends AbstractMCPPrompt implements PortalAware
 
 		return 'Call core_portal_list on my portal\'s ticket list '.implode(', or ', $aNamed).' to retrieve my requests:'
 			.' the portal\'s lists are already mine, so pass no contact or filter. Without a tab it covers every tab, and its answer counts each one.'
-			.' For a request I ask about, call core_object_get for its full state and latest log entries, and what I can do with it now.'
+			.' For a request I ask about, call core_object_get for its full state and latest log entries'
+			// A connection served no tool that changes an object has nothing to do with one (retest of 2026-11-28).
+			.(ServedAccess::ServesWrites() ? ', and what I can do with it now.' : '.')
 			.' Present the results as a clear list showing for each request: its reference, title, status, and when it was last updated.'
 			.' If none are found, say so clearly. Respond in the same language as the request titles.';
 	}

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\MCP\Core\Tools;
 
+use Altioo\iTop\Extension\MCP\Service\Rights\ServedAccess;
 use Altioo\iTop\Extension\MCP\Api\AbstractMCPTool;
 use Altioo\iTop\Extension\MCP\Service\Rights\AccessPolicy;
 use Altioo\iTop\Extension\MCP\Core\ServerInstructions;
@@ -57,6 +58,15 @@ class Instructions extends AbstractMCPTool implements PortalAware
 	/** The same, in portal mode. */
 	public const PORTAL_RETURNS = 'what this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served - its lists, its objects and its writes - and that every write is rehearsed before it is made';
 
+	/** The same, for a portal-mode connection served no tool that changes an object, which has no write to hear of. */
+	public const PORTAL_RETURNS_READ_ONLY = 'what this connection serves: this user reaches iTop through its portal, so only what that portal offers them is served - its lists and its objects, which nothing here changes';
+
+	/** PORTAL_RETURNS or its read-only form, whichever is true of this caller: asked by this tool and its resource twin. */
+	public static function PortalReturns(): string
+	{
+		return ServedAccess::ServesWrites() ? self::PORTAL_RETURNS : self::PORTAL_RETURNS_READ_ONLY;
+	}
+
 	public function getNamespace(): string
 	{
 		return 'core';
@@ -76,14 +86,11 @@ class Instructions extends AbstractMCPTool implements PortalAware
 	public function getDescription(): ?string
 	{
 		if (PortalMode::Current() !== null) {
-			return self::PORTAL_DESCRIPTION;
+			return 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns '.self::PortalReturns().'. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
 		}
 
 		return 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns '.self::RETURNS.'. A client that sends no initialize is given none of this at connection time (protocol revision 2026-07-28 has none to send, though some clients on it still send one) - for it this tool is the only copy. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
 	}
-
-	/** What this tool is to a portal-mode connection, whose instructions are the portal's. */
-	private const PORTAL_DESCRIPTION = 'Call this before your first call to any other tool on this server, unless you already received instructions from it. It returns '.self::PORTAL_RETURNS.'. It takes no arguments, reads nothing from the CMDB, and is safe to call at any point.';
 
 	public function getAnnotations(): ?ToolAnnotations
 	{
